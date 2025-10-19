@@ -1,0 +1,33 @@
+/* LeftSidebar navigation загварчлал */
+.nav-pills-custom .nav-link {
+    color: #495057;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    border-radius: 0.5rem;
+}
+
+.nav-pills-custom .nav-link:hover:not(.disabled) {
+    background-color: #e9ecef;
+    color: #0d6efd;
+    transform: translateX(4px);
+}
+
+.nav-pills-custom .nav-link.active {
+    background-color: #e7f1ff !important;
+    color: #0d6efd !important;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(13, 110, 253, 0.1);
+}
+
+.nav-pills-custom .nav-link.disabled {
+    color: #adb5bd;
+    pointer-events: none;
+    cursor: default;
+    background-color: transparent;
+    opacity: 0.6;
+}
+
+/* Icon болон текстийн зай */
+.nav-pills-custom .nav-link svg {
+    flex-shrink: 0;
+}

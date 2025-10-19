@@ -1,13 +1,16 @@
 // frontend/src/context/AuthContext.jsx
 
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import apiClient from '../api/axiosConfig'; // Бидний үүсгэх axios тохиргоо
+import apiClient from '../api/axiosConfig';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState(JSON.parse(localStorage.getItem('mathmindsUser')));
-    const [token, setToken] = useState(localStorage.getItem('authToken'));
+    const [user, setUser] = useState(() => {
+        const savedUser = localStorage.getItem('mathmindsUser');
+        return savedUser ? JSON.parse(savedUser) : null;
+    });
+    const [token, setToken] = useState(() => localStorage.getItem('authToken'));
 
     useEffect(() => {
         if (token) {
@@ -17,6 +20,7 @@ export const AuthProvider = ({ children }) => {
             localStorage.removeItem('authToken');
             delete apiClient.defaults.headers.common['Authorization'];
         }
+
         if (user) {
             localStorage.setItem('mathmindsUser', JSON.stringify(user));
         } else {
@@ -29,9 +33,18 @@ export const AuthProvider = ({ children }) => {
         setToken(userToken);
     };
 
-    const logout = () => {
-        setUser(null);
-        setToken(null);
+    const logout = async () => {
+        try {
+            // Backend API дуудаж token устгах
+            await apiClient.post('/users/api/logout/');
+        } catch (error) {
+            console.error('Logout API error:', error);
+            // Алдаа гарсан ч frontend дээрээс гарна
+        } finally {
+            // Frontend state цэвэрлэх
+            setUser(null);
+            setToken(null);
+        }
     };
 
     return (

@@ -1,11 +1,12 @@
-// frontend/src/App.jsx (Сайжруулсан Routing Бүтэц)
+// frontend/src/App.jsx
 
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import LoginPage from './components/LoginPage';
 import ArticleDetailPage from './components/ArticleDetailPage';
 import ArticleEditPage from './components/ArticleEditPage';
-import Feed from './components/Feed'; // <-- Feed-г энд импорт хийнэ
+import Feed from './components/Feed';
+import BookmarksPage from './components/BookmarksPage'; // <-- Шинэ импорт
 import { useAuth } from './context/AuthContext';
 
 function ProtectedRoute({ children }) {
@@ -42,22 +43,19 @@ function App() {
                 path="/"
                 element={
                     <ProtectedRoute>
-                        <Layout /> {/* Эцэг Route */}
+                        <Layout />
                     </ProtectedRoute>
                 }
             >
                 {/* Layout дотор харагдах хүүхэд Route-ууд */}
-                <Route index element={<Feed />} /> {/* "/" замд Feed-г харуулна (index route) */}
-                <Route path="article/:articleId" element={<ArticleDetailPage />} /> {/* "/article/:id" замд */}
+                <Route index element={<Feed />} />
+                <Route path="bookmarks" element={<BookmarksPage />} /> {/* <-- Шинэ route */}
+                <Route path="article/:articleId" element={<ArticleDetailPage />} />
                 <Route path="article/:articleId/edit" element={<ArticleEditPage />} />
-                {/* <Route path="problem/:problemId" element={<ProblemDetailPage />} /> */} {/* Ирээдүйд нэмэх */}
-                {/* <Route path="profile/:userId" element={<ProfilePage />} /> */} {/* Ирээдүйд нэмэх */}
-                {/* Бусад Layout дотор харагдах хуудсууд */}
+                {/* Ирээдүйд нэмэх бусад route-ууд */}
+                {/* <Route path="problem/:problemId" element={<ProblemDetailPage />} /> */}
+                {/* <Route path="profile/:userId" element={<ProfilePage />} /> */}
             </Route>
-
-            {/* Өөр Layout-гүй хуудсууд байвал энд нэмж болно */}
-            {/* <Route path="/about" element={<AboutPage />} /> */}
-
         </Routes>
     );
 }

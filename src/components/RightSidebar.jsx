@@ -1,15 +1,13 @@
 // frontend/src/components/RightSidebar.jsx
 
-import Card from 'react-bootstrap/Card'; // Card компонентыг импорт хийнэ
-import Form from 'react-bootstrap/Form'; // Хайлтын талбарт зориулж
-import ListGroup from 'react-bootstrap/ListGroup'; // Чиг хандлагыг жагсаахад
-import InputGroup from 'react-bootstrap/InputGroup'; // Хайлтын icon-г талбартай нэгтгэхэд
-import { Search } from 'lucide-react'; // Хайлтын icon
+import Card from 'react-bootstrap/Card';
+import Form from 'react-bootstrap/Form';
+import ListGroup from 'react-bootstrap/ListGroup';
+import InputGroup from 'react-bootstrap/InputGroup';
+import { Search } from 'lucide-react';
 
 const RightSidebar = () => (
-    // Баруун sidebar-н үндсэн хэсэг, Bootstrap-ийн padding ашиглана
-    <div className="p-3 sticky-top" style={{ top: '1rem' }}> {/* sticky-top нь гүйлгэхэд дагана */}
-
+    <div className="p-3">
         {/* Хайлтын Card */}
         <Card className="mb-3 shadow-sm">
             <Card.Body>
@@ -30,9 +28,8 @@ const RightSidebar = () => (
         <Card className="shadow-sm">
             <Card.Body>
                 <Card.Title as="h5" className="fw-bold mb-3">Чиг хандлага</Card.Title>
-                {/* ListGroup ашиглан жагсаалт үүсгэнэ */}
-                <ListGroup variant="flush"> {/* flush нь хүрээг арилгана */}
-                    <ListGroup.Item action className="border-0 px-0 pt-0 pb-2"> {/* action нь hover үйлдэл нэмнэ */}
+                <ListGroup variant="flush">
+                    <ListGroup.Item action className="border-0 px-0 pt-0 pb-2">
                         <div className="fw-semibold text-primary">#КвадратТэгшитгэл</div>
                         <div className="text-muted small">1.2K постууд</div>
                     </ListGroup.Item>
@@ -47,7 +44,6 @@ const RightSidebar = () => (
                 </ListGroup>
             </Card.Body>
         </Card>
-
     </div>
 );
 

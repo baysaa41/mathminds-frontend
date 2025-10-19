@@ -1,10 +1,9 @@
-// frontend/src/components/Layout.jsx (Сайжруулсан)
+// frontend/src/components/Layout.jsx
 
 import LeftSidebar from './LeftSidebar';
 import RightSidebar from './RightSidebar';
-// import Feed from './Feed'; // <-- Feed-г эндээс импорт хийх шаардлагагүй болно
 import { useAuth } from '../context/AuthContext';
-import { useNavigate, Outlet } from 'react-router-dom'; // <-- Outlet-г импорт хийнэ
+import { useNavigate, Outlet, useLocation } from 'react-router-dom'; // useLocation нэмсэн
 
 // React Bootstrap components
 import Container from 'react-bootstrap/Container';
@@ -16,28 +15,42 @@ import Button from 'react-bootstrap/Button';
 const Layout = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation(); // Одоогийн route-г авах
 
     const handleLogout = () => {
         logout();
         navigate('/login');
     };
 
+    // Route-аас хамааран гарчиг тодорхойлох
+    const getPageTitle = () => {
+        const path = location.pathname;
+        if (path === '/') return 'Нүүр';
+        if (path === '/bookmarks') return 'Хадгалсан';
+        if (path.startsWith('/article/')) return 'Өгүүлэл';
+        if (path.startsWith('/profile')) return 'Профайл';
+        return 'Нүүр';
+    };
+
     return (
         <Container fluid="lg" className="bg-white shadow-sm min-vh-100 p-0">
-            <Row className="g-0">
+            <Row className="g-0" style={{ height: '100vh', overflow: 'hidden' }}>
 
-                <Col md={3} xl={2} className="border-end d-none d-md-block">
+                <Col md={3} xl={2} className="border-end d-none d-md-block p-0">
                     <LeftSidebar />
                 </Col>
 
-                <Col md={9} xl={7} className="border-end min-vh-100">
-                    <Navbar sticky="top" className="bg-white bg-opacity-90 border-bottom px-3 py-2">
-                        {/* ... Navbar-ийн бусад код хэвээрээ ... */}
-                        <Navbar.Brand as="h1" className="h5 mb-0 fw-bold">Нүүр</Navbar.Brand>
+                <Col md={9} xl={7} className="border-end" style={{ height: '100vh', overflowY: 'auto' }}>
+                    <Navbar className="bg-white bg-opacity-90 border-bottom px-3 py-2 position-sticky top-0" style={{ zIndex: 100 }}>
+                        <Navbar.Brand as="h1" className="h5 mb-0 fw-bold">
+                            {getPageTitle()}
+                        </Navbar.Brand>
                         <Navbar.Collapse className="justify-content-end">
                             {user && (
                                 <div className='d-flex align-items-center gap-2'>
-                                    <span className='fw-semibold text-secondary me-2'>{user.first_name || user.email}</span>
+                                    <span className='fw-semibold text-secondary me-2'>
+                                        {user.first_name || user.email}
+                                    </span>
                                     <Button
                                         onClick={handleLogout}
                                         variant="outline-danger"
@@ -49,15 +62,15 @@ const Layout = () => {
                         </Navbar.Collapse>
                     </Navbar>
 
-                    {/* --- ЭНЭ ХЭСГИЙГ ӨӨРЧИЛСӨН --- */}
-                    {/* Энд Feed эсвэл ArticleDetailPage гэх мэт хүүхэд route-ийн компонент харагдана */}
+                    {/* Энд Feed эсвэл BookmarksPage гэх мэт хүүхэд route-ийн компонент харагдана */}
                     <Outlet />
-                    {/* --- ӨӨРЧЛӨЛТ ДУУССАН --- */}
 
                 </Col>
 
-                <Col xl={3} className="d-none d-xl-block">
-                    <RightSidebar />
+                <Col xl={3} className="d-none d-xl-block p-0">
+                    <div className="sidebar-container">
+                        <RightSidebar />
+                    </div>
                 </Col>
 
             </Row>

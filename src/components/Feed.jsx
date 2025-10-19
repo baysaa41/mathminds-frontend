@@ -1,10 +1,7 @@
-// frontend/src/components/Feed.jsx
-
 import { useState, useEffect } from 'react';
 import apiClient from '../api/axiosConfig';
 import PostCard from './PostCard';
 
-// React Bootstrap компонентууд
 import Spinner from 'react-bootstrap/Spinner';
 import Alert from 'react-bootstrap/Alert';
 
@@ -19,10 +16,23 @@ const Feed = () => {
                 setLoading(true);
                 setError(null);
                 const response = await apiClient.get('/api/minds/posts/');
-                setPosts(response.data.results);
+
+                // ✅ ЗАСВАР: Pagination байгаа эсэхийг шалгах
+                if (response.data.results) {
+                    // Pagination байгаа бол results ашиглах
+                    setPosts(response.data.results);
+                } else if (Array.isArray(response.data)) {
+                    // Pagination байхгүй бол шууд array
+                    setPosts(response.data);
+                } else {
+                    // Буруу формат бол хоосон array
+                    setPosts([]);
+                    console.error('Unexpected API response format:', response.data);
+                }
             } catch (err) {
                 setError("Пост уншихад алдаа гарлаа. Backend сервер ажиллаж байгаа эсэхийг шалгана уу.");
-                console.error(err);
+                console.error('API Error:', err);
+                console.error('Response:', err.response?.data);
             } finally {
                 setLoading(false);
             }
@@ -30,7 +40,6 @@ const Feed = () => {
         fetchPosts();
     }, []);
 
-    // Loading төлөв
     if (loading) {
         return (
             <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '200px' }}>
@@ -41,7 +50,6 @@ const Feed = () => {
         );
     }
 
-    // Алдааны төлөв
     if (error) {
         return (
             <Alert variant="danger" className="m-3">
@@ -50,10 +58,9 @@ const Feed = () => {
         );
     }
 
-    // Постуудыг харуулах
     return (
-        <div> {/* Гадна талын div-г үлдээсэн */}
-            {posts.length > 0 ? (
+        <div>
+            {posts && posts.length > 0 ? (
                 posts.map(post => (
                     <PostCard key={post.id} post={post} />
                 ))

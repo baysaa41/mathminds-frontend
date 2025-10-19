@@ -11,7 +11,7 @@ import Card from 'react-bootstrap/Card';
 import Form from 'react-bootstrap/Form';
 import Button from 'react-bootstrap/Button';
 import Alert from 'react-bootstrap/Alert';
-import Spinner from 'react-bootstrap/Spinner'; // Loading spinner нэмэх
+import Spinner from 'react-bootstrap/Spinner';
 
 const LoginPage = () => {
     const [email, setEmail] = useState('');
@@ -49,13 +49,18 @@ const LoginPage = () => {
     };
 
     return (
-        // Хуудсыг дүүргэж, голлуулах Container
         <Container fluid className="d-flex align-items-center justify-content-center min-vh-100 bg-light">
             <Card className="p-4 p-md-5 shadow-lg" style={{ maxWidth: '400px', width: '100%' }}>
                 <Card.Body>
-                    <Card.Title as="h2" className="text-center mb-4 fw-bold">
-                        Mathminds-д нэвтрэх
+                    {/* Гарчиг */}
+                    <Card.Title as="h2" className="text-center mb-2 fw-bold text-primary">
+                        MathMinds.club
                     </Card.Title>
+
+                    {/* Уриа үг */}
+                    <p className="text-center text-muted mb-4 fst-italic" style={{ fontSize: '0.9rem' }}>
+                        Where every mind counts.
+                    </p>
 
                     {/* Алдааны мэдээлэл */}
                     {error && <Alert variant="danger">{error}</Alert>}

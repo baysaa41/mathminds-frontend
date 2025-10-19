@@ -1,25 +1,23 @@
-// frontend/src/components/ArticleDetailPage.jsx
-
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import apiClient from '../api/axiosConfig';
 import { MathJax } from 'better-react-mathjax';
-import { useAuth } from '../context/AuthContext'; // <-- useAuth-г импорт хийсэн
+import { useAuth } from '../context/AuthContext';
 
 // React Bootstrap components
 import Container from 'react-bootstrap/Container';
 import Spinner from 'react-bootstrap/Spinner';
 import Alert from 'react-bootstrap/Alert';
 import Breadcrumb from 'react-bootstrap/Breadcrumb';
-import Button from 'react-bootstrap/Button'; // <-- Button-г импорт хийсэн
-import Stack from 'react-bootstrap/Stack'; // <-- Stack-г импорт хийсэн
+import Button from 'react-bootstrap/Button';
+import Stack from 'react-bootstrap/Stack';
 
 const ArticleDetailPage = () => {
     const { articleId } = useParams();
     const [article, setArticle] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const { user } = useAuth(); // <-- Нэвтэрсэн хэрэглэгчийн мэдээллийг авсан
+    const { user } = useAuth();
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -61,59 +59,60 @@ const ArticleDetailPage = () => {
     }
 
     if (!article) {
-        // Error state дээр аль хэдийн мессеж харуулсан тул энд хүрэхгүй
-        // Гэхдээ баталгаажуулах үүднээс null буцааж болно
         return null;
     }
 
-    // --- ЗАСВАРЛАХ ЭРХИЙГ ШАЛГАХ ---
-    // API-аас ирсэн author object дотор id байгаа эсэхийг шалгах нь чухал
     const canEdit = user && article && article.author && (user.user_id === article.author.id || user.is_staff);
-    // --- ШАЛГАЛТ ДУУССАН ---
 
-    // Засварлах товч дарагдах үед ажиллах функц
     const handleEditClick = () => {
-        // Засварлах хуудас руу үсэрнэ
         navigate(`/article/${articleId}/edit`);
     };
-
 
     return (
         <Container className="py-4">
             <Breadcrumb listProps={{ className: "mb-3" }}>
                 <Breadcrumb.Item linkAs={Link} linkProps={{ to: "/" }}>Нүүр</Breadcrumb.Item>
-                {/* Өгүүллийн гарчиг байхгүй үед 'Өгүүлэл' гэж харуулна */}
                 <Breadcrumb.Item active>{article.title || 'Өгүүлэл'}</Breadcrumb.Item>
             </Breadcrumb>
 
-            {/* --- ГАРЧИГ БА ЗАСВАРЛАХ ТОВЧ --- */}
+            {/* Гарчиг ба Засварлах товч */}
             <Stack direction="horizontal" gap={3} className="align-items-start mb-3">
                 <MathJax hideUntilTypeset={"first"} className="flex-grow-1">
-                    {/* Өгүүллийн гарчиг байхгүй үед 'Гарчиггүй' гэж харуулна */}
                     <h1 className="h3 fw-bold mathjax-content mb-0">{article.title || 'Гарчиггүй өгүүлэл'}</h1>
                 </MathJax>
-                {canEdit && ( // Эрхтэй үед л товчийг харуулна
-                    <Button variant="outline-primary" size="sm" onClick={handleEditClick} className="flex-shrink-0"> {/* flex-shrink-0 нэмсэн */}
+                {canEdit && (
+                    <Button variant="outline-primary" size="sm" onClick={handleEditClick} className="flex-shrink-0">
                         Засварлах
                     </Button>
                 )}
             </Stack>
-            {/* --- ХЭСЭГ ДУУССАН --- */}
 
+            {/* ✅ Abstract харуулах */}
+            {article.abstract && (
+                <MathJax hideUntilTypeset={"first"}>
+                    <div
+                        className="mathjax-content text-muted mb-4 p-3 bg-light rounded border-start border-primary border-4"
+                        style={{ fontSize: '1.05em', lineHeight: '1.6', fontStyle: 'italic' }}
+                    >
+                        {article.abstract}
+                    </div>
+                </MathJax>
+            )}
 
-            <div className="text-muted mb-4 small d-flex flex-wrap gap-2 align-items-center"> {/* flex-wrap нэмсэн */}
+            {/* Зохиогч, огноо */}
+            <div className="text-muted mb-4 small d-flex flex-wrap gap-2 align-items-center">
                 <span>Зохиогч: {article.author?.first_name || article.author?.email || 'N/A'}</span>
-                <span className='d-none d-sm-inline mx-1'>|</span> {/* Жижиг дэлгэцэнд нуугдана */}
+                <span className='d-none d-sm-inline mx-1'>|</span>
                 <span>Нийтэлсэн: {article.published ? new Date(article.published).toLocaleDateString() : 'N/A'}</span>
             </div>
 
             <hr className="mb-4"/>
 
+            {/* Үндсэн агуулга */}
             <MathJax hideUntilTypeset={"first"}>
                 <div
                     className="article-content mathjax-content"
                     style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: '1.7' }}
-                    // Контент байхгүй үед хоосон харагдуулна
                     dangerouslySetInnerHTML={{ __html: article.content || '' }}
                 />
             </MathJax>
@@ -122,7 +121,6 @@ const ArticleDetailPage = () => {
             <Link to="/" className="btn btn-outline-secondary btn-sm mt-3">
                 &laquo; Нүүр хуудас руу буцах
             </Link>
-
         </Container>
     );
 };

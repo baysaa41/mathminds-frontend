@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-// import apiClient from '../api/axiosConfig'; // Түр comment болгов
-// import { useAuth } from '../context/AuthContext'; // Түр comment болгов
+import apiClient from '../api/axiosConfig';
+import { useAuth } from '../context/AuthContext';
 
 // React Bootstrap components
 import Container from 'react-bootstrap/Container';
@@ -12,34 +12,7 @@ import Alert from 'react-bootstrap/Alert';
 import Breadcrumb from 'react-bootstrap/Breadcrumb';
 import Stack from 'react-bootstrap/Stack';
 
-// import { MathJax } from 'better-react-mathjax'; // Түр comment болгов
-
-
-// --- ТҮР ОРЛУУЛАЛТ: Кодыг Preview орчинд ажиллуулахын тулд ---
-// Таны жинхэнэ файлууд болон сангуудыг түр орлуулж байна.
-// Та өөрийн төсөлдөө эдгээрийг ашиглах шаардлагагүй.
-
-const apiClient = {
-    get: (url) => Promise.resolve({
-        data: {
-            id: url.split('/')[4],
-            title: 'Серверээс ирсэн гарчиг',
-            content: '<p>Серверээс ирсэн анхны агуулга.</p>',
-            author: { id: 1, username: 'testuser' }
-        }
-    }),
-    patch: (url, data) => {
-        console.log(`PATCHing to ${url} with data:`, data);
-        return Promise.resolve({ data });
-    }
-};
-
-const useAuth = () => ({
-    user: { user_id: 1, is_staff: false, username: 'testuser' }
-});
-
-const MathJax = ({ children }) => <div className="mathjax-mock">{children}</div>;
-// --- ТҮР ОРЛУУЛАЛТ ДУУССАН ---
+import { MathJax } from 'better-react-mathjax';
 
 
 // --- Бие даасан Editor Компонент (Tiptap/Quill-ийн оронд) ---
@@ -113,14 +86,16 @@ const MenuBar = ({ editor }) => {
 };
 
 
-const MyEditor = ({ initialContent = '', onContentChange, disabled = false }) => {
+const MyEditor = ({ initialContent = '', onContentChange, disabled = false, minHeight = '250px' }) => {
     const editorRef = useRef(null);
+    const isInitialMount = useRef(true);
 
     useEffect(() => {
-        if (editorRef.current && initialContent !== editorRef.current.innerHTML) {
+        if (isInitialMount.current && editorRef.current && initialContent) {
             editorRef.current.innerHTML = initialContent;
+            isInitialMount.current = false;
         }
-    }, [initialContent]);
+    }, []);
 
     const handleInput = () => {
         if (onContentChange && editorRef.current) {
@@ -140,7 +115,7 @@ const MyEditor = ({ initialContent = '', onContentChange, disabled = false }) =>
                 ref={editorRef}
                 contentEditable={!disabled}
                 onInput={handleInput}
-                style={editorStyles.editableArea}
+                style={{ ...editorStyles.editableArea, minHeight }}
             />
         </div>
     );
@@ -156,6 +131,7 @@ const ArticleEditPage = () => {
     const { user } = useAuth();
 
     const [title, setTitle] = useState('');
+    const [abstract, setAbstract] = useState(''); // ✅ Abstract state нэмсэн
     const [content, setContent] = useState('');
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -179,6 +155,7 @@ const ArticleEditPage = () => {
 
                 setTitle(articleData.title || '');
                 setOriginalTitle(articleData.title || '');
+                setAbstract(articleData.abstract || ''); // ✅ Abstract авах
                 setContent(articleData.content || '');
                 setInitialAuthorId(articleData.author.id);
             } catch (err) {
@@ -192,13 +169,13 @@ const ArticleEditPage = () => {
                 setLoading(false);
             }
         };
-        if (articleId) { // articleId байгаа үед л fetch хийнэ
+        if (articleId) {
             fetchArticle();
         } else {
             setLoading(false);
             setError("Өгүүллийн дугаар олдсонгүй.")
         }
-    }, [articleId, user]);
+    }, [articleId, user?.user_id, user?.is_staff]);
 
     const handleSave = async (e) => {
         e.preventDefault();
@@ -208,6 +185,7 @@ const ArticleEditPage = () => {
         try {
             await apiClient.patch(`/api/minds/articles/${articleId}/`, {
                 title: title,
+                abstract: abstract, // ✅ Abstract илгээх
                 content: content,
             });
             navigate(`/article/${articleId}`);
@@ -250,6 +228,7 @@ const ArticleEditPage = () => {
             {error && initialAuthorId && <Alert variant="danger">{error}</Alert>}
 
             <Form onSubmit={handleSave}>
+                {/* Гарчиг */}
                 <Form.Group className="mb-3" controlId="articleTitle">
                     <Form.Label className="fw-semibold">Гарчиг</Form.Label>
                     <Form.Control
@@ -261,6 +240,23 @@ const ArticleEditPage = () => {
                     />
                 </Form.Group>
 
+                {/* ✅ Abstract талбар нэмсэн */}
+                <Form.Group className="mb-3" controlId="articleAbstract">
+                    <Form.Label className="fw-semibold">Хураангуй (Abstract)</Form.Label>
+                    <Form.Control
+                        as="textarea"
+                        rows={3}
+                        value={abstract}
+                        onChange={(e) => setAbstract(e.target.value)}
+                        disabled={saving}
+                        placeholder="Өгүүллийн товч хураангуй..."
+                    />
+                    <Form.Text className="text-muted">
+                        Энэ хэсэг нь постонд болон хайлтын үр дүнд харагдана.
+                    </Form.Text>
+                </Form.Group>
+
+                {/* Агуулга */}
                 <Form.Group className="mb-3" controlId="articleContent">
                     <Form.Label className="fw-semibold">Агуулга (LaTeX ашиглаж болно: $...$ эсвэл $$...$$)</Form.Label>
                     <MyEditor
@@ -270,8 +266,27 @@ const ArticleEditPage = () => {
                     />
                 </Form.Group>
 
+                {/* Урьдчилж харах */}
                 <div className="mb-3 border p-3 bg-light rounded mt-4">
                     <p className='fw-semibold small text-muted mb-2'>Урьдчилж харах:</p>
+
+                    {/* Abstract урьдчилж харах */}
+                    {abstract && (
+                        <div className="mb-3 pb-3 border-bottom">
+                            <p className="fw-semibold small text-secondary mb-1">Хураангуй:</p>
+                            <MathJax hideUntilTypeset={"first"}>
+                                <div
+                                    className="mathjax-content text-muted"
+                                    style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: '0.95em' }}
+                                >
+                                    {abstract}
+                                </div>
+                            </MathJax>
+                        </div>
+                    )}
+
+                    {/* Content урьдчилж харах */}
+                    <p className="fw-semibold small text-secondary mb-1">Агуулга:</p>
                     <MathJax hideUntilTypeset={"first"}>
                         <div
                             className="mathjax-content preview-content"
@@ -281,6 +296,7 @@ const ArticleEditPage = () => {
                     </MathJax>
                 </div>
 
+                {/* Товчнууд */}
                 <Stack direction="horizontal" gap={2} className="justify-content-end mt-4">
                     <Button variant="outline-secondary" onClick={() => navigate(`/article/${articleId}`)} disabled={saving}>
                         Цуцлах
@@ -302,4 +318,3 @@ const ArticleEditPage = () => {
 };
 
 export default ArticleEditPage;
-
