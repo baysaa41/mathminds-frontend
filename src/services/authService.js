@@ -1,4 +1,4 @@
-// src/services/authService.js
+// src/services/authService.js (БҮРЭН ЗАСВАРЛАСАН)
 
 const MMO_CONFIG = {
     clientId: 'nzkWGrkfUnGyeyerGo3XkZlRKlhmSTnVmGcYJWC9',
@@ -48,7 +48,6 @@ class AuthService {
             const { codeVerifier, codeChallenge } = await this.generatePKCE();
             const state = this.generateState();
 
-            // sessionStorage ашиглах
             sessionStorage.setItem('code_verifier', codeVerifier);
             sessionStorage.setItem('oauth_state', state);
 
@@ -110,9 +109,9 @@ class AuthService {
         }
 
         try {
-            console.log('🔄 Exchanging code for token...');
-
-            const response = await fetch(`${BACKEND_URL}/api/auth/exchange-code/`, {
+            // --- 1. ОРХИГДСОН FETCH ДУУДЛАГЫГ НЭМСЭН ---
+            // Энэ нь таны backend-н exchange_code руу хандана
+            const response = await fetch(`${BACKEND_URL}/users/api/exchange-code/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -120,24 +119,28 @@ class AuthService {
                 body: JSON.stringify({
                     code: code,
                     code_verifier: codeVerifier,
-                    redirect_uri: MMO_CONFIG.redirectUri,
-                }),
+                    redirect_uri: MMO_CONFIG.redirectUri
+                })
             });
 
             if (!response.ok) {
-                const error = await response.json();
-                console.error('❌ Token exchange failed:', error);
-                throw new Error(error.error || 'Token exchange failed');
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to exchange code');
             }
+            // ---------------------------------------------
 
+            // Backend-с ирсэн хариу (token, refresh, user)
             const data = await response.json();
-            console.log('✅ Token received!');
-            console.log('✅ User data:', data.user);
+
+            console.log('✅ Backend response received:');
+            console.log('  Token:', data.token ? data.token.slice(0, 20) + '...' : 'null');
+            console.log('  User data:', data.user);
 
             // Token хадгалах
-            localStorage.setItem('access_token', data.access_token);
-            if (data.refresh_token) {
-                localStorage.setItem('refresh_token', data.refresh_token);
+            // "access_token" түлхүүр үгээр хадгалж байна (бусад функцтэй нийцүүлсэн)
+            localStorage.setItem('access_token', data.token);
+            if (data.refresh) {
+                localStorage.setItem('refresh_token', data.refresh);
             }
             localStorage.setItem('user', JSON.stringify(data.user));
 
@@ -146,7 +149,9 @@ class AuthService {
             sessionStorage.removeItem('oauth_state');
             console.log('✅ Login successful!');
 
-            return data.user;
+            // CallbackPage рүү хэрэглэгч болон токеныг буцаана
+            // Энэ нь AuthContext-г шинэчлэхэд ашиглагдана
+            return { user: data.user, token: data.token };
 
         } catch (error) {
             console.error('❌ Callback error:', error);
@@ -167,25 +172,36 @@ class AuthService {
         try {
             console.log('👤 Verifying token with backend...');
 
-            const response = await fetch(`${BACKEND_URL}/api/auth/verify/`, {
+            // Энэ замыг /users/api/current-user/ болгож өөрчилсөн
+            // (Таны api_views.py дахь current_user функц)
+            const response = await fetch(`${BACKEND_URL}/users/api/current-user/`, {
                 headers: {
+                    // SimpleJWT нь "Bearer" ашигладаг
                     'Authorization': `Bearer ${token}`,
                 },
             });
 
-            if (!response.ok) {
+            if (response.status === 401) {
                 console.log('❌ Token invalid, logging out');
                 this.logout();
                 return null;
             }
 
+            if (!response.ok) {
+                throw new Error('Failed to fetch user');
+            }
+
             const data = await response.json();
-            console.log('✅ Token verified:', data.user);
-            return data.user;
+            console.log('✅ Token verified, user:', data);
+
+            // Хэрэглэгчийн мэдээллийг localStorage-д шинэчлэх
+            localStorage.setItem('user', JSON.stringify(data));
+            return data;
 
         } catch (error) {
             console.error('❌ Get user error:', error);
-            this.logout();
+            // Сүлжээний алдаа гарсан ч logout хийхгүй байх нь дээр
+            // this.logout();
             return null;
         }
     }
@@ -203,7 +219,7 @@ class AuthService {
     // Нэвтэрсэн эсэхийг шалгах
     isAuthenticated() {
         const hasToken = !!localStorage.getItem('access_token');
-        console.log('🔍 isAuthenticated:', hasToken);
+        // console.log('🔍 isAuthenticated:', hasToken); // (Хэт олон лог хэвлэх тул comment болгов)
         return hasToken;
     }
 
@@ -216,13 +232,13 @@ class AuthService {
     getUser() {
         const userStr = localStorage.getItem('user');
         if (!userStr) {
-            console.log('ℹ️ No user in localStorage');
+            // console.log('ℹ️ No user in localStorage');
             return null;
         }
 
         try {
             const user = JSON.parse(userStr);
-            console.log('✅ User from localStorage:', user);
+            // console.log('✅ User from localStorage:', user);
             return user;
         } catch (error) {
             console.error('❌ Error parsing user:', error);

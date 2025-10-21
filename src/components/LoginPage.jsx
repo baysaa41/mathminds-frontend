@@ -28,12 +28,13 @@ const LoginPage = () => {
 
         try {
             const response = await apiClient.post('/users/api/login/', {
-                username: email,
+                email: email, // 'username'-г 'email' болгож өөрчилнө
                 password: password,
             });
 
-            const { token, ...userData } = response.data;
-            login(userData, token);
+            // --- ШИНЭ КОД ---
+            const { token, user } = response.data;
+            login(user, token); // userData биш 'user' обьектыг дамжуулна
             navigate('/');
 
         } catch (err) {

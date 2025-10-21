@@ -1,23 +1,38 @@
-// frontend/src/api/axiosConfig.js
+// frontend/src/api/axiosConfig.js (БҮРЭН ЗАСВАРЛАСАН)
 
 import axios from 'axios';
+// (Энэ замын зөв эсэхийг шалгаарай. Ихэвчлэн ../services/authService.js байдаг)
+import authService from '../services/authService';
 
 const apiClient = axios.create({
     baseURL: 'http://127.0.0.1:8000', // API-ийн үндсэн хаяг
+    headers: {
+        'Content-Type': 'application/json'
+    }
 });
 
-// Request Interceptor
-// Энэ функц API дуудахаас ӨМНӨ ажиллана
+/**
+ * Request Interceptor (Замаас баригч)
+ * Энэ функц `apiClient.get()`, `apiClient.post()` гэх мэт дуудлага
+ * БҮРИЙН ӨМНӨ ажиллана.
+ */
 apiClient.interceptors.request.use(
     (config) => {
-        const token = localStorage.getItem('authToken'); // localStorage-аас токеноо авна
+        // 1. authService-с одоогийн токеныг авна
+        // Энэ нь localStorage-с 'access_token'-г уншина
+        const token = authService.getToken();
+
         if (token) {
-            // Хэрэв токен байвал Authorization header-т нэмнэ
-            config.headers['Authorization'] = `Token ${token}`;
+            // 2. Хэрэв токен байвал 'Authorization' толгойг тохируулна
+            // SimpleJWT нь "Bearer" схем ашигладаг
+            config.headers['Authorization'] = `Bearer ${token}`;
         }
+
+        // 3. Тохируулсан config-г буцаан, хүсэлтийг үргэлжлүүлнэ
         return config;
     },
     (error) => {
+        // Хүсэлтийн алдааг буцаах
         return Promise.reject(error);
     }
 );

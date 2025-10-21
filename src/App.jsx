@@ -2,19 +2,59 @@
 
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import LoginButton from './components/LoginButton';
+
+// Layout болон үндсэн хуудсууд
+import Layout from './components/Layout';
+import Feed from './components/Feed';
+import BookmarksPage from './components/BookmarksPage'; //
+import ArticleDetailPage from './components/ArticleDetailPage'; // <<< 1. ШИНЭЭР ИМПОРТ ХИЙХ
+
+// Нэвтрэх болон бусад хуудсууд
+import UnifiedLoginPage from './components/UnifiedLoginPage';
 import CallbackPage from './pages/CallbackPage';
-import ProtectedRoute from './components/ProtectedRoute';
 import HomePage from './pages/HomePage';
 import DashboardPage from './pages/DashboardPage';
+
+// Хамгаалалт
+import ProtectedRoute from './components/ProtectedRoute'; //
 
 function App() {
     return (
         <BrowserRouter>
             <Routes>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/login" element={<LoginPage />} />
+                {/* 1. Нийтийн (Public) хуудсууд */}
+                <Route path="/welcome" element={<HomePage />} />
+                <Route path="/login" element={<UnifiedLoginPage />} />
                 <Route path="/callback" element={<CallbackPage />} />
+
+                {/* 2. Хамгаалагдсан (Protected) хуудсууд */}
+                <Route
+                    path="/"
+                    element={
+                        <ProtectedRoute>
+                            <Layout />
+                        </ProtectedRoute>
+                    }
+                >
+                    {/* Layout-н <Outlet /> дотор харагдах хуудсууд: */}
+
+                    <Route index element={<Feed />} />
+                    <Route path="bookmarks" element={<BookmarksPage />} />
+
+                    {/* >>> 2. ЭНЭ МӨРИЙГ НЭМНЭ <<<
+                      /article/:id зам руу ороход ArticleDetailPage-г дуудна.
+                      :id нь dynamic parameter буюу ямар ч өгүүллийн дугаар байж болно.
+                    */}
+                    <Route path="article/:id" element={<ArticleDetailPage />} />
+
+                    {/* LeftSidebar.jsx доторх бусад холбоосууд */}
+                    <Route path="problems" element={<div>Бодлогын сан (үүсгэх)</div>} />
+                    <Route path="quizzes" element={<div>Тестийн сан (үүсгэх)</div>} />
+                    <Route path="formulas" element={<div>Томьёоны сан (үүсгэх)</div>} />
+                    <Route path="profile" element={<div>Профайл (үүсгэх)</div>} />
+                </Route>
+
+                {/* ... (Бусад route-ууд: /dashboard, * г.м) ... */}
                 <Route
                     path="/dashboard"
                     element={
@@ -23,18 +63,10 @@ function App() {
                         </ProtectedRoute>
                     }
                 />
+                <Route path="*" element={<Navigate to="/" replace />} />
+
             </Routes>
         </BrowserRouter>
-    );
-}
-
-function LoginPage() {
-    return (
-        <div style={{ textAlign: 'center', padding: '100px' }}>
-            <h1>MathMinds Club</h1>
-            <p>MMO данс ашиглан нэвтрэх</p>
-            <LoginButton />
-        </div>
     );
 }
 
