@@ -38,14 +38,9 @@ const mathJaxConfig = {
 };
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-    <React.StrictMode>
-        <BrowserRouter>
-            {/* MathJaxContext-оор AuthProvider-г бүрхэнэ */}
-            <MathJaxContext version={3} config={mathJaxConfig}>
-                <AuthProvider>
-                    <App />
-                </AuthProvider>
-            </MathJaxContext>
-        </BrowserRouter>
-    </React.StrictMode>,
+        <MathJaxContext version={3} config={mathJaxConfig}>
+            <AuthProvider>
+                <App />
+            </AuthProvider>
+        </MathJaxContext>
 );
