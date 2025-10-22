@@ -45,7 +45,11 @@ const RelatedContentDisplay = ({ type, data }) => {
             );
         case 'problem':
             return (
-                <Card className="bg-light border shadow-sm mt-2 fade-in">
+                <Card
+                    className="bg-light border shadow-sm mt-2 hover-card fade-in"
+                    onClick={() => handleNavigate(`/problem/${data.id}`)}
+                    style={{ cursor: 'pointer' }}
+                >
                     <Card.Body className="p-2">
                         <Badge pill bg="warning" text="dark" className="mb-1">Бодлого</Badge>
                         <MathJax hideUntilTypeset={"first"}>

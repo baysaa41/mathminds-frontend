@@ -24,7 +24,7 @@ const LeftSidebar = () => {
             <div>
                 {/* Лого */}
                 <div className="mb-4 d-flex align-items-center">
-                    <h2 className="h4 fw-bold text-primary mb-0">MathMinds</h2>
+                    <h2 className="h4 fw-bold text-primary mb-0">MathMinds.club</h2>
                 </div>
 
                 {/* Nav компонентыг ашиглан цэс үүсгэнэ */}

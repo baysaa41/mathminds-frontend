@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+// (!!!) useOutletContext-г import хийнэ
+import { useParams, Link, useNavigate, useOutletContext } from 'react-router-dom';
+// (!!!) Импортын замыг засварласан
 import apiClient from '../api/axiosConfig.js';
 import { MathJax } from 'better-react-mathjax';
+// (!!!) Импортын замыг засварласан
 import { useAuth } from '../context/AuthContext.jsx';
 
 // React Bootstrap components
@@ -13,20 +16,30 @@ import Button from 'react-bootstrap/Button';
 import Stack from 'react-bootstrap/Stack';
 
 const ArticleDetailPage = () => {
-    const { articleId } = useParams();
+    // (!!!) "articleId"-г "id" болгож өөрчилсөн (App.jsx-тэй нийцүүлсэн)
+    const { id } = useParams();
     const [article, setArticle] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const { user } = useAuth();
     const navigate = useNavigate();
+    // (!!!) useOutletContext-г ашиглан setPageTitle-г авна
+    const { setPageTitle } = useOutletContext();
 
     useEffect(() => {
         const fetchArticle = async () => {
             try {
                 setLoading(true);
                 setError(null);
-                const response = await apiClient.get(`/api/minds/articles/${articleId}/`);
+                // (!!!) "articleId"-г "id" болгож өөрчилсөн
+                const response = await apiClient.get(`/api/minds/articles/${id}/`);
                 setArticle(response.data);
+
+                // (!!!) Гарчгийг энд тохируулна
+                if (response.data?.title) {
+                    setPageTitle(response.data.title);
+                }
+
             } catch (err) {
                 if (err.response && err.response.status === 404) {
                     setError('Өгүүлэл олдсонгүй.');
@@ -38,9 +51,27 @@ const ArticleDetailPage = () => {
                 setLoading(false);
             }
         };
-        fetchArticle();
-    }, [articleId]);
 
+        // (!!!) --- АЛДААГ ЗАСАХ ХАМГААЛАЛТ --- (!!!)
+        // (!!!) "articleId"-г "id" болгож өөрчилсөн
+        if (id) {
+            fetchArticle();
+        } else {
+            // Хэрэв id ямар нэг шалтгаанаар undefined байвал
+            setError("Өгүүллийн дугаар (ID) олдсонгүй.");
+            setLoading(false);
+            setPageTitle("Алдаа"); // Гарчгийг "Алдаа" болгох
+        }
+
+        // Cleanup: Компонент солигдох үед гарчгийг цэвэрлэх
+        return () => {
+            setPageTitle("Нүүр"); // Эсвэл өөр үндсэн гарчиг
+        };
+
+    }, [id, setPageTitle]); // (!!!) "articleId"-г "id" болгож өөрчилсөн
+
+    // (!!!) --- СЭРГЭЭСЭН ХЭСЭГ --- (!!!)
+    // Ачааллаж байх үеийн дэлгэц
     if (loading) {
         return (
             <Container className="d-flex justify-content-center align-items-center py-5" >
@@ -49,6 +80,8 @@ const ArticleDetailPage = () => {
         );
     }
 
+    // (!!!) --- СЭРГЭЭСЭН ХЭСЭГ --- (!!!)
+    // Алдаа гарсан үеийн дэлгэц
     if (error) {
         return (
             <Container className="mt-4">
@@ -58,16 +91,23 @@ const ArticleDetailPage = () => {
         );
     }
 
+    // (!!!) --- СЭРГЭЭСЭН ХЭСЭГ --- (!!!)
+    // Өгүүлэл олдсонгүй (гэхдээ алдаа биш)
     if (!article) {
         return null;
     }
 
-    const canEdit = user && article && article.author && (user.user_id === article.author.id || user.is_staff);
+    // (!!!) user.user_id-г user.id болгож засварласан
+    const canEdit = user && article && article.author && (user.id === article.author.id || user.is_staff);
 
     const handleEditClick = () => {
-        navigate(`/article/${articleId}/edit`);
+        // (!!!) --- СЭРГЭЭСЭН ХЭСЭГ --- (!!!)
+        // (!!!) "articleId"-г "id" болгож өөрчилсөн
+        navigate(`/article/${id}/edit`);
     };
 
+    // (!!!) --- СЭРГЭЭСЭН ХЭСЭГ (БҮХЭЛД НЬ) --- (!!!)
+    // Үндсэн дэлгэц
     return (
         <Container className="py-4">
             <Breadcrumb listProps={{ className: "mb-3" }}>

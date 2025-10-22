@@ -8,6 +8,11 @@ import Layout from './components/Layout';
 import Feed from './components/Feed';
 import BookmarksPage from './pages/BookmarksPage.jsx'; //
 import ArticleDetailPage from './pages/ArticleDetailPage.jsx'; // <<< 1. ШИНЭЭР ИМПОРТ ХИЙХ
+import ArticleEditPage from './pages/ArticleEditPage.jsx'; // Эсвэл зөв замыг нь тавина уу
+
+// Problem хуудсууд
+import ProblemDetailPage from './pages/ProblemDetailPage.jsx';
+import ProblemEditPage from './pages/ProblemEditPage.jsx';
 
 // Нэвтрэх болон бусад хуудсууд
 import UnifiedLoginPage from './pages/UnifiedLoginPage.jsx';
@@ -46,6 +51,11 @@ function App() {
                       :id нь dynamic parameter буюу ямар ч өгүүллийн дугаар байж болно.
                     */}
                     <Route path="article/:id" element={<ArticleDetailPage />} />
+                    <Route path="article/:id/edit" element={<ArticleEditPage />} />
+
+                    {/* Problem хуудсууд */}
+                    <Route path="problem/:id" element={<ProblemDetailPage />} />
+                    <Route path="problem/:id/edit" element={<ProblemEditPage />} />
 
                     {/* LeftSidebar.jsx доторх бусад холбоосууд */}
                     <Route path="problems" element={<div>Бодлогын сан (үүсгэх)</div>} />

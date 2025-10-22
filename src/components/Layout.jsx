@@ -1,9 +1,12 @@
 // frontend/src/components/Layout.jsx
 
-import LeftSidebar from './LeftSidebar';
-import RightSidebar from './RightSidebar';
+// (!!!) useState болон useEffect-г import хийнэ
+import { useState, useEffect } from 'react';
+// (!!!) Импортын замыг засварласан
+import LeftSidebar from '../components/LeftSidebar';
+import RightSidebar from '../components/RightSidebar';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate, Outlet, useLocation } from 'react-router-dom'; // useLocation нэмсэн
+import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 
 // React Bootstrap components
 import Container from 'react-bootstrap/Container';
@@ -15,22 +18,29 @@ import Button from 'react-bootstrap/Button';
 const Layout = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
-    const location = useLocation(); // Одоогийн route-г авах
+    const location = useLocation();
+
+    // (!!!) Гарчгийг state болгож, өөрчлөх функц (setPageTitle) үүсгэнэ
+    const [pageTitle, setPageTitle] = useState('Нүүр');
 
     const handleLogout = () => {
         logout();
         navigate('/login');
     };
 
-    // Route-аас хамааран гарчиг тодорхойлох
-    const getPageTitle = () => {
+    // (!!!) Route өөрчлөгдөх бүрт статик гарчгуудыг шинэчилнэ
+    useEffect(() => {
         const path = location.pathname;
-        if (path === '/') return 'Нүүр';
-        if (path === '/bookmarks') return 'Хадгалсан';
-        if (path.startsWith('/article/')) return 'Өгүүлэл';
-        if (path.startsWith('/profile')) return 'Профайл';
-        return 'Нүүр';
-    };
+        if (path === '/') {
+            setPageTitle('Нүүр');
+        } else if (path === '/bookmarks') {
+            setPageTitle('Хадгалсан');
+        } else if (path.startsWith('/profile')) {
+            setPageTitle('Профайл');
+        }
+        // '/article/' энд байхгүйг анхаарна уу.
+        // Учир нь ArticleDetailPage өөрөө гарчгаа тохируулна.
+    }, [location.pathname]); // URL өөрчлөгдөх бүрт ажиллана
 
     return (
         <Container fluid="lg" className="bg-white shadow-sm min-vh-100 p-0">
@@ -43,13 +53,14 @@ const Layout = () => {
                 <Col md={9} xl={7} className="border-end" style={{ height: '100vh', overflowY: 'auto' }}>
                     <Navbar className="bg-white bg-opacity-90 border-bottom px-3 py-2 position-sticky top-0" style={{ zIndex: 100 }}>
                         <Navbar.Brand as="h1" className="h5 mb-0 fw-bold">
-                            {getPageTitle()}
+                            {/* (!!!) Гарчгийг state-ээс уншина */}
+                            {pageTitle}
                         </Navbar.Brand>
                         <Navbar.Collapse className="justify-content-end">
                             {user && (
                                 <div className='d-flex align-items-center gap-2'>
                                     <span className='fw-semibold text-secondary me-2'>
-                                        {user.first_name || user.email}
+                                        {user.first_name || user.email || user.username}
                                     </span>
                                     <Button
                                         onClick={handleLogout}
@@ -62,8 +73,8 @@ const Layout = () => {
                         </Navbar.Collapse>
                     </Navbar>
 
-                    {/* Энд Feed эсвэл BookmarksPage гэх мэт хүүхэд route-ийн компонент харагдана */}
-                    <Outlet />
+                    {/* (!!!) setPageTitle функцийг хүүхэд компонент (Outlet) руу дамжуулна */}
+                    <Outlet context={{ setPageTitle }} />
 
                 </Col>
 
@@ -79,3 +90,4 @@ const Layout = () => {
 };
 
 export default Layout;
+
