@@ -13,6 +13,7 @@ import ArticleEditPage from './pages/ArticleEditPage.jsx'; // Эсвэл зөв 
 // Problem хуудсууд
 import ProblemDetailPage from './pages/ProblemDetailPage.jsx';
 import ProblemEditPage from './pages/ProblemEditPage.jsx';
+import ProblemsPage from './pages/ProblemsPage.jsx';
 
 // Нэвтрэх болон бусад хуудсууд
 import UnifiedLoginPage from './pages/UnifiedLoginPage.jsx';
@@ -58,7 +59,7 @@ function App() {
                     <Route path="problem/:id/edit" element={<ProblemEditPage />} />
 
                     {/* LeftSidebar.jsx доторх бусад холбоосууд */}
-                    <Route path="problems" element={<div>Бодлогын сан (үүсгэх)</div>} />
+                    <Route path="problems" element={<ProblemsPage />} />
                     <Route path="quizzes" element={<div>Тестийн сан (үүсгэх)</div>} />
                     <Route path="formulas" element={<div>Томьёоны сан (үүсгэх)</div>} />
                     <Route path="profile" element={<div>Профайл (үүсгэх)</div>} />

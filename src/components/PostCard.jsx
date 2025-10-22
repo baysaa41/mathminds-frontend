@@ -1,6 +1,7 @@
 // frontend/src/components/PostCard.jsx
 
-import { useState } from 'react';
+// (!!!) 1. useEffect, useRef, useCallback-г импортлоно
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Heart, MessageCircle, Bookmark, Eye } from 'lucide-react';
 import apiClient from '../api/axiosConfig';
 
@@ -16,8 +17,9 @@ import { useNavigate } from 'react-router-dom';
 // MathJax component
 import { MathJax } from "better-react-mathjax";
 
-// --- Нэмэлт: Төрөл тус бүрийн контентыг харуулах туслах компонент ---
+// --- Туслах компонент (ХЭВЭЭРЭЭ) ---
 const RelatedContentDisplay = ({ type, data }) => {
+    // ... (Энэ компонент хэвээрээ)
     const navigate = useNavigate();
     if (!data) return null;
 
@@ -27,7 +29,7 @@ const RelatedContentDisplay = ({ type, data }) => {
 
     switch (type) {
         case 'article':
-            console.log(data.id);
+            // ...
             return (
                 <Card
                     className="bg-light border shadow-sm mt-2 hover-card fade-in"
@@ -44,6 +46,7 @@ const RelatedContentDisplay = ({ type, data }) => {
                 </Card>
             );
         case 'problem':
+            // ...
             return (
                 <Card
                     className="bg-light border shadow-sm mt-2 hover-card fade-in"
@@ -61,6 +64,7 @@ const RelatedContentDisplay = ({ type, data }) => {
                 </Card>
             );
         case 'formula':
+            // ...
             return (
                 <Card className="bg-light border shadow-sm mt-2 fade-in">
                     <Card.Body className="p-2">
@@ -74,6 +78,7 @@ const RelatedContentDisplay = ({ type, data }) => {
                 </Card>
             );
         case 'quiz':
+            // ...
             return (
                 <Card className="bg-light border shadow-sm mt-2 fade-in">
                     <Card.Body className="p-2">
@@ -96,6 +101,10 @@ const PostCard = ({ post, onBookmarkRemoved }) => {
     const [isFavoriting, setIsFavoriting] = useState(false);
     const [isBookmarking, setIsBookmarking] = useState(false);
 
+    // (!!!) 2. Ref болон state нэмэх
+    const cardRef = useRef(null); // Картыг ажиглах ref
+    const [isViewCountSent, setIsViewCountSent] = useState(false); // API дуудлагыг хянах
+
     // Toast notification
     const [showToast, setShowToast] = useState(false);
     const [toastMessage, setToastMessage] = useState('');
@@ -111,6 +120,68 @@ const PostCard = ({ post, onBookmarkRemoved }) => {
         setShowToast(true);
     };
 
+    // (!!!) 3. Үзсэн тоог нэмэгдүүлэх API дуудах функц
+    const incrementViewCount = useCallback(async () => {
+        // Хэрэв API дуудлага аль хэдийн явуулсан бол дахин дуудахгүй
+        if (isViewCountSent) {
+            return;
+        }
+
+        try {
+            // Race condition-с сэргийлж, дуудсан гэж шууд тэмдэглэнэ
+            setIsViewCountSent(true);
+
+            const response = await apiClient.post(`/api/minds/posts/${postData.id}/view/`);
+
+            // Backend-с ирсэн шинэ тоогоор UI-г шинэчлэх
+            if (response.status === 200 && response.data.view_count) {
+                setPostData(prevData => ({
+                    ...prevData,
+                    view_count: response.data.view_count
+                }));
+            }
+        } catch (error) {
+            // Энэ нь далд үйлдэл тул хэрэглэгчид алдаа харуулахгүй, зөвхөн log хийнэ
+            console.warn("Failed to increment view count:", error);
+            // Алдаа гарвал дараа дахин оролдох боломж олгох (заавал биш)
+            // setIsViewCountSent(false);
+        }
+    }, [postData.id, isViewCountSent]); //
+
+
+    // (!!!) 4. IntersectionObserver тохируулах
+    useEffect(() => {
+        const currentCardRef = cardRef.current;
+        if (!currentCardRef) return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                const [entry] = entries;
+                // Хэрэв карт дэлгэцэнд 50%-с дээш харагдаж байвал
+                if (entry.isIntersecting) {
+                    // Үзсэн тоог нэмэгдүүлэх функцийг дуудна
+                    incrementViewCount();
+
+                    // (!!!) Нэгэнт дуудсан бол дахин ажиглах шаардлагагүй
+                    observer.unobserve(currentCardRef);
+                }
+            },
+            {
+                threshold: 0.5 // 50% харагдах үед
+            }
+        );
+
+        observer.observe(currentCardRef);
+
+        // Cleanup
+        return () => {
+            if (currentCardRef) {
+                observer.unobserve(currentCardRef);
+            }
+        };
+    }, [incrementViewCount]); // incrementViewCount-с хамаарна
+
+
     const handleFavorite = async () => {
         if (isFavoriting) return;
         setIsFavoriting(true);
@@ -118,7 +189,6 @@ const PostCard = ({ post, onBookmarkRemoved }) => {
             const response = await apiClient.post(`/api/minds/posts/${postData.id}/favorite/`);
             setPostData(response.data);
 
-            // Notification харуулах
             if (response.data.is_favorited) {
                 showNotification('❤️ Таалагдсан!', 'success');
             } else {
@@ -139,12 +209,10 @@ const PostCard = ({ post, onBookmarkRemoved }) => {
             const response = await apiClient.post(`/api/minds/posts/${postData.id}/bookmark/`);
             setPostData(response.data);
 
-            // Notification харуулах
             if (response.data.is_bookmarked) {
                 showNotification('🔖 Хадгалсан!', 'success');
             } else {
                 showNotification('Хадгалсан хасагдлаа', 'info');
-                // Хэрэв bookmarks хуудас дээр байгаа бол постыг жагсаалтаас хасах
                 if (onBookmarkRemoved) {
                     onBookmarkRemoved(postData.id);
                 }
@@ -178,7 +246,8 @@ const PostCard = ({ post, onBookmarkRemoved }) => {
                 </Toast>
             </ToastContainer>
 
-            <Card className="border-0 border-bottom rounded-0 fade-in">
+            {/* (!!!) 5. Card-д ref-г холбох */}
+            <Card ref={cardRef} className="border-0 border-bottom rounded-0 fade-in">
                 <Card.Body className="p-3">
                     <Stack direction="horizontal" gap={3} className="align-items-start">
                         {/* Аватар */}
@@ -235,6 +304,7 @@ const PostCard = ({ post, onBookmarkRemoved }) => {
                                     <span className="small">{postData.favorite_count}</span>
                                 </Button>
 
+                                {/* (!!!) Энэ хэсэг шинэчлэгдсэн postData.view_count-г харуулна */}
                                 <div className="d-flex align-items-center text-muted">
                                     <Eye size={16} className="me-1" />
                                     <span className="small">{postData.view_count}</span>
