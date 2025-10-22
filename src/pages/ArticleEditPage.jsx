@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import apiClient from '../api/axiosConfig';
-import { useAuth } from '../context/AuthContext';
+import apiClient from '../api/axiosConfig.js';
+import { useAuth } from '../context/AuthContext.jsx';
 
 // React Bootstrap components
 import Container from 'react-bootstrap/Container';

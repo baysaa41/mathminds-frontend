@@ -1,8 +1,8 @@
 // frontend/src/components/BookmarksPage.jsx
 
 import { useState, useEffect } from 'react';
-import apiClient from '../api/axiosConfig';
-import PostCard from './PostCard';
+import apiClient from '../api/axiosConfig.js';
+import PostCard from '../components/PostCard.jsx';
 
 // React Bootstrap компонентууд
 import Spinner from 'react-bootstrap/Spinner';

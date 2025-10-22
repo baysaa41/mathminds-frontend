@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import apiClient from '../api/axiosConfig';
-import authService from '../services/authService';
+import { useAuth } from '../context/AuthContext.jsx';
+import apiClient from '../api/axiosConfig.js';
+import authService from '../services/authService.js';
 
 // React Bootstrap
 import Container from 'react-bootstrap/Container';
@@ -14,7 +14,8 @@ import Alert from 'react-bootstrap/Alert';
 import Spinner from 'react-bootstrap/Spinner';
 
 const UnifiedLoginPage = () => {
-    const [email, setEmail] = useState('');
+    // --- (!!!) ЗАСВАР: 'email' state-г 'username' болгов ---
+    const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -22,26 +23,30 @@ const UnifiedLoginPage = () => {
     const navigate = useNavigate();
 
     // Django Backend нэвтрэх
-    const handleEmailLogin = async (e) => {
+    const handleUsernameLogin = async (e) => {
         e.preventDefault();
         setError('');
         setLoading(true);
 
         try {
+            // --- (!!!) ЗАСВАР: API руу 'username' илгээнэ ---
             const response = await apiClient.post('/users/api/login/', {
-                username: email,
+                username: username, // 'email'-г 'username' болгож өөрчилсөн
                 password: password,
             });
 
-            const { token, ...userData } = response.data;
-            login(userData, token);
+            const { token, user } = response.data;
+            login(user, token);
             navigate('/');
 
         } catch (err) {
-            if (err.response?.data?.error) {
+            // --- (!!!) ЗАСВАР: Алдааны мсж ---
+            if (err.response?.data?.detail) { // SimpleJWT-н анхдагч алдаа
+                setError(err.response.data.detail);
+            } else if (err.response?.data?.error) {
                 setError(err.response.data.error);
             } else {
-                setError('И-мэйл эсвэл нууц үг буруу байна.');
+                setError('Хэрэглэгчийн нэр эсвэл нууц үг буруу байна.');
             }
             console.error("Login error:", err);
         } finally {
@@ -126,18 +131,21 @@ const UnifiedLoginPage = () => {
                         </div>
                     </div>
 
-                    {/* Email/Password Form */}
-                    <form onSubmit={handleEmailLogin}>
+                    {/* Username/Password Form */}
+                    {/* --- (!!!) ЗАСВАР: onSubmit-г өөрчилсөн --- */}
+                    <form onSubmit={handleUsernameLogin}>
                         <div className="mb-3">
+                            {/* --- (!!!) ЗАСВАР: UI Текст --- */}
                             <label className="small fw-semibold text-secondary mb-1">
-                                И-мэйл хаяг
+                                Хэрэглэгчийн нэр
                             </label>
                             <input
-                                type="email"
+                                // --- (!!!) ЗАСВАР: type, placeholder, value, onChange ---
+                                type="text"
                                 className="form-control"
-                                placeholder="example@email.com"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
+                                placeholder="таны нэвтрэх нэр"
+                                value={username}
+                                onChange={(e) => setUsername(e.target.value)}
                                 disabled={loading}
                                 required
                                 style={{ borderRadius: '8px' }}

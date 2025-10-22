@@ -192,7 +192,6 @@ class AuthService {
             }
 
             const data = await response.json();
-            console.log('✅ Token verified, user:', data);
 
             // Хэрэглэгчийн мэдээллийг localStorage-д шинэчлэх
             localStorage.setItem('user', JSON.stringify(data));

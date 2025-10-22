@@ -27,6 +27,7 @@ const RelatedContentDisplay = ({ type, data }) => {
 
     switch (type) {
         case 'article':
+            console.log(data.id);
             return (
                 <Card
                     className="bg-light border shadow-sm mt-2 hover-card fade-in"

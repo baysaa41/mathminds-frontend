@@ -6,11 +6,11 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 // Layout болон үндсэн хуудсууд
 import Layout from './components/Layout';
 import Feed from './components/Feed';
-import BookmarksPage from './components/BookmarksPage'; //
-import ArticleDetailPage from './components/ArticleDetailPage'; // <<< 1. ШИНЭЭР ИМПОРТ ХИЙХ
+import BookmarksPage from './pages/BookmarksPage.jsx'; //
+import ArticleDetailPage from './pages/ArticleDetailPage.jsx'; // <<< 1. ШИНЭЭР ИМПОРТ ХИЙХ
 
 // Нэвтрэх болон бусад хуудсууд
-import UnifiedLoginPage from './components/UnifiedLoginPage';
+import UnifiedLoginPage from './pages/UnifiedLoginPage.jsx';
 import CallbackPage from './pages/CallbackPage';
 import HomePage from './pages/HomePage';
 import DashboardPage from './pages/DashboardPage';
