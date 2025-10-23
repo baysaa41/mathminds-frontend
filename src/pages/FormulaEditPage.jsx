@@ -52,7 +52,7 @@ const FormulaEditPage = () => {
     const { user } = useAuth();
 
     const [formula, setFormula] = useState(null);
-    const [topics, setTopics] = useState([]); // Initialized as empty array
+    const [topics, setTopics] = useState([]);
     const [keywords, setKeywords] = useState([]);
 
     const [loading, setLoading] = useState(true);
@@ -71,39 +71,45 @@ const FormulaEditPage = () => {
     useEffect(() => {
         setPageTitle('Томьёо засах');
         fetchFormula(id);
-        fetchTopics(); // Fetch topics when component mounts
+        fetchTopics();
     }, [id, setPageTitle]);
 
     const fetchFormula = async (formulaId) => {
         try {
             setLoading(true); setError(null);
             const response = await apiClient.get(`/api/minds/formulas/${formulaId}/`);
-            setFormula(response.data);
+
+            // (!!!) ЗАСВАР: topic object-ыг ID болгож хөрвүүлэх
+            const formulaData = response.data;
+            if (formulaData.topic && typeof formulaData.topic === 'object') {
+                formulaData.topic = formulaData.topic.id; // object-ыг ID болгох
+            }
+
+            setFormula(formulaData);
             setKeywords(response.data.keywords || []);
             setPageTitle(response.data.title || `Томьёо #${formulaId} засах`);
-        } catch (err) { console.error(err); setError('Томьёо ачаалахад алдаа гарлаа.');
-        } finally { setLoading(false); }
+        } catch (err) {
+            console.error(err);
+            setError('Томьёо ачаалахад алдаа гарлаа.');
+        } finally {
+            setLoading(false);
+        }
     };
 
-    // (!!!) ЗАСВАР ЭНД ХИЙГДЛЭЭ
     const fetchTopics = async () => {
         try {
-            const response = await apiClient.get('/api/integral/topics/'); //
-
-            // API хариуг шалгах
+            const response = await apiClient.get('/api/integral/topics/');
             if (response.data && Array.isArray(response.data.results)) {
-                // 1. Хуудасласан хариу: { results: [...] }
                 setTopics(response.data.results);
             } else if (Array.isArray(response.data)) {
-                // 2. Шууд жагсаалт: [...]
                 setTopics(response.data);
             } else {
                 console.warn("API-с сэдвүүдийн жагсаалт ирсэнгүй:", response.data);
-                setTopics([]); // Алдаанаас сэргийлж хоосон массив оноох
+                setTopics([]);
             }
         } catch (err) {
             console.error("Failed to fetch topics:", err);
-            setTopics([]); // Алдаа гарсан ч хоосон массив оноох
+            setTopics([]);
         }
     };
 
@@ -114,7 +120,8 @@ const FormulaEditPage = () => {
         if (type === 'checkbox' || name === 'published') {
             processedValue = checked;
         } else if (name === 'topic') {
-            const parsedValue = parseInt(value, 10);
+            // (!!!) ЗАСВАР: topic-г зөв integer болгох
+            const parsedValue = value === '' ? null : parseInt(value, 10);
             processedValue = isNaN(parsedValue) ? null : parsedValue;
         } else {
             processedValue = value;
@@ -128,7 +135,7 @@ const FormulaEditPage = () => {
         const searchKeywords = async () => {
             setLoadingKeywords(true);
             try {
-                const response = await apiClient.get(`/api/integral/keywords/search/?q=${keywordSearch}`); //
+                const response = await apiClient.get(`/api/integral/keywords/search/?q=${keywordSearch}`);
                 let results = [];
                 if (response.data && Array.isArray(response.data.results)) results = response.data.results;
                 else if (Array.isArray(response.data)) results = response.data;
@@ -144,39 +151,48 @@ const FormulaEditPage = () => {
     const addKeyword = async (keyword) => {
         setKeywords([...keywords, keyword]); setKeywordSearch(''); setKeywordResults([]);
         try {
-            await apiClient.post(`/api/minds/formulas/${id}/keywords/add/`, { keyword_id: keyword.id }); //
+            await apiClient.post(`/api/minds/formulas/${id}/keywords/add/`, { keyword_id: keyword.id });
         } catch (err) { console.error("Failed to add keyword:", err); setError('Түлхүүр үг нэмэхэд алдаа гарлаа.'); setKeywords(prev => prev.filter(k => k.id !== keyword.id)); }
     };
 
     const removeKeyword = async (keywordToRemove) => {
         setKeywords(prev => prev.filter(k => k.id !== keywordToRemove.id));
         try {
-            await apiClient.post(`/api/minds/formulas/${id}/keywords/remove/`, { keyword_id: keywordToRemove.id }); //
+            await apiClient.post(`/api/minds/formulas/${id}/keywords/remove/`, { keyword_id: keywordToRemove.id });
         } catch (err) { console.error("Failed to remove keyword:", err); setError('Түлхүүр үг устгахад алдаа гарлаа.'); setKeywords(prev => [...prev, keywordToRemove]); }
     };
-
 
     // --- Save, Delete, Clone Handlers ---
     const handleSave = async (e) => {
         e.preventDefault(); setSaving(true); setError(null);
+
+        // (!!!) ЗАСВАР: payload-д topic-г зөв integer-ээр илгээх
         const payload = {
             title: formula.title,
             content: formula.content,
-            topic: formula.topic || null,
+            topic: formula.topic || null, // Энэ нь аль хэдийн integer ID байх ёстой
             published: formula.published,
             status: formula.status || 'draft',
         };
+
+        console.log("Saving formula with payload:", payload); // Debug
+
         try {
-            await apiClient.patch(`/api/minds/formulas/${id}/`, payload); //
+            await apiClient.patch(`/api/minds/formulas/${id}/`, payload);
             navigate(`/formulas`);
-        } catch (err) { console.error("Failed to save formula:", err); setError(err.response?.data?.detail || 'Томьёог хадгалахад алдаа гарлаа.');
-        } finally { setSaving(false); }
+        } catch (err) {
+            console.error("Failed to save formula:", err);
+            console.error("Error response:", err.response?.data); // Debug
+            setError(err.response?.data?.detail || err.response?.data?.topic?.[0] || 'Томьёог хадгалахад алдаа гарлаа.');
+        } finally {
+            setSaving(false);
+        }
     };
 
     const handleDelete = async () => {
         setShowDeleteModal(false); setSaving(true);
         try {
-            await apiClient.delete(`/api/minds/formulas/${id}/`); //
+            await apiClient.delete(`/api/minds/formulas/${id}/`);
             navigate('/formulas');
         } catch (err) { console.error("Failed to delete formula:", err); setError('Томьёог устгахад алдаа гарлаа.'); setSaving(false); }
     };
@@ -184,12 +200,11 @@ const FormulaEditPage = () => {
     const handleClone = async () => {
         setSaving(true);
         try {
-            const response = await apiClient.post(`/api/minds/formulas/${id}/clone/`); //
+            const response = await apiClient.post(`/api/minds/formulas/${id}/clone/`);
             navigate(`/formula/${response.data.new_id}/edit`);
         } catch (err) { console.error("Failed to clone formula:", err); setError('Томьёог хувилах үед алдаа гарлаа.');
         } finally { setSaving(false); }
     };
-
 
     // --- Render ---
     if (loading) return <Container className="d-flex justify-content-center py-5"><Spinner animation="border" /></Container>;
@@ -207,6 +222,7 @@ const FormulaEditPage = () => {
                         <Button variant="outline-danger" size="sm" onClick={() => setShowDeleteModal(true)} disabled={saving} title="Устгах"><i className="bi bi-trash"></i>Устгах</Button>
                     </div>
                 </Stack>
+
                 {/* Үндсэн Карт */}
                 <Card>
                     <Card.Body className="p-4">
@@ -221,9 +237,14 @@ const FormulaEditPage = () => {
                             <Col md={4}>
                                 <Form.Group className="mb-3">
                                     <Form.Label htmlFor="id_topic">Сэдэв</Form.Label>
-                                    <Form.Select name="topic" id="id_topic" value={formula.topic || ''} onChange={handleFormulaChange}>
+                                    {/* (!!!) ЗАСВАР: value-г formula.topic (integer ID) болгох */}
+                                    <Form.Select
+                                        name="topic"
+                                        id="id_topic"
+                                        value={formula.topic || ''}
+                                        onChange={handleFormulaChange}
+                                    >
                                         <option value="">---------</option>
-                                        {/* topics массив зөв бол энд сонголтууд гарч ирнэ */}
                                         {topics.map(topic => (
                                             <option key={topic.id} value={topic.id}>{topic.name}</option>
                                         ))}
