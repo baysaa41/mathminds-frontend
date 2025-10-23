@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate, useOutletContext } from 'react-router-dom';
 import apiClient from '../api/axiosConfig.js';
+// (!!!) MathJaxContext-г эндээс хассан (Layout.jsx-с авна)
 import { MathJax } from 'better-react-mathjax';
 import { useAuth } from '../context/AuthContext.jsx';
 
@@ -19,26 +20,34 @@ import Stack from 'react-bootstrap/Stack';
 import Form from 'react-bootstrap/Form';
 import InputGroup from 'react-bootstrap/InputGroup';
 
+// (!!!) mathJaxConfig-г эндээс хассан (Layout.jsx-с авна)
+
 const ProblemsPage = () => {
+    // Үндсэн state-үүд
     const [problems, setProblems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [filterPublished, setFilterPublished] = useState('all');
 
+    // Infinite Scroll-н state-үүд
     const [nextPageUrl, setNextPageUrl] = useState(null);
     const [loadingMore, setLoadingMore] = useState(false);
 
-    // (!!!) ШИНЭ STATE: Ямар бодлогыг постлож байгааг хянах
-    const [postingId, setPostingId] = useState(null);
+    // Үйлдэл гүйцэтгэх state-үүд
+    const [isCreatingNew, setIsCreatingNew] = useState(false); // "+ Шинэ бодлого"
+    const [postingId, setPostingId] = useState(null); // "Постлох"
 
+    // Infinite Scroll-н ref-үүд
     const loadMoreTriggerRef = useRef(null);
-    const isHandlingLoadMore = useRef(false);
+    const isHandlingLoadMore = useRef(false); // Төгсгөлгүй давталтаас сэргийлэх "цоож"
 
+    // Context болон navigation
     const { user } = useAuth();
     const navigate = useNavigate();
     const { setPageTitle } = useOutletContext();
 
+    // Хуудасны гарчиг тохируулах
     useEffect(() => {
         setPageTitle('Бодлогын сан');
         return () => {
@@ -46,9 +55,12 @@ const ProblemsPage = () => {
         };
     }, [setPageTitle]);
 
+    // Анхны өгөгдөл татах
     useEffect(() => {
         fetchProblems();
     }, []);
+
+    // --- Өгөгдөл татах функцууд ---
 
     const fetchProblems = async () => {
         try {
@@ -56,16 +68,18 @@ const ProblemsPage = () => {
             setError(null);
             const response = await apiClient.get('/api/minds/problems/');
 
+            // Pagination-г зөв таних (response.data.results)
             if (response.data && Array.isArray(response.data.results)) {
                 setProblems(response.data.results);
                 setNextPageUrl(response.data.next);
             } else if (Array.isArray(response.data)) {
                 setProblems(response.data);
-                setNextPageUrl(null);
+                setNextPageUrl(null); // Pagination байхгүй тохиолдол
             } else {
                 console.warn("API-аас хүлээгдэж буй массив ирсэнгүй:", response.data);
                 setProblems([]);
             }
+
         } catch (err) {
             setError('Бодлогуудыг ачааллахад алдаа гарлаа.');
             console.error(err);
@@ -74,12 +88,13 @@ const ProblemsPage = () => {
         }
     };
 
+    // "Infinite Scroll" үед дараагийн хуудсыг ачаалах
     const handleLoadMore = useCallback(async () => {
         if (!nextPageUrl || isHandlingLoadMore.current) {
             return;
         }
 
-        isHandlingLoadMore.current = true;
+        isHandlingLoadMore.current = true; // Цоожлох
         setLoadingMore(true);
         setError(null);
 
@@ -87,6 +102,7 @@ const ProblemsPage = () => {
             const response = await apiClient.get(nextPageUrl);
 
             if (response.data && Array.isArray(response.data.results)) {
+                // "Хоосон хуудасны алдаа"-г засах
                 if (response.data.results.length > 0) {
                     setProblems(prevProblems => [...prevProblems, ...response.data.results]);
                     setNextPageUrl(response.data.next);
@@ -101,12 +117,16 @@ const ProblemsPage = () => {
             console.error(err);
         } finally {
             setLoadingMore(false);
+
+            // "Дахин дуудах хугацаа" (Debounce)
             setTimeout(() => {
-                isHandlingLoadMore.current = false;
+                isHandlingLoadMore.current = false; // 0.5 секундын дараа цоожийг тайлах
             }, 500);
         }
     }, [nextPageUrl]);
 
+
+    // Intersection Observer-г тохируулах (Infinite Scroll)
     useEffect(() => {
         const observer = new IntersectionObserver(
             (entries) => {
@@ -115,13 +135,16 @@ const ProblemsPage = () => {
                     handleLoadMore();
                 }
             },
-            { threshold: 1.0 }
+            {
+                threshold: 1.0
+            }
         );
 
         const currentTrigger = loadMoreTriggerRef.current;
         if (currentTrigger) {
             observer.observe(currentTrigger);
         }
+
         return () => {
             if (currentTrigger) {
                 observer.unobserve(currentTrigger);
@@ -130,17 +153,37 @@ const ProblemsPage = () => {
     }, [nextPageUrl, handleLoadMore]);
 
 
-    const handleCreateNew = () => {
-        alert('Шинэ бодлого үүсгэх функц удахгүй нэмэгдэнэ.');
+    // --- Үйлдэл гүйцэтгэх функцууд ---
+
+    const handleCreateNew = async () => {
+        setIsCreatingNew(true);
+        setError(null);
+        try {
+            // Backend-д хоосон бодлого үүсгэх (POST)
+            const response = await apiClient.post('/api/minds/problems/', {
+                title: 'Шинэ бодлого (Гарчиггүй)',
+                statement: 'Бодлогын өгүүлбэр...',
+                type: 0,
+                is_published: false,
+            });
+
+            // Шинэ бодлогын засварлах хуудас руу үсрэх
+            const newProblemId = response.data.id;
+            navigate(`/problem/${newProblemId}/edit`);
+
+        } catch (err) {
+            console.error("Failed to create new problem:", err);
+            setError('Шинэ бодлого үүсгэхэд алдаа гарлаа.');
+        } finally {
+            setIsCreatingNew(false);
+        }
     };
 
-    // (!!!) ШИНЭ ФУНКЦ: Бодлогоос пост үүсгэх
     const handleCreatePost = async (e, problemId) => {
-        // Card-н үндсэн onClick (navigate) ажиллахаас сэргийлэх
         e.stopPropagation();
 
         setPostingId(problemId);
-        setError(null); // Хуучин алдааг цэвэрлэх
+        setError(null);
 
         try {
             const response = await apiClient.post('/api/minds/posts/create-from-problem/', {
@@ -148,19 +191,17 @@ const ProblemsPage = () => {
             });
 
             if (response.status === 201) {
-                // Шинээр үүссэн
                 alert('Пост амжилттай үүслээ!');
             } else if (response.status === 200 && response.data.message === "Post already exists.") {
-                // Аль хэдийн үүссэн
                 alert('Та энэ бодлогыг аль хэдийн постлосон байна.');
             }
 
         } catch (err) {
             console.error('Failed to create post:', err);
             const errorMsg = err.response?.data?.error || 'Пост үүсгэхэд алдаа гарлаа.';
-            setError(errorMsg); // Алдааг дэлгэцэнд харуулах
+            setError(errorMsg);
         } finally {
-            setPostingId(null); // Товчийг буцааж идэвхжүүлэх
+            setPostingId(null);
         }
     };
 
@@ -173,6 +214,7 @@ const ProblemsPage = () => {
         }
     };
 
+    // Хайлт ба шүүлтүүр
     const filteredProblems = problems.filter(problem => {
         const matchesSearch = problem.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             problem.statement?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -185,7 +227,8 @@ const ProblemsPage = () => {
         return matchesSearch && matchesFilter;
     });
 
-    // ... (if (loading) ... хэсэг хэвээрээ) ...
+    // --- Render хэсэг ---
+
     if (loading) {
         return (
             <Container className="d-flex justify-content-center align-items-center py-5">
@@ -194,7 +237,6 @@ const ProblemsPage = () => {
         );
     }
 
-    // (!!!) Error-г харуулах хэсгийг сайжруулах (Постлох алдааг ч харуулна)
     if (error && !loadingMore && !postingId) {
         return (
             <Container className="mt-4">
@@ -206,7 +248,7 @@ const ProblemsPage = () => {
         );
     }
 
-    // (!!!) Post хийх үеийн алдааг тусад нь харуулах (Хуудсыг бүхэлд нь солихгүй)
+    // Ачааллаж байх үеийн (loadingMore) эсвэл Постлох үеийн (postingId) алдааг тусад нь харуулах
     const renderPageError = () => {
         if (error && (loadingMore || postingId)) {
             return <Alert variant="danger" className='mt-3'>{error}</Alert>
@@ -214,10 +256,10 @@ const ProblemsPage = () => {
         return null;
     }
 
-
     return (
+        // (!!!) MathJaxContext-г эндээс хассан. Layout.jsx-с өвлөгдөнө.
         <Container className="py-4">
-            {/* Толгой хэсэг ... (хэвээрээ) ... */}
+            {/* Толгой хэсэг */}
             <Stack direction="horizontal" gap={3} className="mb-4">
                 <h1 className="h4 fw-bold mb-0">Бодлогын сан</h1>
                 <Button
@@ -225,12 +267,17 @@ const ProblemsPage = () => {
                     size="sm"
                     className="ms-auto"
                     onClick={handleCreateNew}
+                    disabled={isCreatingNew}
                 >
-                    + Шинэ бодлого
+                    {isCreatingNew ? (
+                        <Spinner as="span" animation="border" size="sm" />
+                    ) : (
+                        '+ Шинэ бодлого'
+                    )}
                 </Button>
             </Stack>
 
-            {/* Хайлт ба шүүлтүүр ... (хэвээрээ) ... */}
+            {/* Хайлт ба шүүлтүүр */}
             <Row className="mb-4 g-3">
                 <Col md={8}>
                     <InputGroup>
@@ -257,7 +304,7 @@ const ProblemsPage = () => {
                 </Col>
             </Row>
 
-            {/* Постлох үеийн алдааг энд харуулах */}
+            {/* Үйлдэл гүйцэтгэх үеийн алдаа */}
             {renderPageError()}
 
             {/* Бодлогуудын жагсаалт */}
@@ -299,43 +346,36 @@ const ProblemsPage = () => {
                                             </Badge>
                                         )}
 
-                                        {/* (!!!) ШИНЭ ТОВЧ */}
+                                        {/* "Постлох" товч */}
                                         <Button
                                             variant="outline-primary"
                                             size="sm"
-                                            className="ms-auto" // Баруун талд байрлуулна
+                                            className="ms-auto"
                                             onClick={(e) => handleCreatePost(e, problem.id)}
                                             disabled={postingId === problem.id}
                                         >
                                             {postingId === problem.id ? (
                                                 <Spinner as="span" animation="border" size="sm" />
                                             ) : (
-                                                // Bootstrap Icon (хэрэв суулгасан бол)
                                                 <i className="bi bi-send-plus me-1"></i>
                                             )}
                                             {postingId !== problem.id && 'Постлох'}
                                         </Button>
                                     </Stack>
 
-                                    {/* ... (Card-н бусад хэсэг хэвээрээ) ... */}
                                     <MathJax hideUntilTypeset={"first"}>
                                         <Card.Title className="h5 mb-2 mathjax-content">
                                             {problem.title || `Бодлого #${problem.id}`}
                                         </Card.Title>
                                     </MathJax>
 
+                                    {/* (!!!) Өгүүлбэрийг бүтнээр нь харуулах ЗАСВАР */}
                                     <MathJax hideUntilTypeset={"first"}>
                                         <Card.Text
                                             className="text-muted small mathjax-content"
-                                            style={{
-                                                display: '-webkit-box',
-                                                WebkitLineClamp: 2,
-                                                WebkitBoxOrient: 'vertical',
-                                                overflow: 'hidden',
-                                                textOverflow: 'ellipsis'
-                                            }}
+                                            // (!!!) style болон substring()-г хассан
                                             dangerouslySetInnerHTML={{
-                                                __html: problem.statement?.substring(0, 200) || 'Агуулга байхгүй'
+                                                __html: problem.statement || 'Агуулга байхгүй'
                                             }}
                                         />
                                     </MathJax>
@@ -358,8 +398,10 @@ const ProblemsPage = () => {
                 </Row>
             )}
 
-            {/* ... (Infinite Scroll-н хэсгүүд хэвээрээ) ... */}
+            {/* Ачааллах trigger (энэ нь үл үзэгдэх ба гүйлгэлт мэдрэх зорилготой) */}
             <div ref={loadMoreTriggerRef} style={{ height: '20px' }} />
+
+            {/* Дараагийн хуудсыг ачааллаж байх үед харагдах Spinner */}
             {loadingMore && (
                 <div className="text-center mt-4 py-3">
                     <Spinner
@@ -373,7 +415,7 @@ const ProblemsPage = () => {
                 </div>
             )}
 
-            {/* Статистик ... (хэвээрээ) ... */}
+            {/* Статистик */}
             <div className="mt-4 p-3 bg-light rounded">
                 <small className="text-muted">
                     Нийт: <strong>{problems.length}</strong> бодлого

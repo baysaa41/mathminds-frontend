@@ -263,7 +263,7 @@ const PostCard = ({ post, onBookmarkRemoved }) => {
                                 <a href="#" className="fw-bold text-dark text-decoration-none me-1">
                                     {postData.author.first_name || 'Хэрэглэгч'} {postData.author.last_name || ''}
                                 </a>
-                                <span className="text-muted small text-truncate">@{postData.author.email}</span>
+                                <span className="text-muted small text-truncate">@{postData.author.username}</span>
                             </Stack>
 
                             {/* Постын үндсэн текст */}
