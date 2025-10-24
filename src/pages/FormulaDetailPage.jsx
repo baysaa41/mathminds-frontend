@@ -54,7 +54,7 @@ const FormulaDetailPage = () => {
             setLoading(true);
             setError(null);
             // API endpoint-г шалгаарай (FormulaViewSet detail)
-            const response = await apiClient.get(`/api/minds/formulas/${formulaId}/`);
+            const response = await apiClient.get(`/api/integral/formulas/${formulaId}/`);
             setFormula(response.data);
         } catch (err) {
             console.error(err);
@@ -74,7 +74,7 @@ const FormulaDetailPage = () => {
         setError(null);
         try {
             // API endpoint-г шалгаарай (FormulaViewSet destroy)
-            await apiClient.delete(`/api/minds/formulas/${id}/`);
+            await apiClient.delete(`/api/integral/formulas/${id}/`);
             navigate('/formulas'); // Жагсаалт руу буцах
         } catch (err) {
             console.error("Failed to delete formula:", err);
@@ -89,7 +89,7 @@ const FormulaDetailPage = () => {
         setError(null);
         try {
             // API endpoint-г шалгаарай (FormulaViewSet clone)
-            const response = await apiClient.post(`/api/minds/formulas/${id}/clone/`);
+            const response = await apiClient.post(`/api/integral/formulas/${id}/clone/`);
             const newFormulaId = response.data.new_id;
             navigate(`/formula/${newFormulaId}/edit`); // Хувилсан томьёоны засварлах хуудас руу үсрэх
         } catch (err) {
@@ -174,7 +174,7 @@ const FormulaDetailPage = () => {
                             disabled={actionInProgress}
                             title="Хувилах"
                         >
-                            <i className="bi bi-copy"></i>
+                            <i className="bi bi-copy"></i>Хувилах
                         </Button>
                         <Link to={`/formula/${id}/edit`}>
                             <Button
@@ -183,7 +183,7 @@ const FormulaDetailPage = () => {
                                 disabled={actionInProgress}
                                 title="Засах"
                             >
-                                <i className="bi bi-pencil"></i>
+                                <i className="bi bi-pencil"></i>Засах
                             </Button>
                         </Link>
                         <Button
@@ -193,7 +193,7 @@ const FormulaDetailPage = () => {
                             disabled={actionInProgress}
                             title="Устгах"
                         >
-                            <i className="bi bi-trash"></i>
+                            <i className="bi bi-trash"></i>Устгах
                         </Button>
                     </div>
                 )}

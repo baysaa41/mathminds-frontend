@@ -192,7 +192,7 @@ const ProblemEditPage = () => {
             setLoading(true);
             setError(null);
             //
-            const response = await apiClient.get(`/api/minds/problems/${problemId}/`);
+            const response = await apiClient.get(`/api/integral/problems/${problemId}/`);
             setProblem(response.data);
             setChoices(response.data.choices?.map(c => ({ ...c, DELETE: false })) || []);
             setKeywords(response.data.keywords || []);
@@ -367,7 +367,7 @@ const ProblemEditPage = () => {
         setKeywordResults([]);
         try {
             //
-            await apiClient.post(`/api/minds/problems/${id}/keywords/add/`, {
+            await apiClient.post(`/api/integral/problems/${id}/keywords/add/`, {
                 keyword_id: keyword.id
             });
         } catch (err) {
@@ -381,7 +381,7 @@ const ProblemEditPage = () => {
         setKeywords(prev => prev.filter(k => k.id !== keywordToRemove.id));
         try {
             //
-            await apiClient.post(`/api/minds/problems/${id}/keywords/remove/`, {
+            await apiClient.post(`/api/integral/problems/${id}/keywords/remove/`, {
                 keyword_id: keywordToRemove.id
             });
         } catch (err) {
@@ -421,7 +421,7 @@ const ProblemEditPage = () => {
 
         try {
             //
-            await apiClient.patch(`/api/minds/problems/${id}/`, payload);
+            await apiClient.patch(`/api/integral/problems/${id}/`, payload);
             navigate(`/problem/${id}`);
         } catch (err) {
             console.error("Failed to save problem:", err);
@@ -436,7 +436,7 @@ const ProblemEditPage = () => {
         setSaving(true);
         try {
             //
-            await apiClient.delete(`/api/minds/problems/${id}/`);
+            await apiClient.delete(`/api/integral/problems/${id}/`);
             navigate('/problems');
         } catch (err) {
             console.error("Failed to delete problem:", err);
@@ -449,7 +449,7 @@ const ProblemEditPage = () => {
         setSaving(true);
         try {
             //
-            const response = await apiClient.post(`/api/minds/problems/${id}/clone/`);
+            const response = await apiClient.post(`/api/integral/problems/${id}/clone/`);
             navigate(`/problem/${response.data.new_id}/edit`);
         } catch (err) {
             console.error("Failed to clone problem:", err);

@@ -14,6 +14,7 @@ import ArticleEditPage from './pages/ArticleEditPage.jsx';
 import ProblemDetailPage from './pages/ProblemDetailPage.jsx';
 import ProblemEditPage from './pages/ProblemEditPage.jsx';
 import ProblemsPage from './pages/ProblemsPage.jsx';
+import SolutionEditPage from './pages/SolutionEditPage.jsx'; // (!!!) ШИНЭ
 
 // Formula хуудсууд
 import FormulasPage from './pages/FormulasPage.jsx';
@@ -47,6 +48,7 @@ function App() {
                     <Route path="article/:id/edit" element={<ArticleEditPage />} />
                     <Route path="problem/:id" element={<ProblemDetailPage />} />
                     <Route path="problem/:id/edit" element={<ProblemEditPage />} />
+                    <Route path="problem/:id/solutions/edit" element={<SolutionEditPage />} /> {/* (!!!) ШИНЭ */}
                     <Route path="problems" element={<ProblemsPage />} />
 
                     {/* Formula хуудсууд */}

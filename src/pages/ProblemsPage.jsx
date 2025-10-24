@@ -66,7 +66,7 @@ const ProblemsPage = () => {
         try {
             setLoading(true);
             setError(null);
-            const response = await apiClient.get('/api/minds/problems/');
+            const response = await apiClient.get('/api/integral/problems/');
 
             // Pagination-г зөв таних (response.data.results)
             if (response.data && Array.isArray(response.data.results)) {
@@ -160,7 +160,7 @@ const ProblemsPage = () => {
         setError(null);
         try {
             // Backend-д хоосон бодлого үүсгэх (POST)
-            const response = await apiClient.post('/api/minds/problems/', {
+            const response = await apiClient.post('/api/integral/problems/', {
                 title: 'Шинэ бодлого (Гарчиггүй)',
                 statement: 'Бодлогын өгүүлбэр...',
                 type: 0,

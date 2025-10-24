@@ -53,7 +53,7 @@ const FormulasPage = () => {
     const fetchFormulas = async () => {
         try {
             setLoading(true); setError(null);
-            const response = await apiClient.get('/api/minds/formulas/');
+            const response = await apiClient.get('/api/integral/formulas/');
             if (response.data && Array.isArray(response.data.results)) {
                 setFormulas(response.data.results); setNextPageUrl(response.data.next);
             } else if (Array.isArray(response.data)) {
@@ -90,7 +90,7 @@ const FormulasPage = () => {
     const handleCreateNew = async () => {
         setIsCreatingNew(true); setError(null);
         try {
-            const response = await apiClient.post('/api/minds/formulas/', {
+            const response = await apiClient.post('/api/integral/formulas/', {
                 title: 'Шинэ томьёо (Гарчиггүй)', content: 'Томьёоны агуулга...', published: false,
             });
             const newFormulaId = response.data.id;

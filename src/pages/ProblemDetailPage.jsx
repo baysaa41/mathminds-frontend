@@ -1,3 +1,5 @@
+// frontend/src/pages/ProblemDetailPage.jsx
+
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useOutletContext } from 'react-router-dom';
 import apiClient from '../api/axiosConfig.js';
@@ -12,6 +14,11 @@ import Breadcrumb from 'react-bootstrap/Breadcrumb';
 import Button from 'react-bootstrap/Button';
 import Stack from 'react-bootstrap/Stack';
 import Badge from 'react-bootstrap/Badge';
+import Accordion from 'react-bootstrap/Accordion';
+import Card from 'react-bootstrap/Card';
+
+// Icons
+import { Lightbulb, BookOpen, FileText } from 'lucide-react';
 
 const ProblemDetailPage = () => {
     const { id } = useParams();
@@ -27,7 +34,7 @@ const ProblemDetailPage = () => {
             try {
                 setLoading(true);
                 setError(null);
-                const response = await apiClient.get(`/api/minds/problems/${id}/`);
+                const response = await apiClient.get(`/api/integral/problems/${id}/`);
                 setProblem(response.data);
 
                 // Гарчгийг энд тохируулна
@@ -108,6 +115,9 @@ const ProblemDetailPage = () => {
         }
     };
 
+    // Solutions байгаа эсэхийг шалгах
+    const hasSolutions = problem.solutions && problem.solutions.length > 0;
+
     // Үндсэн дэлгэц
     return (
         <Container className="py-4">
@@ -168,21 +178,6 @@ const ProblemDetailPage = () => {
                 </MathJax>
             </div>
 
-            {/* Хариулт (зөвхөн зохиогч эсвэл админ харна) */}
-            {canEdit && problem.answer && (
-                <div className="mb-4">
-                    <h5 className="fw-semibold mb-3">Хариулт:</h5>
-                    <MathJax hideUntilTypeset={"first"}>
-                        <div
-                            className="problem-answer mathjax-content p-3 bg-warning bg-opacity-10 rounded border border-warning"
-                            style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: '1.7' }}
-                        >
-                            {problem.answer}
-                        </div>
-                    </MathJax>
-                </div>
-            )}
-
             {/* Сонголтууд (Multiple choice бол) */}
             {problem.type === 1 && problem.choices && problem.choices.length > 0 && (
                 <div className="mb-4">
@@ -200,6 +195,144 @@ const ProblemDetailPage = () => {
                                     )}
                                 </div>
                             ))}
+                        </div>
+                    </MathJax>
+                </div>
+            )}
+
+            {/* (!!!) ШИНЭ ХЭСЭГ: Заавар ба Бодолт */}
+            {hasSolutions && (
+                <div className="mb-4">
+                    <Stack direction="horizontal" gap={3} className="align-items-center mb-3">
+                        <h5 className="fw-semibold mb-0 d-flex align-items-center gap-2">
+                            <BookOpen size={20} />
+                            Заавар ба Бодолт
+                        </h5>
+                        {canEdit && (
+                            <Button
+                                variant="outline-secondary"
+                                size="sm"
+                                as={Link}
+                                to={`/problem/${id}/solutions/edit`}
+                                className="ms-auto"
+                            >
+                                Бодолт засах
+                            </Button>
+                        )}
+                    </Stack>
+
+                    <Alert variant="info" className="small mb-3">
+                        💡 Та эхлээд өөрөө бодохыг оролдоод, шаардлагатай үед л заавар болон бодолт харна уу.
+                    </Alert>
+
+                    <Accordion>
+                        {problem.solutions.map((solution, solutionIndex) => (
+                            <div key={solution.id || solutionIndex}>
+                                {/* Заавар (Hint) */}
+                                {solution.hint && (
+                                    <Accordion.Item eventKey={`hint-${solution.id || solutionIndex}`}>
+                                        <Accordion.Header>
+                                            <Stack direction="horizontal" gap={2}>
+                                                <Lightbulb size={18} className="text-warning" />
+                                                <span>Заавар {problem.solutions.length > 1 ? `#${solutionIndex + 1}` : ''}</span>
+                                            </Stack>
+                                        </Accordion.Header>
+                                        <Accordion.Body>
+                                            <MathJax hideUntilTypeset={"first"}>
+                                                <div
+                                                    className="mathjax-content"
+                                                    style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: '1.7' }}
+                                                    dangerouslySetInnerHTML={{ __html: solution.hint }}
+                                                />
+                                            </MathJax>
+                                        </Accordion.Body>
+                                    </Accordion.Item>
+                                )}
+
+                                {/* Бодолт (Solution) */}
+                                {solution.solution && (
+                                    <Accordion.Item eventKey={`solution-${solution.id || solutionIndex}`}>
+                                        <Accordion.Header>
+                                            <Stack direction="horizontal" gap={2}>
+                                                <FileText size={18} className="text-success" />
+                                                <span>Бодолт {problem.solutions.length > 1 ? `#${solutionIndex + 1}` : ''}</span>
+                                            </Stack>
+                                        </Accordion.Header>
+                                        <Accordion.Body>
+                                            <MathJax hideUntilTypeset={"first"}>
+                                                <div
+                                                    className="mathjax-content bg-light p-3 rounded"
+                                                    style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: '1.7' }}
+                                                    dangerouslySetInnerHTML={{ __html: solution.solution }}
+                                                />
+                                            </MathJax>
+
+                                            {/* Бодолтын зохиогч */}
+                                            {solution.author && (
+                                                <div className="text-muted small mt-3 pt-3 border-top">
+                                                    <strong>Бодлогыг бодсон:</strong> {solution.author.first_name || solution.author.email}
+                                                </div>
+                                            )}
+                                        </Accordion.Body>
+                                    </Accordion.Item>
+                                )}
+
+                                {/* Тэмдэглэл (Note) */}
+                                {solution.note && (
+                                    <Accordion.Item eventKey={`note-${solution.id || solutionIndex}`}>
+                                        <Accordion.Header>
+                                            <Stack direction="horizontal" gap={2}>
+                                                <i className="bi bi-sticky"></i>
+                                                <span>Тэмдэглэл {problem.solutions.length > 1 ? `#${solutionIndex + 1}` : ''}</span>
+                                            </Stack>
+                                        </Accordion.Header>
+                                        <Accordion.Body>
+                                            <MathJax hideUntilTypeset={"first"}>
+                                                <div
+                                                    className="mathjax-content"
+                                                    style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: '1.7' }}
+                                                    dangerouslySetInnerHTML={{ __html: solution.note }}
+                                                />
+                                            </MathJax>
+                                        </Accordion.Body>
+                                    </Accordion.Item>
+                                )}
+                            </div>
+                        ))}
+                    </Accordion>
+                </div>
+            )}
+
+            {/* (!!!) Бодолт байхгүй үед бодолт нэмэх товч */}
+            {!hasSolutions && canEdit && (
+                <div className="mb-4">
+                    <Card className="border-dashed">
+                        <Card.Body className="text-center py-4">
+                            <BookOpen size={32} className="text-muted mb-3" />
+                            <p className="text-muted mb-3">Энэ бодлогод заавар ба бодолт байхгүй байна.</p>
+                            <Button
+                                variant="primary"
+                                size="sm"
+                                as={Link}
+                                to={`/problem/${id}/solutions/edit`}
+                            >
+                                Бодолт нэмэх
+                            </Button>
+                        </Card.Body>
+                    </Card>
+                </div>
+            )}
+
+            {/* Хариулт (зөвхөн зохиогч эсвэл админ харна) */}
+            {canEdit && problem.answer && !hasSolutions && (
+                <div className="mb-4">
+                    <h5 className="fw-semibold mb-3">Хариулт:</h5>
+                    <MathJax hideUntilTypeset={"first"}>
+                        <div
+                            className="problem-answer mathjax-content p-3 bg-warning bg-opacity-10 rounded border border-warning"
+                            style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: '1.7' }}
+                        >
+                            {problem.answer}
                         </div>
                     </MathJax>
                 </div>
