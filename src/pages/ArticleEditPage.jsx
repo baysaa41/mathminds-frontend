@@ -1,5 +1,7 @@
+// frontend/src/pages/ArticleEditPage.jsx
+// (!!! ЗАСВАРЛАСАН: </Torm.Text> -> </Form.Text> болгосон)
+
 import React, { useState, useEffect, useRef } from 'react';
-// (!!!) "id"-г ашиглах тул "articleId"-г useParams-аас хассан
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import apiClient from '../api/axiosConfig.js';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -94,9 +96,6 @@ const MyEditor = ({ initialContent = '', onContentChange, disabled = false, minH
     const isInitialMount = useRef(true);
 
     useEffect(() => {
-        // initialContent API-аас ачаалагдах үед (<p>Hello</p>)
-        // editorRef.current.innerHTML нь хоосон ("") байж болно.
-        // Энэ нь зөвхөн анхны удаа эсвэл initialContent өөрчлөгдөхөд ажиллана.
         if (editorRef.current && initialContent && isInitialMount.current) {
             editorRef.current.innerHTML = initialContent;
             isInitialMount.current = false;
@@ -122,8 +121,6 @@ const MyEditor = ({ initialContent = '', onContentChange, disabled = false, minH
                 contentEditable={!disabled}
                 onInput={handleInput}
                 style={{ ...editorStyles.editableArea, minHeight }}
-                // Агуулгыг анх ачаалахад `dangerouslySetInnerHTML` ашиглах нь
-                // useEffect-ээс илүү найдвартай байж болно.
                 dangerouslySetInnerHTML={{ __html: initialContent }}
             />
         </div>
@@ -135,13 +132,12 @@ const MyEditor = ({ initialContent = '', onContentChange, disabled = false, minH
 
 // --- Үндсэн Засварлах Хуудасны Компонент ---
 const ArticleEditPage = () => {
-    // (!!!) "articleId"-г "id" болгож өөрчилсөн (App.jsx-тэй нийцүүлсэн)
     const { id } = useParams();
     const navigate = useNavigate();
     const { user } = useAuth();
 
     const [title, setTitle] = useState('');
-    const [abstract, setAbstract] = useState(''); // ✅ Abstract state нэмсэн
+    const [abstract, setAbstract] = useState('');
     const [content, setContent] = useState('');
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -154,11 +150,9 @@ const ArticleEditPage = () => {
             try {
                 setLoading(true);
                 setError(null);
-                // (!!!) "articleId"-г "id" болгож өөрчилсөн
-                const response = await apiClient.get(`/api/minds/articles/${id}/`);
+                const response = await apiClient.get(`/api/integral/articles/${id}/`);
                 const articleData = response.data;
 
-                // (!!!) "user.user_id"-г "user.id" болгож засварласан
                 if (!user || !articleData.author || (user.id !== articleData.author.id && !user.is_staff)) {
                     setError("Энэ өгүүллийг засварлах эрх танд байхгүй байна.");
                     setLoading(false);
@@ -167,7 +161,7 @@ const ArticleEditPage = () => {
 
                 setTitle(articleData.title || '');
                 setOriginalTitle(articleData.title || '');
-                setAbstract(articleData.abstract || ''); // ✅ Abstract авах
+                setAbstract(articleData.abstract || '');
                 setContent(articleData.content || '');
                 setInitialAuthorId(articleData.author.id);
             } catch (err) {
@@ -181,14 +175,13 @@ const ArticleEditPage = () => {
                 setLoading(false);
             }
         };
-        // (!!!) "articleId"-г "id" болгож өөрчилсөн
         if (id) {
             fetchArticle();
         } else {
             setLoading(false);
             setError("Өгүүллийн дугаар олдсонгүй.")
         }
-    }, [id, user?.id, user?.is_staff]); // (!!!) "articleId", "user.user_id"-г өөрчилсөн
+    }, [id, user?.id, user?.is_staff]);
 
     const handleSave = async (e) => {
         e.preventDefault();
@@ -196,13 +189,11 @@ const ArticleEditPage = () => {
         setError(null);
 
         try {
-            // (!!!) "articleId"-г "id" болгож өөрчилсөн
-            await apiClient.patch(`/api/minds/articles/${id}/`, {
+            await apiClient.patch(`/api/integral/articles/${id}/`, {
                 title: title,
-                abstract: abstract, // ✅ Abstract илгээх
+                abstract: abstract,
                 content: content,
             });
-            // (!!!) "articleId"-г "id" болгож өөрчилсөн
             navigate(`/article/${id}`);
         } catch (err) {
             setError('Өгүүллийг хадгалахад алдаа гарлаа.');
@@ -219,12 +210,10 @@ const ArticleEditPage = () => {
         );
     }
 
-    // (!!!) "user.user_id"-г "user.id" болгож засварласан
     if (error && (!initialAuthorId || !user || (user.id !== initialAuthorId && !user.is_staff))) {
         return (
             <Container className="mt-4">
                 <Alert variant="danger">{error}</Alert>
-                {/* (!!!) "articleId"-г "id" болгож өөрчилсөн */}
                 <Link to={initialAuthorId ? `/article/${id}` : "/"}> &laquo; Буцах</Link>
             </Container>
         );
@@ -234,7 +223,7 @@ const ArticleEditPage = () => {
         <Container className="py-4">
             <Breadcrumb listProps={{ className: "mb-3" }}>
                 <Breadcrumb.Item linkAs={Link} linkProps={{ to: "/" }}>Нүүр</Breadcrumb.Item>
-                {/* (!!!) "articleId"-г "id" болгож өөрчилсөн */}
+                <Breadcrumb.Item linkAs={Link} linkProps={{ to: "/articles" }}>Өгүүллийн сан</Breadcrumb.Item>
                 <Breadcrumb.Item linkAs={Link} linkProps={{ to: `/article/${id}` }}>
                     {originalTitle || 'Өгүүлэл'}
                 </Breadcrumb.Item>
@@ -271,7 +260,7 @@ const ArticleEditPage = () => {
                     />
                     <Form.Text className="text-muted">
                         Энэ хэсэг нь постонд болон хайлтын үр дүнд харагдана.
-                    </Form.Text>
+                    </Form.Text> {/* (!!!) ЭНД ЗАСВАРЛАСАН */}
                 </Form.Group>
 
                 {/* Агуулга */}
@@ -316,7 +305,6 @@ const ArticleEditPage = () => {
 
                 {/* Товчнууд */}
                 <Stack direction="horizontal" gap={2} className="justify-content-end mt-4">
-                    {/* (!!!) "articleId"-г "id" болгож өөрчилсөн */}
                     <Button variant="outline-secondary" onClick={() => navigate(`/article/${id}`)} disabled={saving}>
                         Цуцлах
                     </Button>
@@ -337,4 +325,3 @@ const ArticleEditPage = () => {
 };
 
 export default ArticleEditPage;
-

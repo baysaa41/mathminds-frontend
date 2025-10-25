@@ -32,7 +32,8 @@ const ArticleDetailPage = () => {
                 setLoading(true);
                 setError(null);
                 // (!!!) "articleId"-г "id" болгож өөрчилсөн
-                const response = await apiClient.get(`/api/minds/articles/${id}/`);
+                // (!!!) API ЗАМЫГ ЗАСВАРЛАСАН: minds -> integral
+                const response = await apiClient.get(`/api/integral/articles/${id}/`);
                 setArticle(response.data);
 
                 // (!!!) Гарчгийг энд тохируулна
@@ -112,6 +113,8 @@ const ArticleDetailPage = () => {
         <Container className="py-4">
             <Breadcrumb listProps={{ className: "mb-3" }}>
                 <Breadcrumb.Item linkAs={Link} linkProps={{ to: "/" }}>Нүүр</Breadcrumb.Item>
+                {/* (!!!) ШИНЭ: /articles хуудас руу буцах */}
+                <Breadcrumb.Item linkAs={Link} linkProps={{ to: "/articles" }}>Өгүүллийн сан</Breadcrumb.Item>
                 <Breadcrumb.Item active>{article.title || 'Өгүүлэл'}</Breadcrumb.Item>
             </Breadcrumb>
 
@@ -158,8 +161,8 @@ const ArticleDetailPage = () => {
             </MathJax>
 
             <hr className="mt-5"/>
-            <Link to="/" className="btn btn-outline-secondary btn-sm mt-3">
-                &laquo; Нүүр хуудас руу буцах
+            <Link to="/articles" className="btn btn-outline-secondary btn-sm mt-3">
+                &laquo; Өгүүллийн сан руу буцах
             </Link>
         </Container>
     );

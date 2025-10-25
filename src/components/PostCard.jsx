@@ -1,9 +1,10 @@
 // frontend/src/components/PostCard.jsx
+// ✅ ШИНЭЧИЛСЭН: Edit/Delete функц нэмсэн
 
-// (!!!) 1. useEffect, useRef, useCallback-г импортлоно
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Heart, MessageCircle, Bookmark, Eye } from 'lucide-react';
+import { Heart, MessageCircle, Bookmark, Eye, MoreHorizontal, Edit2, Trash2 } from 'lucide-react';
 import apiClient from '../api/axiosConfig';
+import { useAuth } from '../context/AuthContext';
 
 // React Bootstrap components
 import Card from 'react-bootstrap/Card';
@@ -12,14 +13,20 @@ import Stack from 'react-bootstrap/Stack';
 import Badge from 'react-bootstrap/Badge';
 import Toast from 'react-bootstrap/Toast';
 import ToastContainer from 'react-bootstrap/ToastContainer';
+import Dropdown from 'react-bootstrap/Dropdown';
+import Modal from 'react-bootstrap/Modal';
+import Spinner from 'react-bootstrap/Spinner';
 import { useNavigate } from 'react-router-dom';
 
 // MathJax component
 import { MathJax } from "better-react-mathjax";
 
-// --- Туслах компонент (ХЭВЭЭРЭЭ) ---
+// Components
+import CommentSection from './CommentSection';
+import PostEditModal from './PostEditModal';
+
+// --- Туслах компонент ---
 const RelatedContentDisplay = ({ type, data }) => {
-    // ... (Энэ компонент хэвээрээ)
     const navigate = useNavigate();
     if (!data) return null;
 
@@ -29,7 +36,6 @@ const RelatedContentDisplay = ({ type, data }) => {
 
     switch (type) {
         case 'article':
-            // ...
             return (
                 <Card
                     className="bg-light border shadow-sm mt-2 hover-card fade-in"
@@ -46,7 +52,6 @@ const RelatedContentDisplay = ({ type, data }) => {
                 </Card>
             );
         case 'problem':
-            // ...
             return (
                 <Card
                     className="bg-light border shadow-sm mt-2 hover-card fade-in"
@@ -64,7 +69,6 @@ const RelatedContentDisplay = ({ type, data }) => {
                 </Card>
             );
         case 'formula':
-            // ...
             return (
                 <Card className="bg-light border shadow-sm mt-2 fade-in">
                     <Card.Body className="p-2">
@@ -78,7 +82,6 @@ const RelatedContentDisplay = ({ type, data }) => {
                 </Card>
             );
         case 'quiz':
-            // ...
             return (
                 <Card className="bg-light border shadow-sm mt-2 fade-in">
                     <Card.Body className="p-2">
@@ -93,26 +96,32 @@ const RelatedContentDisplay = ({ type, data }) => {
             return null;
     }
 };
-// --- Туслах компонент дууссан ---
 
-
-const PostCard = ({ post, onBookmarkRemoved }) => {
+const PostCard = ({ post, onBookmarkRemoved, onPostDeleted }) => {
+    const { user } = useAuth();
     const [postData, setPostData] = useState(post);
     const [isFavoriting, setIsFavoriting] = useState(false);
     const [isBookmarking, setIsBookmarking] = useState(false);
 
-    // (!!!) 2. Ref болон state нэмэх
-    const cardRef = useRef(null); // Картыг ажиглах ref
-    const [isViewCountSent, setIsViewCountSent] = useState(false); // API дуудлагыг хянах
+    const cardRef = useRef(null);
+    const [isViewCountSent, setIsViewCountSent] = useState(false);
 
     // Toast notification
     const [showToast, setShowToast] = useState(false);
     const [toastMessage, setToastMessage] = useState('');
     const [toastVariant, setToastVariant] = useState('success');
 
+    // ✅ Edit/Delete modals
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+
     if (!postData || !postData.author) {
         return null;
     }
+
+    // ✅ Өөрийн пост эсэхийг шалгах
+    const isOwnPost = user && postData.author && user.id === postData.author.id;
 
     const showNotification = (message, variant = 'success') => {
         setToastMessage(message);
@@ -120,20 +129,14 @@ const PostCard = ({ post, onBookmarkRemoved }) => {
         setShowToast(true);
     };
 
-    // (!!!) 3. Үзсэн тоог нэмэгдүүлэх API дуудах функц
+    // Үзсэн тоог нэмэгдүүлэх
     const incrementViewCount = useCallback(async () => {
-        // Хэрэв API дуудлага аль хэдийн явуулсан бол дахин дуудахгүй
-        if (isViewCountSent) {
-            return;
-        }
+        if (isViewCountSent) return;
 
         try {
-            // Race condition-с сэргийлж, дуудсан гэж шууд тэмдэглэнэ
             setIsViewCountSent(true);
-
             const response = await apiClient.post(`/api/minds/posts/${postData.id}/view/`);
 
-            // Backend-с ирсэн шинэ тоогоор UI-г шинэчлэх
             if (response.status === 200 && response.data.view_count) {
                 setPostData(prevData => ({
                     ...prevData,
@@ -141,15 +144,11 @@ const PostCard = ({ post, onBookmarkRemoved }) => {
                 }));
             }
         } catch (error) {
-            // Энэ нь далд үйлдэл тул хэрэглэгчид алдаа харуулахгүй, зөвхөн log хийнэ
             console.warn("Failed to increment view count:", error);
-            // Алдаа гарвал дараа дахин оролдох боломж олгох (заавал биш)
-            // setIsViewCountSent(false);
         }
-    }, [postData.id, isViewCountSent]); //
+    }, [postData.id, isViewCountSent]);
 
-
-    // (!!!) 4. IntersectionObserver тохируулах
+    // IntersectionObserver
     useEffect(() => {
         const currentCardRef = cardRef.current;
         if (!currentCardRef) return;
@@ -157,30 +156,22 @@ const PostCard = ({ post, onBookmarkRemoved }) => {
         const observer = new IntersectionObserver(
             (entries) => {
                 const [entry] = entries;
-                // Хэрэв карт дэлгэцэнд 50%-с дээш харагдаж байвал
                 if (entry.isIntersecting) {
-                    // Үзсэн тоог нэмэгдүүлэх функцийг дуудна
                     incrementViewCount();
-
-                    // (!!!) Нэгэнт дуудсан бол дахин ажиглах шаардлагагүй
                     observer.unobserve(currentCardRef);
                 }
             },
-            {
-                threshold: 0.5 // 50% харагдах үед
-            }
+            { threshold: 0.5 }
         );
 
         observer.observe(currentCardRef);
 
-        // Cleanup
         return () => {
             if (currentCardRef) {
                 observer.unobserve(currentCardRef);
             }
         };
-    }, [incrementViewCount]); // incrementViewCount-с хамаарна
-
+    }, [incrementViewCount]);
 
     const handleFavorite = async () => {
         if (isFavoriting) return;
@@ -225,7 +216,42 @@ const PostCard = ({ post, onBookmarkRemoved }) => {
         }
     };
 
-    // Холбогдох контентыг олох
+    // ✅ Post засах
+    const handlePostUpdated = (updatedPost) => {
+        setPostData(updatedPost);
+        showNotification('✅ Пост амжилттай засагдлаа!', 'success');
+    };
+
+    // ✅ Post устгах
+    const handleDeleteConfirm = async () => {
+        try {
+            setDeleting(true);
+            await apiClient.delete(`/api/minds/posts/${postData.id}/`);
+
+            showNotification('🗑 Пост устгагдлаа', 'info');
+            setShowDeleteModal(false);
+
+            // Parent компонентод мэдэгдэх
+            if (onPostDeleted) {
+                onPostDeleted(postData.id);
+            }
+        } catch (error) {
+            console.error('Delete post error:', error);
+            showNotification('Устгахад алдаа гарлаа', 'danger');
+        } finally {
+            setDeleting(false);
+        }
+    };
+
+    // Comment count шинэчлэх
+    const handleCommentCountChange = (newCount) => {
+        setPostData(prev => ({
+            ...prev,
+            comments_count: newCount
+        }));
+    };
+
+    // Холбогдох контент
     let relatedData = null;
     if (postData.related_content && postData.related_content.data) {
         relatedData = postData.related_content.data;
@@ -246,7 +272,6 @@ const PostCard = ({ post, onBookmarkRemoved }) => {
                 </Toast>
             </ToastContainer>
 
-            {/* (!!!) 5. Card-д ref-г холбох */}
             <Card ref={cardRef} className="border-0 border-bottom rounded-0 fade-in">
                 <Card.Body className="p-3">
                     <Stack direction="horizontal" gap={3} className="align-items-start">
@@ -258,36 +283,66 @@ const PostCard = ({ post, onBookmarkRemoved }) => {
                         </div>
 
                         <div className="flex-grow-1 min-w-0">
-                            {/* Хэрэглэгчийн нэр, имэйл */}
-                            <Stack direction="horizontal" gap={2} className="mb-1 flex-wrap align-items-baseline">
-                                <a href="#" className="fw-bold text-dark text-decoration-none me-1">
-                                    {postData.author.first_name || 'Хэрэглэгч'} {postData.author.last_name || ''}
-                                </a>
-                                <span className="text-muted small text-truncate">@{postData.author.username}</span>
+                            {/* Хэрэглэгчийн нэр + Dropdown */}
+                            <Stack direction="horizontal" gap={2} className="mb-1 flex-wrap align-items-center justify-content-between">
+                                <Stack direction="horizontal" gap={2} className="align-items-baseline">
+                                    <a href="#" className="fw-bold text-dark text-decoration-none me-1">
+                                        {postData.author.first_name || 'Хэрэглэгч'} {postData.author.last_name || ''}
+                                    </a>
+                                    <span className="text-muted small text-truncate">@{postData.author.username}</span>
+                                </Stack>
+
+                                {/* ✅ Edit/Delete dropdown - зөвхөн өөрийн пост */}
+                                {isOwnPost && (
+                                    <Dropdown align="end">
+                                        <Dropdown.Toggle
+                                            variant="link"
+                                            size="sm"
+                                            className="p-0 text-muted border-0"
+                                            style={{ boxShadow: 'none' }}
+                                        >
+                                            <MoreHorizontal size={18} />
+                                        </Dropdown.Toggle>
+
+                                        <Dropdown.Menu>
+                                            <Dropdown.Item onClick={() => setShowEditModal(true)}>
+                                                <Edit2 size={14} className="me-2" />
+                                                Засах
+                                            </Dropdown.Item>
+                                            <Dropdown.Divider />
+                                            <Dropdown.Item
+                                                onClick={() => setShowDeleteModal(true)}
+                                                className="text-danger"
+                                            >
+                                                <Trash2 size={14} className="me-2" />
+                                                Устгах
+                                            </Dropdown.Item>
+                                        </Dropdown.Menu>
+                                    </Dropdown>
+                                )}
                             </Stack>
 
-                            {/* Постын үндсэн текст */}
+                            {/* Постын текст */}
                             <MathJax hideUntilTypeset={"first"}>
                                 <p className="mb-2" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                                     {postData.content}
                                 </p>
                             </MathJax>
 
-                            {/* Холбогдох контентыг харуулах */}
+                            {/* Холбогдох контент */}
                             {relatedData && postData.content_type !== 'text' && (
                                 <RelatedContentDisplay type={postData.content_type} data={relatedData} />
                             )}
 
                             {/* Action товчнууд */}
                             <Stack direction="horizontal" gap={4} className="text-muted mt-2">
-                                <Button
-                                    variant="link"
-                                    size="sm"
-                                    className="p-0 text-muted d-flex align-items-center text-decoration-none btn-icon-hover"
-                                >
-                                    <MessageCircle size={16} className="me-1" />
-                                    <span className="small">{postData.comments_count}</span>
-                                </Button>
+                                <div>
+                                    <CommentSection
+                                        postId={postData.id}
+                                        initialCount={postData.comments_count}
+                                        onCountChange={handleCommentCountChange}
+                                    />
+                                </div>
 
                                 <Button
                                     variant="link"
@@ -304,7 +359,6 @@ const PostCard = ({ post, onBookmarkRemoved }) => {
                                     <span className="small">{postData.favorite_count}</span>
                                 </Button>
 
-                                {/* (!!!) Энэ хэсэг шинэчлэгдсэн postData.view_count-г харуулна */}
                                 <div className="d-flex align-items-center text-muted">
                                     <Eye size={16} className="me-1" />
                                     <span className="small">{postData.view_count}</span>
@@ -324,6 +378,52 @@ const PostCard = ({ post, onBookmarkRemoved }) => {
                     </Stack>
                 </Card.Body>
             </Card>
+
+            {/* ✅ Edit Modal */}
+            <PostEditModal
+                show={showEditModal}
+                onHide={() => setShowEditModal(false)}
+                post={postData}
+                onPostUpdated={handlePostUpdated}
+            />
+
+            {/* ✅ Delete Confirmation Modal */}
+            <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered>
+                <Modal.Header closeButton>
+                    <Modal.Title className="h6">Пост устгах</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <p className="mb-0">Та энэ постыг үнэхээр устгахыг хүсч байна уу? Энэ үйлдлийг буцаах боломжгүй.</p>
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setShowDeleteModal(false)}
+                        disabled={deleting}
+                    >
+                        Цуцлах
+                    </Button>
+                    <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={handleDeleteConfirm}
+                        disabled={deleting}
+                    >
+                        {deleting ? (
+                            <>
+                                <Spinner animation="border" size="sm" className="me-2" />
+                                Устгаж байна...
+                            </>
+                        ) : (
+                            <>
+                                <Trash2 size={14} className="me-1" />
+                                Устгах
+                            </>
+                        )}
+                    </Button>
+                </Modal.Footer>
+            </Modal>
         </>
     );
 };

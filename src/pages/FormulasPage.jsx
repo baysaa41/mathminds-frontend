@@ -18,6 +18,9 @@ import Badge from 'react-bootstrap/Badge';
 import Stack from 'react-bootstrap/Stack';
 import Form from 'react-bootstrap/Form';
 import InputGroup from 'react-bootstrap/InputGroup';
+// (!!!) Toast импортлох
+import Toast from 'react-bootstrap/Toast';
+import ToastContainer from 'react-bootstrap/ToastContainer';
 
 
 const FormulasPage = () => {
@@ -34,6 +37,11 @@ const FormulasPage = () => {
     // (!!!) ШИНЭ: postingId state нэмэх
     const [postingId, setPostingId] = useState(null);
 
+    // (!!!) Toast state-үүдийг нэмэх
+    const [showToast, setShowToast] = useState(false);
+    const [toastMessage, setToastMessage] = useState('');
+    const [toastVariant, setToastVariant] = useState('success');
+
     const loadMoreTriggerRef = useRef(null);
     const isHandlingLoadMore = useRef(false);
 
@@ -49,6 +57,13 @@ const FormulasPage = () => {
     useEffect(() => {
         fetchFormulas();
     }, []);
+
+    // (!!!) Toast харуулах туслах функц
+    const showNotification = (message, variant = 'success') => {
+        setToastMessage(message);
+        setToastVariant(variant);
+        setShowToast(true);
+    };
 
     const fetchFormulas = async () => {
         try {
@@ -100,21 +115,28 @@ const FormulasPage = () => {
         } finally { setIsCreatingNew(false); }
     };
 
-    // (!!!) ШИНЭ ФУНКЦ: handleCreatePost
+    // (!!!) ШИНЭ ФУНКЦ: handleCreatePost (Toast ашигладаг болсон)
     const handleCreatePost = async (e, formulaId) => {
         e.stopPropagation();
-        setPostingId(formulaId); setError(null);
+        setPostingId(formulaId);
+        setError(null);
+
         try {
-            // (!!!) Шинэ API endpoint-г дуудах
             const response = await apiClient.post('/api/minds/posts/create-from-formula/', {
                 formula_id: formulaId
             });
-            if (response.status === 201) alert('Пост амжилттай үүслээ!');
-            else if (response.status === 200) alert('Та энэ томьёог аль хэдийн постлосон байна.');
+
+            if (response.status === 201) {
+                showNotification('Пост амжилттай үүслээ!', 'success');
+            } else if (response.status === 200) {
+                showNotification('Та энэ томьёог аль хэдийн постлосон байна.', 'info');
+            }
         } catch (err) {
             console.error('Failed to create post from formula:', err);
-            setError(err.response?.data?.error || 'Пост үүсгэхэд алдаа гарлаа.');
-        } finally { setPostingId(null); }
+            showNotification(err.response?.data?.error || 'Пост үүсгэхэд алдаа гарлаа.', 'danger');
+        } finally {
+            setPostingId(null);
+        }
     };
 
     const filteredFormulas = formulas.filter(formula => {
@@ -132,6 +154,21 @@ const FormulasPage = () => {
 
     return (
         <Container className="py-4">
+            {/* (!!!) Toast Container нэмэх */}
+            <ToastContainer position="top-end" className="p-3" style={{ zIndex: 9999 }}>
+                <Toast
+                    show={showToast}
+                    onClose={() => setShowToast(false)}
+                    delay={3000}
+                    autohide
+                    bg={toastVariant}
+                >
+                    <Toast.Body className={toastVariant === 'light' ? 'text-dark' : 'text-white'}>
+                        {toastMessage}
+                    </Toast.Body>
+                </Toast>
+            </ToastContainer>
+
             {/* Толгой хэсэг */}
             <Stack direction="horizontal" gap={3} className="mb-4">
                 <h1 className="h4 fw-bold mb-0">Томьёоны сан</h1>

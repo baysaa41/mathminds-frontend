@@ -1,4 +1,5 @@
 // frontend/src/components/LeftSidebar.jsx
+// (!!! ШИНЭЧИЛСЭН: "Өгүүллийн сан" нэмсэн)
 
 import { useAuth } from '../context/AuthContext';
 import {
@@ -7,7 +8,8 @@ import {
     User,
     BookOpen,      // Бодлогын сан
     ClipboardList, // Тестийн сан
-    Calculator     // Томьёоны сан
+    Calculator,    // Томьёоны сан
+    FileText       // (!!!) Өгүүллийн сан
 } from 'lucide-react';
 import Nav from 'react-bootstrap/Nav';
 import { useLocation } from 'react-router-dom';
@@ -57,6 +59,18 @@ const LeftSidebar = () => {
 
                     {/* Агуулгын сангууд */}
                     <div className="small text-muted mb-1 px-2 fw-semibold">АГУУЛГА</div>
+
+                    {/* (!!!) ШИНЭ ЦЭС: Өгүүллийн сан */}
+                    <Nav.Item>
+                        <Nav.Link
+                            href="/articles"
+                            active={isActive('/articles')}
+                            className="d-flex align-items-center gap-2 mb-1 fw-medium"
+                        >
+                            <FileText size={18} />
+                            Өгүүллийн сан
+                        </Nav.Link>
+                    </Nav.Item>
 
                     <Nav.Item>
                         <Nav.Link

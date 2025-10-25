@@ -210,12 +210,12 @@ const ProblemDetailPage = () => {
                         </h5>
                         {canEdit && (
                             <Button
-                                variant="outline-secondary"
-                                size="sm"
                                 as={Link}
-                                to={`/problem/${id}/solutions/edit`}
-                                className="ms-auto"
+                                to={`/problem/${id}/solution/edit`} // ✅ ШИНЭЧИЛСЭН
+                                variant="outline-success"
+                                size="sm"
                             >
+                                <FileText size={16} className="me-1" />
                                 Бодолт засах
                             </Button>
                         )}
@@ -314,7 +314,7 @@ const ProblemDetailPage = () => {
                                 variant="primary"
                                 size="sm"
                                 as={Link}
-                                to={`/problem/${id}/solutions/edit`}
+                                to={`/problem/${id}/solution/edit`}
                             >
                                 Бодолт нэмэх
                             </Button>
