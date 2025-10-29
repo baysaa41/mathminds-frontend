@@ -1,18 +1,19 @@
-// frontend/src/components/LeftSidebar.jsx
-// (!!! ШИНЭЧИЛСЭН: "Өгүүллийн сан" нэмсэн)
+// frontend/src/components/LeftSidebar.jsx (БҮРЭН ШИНЭЧИЛСЭН)
 
 import { useAuth } from '../context/AuthContext';
 import {
     Home,
     Bookmark,
     User,
-    BookOpen,      // Бодлогын сан
-    ClipboardList, // Тестийн сан
-    Calculator,    // Томьёоны сан
-    FileText       // (!!!) Өгүүллийн сан
+    BookOpen,
+    ClipboardList,
+    Calculator,
+    FileText
 } from 'lucide-react';
 import Nav from 'react-bootstrap/Nav';
 import { useLocation } from 'react-router-dom';
+// (!!!) 1. LinkContainer импортлох
+import { LinkContainer } from 'react-router-bootstrap';
 
 const LeftSidebar = () => {
     const { user } = useAuth();
@@ -20,109 +21,96 @@ const LeftSidebar = () => {
 
     // Идэвхтэй цэсийг тодорхойлох
     const isActive = (path) => location.pathname === path;
+    const isProfileActive = () => location.pathname.startsWith('/profile');
 
     return (
         <div className="p-3 d-flex flex-column sidebar-container">
             <div>
-                {/* Лого */}
                 <div className="mb-4 d-flex align-items-center">
                     <h2 className="h4 fw-bold text-primary mb-0">MathMinds.club</h2>
                 </div>
 
-                {/* Nav компонентыг ашиглан цэс үүсгэнэ */}
                 <Nav variant="pills" className="flex-column nav-pills-custom" activeKey={location.pathname}>
-                    {/* Үндсэн цэс */}
-                    <Nav.Item>
+                    {/* (!!!) 2. Бүх холбоосыг LinkContainer-р бүрэх */}
+                    <LinkContainer to="/">
                         <Nav.Link
-                            href="/"
                             active={isActive('/')}
                             className="d-flex align-items-center gap-2 mb-1 fw-medium"
                         >
                             <Home size={18} />
                             Нүүр хуудас
                         </Nav.Link>
-                    </Nav.Item>
+                    </LinkContainer>
 
-                    <Nav.Item>
+                    <LinkContainer to="/bookmarks">
                         <Nav.Link
-                            href="/bookmarks"
                             active={isActive('/bookmarks')}
                             className="d-flex align-items-center gap-2 mb-1 fw-medium"
                         >
                             <Bookmark size={18} />
                             Хадгалсан
                         </Nav.Link>
-                    </Nav.Item>
+                    </LinkContainer>
 
-                    {/* Хэсэг тусгаарлагч */}
                     <div className="my-2 border-top"></div>
-
-                    {/* Агуулгын сангууд */}
                     <div className="small text-muted mb-1 px-2 fw-semibold">АГУУЛГА</div>
 
-                    {/* (!!!) ШИНЭ ЦЭС: Өгүүллийн сан */}
-                    <Nav.Item>
+                    <LinkContainer to="/articles">
                         <Nav.Link
-                            href="/articles"
                             active={isActive('/articles')}
                             className="d-flex align-items-center gap-2 mb-1 fw-medium"
                         >
                             <FileText size={18} />
                             Өгүүллийн сан
                         </Nav.Link>
-                    </Nav.Item>
+                    </LinkContainer>
 
-                    <Nav.Item>
+                    <LinkContainer to="/problems">
                         <Nav.Link
-                            href="/problems"
                             active={isActive('/problems')}
                             className="d-flex align-items-center gap-2 mb-1 fw-medium"
                         >
                             <BookOpen size={18} />
                             Бодлогын сан
                         </Nav.Link>
-                    </Nav.Item>
+                    </LinkContainer>
 
-                    <Nav.Item>
+                    <LinkContainer to="/quizzes">
                         <Nav.Link
-                            href="/quizzes"
                             active={isActive('/quizzes')}
                             className="d-flex align-items-center gap-2 mb-1 fw-medium"
                         >
                             <ClipboardList size={18} />
                             Тестийн сан
                         </Nav.Link>
-                    </Nav.Item>
+                    </LinkContainer>
 
-                    <Nav.Item>
+                    <LinkContainer to="/formulas">
                         <Nav.Link
-                            href="/formulas"
                             active={isActive('/formulas')}
                             className="d-flex align-items-center gap-2 mb-1 fw-medium"
                         >
                             <Calculator size={18} />
                             Томьёоны сан
                         </Nav.Link>
-                    </Nav.Item>
+                    </LinkContainer>
 
-                    {/* Хэсэг тусгаарлагч */}
                     <div className="my-2 border-top"></div>
 
-                    {/* Хэрэглэгч */}
-                    <Nav.Item>
+                    {/* (!!!) 3. Профайл холбоосыг идэвхжүүлэх */}
+                    {/* Энэ нь /profile рүү үсрэх бөгөөд /profile-г бид MyProfileRedirect болгоно */}
+                    <LinkContainer to="/profile">
                         <Nav.Link
-                            href="/profile"
-                            disabled
+                            active={isProfileActive()}
                             className="d-flex align-items-center gap-2 fw-medium"
                         >
                             <User size={18} />
                             Профайл
                         </Nav.Link>
-                    </Nav.Item>
+                    </LinkContainer>
                 </Nav>
             </div>
 
-            {/* Хэрэглэгчийн мэдээлэл доод хэсэгт */}
             {user && (
                 <div className="mt-auto pt-3 border-top">
                     <p className="fw-bold mb-0 text-dark">{user.first_name || 'User'}</p>
