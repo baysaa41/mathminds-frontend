@@ -75,6 +75,24 @@ export const AuthProvider = ({ children }) => {
         setToken(null);
     };
 
+    // (!!!) -----------------------------------------------
+    // (!!!) --- ШИНЭЭР НЭМСЭН ФУНКЦ ---
+    // (!!!) --- ProfileEditPage.jsx-с дуудагдана ---
+    // (!!!) -----------------------------------------------
+    const updateUser = (newUserData) => {
+        if (!newUserData) {
+            console.warn("AuthContext: updateUser-г null мэдээллээр дуудлаа.");
+            return;
+        }
+
+        // 1. authService-г ашиглан localStorage-г шинэчлэх
+        // (Энэ нь таны `authService.js`-д байгаа функц)
+        authService.updateUser(newUserData);
+
+        // 2. React-н дотоод state-г шинэчлэх
+        setUser(newUserData);
+    };
+
     // Апп-г шалгаж дуустал юу ч харуулахгүй (хамгаалалт)
     if (loading) {
         return (
@@ -85,7 +103,17 @@ export const AuthProvider = ({ children }) => {
     }
 
     return (
-        <AuthContext.Provider value={{ user, token, login, logout, isAuthenticated: !!token, loading }}>
+        <AuthContext.Provider
+            value={{
+                user,
+                token,
+                login,
+                logout,
+                updateUser, // (!!!) ЭНЭ ФУНКЦИЙГ ЭНД НЭМСЭН
+                isAuthenticated: !!token,
+                loading
+            }}
+        >
             {children}
         </AuthContext.Provider>
     );

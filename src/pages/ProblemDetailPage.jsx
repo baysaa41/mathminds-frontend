@@ -1,10 +1,11 @@
 // frontend/src/pages/ProblemDetailPage.jsx
+// (!!! ШИНЭЧИЛСЭН: LivePreview ашигласан)
 
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useOutletContext } from 'react-router-dom';
 import apiClient from '../api/axiosConfig.js';
-import { MathJax } from 'better-react-mathjax';
 import { useAuth } from '../context/AuthContext.jsx';
+import LivePreview from '../components/LivePreview.jsx'; // (!!!) 1. LivePreview импортлох
 
 // React Bootstrap components
 import Container from 'react-bootstrap/Container';
@@ -37,9 +38,12 @@ const ProblemDetailPage = () => {
                 const response = await apiClient.get(`/api/integral/problems/${id}/`);
                 setProblem(response.data);
 
-                // Гарчгийг энд тохируулна
+                // LivePreview LaTeX-г харуулдаг тул setPageTitle-д цэвэр текст хэрэгтэй
+                // Эсвэл энгийнээр тавина
                 if (response.data?.title) {
-                    setPageTitle(response.data.title);
+                    // Энгийн арга: LaTeX тэмдэгтүүдийг устгах
+                    const plainTitle = response.data.title.replace(/\$[^\$]*\$|\$\$[^\$]*\$\$/g, '').trim();
+                    setPageTitle(plainTitle || `Бодлого #${id}`);
                 } else {
                     setPageTitle(`Бодлого #${id}`);
                 }
@@ -64,36 +68,34 @@ const ProblemDetailPage = () => {
             setPageTitle("Алдаа");
         }
 
-        // Cleanup: Компонент солигдох үед гарчгийг цэвэрлэх
+        // Cleanup function
         return () => {
-            setPageTitle("Нүүр");
+            setPageTitle("Нүүр"); // Компонент unmount хийгдэхэд гарчгийг буцаах
         };
 
     }, [id, setPageTitle]);
 
-    // Ачааллаж байх үеийн дэлгэц
     if (loading) {
         return (
-            <Container className="d-flex justify-content-center align-items-center py-5" >
+            <Container className="d-flex justify-content-center align-items-center py-5">
                 <Spinner animation="border" />
             </Container>
         );
     }
 
-    // Алдаа гарсан үеийн дэлгэц
     if (error) {
         return (
             <Container className="mt-4">
                 <Alert variant="danger">{error}</Alert>
-                <Link to="/"> &laquo; Буцах</Link>
+                <Link to="/problems"> &laquo; Бодлогын сан руу буцах</Link> {/* "/" -г "/problems" болгосон */}
             </Container>
         );
     }
 
-    // Бодлого олдсонгүй
     if (!problem) {
         return null;
     }
+
 
     const canEdit = user && problem && problem.author && (user.id === problem.author.id || user.is_staff);
 
@@ -101,40 +103,35 @@ const ProblemDetailPage = () => {
         navigate(`/problem/${id}/edit`);
     };
 
-    // Бодлогын төрлийг харуулах
     const getProblemTypeLabel = (type) => {
         switch (type) {
-            case 0:
-                return 'Уламжлалт';
-            case 1:
-                return 'Сонгох тест';
-            case 4:
-                return 'Нөхөх тест';
-            default:
-                return 'Төрөл тодорхойгүй';
+            case 0: return 'Уламжлалт';
+            case 1: return 'Сонгох тест';
+            case 4: return 'Нөхөх тест';
+            default: return 'Төрөл тодорхойгүй';
         }
     };
 
-    // Solutions байгаа эсэхийг шалгах
     const hasSolutions = problem.solutions && problem.solutions.length > 0;
 
-    // Үндсэн дэлгэц
     return (
         <Container className="py-4">
             <Breadcrumb listProps={{ className: "mb-3" }}>
                 <Breadcrumb.Item linkAs={Link} linkProps={{ to: "/" }}>Нүүр</Breadcrumb.Item>
-                <Breadcrumb.Item active>{problem.title || `Бодлого #${id}`}</Breadcrumb.Item>
+                <Breadcrumb.Item linkAs={Link} linkProps={{ to: "/problems" }}>Бодлогын сан</Breadcrumb.Item>
+                {/* Гарчгийг Breadcrumb дотор LivePreview-гүйгээр харуулах нь дээр (урт байж болно) */}
+                <Breadcrumb.Item active>
+                    {problem.title ? problem.title.substring(0, 50) + (problem.title.length > 50 ? '...' : '') : `Бодлого #${id}`}
+                </Breadcrumb.Item>
             </Breadcrumb>
 
             {/* Гарчиг ба Засварлах товч */}
             <Stack direction="horizontal" gap={3} className="align-items-start mb-3">
-                <MathJax hideUntilTypeset={"first"} className="flex-grow-1">
-                    <h1 className="h3 fw-bold mathjax-content mb-0">
-                        {problem.title || `Бодлого #${id}`}
-                    </h1>
-                </MathJax>
+                <h1 className="h3 fw-bold mb-0 flex-grow-1">
+                    <LivePreview content={problem.title || `Бодлого #${id}`} />
+                </h1>
                 {canEdit && (
-                    <Button variant="outline-primary" size="sm" onClick={handleEditClick} className="flex-shrink-0">
+                    <Button variant="outline-primary" size="sm" onClick={handleEditClick}>
                         Засварлах
                     </Button>
                 )}
@@ -148,8 +145,10 @@ const ProblemDetailPage = () => {
                 {problem.type !== undefined && (
                     <Badge bg="info">{getProblemTypeLabel(problem.type)}</Badge>
                 )}
-                {problem.is_published && (
+                {problem.is_published ? (
                     <Badge bg="success">Нийтэлсэн</Badge>
+                ) : (
+                    <Badge bg="warning" text="dark">Ноорог</Badge>
                 )}
             </Stack>
 
@@ -164,43 +163,37 @@ const ProblemDetailPage = () => {
                 )}
             </div>
 
-            <hr className="mb-4"/>
+            <hr className="mb-4" />
 
-            {/* Бодлогын агуулга (statement) */}
+            {/* Бодлогын агуулга */}
             <div className="mb-4">
                 <h5 className="fw-semibold mb-3">Бодлогын нөхцөл:</h5>
-                <MathJax hideUntilTypeset={"first"}>
-                    <div
-                        className="problem-statement mathjax-content p-3 bg-light rounded"
-                        style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: '1.7' }}
-                        dangerouslySetInnerHTML={{ __html: problem.statement || '' }}
-                    />
-                </MathJax>
+                <div className="problem-statement p-3 bg-light rounded">
+                    <LivePreview content={problem.statement || '(Нөхцөл оруулаагүй)'} />
+                </div>
             </div>
 
-            {/* Сонголтууд (Multiple choice бол) */}
+            {/* Сонголтууд */}
             {problem.type === 1 && problem.choices && problem.choices.length > 0 && (
                 <div className="mb-4">
                     <h5 className="fw-semibold mb-3">Сонголтууд:</h5>
-                    <MathJax hideUntilTypeset={"first"}>
-                        <div className="list-group">
-                            {problem.choices.map((choice, index) => (
-                                <div
-                                    key={choice.id || index}
-                                    className="list-group-item mathjax-content"
-                                >
-                                    <strong>{choice.label || `${String.fromCharCode(65 + index)}.`}</strong> {choice.value}
-                                    {canEdit && choice.default_score > 0 && (
-                                        <Badge bg="success" className="ms-2">Зөв</Badge>
-                                    )}
+                    <div className="list-group">
+                        {problem.choices.map((choice, index) => (
+                            <div key={choice.id || index} className="list-group-item d-flex align-items-start">
+                                <strong className="me-2">{choice.label || `${String.fromCharCode(65 + index)}.`}</strong>{' '}
+                                <div className="flex-grow-1">
+                                    <LivePreview content={choice.value || '(Сонголт хоосон)'} />
                                 </div>
-                            ))}
-                        </div>
-                    </MathJax>
+                                {canEdit && choice.default_score > 0 && (
+                                    <Badge bg="success" className="ms-2 flex-shrink-0">Зөв</Badge>
+                                )}
+                            </div>
+                        ))}
+                    </div>
                 </div>
             )}
 
-            {/* (!!!) ШИНЭ ХЭСЭГ: Заавар ба Бодолт */}
+            {/* Заавар ба бодолт */}
             {hasSolutions && (
                 <div className="mb-4">
                     <Stack direction="horizontal" gap={3} className="align-items-center mb-3">
@@ -211,12 +204,12 @@ const ProblemDetailPage = () => {
                         {canEdit && (
                             <Button
                                 as={Link}
-                                to={`/problem/${id}/solution/edit`} // ✅ ШИНЭЧИЛСЭН
+                                to={`/problem/${id}/solution/edit`}
                                 variant="outline-success"
                                 size="sm"
                             >
                                 <FileText size={16} className="me-1" />
-                                Бодолт засах
+                                Бодолт засах/нэмэх
                             </Button>
                         )}
                     </Stack>
@@ -226,74 +219,54 @@ const ProblemDetailPage = () => {
                     </Alert>
 
                     <Accordion>
-                        {problem.solutions.map((solution, solutionIndex) => (
-                            <div key={solution.id || solutionIndex}>
-                                {/* Заавар (Hint) */}
+                        {problem.solutions.map((solution, i) => (
+                            <div key={solution.id || i}>
                                 {solution.hint && (
-                                    <Accordion.Item eventKey={`hint-${solution.id || solutionIndex}`}>
+                                    <Accordion.Item eventKey={`hint-${solution.id || i}`}>
                                         <Accordion.Header>
                                             <Stack direction="horizontal" gap={2}>
                                                 <Lightbulb size={18} className="text-warning" />
-                                                <span>Заавар {problem.solutions.length > 1 ? `#${solutionIndex + 1}` : ''}</span>
+                                                <span>Заавар {problem.solutions.length > 1 ? `#${i + 1}` : ''}</span>
                                             </Stack>
                                         </Accordion.Header>
                                         <Accordion.Body>
-                                            <MathJax hideUntilTypeset={"first"}>
-                                                <div
-                                                    className="mathjax-content"
-                                                    style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: '1.7' }}
-                                                    dangerouslySetInnerHTML={{ __html: solution.hint }}
-                                                />
-                                            </MathJax>
+                                            <LivePreview content={solution.hint} />
                                         </Accordion.Body>
                                     </Accordion.Item>
                                 )}
 
-                                {/* Бодолт (Solution) */}
                                 {solution.solution && (
-                                    <Accordion.Item eventKey={`solution-${solution.id || solutionIndex}`}>
+                                    <Accordion.Item eventKey={`solution-${solution.id || i}`}>
                                         <Accordion.Header>
                                             <Stack direction="horizontal" gap={2}>
                                                 <FileText size={18} className="text-success" />
-                                                <span>Бодолт {problem.solutions.length > 1 ? `#${solutionIndex + 1}` : ''}</span>
+                                                <span>Бодолт {problem.solutions.length > 1 ? `#${i + 1}` : ''}</span>
                                             </Stack>
                                         </Accordion.Header>
                                         <Accordion.Body>
-                                            <MathJax hideUntilTypeset={"first"}>
-                                                <div
-                                                    className="mathjax-content bg-light p-3 rounded"
-                                                    style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: '1.7' }}
-                                                    dangerouslySetInnerHTML={{ __html: solution.solution }}
-                                                />
-                                            </MathJax>
-
-                                            {/* Бодолтын зохиогч */}
+                                            <div className="bg-light p-3 rounded">
+                                                <LivePreview content={solution.solution} />
+                                            </div>
                                             {solution.author && (
                                                 <div className="text-muted small mt-3 pt-3 border-top">
-                                                    <strong>Бодлогыг бодсон:</strong> {solution.author.first_name || solution.author.email}
+                                                    <strong>Бодлогыг бодсон:</strong>{' '}
+                                                    {solution.author.first_name || solution.author.email}
                                                 </div>
                                             )}
                                         </Accordion.Body>
                                     </Accordion.Item>
                                 )}
 
-                                {/* Тэмдэглэл (Note) */}
                                 {solution.note && (
-                                    <Accordion.Item eventKey={`note-${solution.id || solutionIndex}`}>
+                                    <Accordion.Item eventKey={`note-${solution.id || i}`}>
                                         <Accordion.Header>
                                             <Stack direction="horizontal" gap={2}>
                                                 <i className="bi bi-sticky"></i>
-                                                <span>Тэмдэглэл {problem.solutions.length > 1 ? `#${solutionIndex + 1}` : ''}</span>
+                                                <span>Тэмдэглэл {problem.solutions.length > 1 ? `#${i + 1}` : ''}</span>
                                             </Stack>
                                         </Accordion.Header>
                                         <Accordion.Body>
-                                            <MathJax hideUntilTypeset={"first"}>
-                                                <div
-                                                    className="mathjax-content"
-                                                    style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: '1.7' }}
-                                                    dangerouslySetInnerHTML={{ __html: solution.note }}
-                                                />
-                                            </MathJax>
+                                            <LivePreview content={solution.note} />
                                         </Accordion.Body>
                                     </Accordion.Item>
                                 )}
@@ -303,19 +276,14 @@ const ProblemDetailPage = () => {
                 </div>
             )}
 
-            {/* (!!!) Бодолт байхгүй үед бодолт нэмэх товч */}
+            {/* Бодолт байхгүй үед */}
             {!hasSolutions && canEdit && (
                 <div className="mb-4">
                     <Card className="border-dashed">
                         <Card.Body className="text-center py-4">
                             <BookOpen size={32} className="text-muted mb-3" />
                             <p className="text-muted mb-3">Энэ бодлогод заавар ба бодолт байхгүй байна.</p>
-                            <Button
-                                variant="primary"
-                                size="sm"
-                                as={Link}
-                                to={`/problem/${id}/solution/edit`}
-                            >
+                            <Button variant="primary" size="sm" as={Link} to={`/problem/${id}/solution/edit`}>
                                 Бодолт нэмэх
                             </Button>
                         </Card.Body>
@@ -323,24 +291,19 @@ const ProblemDetailPage = () => {
                 </div>
             )}
 
-            {/* Хариулт (зөвхөн зохиогч эсвэл админ харна) */}
-            {canEdit && problem.answer && !hasSolutions && (
+            {/* Хариулт */}
+            {canEdit && problem.answer && ( // !hasSolutions нөхцөлийг хассан - хариултыг үргэлж харуулна
                 <div className="mb-4">
-                    <h5 className="fw-semibold mb-3">Хариулт:</h5>
-                    <MathJax hideUntilTypeset={"first"}>
-                        <div
-                            className="problem-answer mathjax-content p-3 bg-warning bg-opacity-10 rounded border border-warning"
-                            style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: '1.7' }}
-                        >
-                            {problem.answer}
-                        </div>
-                    </MathJax>
+                    <h5 className="fw-semibold mb-3">Хариулт (Зөвхөн засварлах эрхтэй хүнд харагдана):</h5>
+                    <div className="problem-answer p-3 bg-warning bg-opacity-10 rounded border border-warning">
+                        <LivePreview content={problem.answer} />
+                    </div>
                 </div>
             )}
 
-            <hr className="mt-5"/>
-            <Link to="/" className="btn btn-outline-secondary btn-sm mt-3">
-                &laquo; Нүүр хуудас руу буцах
+            <hr className="mt-5" />
+            <Link to="/problems" className="btn btn-outline-secondary btn-sm mt-3">
+                &laquo; Бодлогын сан руу буцах
             </Link>
         </Container>
     );

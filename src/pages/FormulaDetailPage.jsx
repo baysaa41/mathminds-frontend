@@ -5,6 +5,7 @@ import { useParams, useNavigate, useOutletContext, Link } from 'react-router-dom
 import apiClient from '../api/axiosConfig.js';
 import { MathJax } from 'better-react-mathjax'; // Context нь Layout-с ирнэ
 import { useAuth } from '../context/AuthContext.jsx';
+import LivePreview from '../components/LivePreview.jsx'; // (!!!) LivePreview импорт
 
 // React Bootstrap components
 import Container from 'react-bootstrap/Container';
@@ -205,15 +206,14 @@ const FormulaDetailPage = () => {
             {/* Томьёоны агуулга */}
             <Card>
                 <Card.Body>
-                    <MathJax hideUntilTypeset={"first"}>
-                        <div className="mathjax-content formula-content"> {/* CSS нэмж болно */}
-                            {formula.content ? (
-                                <div dangerouslySetInnerHTML={{ __html: formula.content.replace(/\n\n/g, '<br/><br/>') }} />
-                            ) : (
-                                <p className="text-muted">Агуулга байхгүй.</p>
-                            )}
-                        </div>
-                    </MathJax>
+                    {/* (!!!) LivePreview ашиглан агуулга харуулах */}
+                    <div className="formula-content">
+                        {formula.content ? (
+                            <LivePreview content={formula.content} />
+                        ) : (
+                            <p className="text-muted">Агуулга байхгүй.</p>
+                        )}
+                    </div>
                 </Card.Body>
             </Card>
 

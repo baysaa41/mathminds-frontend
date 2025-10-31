@@ -273,6 +273,28 @@ class AuthService {
             return null;
         }
     }
+
+    // (!!!) -----------------------------------------------
+    // (!!!) --- ХЭРЭГЛЭГЧИЙН ХҮССЭН ШИНЭ ФУНКЦ ---
+    // (!!!) -----------------------------------------------
+    /**
+     * Хэрэглэгчийн мэдээллийг localStorage-д шинэчлэх.
+     * (Профайл зассаны дараа AuthContext-с дуудагдана)
+     * @param {object} newUserData - Шинэчлэгдсэн хэрэглэгчийн объект
+     */
+    updateUser(newUserData) {
+        if (!newUserData) {
+            console.warn('authService.updateUser: null эсвэл undefined мэдээлэл хүлээн авлаа.');
+            return;
+        }
+        try {
+            // localStorage дахь 'user' түлхүүрийг шинэ мэдээллээр дарж бичнэ
+            localStorage.setItem('user', JSON.stringify(newUserData));
+        } catch (error) {
+            console.error('localStorage-д хэрэглэгчийн мэдээллийг шинэчлэхэд алдаа гарлаа:', error);
+        }
+    }
+
 }
 
 export default new AuthService();

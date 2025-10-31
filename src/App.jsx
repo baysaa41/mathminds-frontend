@@ -1,5 +1,4 @@
-// src/App.jsx
-// ✅ ШИНЭЧИЛСЭН: Quiz-н хуудсуудыг нэмсэн
+// src/App.jsx (FOLLOW ЗАМУУДТАЙ ШИНЭЧИЛСЭН)
 
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
@@ -24,10 +23,25 @@ import FormulasPage from './pages/FormulasPage.jsx';
 import FormulaEditPage from './pages/FormulaEditPage.jsx';
 import FormulaDetailPage from './pages/FormulaDetailPage.jsx';
 
-// (!!!) ШИНЭ ИМПОРТ: Quiz хуудсууд
+// Quiz хуудсууд
 import QuizzesPage from './pages/QuizzesPage.jsx';
 import QuizDetailPage from './pages/QuizDetailPage.jsx';
 import QuizEditPage from './pages/QuizEditPage.jsx';
+
+// Профайл хуудсууд
+import ProfilePage from './pages/ProfilePage.jsx';
+import MyProfileRedirect from './pages/MyProfileRedirect.jsx';
+import ProfileEditPage from './pages/ProfileEditPage.jsx';
+
+// (!!!) ШИНЭ: Followers/Following хуудсууд
+import FollowersPage from './pages/FollowersPage.jsx';
+import FollowingPage from './pages/FollowingPage.jsx';
+
+// Coin хуудсууд
+import CoinTransferPage from './pages/CoinTransferPage.jsx';
+
+// КЛУБ / БҮЛГИЙН ХУУДСУУД
+import ClubsRoutes from './routes/ClubsRoutes';
 
 // Нэвтрэх болон бусад хуудсууд
 import UnifiedLoginPage from './pages/UnifiedLoginPage.jsx';
@@ -69,13 +83,26 @@ function App() {
                     <Route path="formula/:id" element={<FormulaDetailPage />} />
                     <Route path="formula/:id/edit" element={<FormulaEditPage />} />
 
-                    {/* (!!!) ШИНЭ ЗАМ: Тестүүд */}
+                    {/* Тестүүд */}
                     <Route path="quizzes" element={<QuizzesPage />} />
                     <Route path="quiz/:id" element={<QuizDetailPage />} />
                     <Route path="quiz/:id/edit" element={<QuizEditPage />} />
 
-                    {/* Профайл */}
-                    <Route path="profile" element={<div>Профайл (үүсгэх)</div>} />
+                    {/* Профайл хуудсууд */}
+                    <Route path="profile" element={<MyProfileRedirect />} />
+                    <Route path="profile/:username" element={<ProfilePage />} />
+                    <Route path="profile/edit" element={<ProfileEditPage />} />
+
+                    {/* (!!!) ШИНЭ ЗАМУУД: Followers/Following */}
+                    <Route path="profile/:username/followers" element={<FollowersPage />} />
+                    <Route path="profile/:username/following" element={<FollowingPage />} />
+
+                    {/* Coin шилжүүлэх */}
+                    <Route path="coins/transfer" element={<CoinTransferPage />} />
+
+                    {/* КЛУБ / БҮЛЭГ */}
+                    <Route path="/clubs/*" element={<ClubsRoutes />} />
+
                 </Route>
 
                 {/* Dashboard - Layout-аас гадуур */}

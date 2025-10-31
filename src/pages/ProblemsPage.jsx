@@ -1,338 +1,211 @@
-// frontend/src/pages/ProblemsPage.jsx (Toast мэдэгдэлтэй болсон)
+// frontend/src/pages/ProblemsPage.IMPROVED.jsx
+// ✅ САЙЖРУУЛСАН: Нэгдсэн components, hooks, constants ашигласан
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { Link, useNavigate, useOutletContext } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useOutletContext } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.jsx';
 import apiClient from '../api/axiosConfig.js';
 import LivePreview from '../components/LivePreview.jsx';
-import { useAuth } from '../context/AuthContext.jsx';
 
-// React Bootstrap components
+// ✅ Common Components
+import LoadingState from '../components/common/LoadingState.jsx';
+import ErrorState from '../components/common/ErrorState.jsx';
+import EmptyState from '../components/common/EmptyState.jsx';
+import PageHeader from '../components/common/PageHeader.jsx';
+import SearchBar from '../components/common/SearchBar.jsx';
+
+// ✅ Custom Hooks
+import usePaginatedFetch from '../hooks/usePagenatedFetch.js';
+import useInfiniteScroll from '../hooks/useInfiniteScroll.js';
+import useToast from '../hooks/useToast.js';
+
+// ✅ Constants
+import { API_ENDPOINTS } from '../constants/api.js';
+import { MESSAGES } from '../constants/messages.js';
+
+// React Bootstrap
 import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 import Card from 'react-bootstrap/Card';
 import Button from 'react-bootstrap/Button';
 import Spinner from 'react-bootstrap/Spinner';
-import Alert from 'react-bootstrap/Alert';
 import Badge from 'react-bootstrap/Badge';
 import Stack from 'react-bootstrap/Stack';
-import Form from 'react-bootstrap/Form';
-import InputGroup from 'react-bootstrap/InputGroup';
-// (!!!) 1. Toast-г импортлох
 import Toast from 'react-bootstrap/Toast';
 import ToastContainer from 'react-bootstrap/ToastContainer';
-
+import { Puzzle, Send } from 'lucide-react';
 
 const ProblemsPage = () => {
-    // Үндсэн state-үүд
-    const [problems, setProblems] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-
-    // Хайлт/Шүүлтүүрийн state-үүд
-    const [searchQuery, setSearchQuery] = useState('');
-    const [filterPublished, setFilterPublished] = useState('all');
-    const [currentQuery, setCurrentQuery] = useState({ search: '', published: 'all' });
-
-    // Infinite Scroll-н state-үүд
-    const [nextPageUrl, setNextPageUrl] = useState(null);
-    const [loadingMore, setLoadingMore] = useState(false);
-
-    // Үйлдэл гүйцэтгэх state-үүд
-    const [isCreatingNew, setIsCreatingNew] = useState(false);
-    const [postingId, setPostingId] = useState(null);
-
-    // (!!!) 2. Toast state-үүдийг нэмэх
-    const [showToast, setShowToast] = useState(false);
-    const [toastMessage, setToastMessage] = useState('');
-    const [toastVariant, setToastVariant] = useState('success');
-
-    // Ref-үүд
-    const loadMoreTriggerRef = useRef(null);
-    const isHandlingLoadMore = useRef(false);
-
     const { user } = useAuth();
     const navigate = useNavigate();
     const { setPageTitle } = useOutletContext();
 
+    // ✅ Custom Hooks ашиглах
+    const {
+        data: problems,
+        loading,
+        loadingMore,
+        error,
+        hasMore,
+        fetchData,
+        loadMore,
+        refresh
+    } = usePaginatedFetch(API_ENDPOINTS.INTEGRAL.PROBLEMS);
+
+    const { triggerRef } = useInfiniteScroll(loadMore, hasMore, loadingMore);
+    const { toast, showToast, hideToast } = useToast();
+
+    // State
+    const [creatingNew, setCreatingNew] = useState(false);
+    const [postingId, setPostingId] = useState(null);
+
     // Анхны ачаалалт
     useEffect(() => {
         setPageTitle('Бодлогын сан');
-        fetchProblems('', 'all', true); // Эхний ачаалалт
-
-        return () => { setPageTitle('Нүүр'); };
+        fetchData();
+        return () => setPageTitle('Нүүр');
     }, []);
 
-    // (!!!) 3. Toast харуулах туслах функц
-    const showNotification = (message, variant = 'success') => {
-        setToastMessage(message);
-        setToastVariant(variant);
-        setShowToast(true);
-    };
-
-    // --- Өгөгдөл татах функцууд (Сервер талын хайлт) ---
-
-    const fetchProblems = async (query, published, isInitialLoad = false) => {
-        if (!isInitialLoad) {
-            setLoading(true);
-        }
-        setError(null);
-        setNextPageUrl(null);
-        isHandlingLoadMore.current = true;
-
-        setCurrentQuery({ search: query, published: published });
-
+    // Хайлт хийх
+    const handleSearch = ({ search, published }) => {
         const params = {};
-        if (query) {
-            params.search = query;
-        }
-        if (published !== 'all') {
-            params.is_published = (published === 'published');
-        }
+        if (search) params.search = search;
+        if (published !== 'all') params.is_published = published === 'published';
 
-        try {
-            const response = await apiClient.get('/api/integral/problems/', { params });
-
-            if (response.data && Array.isArray(response.data.results)) {
-                setProblems(response.data.results); // Шинэ хайлт: "СОЛИХ"
-                setNextPageUrl(response.data.next);
-            } else {
-                console.warn("API response error:", response.data);
-                setProblems([]);
-            }
-        } catch (err) {
-            setError('Бодлогуудыг ачааллахад алдаа гарлаа.');
-            console.error(err);
-        } finally {
-            setLoading(false);
-            setTimeout(() => { isHandlingLoadMore.current = false; }, 500);
-        }
+        fetchData(params);
     };
 
-    const handleLoadMore = useCallback(async () => {
-        if (!nextPageUrl || isHandlingLoadMore.current) {
-            return;
-        }
-
-        isHandlingLoadMore.current = true;
-        setLoadingMore(true);
-        setError(null);
-
-        try {
-            const response = await apiClient.get(nextPageUrl);
-
-            if (response.data && Array.isArray(response.data.results)) {
-                if (response.data.results.length > 0) {
-                    setProblems(prevProblems => [...prevProblems, ...response.data.results]); // Дараагийн хуудас: "НЭМЭХ"
-                    setNextPageUrl(response.data.next);
-                } else {
-                    setNextPageUrl(null);
-                }
-            } else {
-                setNextPageUrl(null);
-            }
-        } catch (err) {
-            setError('Нэмэлт бодлого ачааллахад алдаа гарлаа.');
-            console.error(err);
-        } finally {
-            setLoadingMore(false);
-            setTimeout(() => {
-                isHandlingLoadMore.current = false;
-            }, 500);
-        }
-    }, [nextPageUrl]);
-
-    // Intersection Observer (хэвээрээ)
-    useEffect(() => {
-        const observer = new IntersectionObserver(
-            (entries) => {
-                const firstEntry = entries[0];
-                if (firstEntry.isIntersecting && nextPageUrl && !isHandlingLoadMore.current) {
-                    handleLoadMore();
-                }
-            }, { threshold: 1.0 }
-        );
-        const currentTrigger = loadMoreTriggerRef.current;
-        if (currentTrigger) observer.observe(currentTrigger);
-        return () => { if (currentTrigger) observer.unobserve(currentTrigger); };
-    }, [nextPageUrl, handleLoadMore]);
-
-
-    // Хайлтыг "Хайх" товч дарахад эхлүүлэх
-    const handleSearchSubmit = (e) => {
-        e.preventDefault();
-        fetchProblems(searchQuery, filterPublished);
-    };
-
-
-    // --- Үйлдэл гүйцэтгэх функцууд ---
-
+    // Шинэ бодлого үүсгэх
     const handleCreateNew = async () => {
-        setIsCreatingNew(true);
-        setError(null);
+        setCreatingNew(true);
         try {
-            const response = await apiClient.post('/api/integral/problems/', {
+            const response = await apiClient.post(API_ENDPOINTS.INTEGRAL.PROBLEMS, {
                 title: 'Шинэ бодлого (Гарчиггүй)',
                 statement: 'Бодлогын өгүүлбэр...',
                 type: 0,
                 is_published: false,
             });
-            const newProblemId = response.data.id;
-            navigate(`/problem/${newProblemId}/edit`);
+            navigate(`/problem/${response.data.id}/edit`);
         } catch (err) {
-            console.error("Failed to create new problem:", err);
-            setError('Шинэ бодлого үүсгэхэд алдаа гарлаа.');
+            showToast(MESSAGES.ERROR.CREATE, 'danger');
         } finally {
-            setIsCreatingNew(false);
+            setCreatingNew(false);
         }
     };
 
-    // (!!!) 4. handleCreatePost-г alert-н оронд showNotification ашигладаг болгох
+    // Пост үүсгэх
     const handleCreatePost = async (e, problemId) => {
         e.stopPropagation();
         setPostingId(problemId);
-        setError(null);
 
         try {
-            const response = await apiClient.post('/api/minds/posts/create-from-problem/', {
-                problem_id: problemId
-            });
+            const response = await apiClient.post(
+                API_ENDPOINTS.MINDS.CREATE_FROM_PROBLEM,
+                { problem_id: problemId }
+            );
 
             if (response.status === 201) {
-                showNotification('Пост амжилттай үүслээ!', 'success'); // (!!!) ЗАСВАР
-            } else if (response.status === 200 && response.data.message === "Post already exists.") {
-                showNotification('Та энэ бодлогыг аль хэдийн постлосон байна.', 'info'); // (!!!) ЗАСВАР
+                showToast(MESSAGES.SUCCESS.POST_CREATED, 'success');
+            } else if (response.status === 200) {
+                showToast(MESSAGES.SUCCESS.POST_ALREADY_EXISTS, 'info');
             }
-
         } catch (err) {
-            console.error('Failed to create post:', err);
-            const errorMsg = err.response?.data?.error || 'Пост үүсгэхэд алдаа гарлаа.';
-            // (!!!) Алдааг мөн toast-р харуулж болно
-            showNotification(errorMsg, 'danger');
-            // setError(errorMsg); // Эсвэл хуучнаар нь Alert харуулж болно
+            showToast(
+                err.response?.data?.error || MESSAGES.ERROR.GENERIC,
+                'danger'
+            );
         } finally {
             setPostingId(null);
         }
     };
 
+    // Problem type label
     const getProblemTypeLabel = (type) => {
-        switch (type) {
-            case 0: return 'Уламжлалт';
-            case 1: return 'Сонгох тест';
-            case 4: return 'Нөхөх тест';
-            default: return 'Төрөл тодорхойгүй';
-        }
+        const types = {
+            0: 'Уламжлалт',
+            1: 'Сонгох тест',
+            4: 'Нөхөх тест'
+        };
+        return types[type] || 'Тодорхойгүй';
     };
 
-    // --- Render хэсэг ---
-
-    if (loading && problems.length === 0 && !loadingMore) {
-        return (
-            <Container className="d-flex justify-content-center align-items-center py-5">
-                <Spinner animation="border" />
-            </Container>
-        );
+    // ✅ Loading State
+    if (loading && problems.length === 0) {
+        return <LoadingState message={MESSAGES.LOADING.DEFAULT} fullPage />;
     }
 
-    if (error && !loadingMore && !postingId) {
+    // ✅ Error State
+    if (error && problems.length === 0) {
         return (
-            <Container className="mt-4">
-                <Alert variant="danger">{error}</Alert>
-                <Button variant="outline-primary" size="sm" onClick={() => fetchProblems(currentQuery.search, currentQuery.published)}>
-                    Дахин оролдох
-                </Button>
-            </Container>
+            <ErrorState
+                message={error}
+                onRetry={refresh}
+                fullPage
+            />
         );
-    }
-
-    const renderPageError = () => {
-        if (error && (loadingMore || postingId)) {
-            return <Alert variant="danger" className='mt-3'>{error}</Alert>
-        }
-        return null;
     }
 
     return (
         <Container className="py-4">
-
-            {/* (!!!) 5. Toast Container-г нэмэх (PostCard.jsx-с хуулсан) */}
+            {/* ✅ Toast Notification */}
             <ToastContainer position="top-end" className="p-3" style={{ zIndex: 9999 }}>
                 <Toast
-                    show={showToast}
-                    onClose={() => setShowToast(false)}
+                    show={toast.show}
+                    onClose={hideToast}
                     delay={3000}
                     autohide
-                    bg={toastVariant}
+                    bg={toast.variant}
                 >
-                    <Toast.Body className={toastVariant === 'light' ? 'text-dark' : 'text-white'}>
-                        {toastMessage}
+                    <Toast.Body className={toast.variant === 'light' ? 'text-dark' : 'text-white'}>
+                        {toast.message}
                     </Toast.Body>
                 </Toast>
             </ToastContainer>
 
-            {/* Толгой хэсэг */}
-            <Stack direction="horizontal" gap={3} className="mb-4">
-                <h1 className="h4 fw-bold mb-0">Бодлогын сан</h1>
-                <Button
-                    variant="primary"
-                    size="sm"
-                    className="ms-auto"
-                    onClick={handleCreateNew}
-                    disabled={isCreatingNew}
-                >
-                    {isCreatingNew ? <Spinner as="span" size="sm" /> : '+ Шинэ бодлого'}
-                </Button>
-            </Stack>
+            {/* ✅ Page Header */}
+            <PageHeader
+                title="Бодлогын сан"
+                subtitle={`Нийт ${problems.length} бодлого`}
+                action={{
+                    label: 'Шинэ бодлого',
+                    onClick: handleCreateNew,
+                    icon: <Puzzle size={16} className="me-1" />
+                }}
+                loading={creatingNew}
+            />
 
-            {/* Хайлт ба шүүлтүүр */}
-            <Form onSubmit={handleSearchSubmit}>
-                <Row className="mb-4 g-3">
-                    <Col md={6}>
-                        <InputGroup>
-                            <InputGroup.Text>
-                                <i className="bi bi-search"></i>
-                            </InputGroup.Text>
-                            <Form.Control
-                                type="text"
-                                placeholder="Гарчиг, өгүүлбэр, бодолт, түлхүүр үгээр хайх..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                            />
-                        </InputGroup>
-                    </Col>
-                    <Col md={3}>
-                        <Form.Select
-                            value={filterPublished}
-                            onChange={(e) => setFilterPublished(e.target.value)}
-                        >
-                            <option value="all">Бүгд (Нийтэлсэн/Ноорог)</option>
-                            <option value="published">Зөвхөн Нийтлэгдсэн</option>
-                            <option value="draft">Зөвхөн Ноорог</option>
-                        </Form.Select>
-                    </Col>
-                    <Col md={3}>
-                        <Button type="submit" variant="primary" className="w-100" disabled={loading}>
-                            {loading ? <Spinner as="span" size="sm" /> : 'Хайх'}
-                        </Button>
-                    </Col>
-                </Row>
-            </Form>
+            {/* ✅ Search Bar */}
+            <SearchBar
+                onSearch={handleSearch}
+                placeholder="Гарчиг, өгүүлбэр, бодолт, түлхүүр үгээр хайх..."
+                filters={[
+                    {
+                        name: 'published',
+                        defaultValue: 'all',
+                        options: [
+                            { value: 'all', label: 'Бүгд' },
+                            { value: 'published', label: 'Нийтэлсэн' },
+                            { value: 'draft', label: 'Ноорог' }
+                        ]
+                    }
+                ]}
+                loading={loading}
+            />
 
-            {renderPageError()}
-
-            {/* Хайлт хийж байхад (problems хоосон үед) Spinner харуулах */}
-            {loading && problems.length === 0 && (
-                <div className="text-center py-5"><Spinner animation="border" /></div>
+            {/* ✅ Empty State */}
+            {!loading && problems.length === 0 && (
+                <EmptyState
+                    icon={Puzzle}
+                    title={MESSAGES.EMPTY.NO_PROBLEMS}
+                    message="Шинэ бодлого нэмж эхлээрэй!"
+                    actionLabel="Шинэ бодлого"
+                    onAction={handleCreateNew}
+                />
             )}
 
-            {/* Бодлогуудын жагсаалт */}
-            {!loading && problems.length === 0 ? (
-                <Alert variant="info">
-                    {currentQuery.search || currentQuery.published !== 'all'
-                        ? 'Хайлтын үр дүн олдсонгүй.'
-                        : 'Бодлого олдсонгүй.'}
-                </Alert>
-            ) : (
+            {/* Problems Grid */}
+            {problems.length > 0 && (
                 <Row className="g-3">
                     {problems.map((problem) => (
                         <Col key={problem.id} xs={12}>
@@ -344,14 +217,10 @@ const ProblemsPage = () => {
                                 <Card.Body>
                                     <Stack direction="horizontal" gap={2} className="mb-2 flex-wrap">
                                         {problem.level_name && (
-                                            <Badge bg="secondary" className="text-uppercase">
-                                                {problem.level_name}
-                                            </Badge>
+                                            <Badge bg="secondary">{problem.level_name}</Badge>
                                         )}
                                         {problem.type !== undefined && (
-                                            <Badge bg="info">
-                                                {getProblemTypeLabel(problem.type)}
-                                            </Badge>
+                                            <Badge bg="info">{getProblemTypeLabel(problem.type)}</Badge>
                                         )}
                                         {problem.is_published ? (
                                             <Badge bg="success">Нийтлэгдсэн</Badge>
@@ -361,20 +230,37 @@ const ProblemsPage = () => {
                                         {user && problem.author && user.id === problem.author.id && (
                                             <Badge bg="primary">Миний</Badge>
                                         )}
-                                        <Button variant="outline-primary" size="sm" className="ms-auto" onClick={(e) => handleCreatePost(e, problem.id)} disabled={postingId === problem.id}>
-                                            {postingId === problem.id ? <Spinner as="span" size="sm" /> : <i className="bi bi-send-plus me-1"></i> }
-                                            {postingId !== problem.id && 'Постлох'}
+
+                                        {/* Постлох товч */}
+                                        <Button
+                                            variant="outline-primary"
+                                            size="sm"
+                                            className="ms-auto"
+                                            onClick={(e) => handleCreatePost(e, problem.id)}
+                                            disabled={postingId === problem.id}
+                                        >
+                                            {postingId === problem.id ? (
+                                                <Spinner as="span" size="sm" />
+                                            ) : (
+                                                <>
+                                                    <Send size={14} className="me-1" />
+                                                    Постлох
+                                                </>
+                                            )}
                                         </Button>
                                     </Stack>
 
-                                    <div className="h5 mb-2 mathjax-content">
+                                    {/* Гарчиг */}
+                                    <div className="h5 mb-2">
                                         <LivePreview content={problem.title || `Бодлого #${problem.id}`} />
                                     </div>
 
-                                    <div className="text-muted small mathjax-content">
+                                    {/* Өгүүлбэр */}
+                                    <div className="text-muted small">
                                         <LivePreview content={problem.statement || 'Агуулга байхгүй'} />
                                     </div>
 
+                                    {/* Мета мэдээлэл */}
                                     <div className="text-muted small mt-2">
                                         <i className="bi bi-person me-1"></i>
                                         {problem.author?.first_name || problem.author?.email || 'N/A'}
@@ -393,26 +279,28 @@ const ProblemsPage = () => {
                 </Row>
             )}
 
-            <div ref={loadMoreTriggerRef} style={{ height: '20px' }} />
+            {/* ✅ Infinite Scroll Trigger */}
+            <div ref={triggerRef} style={{ height: '20px' }} />
 
+            {/* ✅ Loading More Indicator */}
             {loadingMore && (
                 <div className="text-center mt-4 py-3">
-                    <Spinner as="span" animation="border" size="sm" />
-                    <span className="ms-2">Ачааллаж байна...</span>
+                    <Spinner animation="border" size="sm" />
+                    <span className="ms-2">{MESSAGES.LOADING.DEFAULT}</span>
                 </div>
             )}
 
-            <div className="mt-4 p-3 bg-light rounded">
-                <small className="text-muted">
-                    Нийт: <strong>{problems.length}</strong> бодлого
-                    {currentQuery.search || currentQuery.published !== 'all' ? (
-                        <> • (Одоогийн хайлтаар <strong>{problems.length}</strong> олдсон)</>
-                    ) : null}
-                    {nextPageUrl && !loading && (
-                        <> • (Гүйлгэж илүү ихийг ачаална уу)</>
-                    )}
-                </small>
-            </div>
+            {/* Stats */}
+            {problems.length > 0 && (
+                <div className="mt-4 p-3 bg-light rounded">
+                    <small className="text-muted">
+                        Нийт: <strong>{problems.length}</strong> бодлого
+                        {hasMore && (
+                            <> • {MESSAGES.INFO.SCROLL_FOR_MORE}</>
+                        )}
+                    </small>
+                </div>
+            )}
         </Container>
     );
 };

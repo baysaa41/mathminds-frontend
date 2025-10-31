@@ -4,7 +4,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import apiClient from '../api/axiosConfig.js';
 // (!!!) MathJaxContext-г Layout-с авдаг болсон тул эндээс хассан
-import { MathJax } from 'better-react-mathjax';
+// import { MathJax } from 'better-react-mathjax';
+import LivePreview from "../components/LivePreview.jsx";
 import { useAuth } from '../context/AuthContext.jsx';
 
 // React Bootstrap components
@@ -100,54 +101,6 @@ const PSTricksRenderer = ({ code }) => {
     }
     return null;
 };
-
-// --- MathJax + PSTricks хамт харуулах Preview компонент ---
-const LivePreview = ({ content }) => {
-    const parts = useMemo(() => {
-        if (!content) return [];
-
-        const pstRegex = /\[pst\]([\s\S]*?)\[\/pst\]/g; //
-        const result = [];
-        let lastIndex = 0;
-        let match;
-
-        while ((match = pstRegex.exec(content)) !== null) {
-            if (match.index > lastIndex) {
-                result.push({ type: 'math', value: content.substring(lastIndex, match.index) });
-            }
-            result.push({ type: 'pst', value: match[1].trim() });
-            lastIndex = match.index + match[0].length;
-        }
-        if (lastIndex < content.length) {
-            result.push({ type: 'math', value: content.substring(lastIndex) });
-        }
-        return result;
-    }, [content]);
-
-    if (!content) {
-        return <div className="text-muted small">(Preview)</div>;
-    }
-
-    return (
-        <div className="mathjax-preview-wrapper" style={{ border: '1px solid #ccc', padding: '15px', marginTop: '10px', backgroundColor: '#f9f9f9' }}>
-            <MathJax hideUntilTypeset={"first"}>
-                {parts.map((part, index) => {
-                    if (part.type === 'math') {
-                        const htmlContent = part.value.replace(/\n\n/g, '<br/><br/>'); //
-                        return (
-                            <span key={index} dangerouslySetInnerHTML={{ __html: htmlContent }} />
-                        );
-                    }
-                    if (part.type === 'pst') {
-                        return <PSTricksRenderer key={index} code={part.value} />;
-                    }
-                    return null;
-                })}
-            </MathJax>
-        </div>
-    );
-};
-
 
 // --- Үндсэн Засварлах Хуудас ---
 const ProblemEditPage = () => {

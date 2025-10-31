@@ -5,6 +5,7 @@ import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import apiClient from '../api/axiosConfig.js';
 import { MathJax } from 'better-react-mathjax';
 import { useAuth } from '../context/AuthContext.jsx';
+import LivePreview from '../components/LivePreview.jsx'; // (!!!) Дэвшилтэт LivePreview импорт
 
 // React Bootstrap components
 import Container from 'react-bootstrap/Container';
@@ -30,18 +31,6 @@ const useDebounce = (value, delay) => {
         return () => { clearTimeout(handler); };
     }, [value, delay]);
     return debouncedValue;
-};
-
-// --- Preview Компонент ---
-const LivePreview = ({ content }) => {
-    if (!content) return <div className="text-muted small">(Preview)</div>;
-    return (
-        <div className="mathjax-preview-wrapper" style={{ border: '1px solid #ccc', padding: '15px', marginTop: '10px', backgroundColor: '#f9f9f9' }}>
-            <MathJax hideUntilTypeset={"first"}>
-                <span dangerouslySetInnerHTML={{ __html: content.replace(/\n\n/g, '<br/><br/>') }} />
-            </MathJax>
-        </div>
-    );
 };
 
 // --- Томьёо Засварлах Хуудас ---

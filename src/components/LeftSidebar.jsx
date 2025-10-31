@@ -56,7 +56,7 @@ const LeftSidebar = () => {
 
                 {/* (!!!) ШИНЭ ЦЭС: КЛУБУУД */}
                 <Nav.Item>
-                    <Nav.Link as={NavLink} to="/groups" className="d-flex align-items-center gap-2">
+                    <Nav.Link as={NavLink} to="/clubs" className="d-flex align-items-center gap-2">
                         <i className="bi bi-people fs-5"></i>
                         <span>Клубууд</span>
                     </Nav.Link>

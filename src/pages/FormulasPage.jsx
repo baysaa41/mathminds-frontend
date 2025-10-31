@@ -5,6 +5,7 @@ import { Link, useNavigate, useOutletContext } from 'react-router-dom';
 import apiClient from '../api/axiosConfig.js';
 import { MathJax } from 'better-react-mathjax';
 import { useAuth } from '../context/AuthContext.jsx';
+import LivePreview from '../components/LivePreview.jsx'; // (!!!) LivePreview импорт
 
 // ... (React Bootstrap imports хэвээрээ) ...
 import Container from 'react-bootstrap/Container';
@@ -202,7 +203,10 @@ const FormulasPage = () => {
                                         </Button>
                                     </Stack>
                                     <MathJax hideUntilTypeset={"first"}><Card.Title className="h5 mb-2 mathjax-content">{formula.title || `Томьёо #${formula.id}`}</Card.Title></MathJax>
-                                    <MathJax hideUntilTypeset={"first"}><Card.Text className="text-muted small mathjax-content" style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', textOverflow: 'ellipsis' }} dangerouslySetInnerHTML={{ __html: formula.content || 'Агуулга байхгүй' }} /></MathJax>
+                                    {/* (!!!) LivePreview ашиглан агуулга харуулах */}
+                                    <Card.Text className="text-muted small" style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        <LivePreview content={formula.content || 'Агуулга байхгүй'} />
+                                    </Card.Text>
                                     <div className="text-muted small mt-2"><i className="bi bi-person me-1"></i>{formula.author?.first_name || formula.author?.email || 'N/A'}</div>
                                 </Card.Body>
                             </Card>
