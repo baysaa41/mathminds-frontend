@@ -160,7 +160,7 @@ const FormulasPage = () => {
                 action={{
                     label: 'Шинэ томьёо',
                     onClick: handleCreateNew,
-                    icon: <Calculator size={16} className="me-1" />
+                    icon: <i className="bi bi-infinity me-2"></i>
                 }}
                 loading={creatingNew}
             />

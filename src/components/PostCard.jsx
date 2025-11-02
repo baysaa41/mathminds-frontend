@@ -166,19 +166,24 @@ const PostCard = ({ post, onPostDeleted }) => {
 
     // Устгах үйлдлийг баталгаажуулах
     const confirmDelete = async () => {
-        setIsDeleting(true);
+        setIsDeleting(true); // 1. Loading эхлүүлнэ
         try {
             await apiClient.delete(`/api/minds/posts/${post.id}/`);
             showNotification('Пост амжилттай устлаа.', 'success');
             if (onPostDeleted) onPostDeleted(post.id);
+
         } catch (err) {
             console.error('Failed to delete post:', err);
             showNotification(err.response?.data?.detail || 'Пост устгахад алдаа гарлаа.', 'danger');
-            setIsDeleting(false);
+
+            // (!!!) ЗАСВАР: Энд байсан setIsDeleting(false)-г хассан
+
         } finally {
-            if (!isDeleting) {
-                setShowDeleteModal(false);
-            }
+            // (!!!) ЗАСВАР: Энэ блок руу цэвэрлэгээг шилжүүлсэн
+            // Энэ нь try амжилттай болсон ч, catch алдаа гарсан ч
+            // үргэлж ажиллана.
+            setIsDeleting(false);
+            setShowDeleteModal(false);
         }
     };
 

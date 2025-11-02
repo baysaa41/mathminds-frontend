@@ -1,5 +1,4 @@
 // frontend/src/pages/ArticleEditPage.jsx
-// (!!! ЗАСВАРЛАСАН: </Torm.Text> -> </Form.Text> болгосон)
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
@@ -14,6 +13,7 @@ import Spinner from 'react-bootstrap/Spinner';
 import Alert from 'react-bootstrap/Alert';
 import Breadcrumb from 'react-bootstrap/Breadcrumb';
 import Stack from 'react-bootstrap/Stack';
+import Modal from 'react-bootstrap/Modal'; // (!!!) 1. Modal-г импортлох
 
 import { MathJax } from 'better-react-mathjax';
 
@@ -145,6 +145,10 @@ const ArticleEditPage = () => {
     const [initialAuthorId, setInitialAuthorId] = useState(null);
     const [originalTitle, setOriginalTitle] = useState('');
 
+    // (!!!) 2. Устгах үйлдлийн state-үүдийг нэмэх
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+
     useEffect(() => {
         const fetchArticle = async () => {
             try {
@@ -201,6 +205,31 @@ const ArticleEditPage = () => {
             setSaving(false);
         }
     };
+
+    // (!!!) 3. Modal болон устгах функцуудыг нэмэх
+    const handleCloseDeleteModal = () => {
+        if (!isDeleting) {
+            setShowDeleteModal(false);
+        }
+    };
+
+    const handleShowDeleteModal = () => setShowDeleteModal(true);
+
+    const handleConfirmDelete = async () => {
+        setIsDeleting(true);
+        setError(null);
+
+        try {
+            await apiClient.delete(`/api/integral/articles/${id}/`);
+            navigate('/articles');
+        } catch (err) {
+            setError('Өгүүллийг устгахад алдаа гарлаа.');
+            console.error(err);
+            setIsDeleting(false);
+            setShowDeleteModal(false);
+        }
+    };
+
 
     if (loading) {
         return (
@@ -303,12 +332,26 @@ const ArticleEditPage = () => {
                     </MathJax>
                 </div>
 
-                {/* Товчнууд */}
+                {/* (!!!) 4. Товчнуудыг шинэчлэх */}
                 <Stack direction="horizontal" gap={2} className="justify-content-end mt-4">
-                    <Button variant="outline-secondary" onClick={() => navigate(`/article/${id}`)} disabled={saving}>
+
+                    {/* Устгах товч (зүүн талд) */}
+                    <Button
+                        variant="outline-danger"
+                        onClick={handleShowDeleteModal}
+                        disabled={saving || isDeleting}
+                        className="me-auto"
+                    >
+                        Устгах
+                    </Button>
+
+                    {/* Цуцлах товч */}
+                    <Button variant="outline-secondary" onClick={() => navigate(`/article/${id}`)} disabled={saving || isDeleting}>
                         Цуцлах
                     </Button>
-                    <Button variant="primary" type="submit" disabled={saving}>
+
+                    {/* Хадгалах товч */}
+                    <Button variant="primary" type="submit" disabled={saving || isDeleting}>
                         {saving ? (
                             <>
                                 <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-1"/>
@@ -320,6 +363,33 @@ const ArticleEditPage = () => {
                     </Button>
                 </Stack>
             </Form>
+
+            {/* (!!!) 5. Modal JSX-г нэмэх */}
+            <Modal show={showDeleteModal} onHide={handleCloseDeleteModal} centered>
+                <Modal.Header closeButton>
+                    <Modal.Title className="h5">Устгахыг баталгаажуулна уу</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    Та "<b>{originalTitle || 'энэ өгүүллийг'}</b>" устгахдаа итгэлтэй байна уу?
+                    Энэ үйлдлийг буцаах боломжгүй.
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={handleCloseDeleteModal} disabled={isDeleting}>
+                        Болих
+                    </Button>
+                    <Button variant="danger" onClick={handleConfirmDelete} disabled={isDeleting}>
+                        {isDeleting ? (
+                            <>
+                                <Spinner as="span" size="sm" className="me-1" />
+                                Устгаж байна...
+                            </>
+                        ) : (
+                            'Устгах'
+                        )}
+                    </Button>
+                </Modal.Footer>
+            </Modal>
+
         </Container>
     );
 };

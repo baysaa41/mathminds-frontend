@@ -1,89 +1,101 @@
-// frontend/src/hooks/usePaginatedFetch.js
+// hooks/usePaginatedFetch.js
+// ✅ САЙЖРУУЛСАН хувилбар - Error callback дэмжсэн
+// (!!! ШИНЭЧИЛСЭН: loadMore үед шүүлтүүрийг хадгалдаг болсон)
+
 import { useState, useCallback } from 'react';
 import apiClient from '../api/axiosConfig';
 
-/**
- * Pagination бүхий өгөгдөл татах универсал hook
- *
- * @param {string} endpoint - API endpoint
- * @returns {Object} - { data, loading, error, hasMore, fetchData, loadMore, refresh }
- */
-const usePaginatedFetch = (endpoint) => {
+const usePaginatedFetch = (endpoint, options = {}) => {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
     const [error, setError] = useState(null);
-    const [nextPageUrl, setNextPageUrl] = useState(null);
+    const [nextPage, setNextPage] = useState(null);
+    const [hasMore, setHasMore] = useState(true);
 
-    // Эхний ачаалалт эсвэл шинэ хайлт
-    const fetchData = useCallback(async (params = {}) => {
-        try {
+    // (!!!) 1. Шүүлтүүрийг хадгалах state нэмэх
+    const [currentParams, setCurrentParams] = useState({});
+
+    const { onError } = options;
+
+    const fetchData = useCallback(async (params = {}, reset = true) => {
+        if (reset) {
             setLoading(true);
-            setError(null);
-            setNextPageUrl(null);
+            setData([]);
+            setNextPage(null);
+            setHasMore(true);
+            // (!!!) 2. Шинэ шүүлтүүрийг state-д хадгалах
+            setCurrentParams(params);
+        }
 
-            const response = await apiClient.get(endpoint, { params });
+        setError(null);
 
-            if (response.data && Array.isArray(response.data.results)) {
-                setData(response.data.results);
-                setNextPageUrl(response.data.next);
-            } else if (Array.isArray(response.data)) {
-                setData(response.data);
-                setNextPageUrl(null);
-            } else {
-                console.warn("Unexpected API response format:", response.data);
-                setData([]);
-            }
+        try {
+            const response = await apiClient.get(endpoint, {
+                // (!!!) 3. 'params'-г энд ашиглах
+                params: { ...params, page: 1 }
+            });
+
+            setData(response.data.results || response.data);
+            setNextPage(response.data.next);
+            setHasMore(!!response.data.next);
         } catch (err) {
-            console.error('Fetch error:', err);
-            setError(err.response?.data?.detail || 'Өгөгдөл татахад алдаа гарлаа.');
+            const errorMessage = err.response?.data?.message ||
+                err.message ||
+                'Алдаа гарлаа';
+            setError(errorMessage);
+            if (onError) onError(err);
         } finally {
             setLoading(false);
         }
-    }, [endpoint]);
+    }, [endpoint, onError]);
 
-    // Дараагийн хуудас ачаалах
     const loadMore = useCallback(async () => {
-        if (!nextPageUrl || loadingMore) return;
+        if (!hasMore || loadingMore || !nextPage) return;
+
+        setLoadingMore(true);
+        setError(null);
 
         try {
-            setLoadingMore(true);
-            setError(null);
+            const urlParams = new URLSearchParams(nextPage.split('?')[1]);
+            const pageNum = urlParams.get('page');
 
-            const response = await apiClient.get(nextPageUrl);
+            const response = await apiClient.get(endpoint, {
+                // (!!!) 4. Хадгалсан шүүлтүүр дээр 'page' дугаарыг нэмэх
+                params: { ...currentParams, page: pageNum }
+            });
 
-            if (response.data && Array.isArray(response.data.results)) {
-                if (response.data.results.length > 0) {
-                    setData(prev => [...prev, ...response.data.results]);
-                    setNextPageUrl(response.data.next);
-                } else {
-                    setNextPageUrl(null);
-                }
-            } else {
-                setNextPageUrl(null);
-            }
+            setData(prev => [...prev, ...(response.data.results || response.data)]);
+            setNextPage(response.data.next);
+            setHasMore(!!response.data.next);
         } catch (err) {
-            console.error('Load more error:', err);
-            setError('Нэмэлт өгөгдөл татахад алдаа гарлаа.');
+            const errorMessage = err.response?.data?.message ||
+                err.message ||
+                'Алдаа гарлаа';
+            setError(errorMessage);
+            if (onError) onError(err);
+            throw err;
         } finally {
             setLoadingMore(false);
         }
-    }, [nextPageUrl, loadingMore]);
+        // (!!!) 5. 'currentParams'-г dependency-д нэмэх
+    }, [endpoint, nextPage, hasMore, loadingMore, onError, currentParams]);
 
-    // Бүх өгөгдлийг дахин ачаалах
-    const refresh = useCallback((params = {}) => {
-        return fetchData(params);
-    }, [fetchData]);
+    const refresh = useCallback(() => {
+        // (!!!) 6. Refresh хийхдээ хадгалсан шүүлтүүрийг ашиглах
+        fetchData(currentParams);
+    }, [fetchData, currentParams]);
 
     return {
         data,
         loading,
         loadingMore,
         error,
-        hasMore: !!nextPageUrl,
+        hasMore,
         fetchData,
         loadMore,
-        refresh
+        refresh,
+        setData
     };
 };
 

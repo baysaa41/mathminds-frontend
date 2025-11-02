@@ -245,7 +245,7 @@ function ProfilePage() {
                                                 title={
                                                     <>
                                                         <Coins size={16} className="me-1" />
-                                                        Coin илгээх
+                                                        Зоос илгээх
                                                     </>
                                                 }
                                             >
@@ -278,18 +278,18 @@ function ProfilePage() {
                                 <ListGroup variant="flush">
                                     <ListGroup.Item className="d-flex justify-content-between px-0">
                                         <span className="text-muted">И-мэйл:</span>
-                                        <em>{profile.email || 'Нууцлал'}</em>
+                                        <b>{profile.email || 'Нууцлал'}</b>
                                     </ListGroup.Item>
                                     <ListGroup.Item className="d-flex justify-content-between px-0">
                                         <span className="text-muted">Бүртгүүлсэн:</span>
-                                        <em>{formatDate(profile.date_joined)}</em>
+                                        <b>{formatDate(profile.date_joined)}</b>
                                     </ListGroup.Item>
                                 </ListGroup>
                             </Col>
 
                             {/* Баруун тал: Coin балансууд */}
                             <Col md={6} className="mt-4 mt-md-0">
-                                <h5 className="fw-semibold mb-3">Coin балансууд 💰</h5>
+                                <h5 className="fw-semibold mb-3">Хэтэвчин дэх зоос 💰</h5>
                                 <ListGroup variant="flush">
                                     {coinTypes.map((coin) => (
                                         <ListGroup.Item key={coin.value} className="d-flex justify-content-between px-0">
@@ -312,13 +312,13 @@ function ProfilePage() {
                                         <span className="text-muted">
                                             <CheckCircle size={16} className="text-success me-1" /> Бодсон:
                                         </span>
-                                        <em>{profile.number_solved || 0}</em>
+                                        <b>{profile.number_solved || 0}</b>
                                     </ListGroup.Item>
                                     <ListGroup.Item className="d-flex justify-content-between px-0">
                                         <span className="text-muted">
                                             <BarChart2 size={16} className="text-info me-1" /> Амжилт:
                                         </span>
-                                        <em>{(profile.success_rate || 0).toFixed(1)}%</em>
+                                        <b>{(profile.success_rate || 0).toFixed(1)}%</b>
                                     </ListGroup.Item>
                                 </ListGroup>
                             </Col>
