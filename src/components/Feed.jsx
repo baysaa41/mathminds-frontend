@@ -1,173 +1,118 @@
 // frontend/src/components/Feed.jsx
-// ✅ ШИНЭЧИЛСЭН: Post устгах + Pagination (Infinite Scroll) нэмсэн
+// ✅ ШИНЭЧИЛСЭН: Custom hooks, common components ашигласан, 20-оор pagination
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import apiClient from '../api/axiosConfig';
+import { useEffect, useCallback } from 'react';
 import PostCard from './PostCard';
 import CreatePostForm from './CreatePostForm';
 
+// ✅ Custom Hooks
+import usePaginatedFetch from '../hooks/usePagenatedFetch.js';
+import useInfiniteScroll from '../hooks/useInfiniteScroll.js';
+
+// ✅ Common Components
+import LoadingState from './common/LoadingState.jsx';
+import ErrorState from './common/ErrorState.jsx';
+import EmptyState from './common/EmptyState.jsx';
+
+// ✅ Constants
+import { API_ENDPOINTS } from '../constants/api.js';
+import { MESSAGES } from '../constants/messages.js';
+
 import Spinner from 'react-bootstrap/Spinner';
 import Alert from 'react-bootstrap/Alert';
+import { FileText } from 'lucide-react';
 
 const Feed = () => {
-    const [posts, setPosts] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    // ✅ Custom Hooks ашиглах
+    const {
+        data: posts,
+        loading,
+        loadingMore,
+        error,
+        hasMore,
+        fetchData,
+        loadMore,
+        refresh,
+        setData
+    } = usePaginatedFetch(API_ENDPOINTS.MINDS.POSTS);
 
-    // (!!!) Pagination-д зориулсан state-үүд
-    const [nextPageUrl, setNextPageUrl] = useState(null);
-    const [loadingMore, setLoadingMore] = useState(false);
+    const { triggerRef } = useInfiniteScroll(loadMore, hasMore, loadingMore);
 
-    // (!!!) Pagination-д зориулсан ref-үүд
-    const loadMoreTriggerRef = useRef(null);
-    const isHandlingLoadMore = useRef(false);
-
+    // Анхны ачаалалт
     useEffect(() => {
-        fetchPosts();
-    }, []);
+        fetchData();
+    }, [fetchData]);
 
-    const fetchPosts = async () => {
-        try {
-            setLoading(true);
-            setError(null);
-            setNextPageUrl(null); // (!!!) Анхны ачаалалт тул цэвэрлэх
-            isHandlingLoadMore.current = true; // (!!!) Ачааллаж эхлэх
+    // Пост устгасан үед
+    const handlePostDeleted = useCallback((deletedPostId) => {
+        setData(prevPosts => prevPosts.filter(post => post.id !== deletedPostId));
+    }, [setData]);
 
-            const response = await apiClient.get('/api/minds/posts/');
-
-            // Pagination шалгах
-            if (response.data.results) {
-                setPosts(response.data.results);
-                setNextPageUrl(response.data.next); // (!!!) Дараагийн хуудсыг хадгалах
-            } else if (Array.isArray(response.data)) {
-                // (Fallback: Хэрэв pagination-гүй хариу ирвэл)
-                setPosts(response.data);
-                setNextPageUrl(null);
-            } else {
-                setPosts([]);
-                setNextPageUrl(null);
-                console.error('Unexpected API response format:', response.data);
-            }
-        } catch (err) {
-            setError("Пост уншихад алдаа гарлаа. Backend сервер ажиллаж байгаа эсэхийг шалгана уу.");
-            console.error('API Error:', err);
-            console.error('Response:', err.response?.data);
-        } finally {
-            setLoading(false);
-            // (!!!) Богино хугацааны дараа дахин ачаалахыг зөвшөөрөх
-            setTimeout(() => { isHandlingLoadMore.current = false; }, 500);
-        }
-    };
-
-    // (!!!) --- ШИНЭ ФУНКЦ: Нэмэлт постуудыг ачаалах ---
-    const handleLoadMore = useCallback(async () => {
-        if (!nextPageUrl || isHandlingLoadMore.current) {
-            return;
-        }
-
-        isHandlingLoadMore.current = true;
-        setLoadingMore(true);
-        setError(null);
-
-        try {
-            const response = await apiClient.get(nextPageUrl);
-
-            if (response.data && Array.isArray(response.data.results)) {
-                if (response.data.results.length > 0) {
-                    setPosts(prevPosts => [...prevPosts, ...response.data.results]); // (!!!) "НЭМЭХ"
-                    setNextPageUrl(response.data.next);
-                } else {
-                    setNextPageUrl(null);
-                }
-            } else {
-                setNextPageUrl(null);
-            }
-        } catch (err) {
-            setError('Нэмэлт пост ачааллахад алдаа гарлаа.');
-            console.error(err);
-        } finally {
-            setLoadingMore(false);
-            setTimeout(() => {
-                isHandlingLoadMore.current = false;
-            }, 500);
-        }
-    }, [nextPageUrl]);
-
-    // (!!!) --- ШИНЭ EFFECT: Intersection Observer ---
-    useEffect(() => {
-        const observer = new IntersectionObserver(
-            (entries) => {
-                const firstEntry = entries[0];
-                if (firstEntry.isIntersecting && nextPageUrl && !isHandlingLoadMore.current) {
-                    handleLoadMore();
-                }
-            }, { threshold: 1.0 }
-        );
-        const currentTrigger = loadMoreTriggerRef.current;
-        if (currentTrigger) observer.observe(currentTrigger);
-        return () => { if (currentTrigger) observer.unobserve(currentTrigger); };
-    }, [nextPageUrl, handleLoadMore]);
-
-
-    // Шинэ пост үүсгэсэн үед (хэвээрээ)
-    const handlePostCreated = (newPost) => {
-        setPosts(prevPosts => [newPost, ...prevPosts]);
-    };
-
-    // ✅ Пост устгасан үед (хэвээрээ)
-    const handlePostDeleted = (deletedPostId) => {
-        setPosts(prevPosts => prevPosts.filter(post => post.id !== deletedPostId));
-    };
-
-    // (!!!) Анхны ачааллыг шалгах (posts.length === 0 нэмсэн)
+    // ✅ Анхны ачааллын үед Loading State
     if (loading && posts.length === 0) {
-        return (
-            <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '200px' }}>
-                <Spinner animation="border" role="status">
-                    <span className="visually-hidden">Ачааллаж байна...</span>
-                </Spinner>
-            </div>
-        );
+        return <LoadingState message={MESSAGES.LOADING.POSTS} fullPage />;
     }
 
     return (
         <div>
-            {/* Пост үүсгэх форм */}
-            <CreatePostForm onPostCreated={handlePostCreated} />
+            {/* ✅ Шинэ пост үүсгэх форм - refresh функцийг дамжуулна */}
+            <CreatePostForm onPostCreated={refresh} />
 
-            {/* Error */}
-            {error && (
+            {/* ✅ Error State */}
+            {error && posts.length === 0 && (
+                <ErrorState
+                    message={error}
+                    onRetry={refresh}
+                />
+            )}
+
+            {/* Хэсэгчилсэн алдаа (нэмэлт ачааллах үед) */}
+            {error && posts.length > 0 && (
                 <Alert variant="danger" className="m-3">
                     {error}
                 </Alert>
             )}
 
+            {/* ✅ Empty State */}
+            {!loading && posts.length === 0 && (
+                <EmptyState
+                    icon={FileText}
+                    title={MESSAGES.EMPTY.NO_POSTS}
+                    message="Та эхний постыг бичээрэй!"
+                />
+            )}
+
             {/* Posts list */}
-            {/* (!!!) Хоосон үеийн шалгалтыг !loading нэмж сайжруулсан */}
-            {!loading && posts && posts.length > 0 ? (
-                posts.map(post => (
+            {posts.length > 0 && (
+                posts.filter(post => post && post.id).map(post => (
                     <PostCard
                         key={post.id}
                         post={post}
                         onPostDeleted={handlePostDeleted}
                     />
                 ))
-            ) : (
-                !loading && (
-                    <div className="text-center p-5 text-muted">
-                        Одоогоор харуулах пост байхгүй байна. Та эхний постыг бичээрэй!
-                    </div>
-                )
             )}
 
-            {/* (!!!) Infinite Scroll-н trigger */}
-            <div ref={loadMoreTriggerRef} style={{ height: '20px' }} />
+            {/* ✅ Infinite Scroll-н trigger */}
+            <div ref={triggerRef} style={{ height: '20px' }} />
 
-            {/* (!!!) Нэмэлт ачааллын spinner */}
+            {/* ✅ Нэмэлт ачааллын spinner */}
             {loadingMore && (
                 <div className="text-center mt-4 py-3">
                     <Spinner as="span" animation="border" size="sm" />
-                    <span className="ms-2">Ачааллаж байна...</span>
+                    <span className="ms-2">{MESSAGES.LOADING.DEFAULT}</span>
+                </div>
+            )}
+
+            {/* ✅ Stats footer */}
+            {posts.length > 0 && (
+                <div className="mt-4 p-3 bg-light rounded">
+                    <small className="text-muted">
+                        Нийт: <strong>{posts.length}</strong> пост
+                        {hasMore && (
+                            <> • {MESSAGES.INFO.SCROLL_FOR_MORE}</>
+                        )}
+                    </small>
                 </div>
             )}
         </div>

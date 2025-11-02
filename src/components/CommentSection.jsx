@@ -18,6 +18,9 @@ import Modal from 'react-bootstrap/Modal';
 // Icons
 import { MessageCircle, Send, Edit2, Trash2, X } from 'lucide-react';
 
+// avatar
+import UserAvatar from "./UserAvatar";
+
 // --- CommentItem компонент ---
 const CommentItem = ({ comment, onEdit, onDelete, currentUserId }) => {
     const [isEditing, setIsEditing] = useState(false);
@@ -52,18 +55,15 @@ const CommentItem = ({ comment, onEdit, onDelete, currentUserId }) => {
             <Card.Body className="p-3">
                 <Stack direction="horizontal" gap={2} className="mb-2">
                     {/* Avatar */}
-                    <div
-                        className="d-flex align-items-center justify-content-center bg-secondary bg-opacity-10 rounded-circle text-secondary fw-bold flex-shrink-0"
-                        style={{ width: '32px', height: '32px', fontSize: '0.85rem' }}
-                    >
-                        {comment.author?.first_name?.charAt(0).toUpperCase() || '?'}
+                    <div className="flex-shrink-0">
+                        <UserAvatar user={comment.author} size={32} />
                     </div>
 
                     {/* Author info */}
                     <div className="flex-grow-1 min-w-0">
                         <Stack direction="horizontal" gap={2} className="align-items-baseline flex-wrap">
                             <span className="fw-semibold small text-truncate">
-                                {comment.author?.first_name || 'User'} {comment.author?.last_name || ''}
+                                {comment.author?.first_name || 'User'}
                             </span>
                             <span className="text-muted" style={{ fontSize: '0.75rem' }}>
                                 {new Date(comment.created_at).toLocaleString('mn-MN', {

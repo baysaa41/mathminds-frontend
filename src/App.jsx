@@ -44,13 +44,17 @@ import CoinTransferPage from './pages/CoinTransferPage.jsx';
 import ClubsRoutes from './routes/ClubsRoutes';
 
 // Нэвтрэх болон бусад хуудсууд
-import UnifiedLoginPage from './pages/UnifiedLoginPage.jsx';
+import LoginPage from './pages/LoginPage.jsx';
+import RegisterPage from './pages/RegisterPage.jsx';                              // ✅ ШИНЭ
+import PasswordResetRequestPage from './pages/PasswordResetRequestPage.jsx';      // ✅ ШИНЭ
+import PasswordResetConfirmPage from './pages/PasswordResetConfirmPage.jsx';
 import CallbackPage from './pages/CallbackPage';
 import HomePage from './pages/HomePage';
 import DashboardPage from './pages/DashboardPage';
 
 // Хамгаалалт
 import ProtectedRoute from './components/ProtectedRoute';
+import AdminRoute from './components/AdminRoute';
 
 function App() {
     return (
@@ -58,7 +62,10 @@ function App() {
             <Routes>
                 {/* Public routes */}
                 <Route path="/welcome" element={<HomePage />} />
-                <Route path="/login" element={<UnifiedLoginPage />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
+                <Route path="/password-reset" element={<PasswordResetRequestPage />} />
+                <Route path="/password-reset/confirm/:uidb64/:token" element={<PasswordResetConfirmPage />} />
                 <Route path="/callback" element={<CallbackPage />} />
 
                 {/* Хамгаалагдсан хуудсууд - Layout дотор */}
@@ -106,7 +113,7 @@ function App() {
                 </Route>
 
                 {/* Dashboard - Layout-аас гадуур */}
-                <Route path="/dashboard" element={ <ProtectedRoute><DashboardPage /></ProtectedRoute> } />
+                <Route path="/admin" element={ <AdminRoute><DashboardPage /></AdminRoute> } />
 
                 {/* Catch all */}
                 <Route path="*" element={<Navigate to="/" replace />} />

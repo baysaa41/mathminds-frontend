@@ -1,4 +1,4 @@
-// frontend/src/pages/FollowingPage.jsx
+// frontend/src/pages/FollowingPage.jsx (ШИНЭЧИЛСЭН: UserAvatar компонент ашигласан)
 
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -8,11 +8,11 @@ import apiService from '../services/apiService';
 import Container from 'react-bootstrap/Container';
 import Card from 'react-bootstrap/Card';
 import ListGroup from 'react-bootstrap/ListGroup';
-import Image from 'react-bootstrap/Image';
 import Spinner from 'react-bootstrap/Spinner';
 import Alert from 'react-bootstrap/Alert';
 import Button from 'react-bootstrap/Button';
 import { ArrowLeft, User } from 'lucide-react';
+import UserAvatar from '../components/UserAvatar';
 
 function FollowingPage() {
     const { username } = useParams();
@@ -28,7 +28,15 @@ function FollowingPage() {
             setError(null);
             try {
                 const data = await apiService.getUserFollowing(username);
-                setFollowing(data);
+                // API pagination хэлбэртэй буцаасан бол
+                if (data && data.results && Array.isArray(data.results)) {
+                    setFollowing(data.results);
+                } else if (Array.isArray(data)) {
+                    setFollowing(data);
+                } else {
+                    console.error('Unexpected API response format:', data);
+                    setFollowing([]);
+                }
             } catch (err) {
                 setError(err.message || 'Дагаж буй хүмүүсийн жагсаалт татахад алдаа гарлаа.');
             } finally {
@@ -103,13 +111,7 @@ function FollowingPage() {
                                     className="d-flex align-items-center py-3"
                                     style={{ cursor: 'pointer' }}
                                 >
-                                    <Image
-                                        src={user.picture_url || `https://ui-avatars.com/api/?name=${user.first_name || user.username}&background=random&size=48`}
-                                        roundedCircle
-                                        width={48}
-                                        height={48}
-                                        className="me-3"
-                                    />
+                                    <UserAvatar user={user} size={48} className="me-3" />
                                     <div>
                                         <div className="fw-semibold">
                                             {user.first_name} {user.last_name}

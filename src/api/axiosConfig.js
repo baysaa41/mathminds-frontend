@@ -4,6 +4,7 @@ import axios from 'axios';
 import authService from '../services/authService';
 
 const apiClient = axios.create({
+    //baseURL: 'https://api.mathminds.club',
     baseURL: 'http://127.0.0.1:8000', // API-ийн үндсэн хаяг
     headers: {
         'Content-Type': 'application/json'

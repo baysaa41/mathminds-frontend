@@ -15,7 +15,7 @@ function HomePage() {
             padding: '20px',
             textAlign: 'center'
         }}>
-            <h1>🧮 MathMinds Club</h1>
+            <h1>🧮 MathMinds.Club</h1>
             <p>Математикийн сургалтын платформ</p>
 
             {isAuthenticated && user ? (

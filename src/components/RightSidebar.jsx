@@ -1,5 +1,6 @@
 // frontend/src/components/RightSidebar.jsx
 // ✅ ЗАСВАРЛАСАН: Null check болон error handling нэмсэн
+// (!!!) ШИНЭЧИЛСЭН: LaTeX зөвлөгөөний widget нэмсэн
 import { useState, useEffect } from 'react';
 import apiClient from '../api/axiosConfig';
 import { TrendingUp, Eye, Heart, MessageCircle } from 'lucide-react';
@@ -8,6 +9,9 @@ import ListGroup from 'react-bootstrap/ListGroup';
 import Badge from 'react-bootstrap/Badge';
 import { useNavigate } from 'react-router-dom';
 import SearchBar from './common/SearchBar';
+
+// (!!!) 1. ШИНЭ ИМПОРТ
+import LatexTutorialWidget from './LatexTutorialWidget';
 
 const RightSidebar = () => {
     const [trendingPosts, setTrendingPosts] = useState([]);
@@ -81,6 +85,30 @@ const RightSidebar = () => {
     // ✅ ЗАСВАР: Пост байхгүй тохиолдол
     if (trendingPosts.length === 0) {
         return (
+            // (!!!) 2. Олон компонент буцаахын тулд <React.Fragment> (эсвэл <>) ашиглах
+            <>
+                <Card className="border-0 shadow-sm">
+                    <Card.Header className="bg-white border-bottom">
+                        <div className="d-flex align-items-center">
+                            <TrendingUp className="text-danger me-2" size={20} />
+                            <strong>Trending</strong>
+                        </div>
+                    </Card.Header>
+                    <Card.Body className="text-center text-muted">
+                        Trending пост байхгүй байна
+                    </Card.Body>
+                    <SearchBar />
+                </Card>
+
+                {/* (!!!) 3. ШИНЭ WIDGET-Г НЭМЭХ */}
+                <LatexTutorialWidget />
+            </>
+        );
+    }
+
+    return (
+        // (!!!) 4. Олон компонент буцаахын тулд <React.Fragment> (эсвэл <>) ашиглах
+        <>
             <Card className="border-0 shadow-sm">
                 <Card.Header className="bg-white border-bottom">
                     <div className="d-flex align-items-center">
@@ -88,51 +116,36 @@ const RightSidebar = () => {
                         <strong>Trending</strong>
                     </div>
                 </Card.Header>
-                <Card.Body className="text-center text-muted">
-                    Trending пост байхгүй байна
-                </Card.Body>
-                <SearchBar />
-            </Card>
-        );
-    }
-
-    return (
-        <Card className="border-0 shadow-sm">
-            <Card.Header className="bg-white border-bottom">
-                <div className="d-flex align-items-center">
-                    <TrendingUp className="text-danger me-2" size={20} />
-                    <strong>Trending</strong>
-                </div>
-            </Card.Header>
-            <ListGroup variant="flush">
-                {trendingPosts.map((post, index) => (
-                    <ListGroup.Item
-                        key={post.id}
-                        action
-                        onClick={() => handlePostClick(post)}
-                        className="cursor-pointer"
-                    >
-                        <div className="d-flex align-items-start">
-                            <Badge bg="secondary" className="me-2">#{index + 1}</Badge>
-                            <div className="flex-grow-1">
-                                <div className="fw-semibold small mb-1">
-                                    {/* ✅ ЗАСВАР: Аюулгүй агуулга харуулах */}
-                                    {getSafeContent(post.content, 60)}
-                                </div>
-                                <div className="d-flex gap-3 text-muted" style={{ fontSize: '0.75rem' }}>
-                                    <span><Eye size={12} /> {post.view_count || 0}</span>
-                                    <span><Heart size={12} /> {post.favorite_count || 0}</span>
-                                    <span><MessageCircle size={12} /> {post.comments_count || 0}</span>
+                <ListGroup variant="flush">
+                    {trendingPosts.map((post, index) => (
+                        <ListGroup.Item
+                            key={post.id}
+                            action
+                            onClick={() => handlePostClick(post)}
+                            className="cursor-pointer"
+                        >
+                            <div className="d-flex align-items-start">
+                                <Badge bg="secondary" className="me-2">#{index + 1}</Badge>
+                                <div className="flex-grow-1">
+                                    <div className="fw-semibold small mb-1">
+                                        {/* ✅ ЗАСВАР: Аюулгүй агуулга харуулах */}
+                                        {getSafeContent(post.content, 60)}
+                                    </div>
+                                    <div className="d-flex gap-3 text-muted" style={{ fontSize: '0.75rem' }}>
+                                        <span><Eye size={12} /> {post.view_count || 0}</span>
+                                        <span><Heart size={12} /> {post.favorite_count || 0}</span>
+                                        <span><MessageCircle size={12} /> {post.comments_count || 0}</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </ListGroup.Item>
-                ))}
-            </ListGroup>
-            <div className="px-2">
-                <SearchBar />
-            </div>
-        </Card>
+                        </ListGroup.Item>
+                    ))}
+                </ListGroup>
+            </Card>
+
+            {/* (!!!) 5. ШИНЭ WIDGET-Г НЭМЭХ */}
+            <LatexTutorialWidget />
+        </>
     );
 };
 

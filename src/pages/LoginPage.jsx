@@ -1,4 +1,4 @@
-// frontend/src/components/UnifiedLoginPage.jsx
+// frontend/src/components/LoginPage.jsx
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -13,7 +13,7 @@ import Button from 'react-bootstrap/Button';
 import Alert from 'react-bootstrap/Alert';
 import Spinner from 'react-bootstrap/Spinner';
 
-const UnifiedLoginPage = () => {
+const LoginPage = () => {
     // --- (!!!) ЗАСВАР: 'email' state-г 'username' болгов ---
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
@@ -220,4 +220,4 @@ const UnifiedLoginPage = () => {
     );
 };
 
-export default UnifiedLoginPage;
+export default LoginPage;

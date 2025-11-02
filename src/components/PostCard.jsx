@@ -1,13 +1,13 @@
 // frontend/src/components/PostCard.jsx
-// (!!! ШИНЭЧИЛСЭН: IntersectionObserver ашиглан view count нэмдэг болгосон, threshold: 0.5)
+// (!!! ШИНЭЧИЛСЭН: UserAvatar компонент ашигласан, IntersectionObserver ашиглан view count нэмдэг)
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import apiClient from '../api/axiosConfig';
 import { useAuth } from '../context/AuthContext';
-// import { MathJax } from 'better-react-mathjax'; // LivePreview дотор байгаа
 import LivePreview from './LivePreview';
 import CommentSection from './CommentSection';
+import UserAvatar from './UserAvatar';
 
 // React Bootstrap
 import Card from 'react-bootstrap/Card';
@@ -19,45 +19,19 @@ import ToastContainer from 'react-bootstrap/ToastContainer';
 import Dropdown from 'react-bootstrap/Dropdown';
 import Badge from 'react-bootstrap/Badge';
 import Modal from 'react-bootstrap/Modal';
-import Image from 'react-bootstrap/Image';
-
-// ----------------- Туслах Функц: Аватар URL үүсгэх (ШИНЭЭР НЭМСЭН) -----------------
-const getAvatarUrl = (author) => {
-    if (!author) return '/default-avatar.png';
-
-    // 1. Профайл зураг байгаа бол түүнийг ашиглах
-    if (author.profile_pic_url) {
-        return author.profile_pic_url;
-    }
-
-    // 2. Профайл зураг байхгүй бол нэр эсвэл имэйлээс ЗӨВХӨН ЭХНИЙ ҮСГЭЭР АВТАР ҮҮСГЭХ
-    const nameForAvatar = author.first_name || author.email;
-
-    if (nameForAvatar) {
-        // nameForAvatar-г ашиглан, URL-д length=1 параметрийг нэмсэн.
-        return `https://ui-avatars.com/api/?name=${encodeURIComponent(nameForAvatar)}&length=1&background=random`;
-    }
-
-    return '/default-avatar.png';
-};
 
 
 // ----------------- PostContent компонент -----------------
 // Энэ компонент нь постын төрлөөс хамаарч үндсэн агуулгыг харуулдаг.
 // Repost дотор nested хэлбэрээр эх постыг харуулахад ашиглагддаг.
 const PostContent = ({ post }) => {
-    // console.log("Rendering PostContent for:", post); // Debugging
     if (!post) return null;
 
     // Энгийн пост эсвэл Quote repost-н текст
     if (post.content_type === 'post' || post.content_type === 'repost') {
         if (post.content) {
-            return (
-                // MathJax-г LivePreview дотор ашиглах тул энд MathJax байх шаардлагагүй
-                <LivePreview content={post.content} />
-            );
+            return <LivePreview content={post.content} />;
         }
-        // Repost хийсэн ч quote бичээгүй бол эсвэл энгийн пост хоосон бол юу ч харуулахгүй
         return null;
     }
 
@@ -69,11 +43,8 @@ const PostContent = ({ post }) => {
 
     // Контентын мэдээллийг гаргаж авах
     let title = relatedItem.title || relatedItem.name || `Контент #${relatedItem.id}`;
-    // Description-г богиносгох
     let description = relatedItem.statement || relatedItem.abstract || relatedItem.description || relatedItem.content || '';
-    // let description = descriptionRaw.length > 150 ? descriptionRaw.substring(0, 150) + '...' : descriptionRaw;
-
-    let linkTo = `/${post.content_type}/${relatedItem.id}`; // Контентын дэлгэрэнгүй хуудас руу холбох
+    let linkTo = `/${post.content_type}/${relatedItem.id}`;
     let typeLabel;
 
     // Төрлийн шошго тодорхойлох
@@ -91,16 +62,13 @@ const PostContent = ({ post }) => {
             <Card.Body>
                 <Badge bg="secondary" className="mb-2">{typeLabel}</Badge>
                 <Card.Title className="h6 mathjax-content mb-1">
-                    {/* Гарчгийг LivePreview ашиглан харуулах */}
                     <LivePreview content={title} />
                 </Card.Title>
                 {description && (
                     <Card.Text as="div" className="small text-muted mathjax-content">
-                        {/* Тайлбарыг LivePreview ашиглан харуулах */}
                         <LivePreview content={description} />
                     </Card.Text>
                 )}
-                {/* Карт дээр дарахад холбоотой контент руу үсрэх */}
                 <Link to={linkTo} className="stretched-link" aria-label={`View ${typeLabel}: ${title}`}></Link>
             </Card.Body>
         </Card>
@@ -182,7 +150,6 @@ const PostCard = ({ post, onPostDeleted }) => {
             const response = await apiClient.post(`/api/minds/posts/${post.id}/repost/`, { content: null });
             if (response.status === 201) {
                 showNotification('Амжилттай repost хийлээ!', 'success');
-                // TODO: Feed-г шинэчлэх
             } else if (response.status === 200) {
                 showNotification(response.data.message || 'Та аль хэдийн repost хийсэн байна.', 'info');
             }
@@ -221,53 +188,46 @@ const PostCard = ({ post, onPostDeleted }) => {
     // Пост дээр дарахад (дэлгэрэнгүй үзэх зорилгоор)
     const navigateToPost = () => {
         console.log("Navigating to post details for:", post.id);
-        // Энд view count нэмэхгүй
         // navigate(`/post/${post.id}`);
     };
 
     // --- Үзэлт нэмэх API дуудлага ---
     const incrementViewCount = useCallback(async () => {
-        // Хэрэглэгч нэвтрээгүй эсвэл аль хэдийн нэмсэн бол юу ч хийхгүй
         if (!user || viewCountIncremented) {
             return;
         }
 
-        console.log(`Incrementing view count for post ${post.id} (Intersection)`); // Debug
-        setViewCountIncremented(true); // Дахин дуудахаас сэргийлж шууд true болгох
+        console.log(`Incrementing view count for post ${post.id} (Intersection)`);
+        setViewCountIncremented(true);
 
         try {
             const response = await apiClient.post(`/api/minds/posts/${post.id}/view/`);
             if (response.data && response.data.view_count !== undefined) {
-                // Backend-с ирсэн тоогоор UI-г шинэчлэх
                 setCurrentViewCount(response.data.view_count);
             }
         } catch (err) {
             console.error(`Failed to increment view count for post ${post.id}:`, err);
-            // Алдаа гарвал дахин оролдох боломжтой болгох (optional)
-            // setViewCountIncremented(false);
         }
-    }, [user, post.id, viewCountIncremented]); // useCallback dependencies
+    }, [user, post.id, viewCountIncremented]);
 
     // --- Intersection Observer Effect ---
     useEffect(() => {
-        // Observer үүсгэх эсэхийг шалгах (зөвхөн нэвтэрсэн хэрэглэгчдэд + өмнө нь нэмээгүй бол)
         if (!user || viewCountIncremented) {
-            return; // Хэрэв нэвтрээгүй эсвэл тоог аль хэдийн нэмсэн бол observer үүсгэхгүй
+            return;
         }
 
         const observer = new IntersectionObserver(
             (entries) => {
                 const entry = entries[0];
                 if (entry.isIntersecting) {
-                    incrementViewCount(); // Дэлгэцэнд орж ирвэл тоог нэмэх функцыг дуудах
-                    // Тоог нэмсэн тул observer-г зогсоох
+                    incrementViewCount();
                     if (cardRef.current) {
                         observer.unobserve(cardRef.current);
                     }
                 }
             },
             {
-                threshold: 0.5 // (!!!) Картын 50% харагдахад ажиллана
+                threshold: 0.5
             }
         );
 
@@ -277,15 +237,12 @@ const PostCard = ({ post, onPostDeleted }) => {
             observer.observe(currentCardRef);
         }
 
-        // Cleanup function
         return () => {
             if (currentCardRef) {
                 observer.unobserve(currentCardRef);
             }
         };
-        // Энэ effect нь зөвхөн incrementViewCount функц өөрчлөгдөхөд (тийм ч олон удаа биш)
-        // эсвэл viewCountIncremented true болоход дахин ажиллана (гэхдээ return хийгээд зогсоно).
-    }, [incrementViewCount, viewCountIncremented, user]); // user-г нэмсэн
+    }, [incrementViewCount, viewCountIncremented, user]);
 
     // ----------------- Render Логик -----------------
     const canEditOrDelete = user && post.author && (user.id === post.author.id || user.is_staff);
@@ -294,8 +251,25 @@ const PostCard = ({ post, onPostDeleted }) => {
     const originalAuthor = originalPost?.author;
     const reposterAuthor = isRepost ? post.author : null;
 
-    if (isRepost && !originalPost) { /* ... Эх пост устсан үе ... */ }
-    if (!originalAuthor) { /* ... Зохиогч олдсонгүй үе ... */ }
+    if (isRepost && !originalPost) {
+        return (
+            <Card className="shadow-sm m-3 post-card">
+                <Card.Body>
+                    <p className="text-muted text-center">Эх пост устгагдсан байна.</p>
+                </Card.Body>
+            </Card>
+        );
+    }
+
+    if (!originalAuthor) {
+        return (
+            <Card className="shadow-sm m-3 post-card">
+                <Card.Body>
+                    <p className="text-muted text-center">Зохиогчийн мэдээлэл олдсонгүй.</p>
+                </Card.Body>
+            </Card>
+        );
+    }
 
     return (
         <>
@@ -334,7 +308,7 @@ const PostCard = ({ post, onPostDeleted }) => {
                 {isRepost && reposterAuthor && (
                     <div className="text-muted small px-3 pt-2 pb-1 border-bottom bg-light">
                         <i className="bi bi-repeat me-2"></i>
-                        <Link to={`/profile/${reposterAuthor.id}`} className="fw-bold text-decoration-none text-dark">
+                        <Link to={`/profile/${reposterAuthor.username}`} className="fw-bold text-decoration-none text-dark">
                             {reposterAuthor.first_name || reposterAuthor.email}
                         </Link>
                         <span className="ms-1">reminded</span>
@@ -353,15 +327,8 @@ const PostCard = ({ post, onPostDeleted }) => {
                     <div className={isRepost ? "reposted-content-wrapper border rounded p-3" : ""}>
                         {/* Зохиогчийн мэдээлэл */}
                         <Stack direction="horizontal" gap={3} className="align-items-start mb-2">
-                            <Link to={`/profile/${originalAuthor.id}`}>
-                                <Image
-                                    // 👈 getAvatarUrl функцийг ашигласан
-                                    src={getAvatarUrl(originalAuthor)}
-                                    alt={originalAuthor.first_name || originalAuthor.email}
-                                    width={40}
-                                    height={40}
-                                    roundedCircle
-                                />
+                            <Link to={`/profile/${originalAuthor.username}`}>
+                                <UserAvatar user={originalAuthor} size={40} />
                             </Link>
                             <div className="flex-grow-1">
                                 <Link to={`/profile/${originalAuthor.username}`} className="fw-bold text-decoration-none text-dark mb-0">
@@ -378,7 +345,6 @@ const PostCard = ({ post, onPostDeleted }) => {
                                         <i className="bi bi-three-dots-vertical"></i>
                                     </Dropdown.Toggle>
                                     <Dropdown.Menu>
-                                        {/* <Dropdown.Item onClick={handleEditClick}>Засах</Dropdown.Item> */}
                                         <Dropdown.Item onClick={handleDeleteClick} className="text-danger">
                                             Устгах
                                         </Dropdown.Item>
@@ -387,20 +353,18 @@ const PostCard = ({ post, onPostDeleted }) => {
                             )}
                         </Stack>
 
-                        {/* Постын үндсэн агуулга (зураг + текст/контент карт) */}
+                        {/* Постын үндсэн агуулга */}
                         <div
                             className="post-body-content"
-                            // onClick дээр navigateToPost байж болно (view count нэмэхгүй)
                             onClick={navigateToPost}
                             style={{ cursor: 'pointer' }}
                         >
                             {/* Зураг харуулах */}
                             {originalPost.image && (
-                                <Image
+                                <img
                                     src={originalPost.image}
-                                    fluid rounded
-                                    className="mb-2 post-image"
-                                    alt="Post image"
+                                    className="img-fluid rounded mb-2 post-image"
+                                    alt="Post"
                                 />
                             )}
                             {/* Текст эсвэл холбоотой контент */}
@@ -410,11 +374,10 @@ const PostCard = ({ post, onPostDeleted }) => {
 
                     {/* Repost постны өөрийн зураг (Quote repost үед) */}
                     {isRepost && post.image && (
-                        <Image
+                        <img
                             src={post.image}
-                            fluid rounded
-                            className="my-2 post-image"
-                            alt="Repost image"
+                            className="img-fluid rounded my-2 post-image"
+                            alt="Repost"
                         />
                     )}
 
@@ -446,16 +409,33 @@ const PostCard = ({ post, onPostDeleted }) => {
                 {/* Action товчнууд */}
                 <Card.Footer className="bg-white border-top-0 pt-0">
                     <Stack direction="horizontal" gap={3} className="post-actions align-items-center">
+
+                        {/* (!!!) ЗАСВАР ЭНД ХИЙГДЭВ */}
+
                         {/* Таалагдсан */}
                         <Button
                             variant="link"
-                            className={`text-decoration-none p-1 d-flex align-items-center ${isFavored ? 'text-danger' : 'text-muted'}`}
+                            /* * ЗАСВАР: Эцэг <Button> дээрх text-danger/text-muted-г хассан.
+                             * Энэ нь үргэлж 'text-muted' байх ба зөвхөн хүү элементүүд нь өнгөө өөрчилнө.
+                            */
+                            className={`text-decoration-none p-1 d-flex align-items-center text-muted`}
                             onClick={() => handleAction('favorite')}
                             title="Таалагдсан"
                         >
-                            <i className={`bi ${isFavored ? 'bi-heart-fill' : 'bi-heart'}`}></i>
-                            <span className="ms-1 small">{favoriteCount}</span>
+                            {/* * ЗАСВАР: Icon-д 'text-danger' нэмсэн.
+                             * 'text-muted' нь эцэг <Button>-с өвлөгдөнө.
+                            */}
+                            <i className={`bi ${isFavored ? 'bi-heart-fill text-danger' : 'bi-heart'}`}></i>
+
+                            {/* * ЗАСВАР: Тоонд 'text-danger' нэмсэн.
+                            */}
+                            <span className={`ms-1 small ${isFavored ? 'text-danger' : ''}`}>
+                                {favoriteCount}
+                            </span>
                         </Button>
+
+                        {/* (!!!) ЗАСВАРЫН ТӨГСГӨЛ */}
+
 
                         {/* Коммент тоо */}
                         <div className="text-muted p-1 d-flex align-items-center" style={{ cursor: 'default' }}>
@@ -463,7 +443,7 @@ const PostCard = ({ post, onPostDeleted }) => {
                             <span className="ms-1 small">{currentCommentCount}</span>
                         </div>
 
-                        {/* Үзсэн тоо (state-с авч харуулах) */}
+                        {/* Үзсэн тоо */}
                         <span className="text-muted small ms-2 d-flex align-items-center" title="Үзсэн тоо">
                            <i className="bi bi-eye me-1"></i>
                             {currentViewCount || 0}
@@ -478,7 +458,6 @@ const PostCard = ({ post, onPostDeleted }) => {
                         >
                             <i className={`bi ${isBookmarked ? 'bi-bookmark-fill' : 'bi-bookmark'}`}></i>
                         </Button>
-
 
                         {/* Repost товч */}
                         <Button

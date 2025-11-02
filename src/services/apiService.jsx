@@ -6,7 +6,7 @@ const apiService = {
     // ... (getUserProfile функц хэвээрээ) ...
     getUserProfile: async (username) => {
         try {
-            const response = await apiClient.get(`/users/api/profile/${username}/`);
+            const response = await apiClient.get(`users/profile/${username}/`);
             return response.data;
         } catch (error) {
             console.error("Failed to get user profile:", error);
@@ -26,7 +26,7 @@ const apiService = {
         console.log('DEBUG: Шинэчлэх хүсэлт илгээж байна...', profileData);
 
         try {
-            const response = await apiClient.put('/users/api/profile/update/', profileData);
+            const response = await apiClient.put('users/profile/update/', profileData);
 
             // (!!!) Хэрэв энд хүрвэл 200 OK ирсэн гэсэн үг
             console.log('DEBUG: Серверээс 200 OK хариу ирлээ:', response);
@@ -70,7 +70,7 @@ const apiService = {
      */
     followUser: async (username) => {
         try {
-            const response = await apiClient.post(`/users/api/users/${username}/follow/`);
+            const response = await apiClient.post(`/users/${username}/follow/`);
             return response.data;
         } catch (error) {
             console.error("Failed to follow user:", error);
@@ -89,7 +89,7 @@ const apiService = {
      */
     unfollowUser: async (username) => {
         try {
-            const response = await apiClient.post(`/users/api/users/${username}/unfollow/`);
+            const response = await apiClient.post(`/users/${username}/unfollow/`);
             return response.data;
         } catch (error) {
             console.error("Failed to unfollow user:", error);
@@ -108,7 +108,7 @@ const apiService = {
      */
     checkFollowStatus: async (username) => {
         try {
-            const response = await apiClient.get(`/users/api/users/${username}/follow-status/`);
+            const response = await apiClient.get(`/users/${username}/follow-status/`);
             return response.data;
         } catch (error) {
             console.error("Failed to check follow status:", error);
@@ -127,7 +127,7 @@ const apiService = {
      */
     getUserFollowers: async (username) => {
         try {
-            const response = await apiClient.get(`/users/api/users/${username}/followers/`);
+            const response = await apiClient.get(`/users/${username}/followers/`);
             return response.data;
         } catch (error) {
             console.error("Failed to get user followers:", error);
@@ -146,7 +146,7 @@ const apiService = {
      */
     getUserFollowing: async (username) => {
         try {
-            const response = await apiClient.get(`/users/api/users/${username}/following/`);
+            const response = await apiClient.get(`/users/${username}/following/`);
             return response.data;
         } catch (error) {
             console.error("Failed to get user following:", error);

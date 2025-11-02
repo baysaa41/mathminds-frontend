@@ -1,10 +1,12 @@
 // frontend/src/components/CreatePostForm.jsx
 // ✅ Twitter Style - Пост үүсгэх форм
+// (!!!) ШИНЭЧИЛСЭН: onPostCreated-г бүрэн object-оор дууддаг болсон
 
 import { useState } from 'react';
 import { MathJax } from 'better-react-mathjax';
 import apiClient from '../api/axiosConfig';
 import { useAuth } from '../context/AuthContext';
+import UserAvatar from './UserAvatar';
 
 // React Bootstrap
 import Card from 'react-bootstrap/Card';
@@ -14,7 +16,6 @@ import Stack from 'react-bootstrap/Stack';
 import Spinner from 'react-bootstrap/Spinner';
 import Alert from 'react-bootstrap/Alert';
 import Collapse from 'react-bootstrap/Collapse';
-import Image from 'react-bootstrap/Image'; // (!!! Нэмсэн)
 
 // Icons
 import { Send, Eye, EyeOff } from 'lucide-react';
@@ -43,9 +44,30 @@ const CreatePostForm = ({ onPostCreated }) => {
                 content_type: 'text' // Одоогоор зөвхөн текст пост
             });
 
+            // (!!!) ЗАСВАР ЭХЛЭЛ: API-с ирсэн хариуг бүрэн post object болгох
+            // API-с ирсэн response.data (жишээ нь, {id: 123, content: "..."}) нь
+            // post.user мэдээллийг бүрэн агуулаагүй байж болзошгүй.
+            // Тиймээс useAuth()-н "user" object-г ашиглан PostCard-д хэрэгтэй
+            // бүрэн object-г гараар үүсгэнэ.
+            const completeNewPost = {
+                ...response.data, // API-с ирсэн (id, content, created_at)
+                user: user,       // useAuth-с авсан бүрэн user object
+
+                // PostCard-д хэрэгтэй байж болох бусад талбаруудын анхны утга
+                favorite_count: 0,
+                comments_count: 0,
+                view_count: 0,
+                related_content: null,
+                is_favorited: false,
+                // created_at-г API буцаагаагүй бол одоогийн цагийг нэмнэ
+                created_at: response.data.created_at || new Date().toISOString()
+            };
+            // (!!!) ЗАСВАР ТӨГСГӨЛ
+
             // Success
             if (onPostCreated) {
-                onPostCreated(response.data);
+                // (!!!) Шинээр үүсгэсэн "бүрэн" object-г дамжуулах
+                onPostCreated(completeNewPost);
             }
 
             // Form цэвэрлэх
@@ -63,25 +85,14 @@ const CreatePostForm = ({ onPostCreated }) => {
         return null; // Нэвтрээгүй бол харуулахгүй
     }
 
-    // (!!!) Аватар URL үүсгэх логик (PostCard-с авсан)
-    const userAvatarUrl = user.profile_pic_url ||
-        `https://ui-avatars.com/api/?name=${encodeURIComponent(user.first_name || user.email)}&length=1&background=random`;
-
     return (
         <Card className="border-0 border-bottom rounded-0 mb-0">
             <Card.Body className="p-3">
                 <Form onSubmit={handleSubmit}>
                     <Stack direction="horizontal" gap={3} className="align-items-start mb-3">
-                        {/* Avatar (!!! Өөрчилсөн) */}
+                        {/* Avatar */}
                         <div className="flex-shrink-0">
-                            {/* Хэрэглэгчийн профайл зураг эсвэл эхний үсэгтэй аватарыг харуулна */}
-                            <Image
-                                src={userAvatarUrl}
-                                alt={user.first_name || user.email}
-                                width={40}
-                                height={40}
-                                roundedCircle
-                            />
+                            <UserAvatar user={user} size={40} />
                         </div>
 
                         {/* Textarea */}

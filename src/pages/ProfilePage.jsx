@@ -1,4 +1,4 @@
-// frontend/src/pages/ProfilePage.jsx (ДАГАЛТТАЙ ШИНЭЧИЛСЭН ХУВИЛБАР)
+// frontend/src/pages/ProfilePage.jsx (ШИНЭЧИЛСЭН: UserAvatar компонент ашигласан)
 
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -10,7 +10,6 @@ import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 import Card from 'react-bootstrap/Card';
-import Image from 'react-bootstrap/Image';
 import Spinner from 'react-bootstrap/Spinner';
 import Alert from 'react-bootstrap/Alert';
 import Button from 'react-bootstrap/Button';
@@ -19,8 +18,9 @@ import Stack from 'react-bootstrap/Stack';
 import Dropdown from 'react-bootstrap/Dropdown';
 import DropdownButton from 'react-bootstrap/DropdownButton';
 import Badge from 'react-bootstrap/Badge';
-import { User, Calendar, CheckCircle, BarChart2, Coins, UserPlus, UserMinus, Users } from 'lucide-react';
+import { User, CheckCircle, BarChart2, Coins, UserPlus, UserMinus, Users } from 'lucide-react';
 import { LinkContainer } from 'react-router-bootstrap';
+import UserAvatar from '../components/UserAvatar';
 
 function ProfilePage() {
     const { username } = useParams();
@@ -147,13 +147,10 @@ function ProfilePage() {
                     <Card.Header className="bg-light p-4 border-0">
                         <Row className="align-items-center">
                             <Col xs="auto">
-                                <Image
-                                    // (!!!) Аватар URL-г өөрчилсөн: length=1 нэмсэн
-                                    src={profile.picture_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.first_name || profile.username)}&length=1&background=random&size=96`}
-                                    roundedCircle
-                                    width={96}
-                                    height={96}
-                                    className="border border-2 border-white"
+                                <UserAvatar
+                                    user={profile}
+                                    size={96}
+                                    border={true}
                                 />
                             </Col>
                             <Col>

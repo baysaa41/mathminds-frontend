@@ -12,7 +12,8 @@ const MMO_CONFIG = {
     scope: 'profile',
 };
 
-const BACKEND_URL = 'http://127.0.0.1:8000';
+// const BACKEND_URL = 'http://127.0.0.1:8000';
+const BACKEND_URL = 'https://api.mathminds.club';
 
 // (!!!) ШИНЭ ХЭСЭГ: Token сэргээх үеийн "цоож"
 // Олон хүсэлт зэрэг 401 буцаах үед бүгд refresh хийхээс сэргийлнэ
@@ -81,10 +82,6 @@ class AuthService {
 
     // ... (Callback шийдэх хэвээрээ) ...
     async handleCallback(code, state) {
-        console.log('\n' + '='.repeat(60));
-        console.log('📥 handleCallback called');
-        console.log('  Code:', code);
-        console.log('  State from URL:', state);
         const savedState = sessionStorage.getItem('oauth_state');
         const codeVerifier = sessionStorage.getItem('code_verifier');
         console.log('  Saved state:', savedState);
