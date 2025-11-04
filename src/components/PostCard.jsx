@@ -1,42 +1,41 @@
 // frontend/src/components/PostCard.jsx
-// (!!! ШИНЭЧИЛСЭН: UserAvatar компонент ашигласан, IntersectionObserver ашиглан view count нэмдэг)
+// (!!! ШИНЭЧИЛСЭН: PostContent доторх stretched-link-г хассан)
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import apiClient from '../api/axiosConfig';
-import { useAuth } from '../context/AuthContext';
-import LivePreview from './LivePreview';
-import CommentSection from './CommentSection';
-import UserAvatar from './UserAvatar';
+import apiClient from '../api/axiosConfig'; //
+import { useAuth } from '../context/AuthContext'; //
+import LivePreview from './LivePreview'; //
+import CommentSection from './CommentSection'; //
+import UserAvatar from './UserAvatar'; //
 
 // React Bootstrap
-import Card from 'react-bootstrap/Card';
-import Stack from 'react-bootstrap/Stack';
-import Button from 'react-bootstrap/Button';
-import Spinner from 'react-bootstrap/Spinner';
-import Toast from 'react-bootstrap/Toast';
-import ToastContainer from 'react-bootstrap/ToastContainer';
-import Dropdown from 'react-bootstrap/Dropdown';
-import Badge from 'react-bootstrap/Badge';
-import Modal from 'react-bootstrap/Modal';
+import Card from 'react-bootstrap/Card'; //
+import Stack from 'react-bootstrap/Stack'; //
+import Button from 'react-bootstrap/Button'; //
+import Spinner from 'react-bootstrap/Spinner'; //
+import Toast from 'react-bootstrap/Toast'; //
+import ToastContainer from 'react-bootstrap/ToastContainer'; //
+import Dropdown from 'react-bootstrap/Dropdown'; //
+import Badge from 'react-bootstrap/Badge'; //
+import Modal from 'react-bootstrap/Modal'; //
 
 
 // ----------------- PostContent компонент -----------------
-// Энэ компонент нь постын төрлөөс хамаарч үндсэн агуулгыг харуулдаг.
-// Repost дотор nested хэлбэрээр эх постыг харуулахад ашиглагддаг.
+// (!!! ЭНЭ КОМПОНЕНТ ШИНЭЧЛЭГДСЭН)
 const PostContent = ({ post }) => {
     if (!post) return null;
 
     // Энгийн пост эсвэл Quote repost-н текст
-    if (post.content_type === 'post' || post.content_type === 'repost') {
+    if (post.content_type === 'post' || post.content_type === 'repost') { //
         if (post.content) {
-            return <LivePreview content={post.content} />;
+            return <LivePreview content={post.content} />; //
         }
         return null;
     }
 
     // Холбоотой контент (Бодлого, Томьёо, Өгүүлэл, Тест)
-    const relatedItem = post.related_problem || post.related_formula || post.related_article || post.related_quiz;
+    const relatedItem = post.related_problem || post.related_formula || post.related_article || post.related_quiz; //
     if (!relatedItem) {
         return <div className="text-muted fst-italic">[Холбоотой контент олдсонгүй]</div>;
     }
@@ -44,15 +43,16 @@ const PostContent = ({ post }) => {
     // Контентын мэдээллийг гаргаж авах
     let title = relatedItem.title || relatedItem.name || `Контент #${relatedItem.id}`;
     let description = relatedItem.statement || relatedItem.abstract || relatedItem.description || relatedItem.content || '';
-    let linkTo = `/${post.content_type}/${relatedItem.id}`;
+    // (!!!) Энэ линк одоо ашиглагдахгүй
+    // let linkTo = `/${post.content_type}/${relatedItem.id}`;
     let typeLabel;
 
     // Төрлийн шошго тодорхойлох
     switch (post.content_type) {
-        case 'problem': typeLabel = 'Бодлого'; break;
-        case 'formula': typeLabel = 'Томьёо'; break;
-        case 'article': typeLabel = 'Өгүүлэл'; break;
-        case 'quiz': typeLabel = 'Тест'; break;
+        case 'problem': typeLabel = 'Бодлого'; break; //
+        case 'formula': typeLabel = 'Томьёо'; break; //
+        case 'article': typeLabel = 'Өгүүлэл'; break; //
+        case 'quiz': typeLabel = 'Тест'; break; //
         default: typeLabel = 'Контент';
     }
 
@@ -69,7 +69,10 @@ const PostContent = ({ post }) => {
                         <LivePreview content={description} />
                     </Card.Text>
                 )}
-                <Link to={linkTo} className="stretched-link" aria-label={`View ${typeLabel}: ${title}`}></Link>
+                {/* (!!!) ЗАСВАР: Stretched link-г эндээс хассан.
+                    Ингэснээр эцэг элементийн onClick={navigateToPost} ажиллах болно.
+                */}
+                {/* <Link to={linkTo} className="stretched-link" ...></Link> */}
             </Card.Body>
         </Card>
     );
@@ -77,56 +80,54 @@ const PostContent = ({ post }) => {
 
 
 // ----------------- Үндсэн PostCard компонент -----------------
+// (!!! ЭНЭ КОМПОНЕНТЫН БУСАД ХЭСЭГ ӨӨРЧЛӨГДӨӨГҮЙ)
 const PostCard = ({ post, onPostDeleted }) => {
     const { user } = useAuth();
     const navigate = useNavigate();
 
     // State-үүд
-    const [isFavored, setIsFavorited] = useState(post.is_favorited);
-    const [favoriteCount, setFavoriteCount] = useState(post.favorite_count || 0);
-    const [isBookmarked, setIsBookmarked] = useState(post.is_bookmarked);
-    const [isReposting, setIsReposting] = useState(false);
-    const [isDeleting, setIsDeleting] = useState(false);
-    const [showToast, setShowToast] = useState(false);
-    const [toastMessage, setToastMessage] = useState('');
-    const [toastVariant, setToastVariant] = useState('success');
-    const [currentCommentCount, setCurrentCommentCount] = useState(post.comments_count || 0);
-    const [showDeleteModal, setShowDeleteModal] = useState(false);
-    // Үзсэн тоог state-д хадгалах
-    const [currentViewCount, setCurrentViewCount] = useState(
-        (post.reposted_post ? post.reposted_post.view_count : post.view_count) || 0
+    const [isFavored, setIsFavorited] = useState(post.is_favorited); //
+    const [favoriteCount, setFavoriteCount] = useState(post.favorite_count || 0); //
+    const [isBookmarked, setIsBookmarked] = useState(post.is_bookmarked); //
+    const [isReposting, setIsReposting] = useState(false); //
+    const [isDeleting, setIsDeleting] = useState(false); //
+    const [showToast, setShowToast] = useState(false); //
+    const [toastMessage, setToastMessage] = useState(''); //
+    const [toastVariant, setToastVariant] = useState('success'); //
+    const [currentCommentCount, setCurrentCommentCount] = useState(post.comments_count || 0); //
+    const [showDeleteModal, setShowDeleteModal] = useState(false); //
+    const [currentViewCount, setCurrentViewCount] = useState( //
+        (post.reposted_post ? post.reposted_post.view_count : post.view_count) || 0 //
     );
-    // Үзэлтийг бүртгэсэн эсэхийг хадгалах state
-    const [viewCountIncremented, setViewCountIncremented] = useState(false);
-    // IntersectionObserver-т зориулсан ref
-    const cardRef = useRef(null);
+    const [viewCountIncremented, setViewCountIncremented] = useState(false); //
+    const cardRef = useRef(null); //
 
     // ----------------- Туслах функцууд -----------------
-    const showNotification = (message, variant = 'success') => {
+    const showNotification = (message, variant = 'success') => { //
         setToastMessage(message);
         setToastVariant(variant);
         setShowToast(true);
     };
 
     // Like, Bookmark хийх функц
-    const handleAction = async (actionType) => {
+    const handleAction = async (actionType) => { //
         if (!user) {
             showNotification('Энэ үйлдлийг хийхийн тулд нэвтэрнэ үү.', 'warning');
             return;
         }
         let url;
         switch (actionType) {
-            case 'favorite': url = `/api/minds/posts/${post.id}/favorite/`; break;
-            case 'bookmark': url = `/api/minds/posts/${post.id}/bookmark/`; break;
+            case 'favorite': url = `/api/minds/posts/${post.id}/favorite/`; break; //
+            case 'bookmark': url = `/api/minds/posts/${post.id}/bookmark/`; break; //
             default: return;
         }
         try {
             const response = await apiClient.post(url);
             if (actionType === 'favorite') {
-                setIsFavorited(response.data.is_favorited);
-                setFavoriteCount(response.data.favorite_count);
+                setIsFavorited(response.data.is_favorited); //
+                setFavoriteCount(response.data.favorite_count); //
             } else if (actionType === 'bookmark') {
-                setIsBookmarked(response.data.is_bookmarked);
+                setIsBookmarked(response.data.is_bookmarked); //
             }
         } catch (err) {
             console.error(`Failed to ${actionType} post:`, err);
@@ -135,19 +136,19 @@ const PostCard = ({ post, onPostDeleted }) => {
     };
 
     // Repost хийх функц
-    const handleRepost = async () => {
+    const handleRepost = async () => { //
         if (!user) {
             showNotification('Repost хийхийн тулд нэвтэрнэ үү.', 'warning');
             return;
         }
         if (isReposting) return;
-        if (post.content_type === 'repost') {
-            showNotification('Repost хийгдсэн постыг дахин repost хийх боломжгүй.', 'warning');
+        if (post.content_type === 'repost') { //
+            showNotification('Repost хийгдсэн постыг дахин repost хийх боломжгүй.', 'warning'); //
             return;
         }
         setIsReposting(true);
         try {
-            const response = await apiClient.post(`/api/minds/posts/${post.id}/repost/`, { content: null });
+            const response = await apiClient.post(`/api/minds/posts/${post.id}/repost/`, { content: null }); //
             if (response.status === 201) {
                 showNotification('Амжилттай repost хийлээ!', 'success');
             } else if (response.status === 200) {
@@ -162,42 +163,52 @@ const PostCard = ({ post, onPostDeleted }) => {
     };
 
     // Устгах Modal-г нээх
-    const handleDeleteClick = () => setShowDeleteModal(true);
+    const handleDeleteClick = () => setShowDeleteModal(true); //
 
     // Устгах үйлдлийг баталгаажуулах
-    const confirmDelete = async () => {
-        setIsDeleting(true); // 1. Loading эхлүүлнэ
+    const confirmDelete = async () => { //
+        setIsDeleting(true);
         try {
-            await apiClient.delete(`/api/minds/posts/${post.id}/`);
+            await apiClient.delete(`/api/minds/posts/${post.id}/`); //
             showNotification('Пост амжилттай устлаа.', 'success');
             if (onPostDeleted) onPostDeleted(post.id);
 
         } catch (err) {
             console.error('Failed to delete post:', err);
             showNotification(err.response?.data?.detail || 'Пост устгахад алдаа гарлаа.', 'danger');
-
-            // (!!!) ЗАСВАР: Энд байсан setIsDeleting(false)-г хассан
-
         } finally {
-            // (!!!) ЗАСВАР: Энэ блок руу цэвэрлэгээг шилжүүлсэн
-            // Энэ нь try амжилттай болсон ч, catch алдаа гарсан ч
-            // үргэлж ажиллана.
             setIsDeleting(false);
             setShowDeleteModal(false);
         }
     };
 
     // Комментын тоо өөрчлөгдөхөд дуудагдах функц
-    const handleCommentCountChange = (newCount) => setCurrentCommentCount(newCount);
+    const handleCommentCountChange = (newCount) => setCurrentCommentCount(newCount); //
 
     // Пост дээр дарахад (дэлгэрэнгүй үзэх зорилгоор)
-    const navigateToPost = () => {
-        console.log("Navigating to post details for:", post.id);
-        // navigate(`/post/${post.id}`);
+    const navigateToPost = (e) => { //
+        // Хэрэглэгч карт доторх линк, товч, dropdown дээр дарвал
+        // (жишээ нь: like, comment, profile link)
+        // хуудас солигдохыг болиулна.
+        if (e.target.closest('a, button, .dropdown-toggle, .dropdown-item, .post-actions')) { //
+            e.stopPropagation();
+            return;
+        }
+
+        console.log("Navigating to post details...");
+
+        // Хэрэв энэ нь repost бөгөөд эх пост нь байгаа бол
+        if (post.content_type === 'repost' && post.reposted_post) {
+            // Эх постын дэлгэрэнгүй хуудас руу үсрэх
+            navigate(`/post/${post.reposted_post.id}`); //
+        } else {
+            // Энгийн пост бол өөрийнх нь дэлгэрэнгүй хуудас руу
+            navigate(`/post/${post.id}`); //
+        }
     };
 
     // --- Үзэлт нэмэх API дуудлага ---
-    const incrementViewCount = useCallback(async () => {
+    const incrementViewCount = useCallback(async () => { //
         if (!user || viewCountIncremented) {
             return;
         }
@@ -206,7 +217,7 @@ const PostCard = ({ post, onPostDeleted }) => {
         setViewCountIncremented(true);
 
         try {
-            const response = await apiClient.post(`/api/minds/posts/${post.id}/view/`);
+            const response = await apiClient.post(`/api/minds/posts/${post.id}/view/`); //
             if (response.data && response.data.view_count !== undefined) {
                 setCurrentViewCount(response.data.view_count);
             }
@@ -216,7 +227,7 @@ const PostCard = ({ post, onPostDeleted }) => {
     }, [user, post.id, viewCountIncremented]);
 
     // --- Intersection Observer Effect ---
-    useEffect(() => {
+    useEffect(() => { //
         if (!user || viewCountIncremented) {
             return;
         }
@@ -250,13 +261,13 @@ const PostCard = ({ post, onPostDeleted }) => {
     }, [incrementViewCount, viewCountIncremented, user]);
 
     // ----------------- Render Логик -----------------
-    const canEditOrDelete = user && post.author && (user.id === post.author.id || user.is_staff);
-    const isRepost = post.content_type === 'repost' && post.reposted_post;
-    const originalPost = isRepost ? post.reposted_post : post;
-    const originalAuthor = originalPost?.author;
-    const reposterAuthor = isRepost ? post.author : null;
+    const canEditOrDelete = user && post.author && (user.id === post.author.id || user.is_staff); //
+    const isRepost = post.content_type === 'repost' && post.reposted_post; //
+    const originalPost = isRepost ? post.reposted_post : post; //
+    const originalAuthor = originalPost?.author; //
+    const reposterAuthor = isRepost ? post.author : null; //
 
-    if (isRepost && !originalPost) {
+    if (isRepost && !originalPost) { //
         return (
             <Card className="shadow-sm m-3 post-card">
                 <Card.Body>
@@ -266,7 +277,7 @@ const PostCard = ({ post, onPostDeleted }) => {
         );
     }
 
-    if (!originalAuthor) {
+    if (!originalAuthor) { //
         return (
             <Card className="shadow-sm m-3 post-card">
                 <Card.Body>
@@ -361,7 +372,7 @@ const PostCard = ({ post, onPostDeleted }) => {
                         {/* Постын үндсэн агуулга */}
                         <div
                             className="post-body-content"
-                            onClick={navigateToPost}
+                            onClick={navigateToPost} //
                             style={{ cursor: 'pointer' }}
                         >
                             {/* Зураг харуулах */}
@@ -415,31 +426,18 @@ const PostCard = ({ post, onPostDeleted }) => {
                 <Card.Footer className="bg-white border-top-0 pt-0">
                     <Stack direction="horizontal" gap={3} className="post-actions align-items-center">
 
-                        {/* (!!!) ЗАСВАР ЭНД ХИЙГДЭВ */}
-
                         {/* Таалагдсан */}
                         <Button
                             variant="link"
-                            /* * ЗАСВАР: Эцэг <Button> дээрх text-danger/text-muted-г хассан.
-                             * Энэ нь үргэлж 'text-muted' байх ба зөвхөн хүү элементүүд нь өнгөө өөрчилнө.
-                            */
                             className={`text-decoration-none p-1 d-flex align-items-center text-muted`}
                             onClick={() => handleAction('favorite')}
                             title="Таалагдсан"
                         >
-                            {/* * ЗАСВАР: Icon-д 'text-danger' нэмсэн.
-                             * 'text-muted' нь эцэг <Button>-с өвлөгдөнө.
-                            */}
                             <i className={`bi ${isFavored ? 'bi-heart-fill text-danger' : 'bi-heart'}`}></i>
-
-                            {/* * ЗАСВАР: Тоонд 'text-danger' нэмсэн.
-                            */}
                             <span className={`ms-1 small ${isFavored ? 'text-danger' : ''}`}>
                                 {favoriteCount}
                             </span>
                         </Button>
-
-                        {/* (!!!) ЗАСВАРЫН ТӨГСГӨЛ */}
 
 
                         {/* Коммент тоо */}

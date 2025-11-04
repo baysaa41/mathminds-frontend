@@ -38,9 +38,13 @@ const mathJaxConfig = {
 };
 
 ReactDOM.createRoot(document.getElementById('root')).render(
+    // <React.StrictMode> ашиглахыг зөвлөж байна (заавал биш)
+    <React.StrictMode>
         <MathJaxContext version={3} config={mathJaxConfig}>
             <AuthProvider>
                 <App />
             </AuthProvider>
         </MathJaxContext>
+    </React.StrictMode>
 );
+// Илүүц хаалтыг устгасан
