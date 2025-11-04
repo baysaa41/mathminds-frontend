@@ -55,6 +55,7 @@ import PasswordResetConfirmPage from './pages/PasswordResetConfirmPage.jsx'; //
 import CallbackPage from './pages/CallbackPage'; //
 import HomePage from './pages/HomePage'; //
 import DashboardPage from './pages/DashboardPage'; //
+import PaymentPage from './pages/PaymentPage'; //
 
 // Хамгаалалт
 import ProtectedRoute from './components/ProtectedRoute'; //
@@ -116,6 +117,9 @@ function App() {
 
                     {/* КЛУБ / БҮЛЭГ */}
                     <Route path="/clubs/*" element={<ClubsRoutes />} /> {/* */}
+
+                    {/* КЛУБ / БҮЛЭГ */}
+                    <Route path="/payment" element={<PaymentPage />} /> {/* */}
 
                 </Route>
 
