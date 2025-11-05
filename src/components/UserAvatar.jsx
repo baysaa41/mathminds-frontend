@@ -152,16 +152,6 @@ function UserAvatar({
         altText = altText.split('@')[0];
     }
 
-    // Debug: Avatar URL-г шалгах (хөгжүүлэлтийн үед)
-    if (process.env.NODE_ENV === 'development' && !user?.picture_url && !user?.profile_pic_url) {
-        console.log('UserAvatar Debug:', {
-            username: user?.username,
-            first_name: user?.first_name,
-            id: user?.id,
-            generatedUrl: avatarUrl
-        });
-    }
-
     return (
         <Image
             src={avatarUrl}

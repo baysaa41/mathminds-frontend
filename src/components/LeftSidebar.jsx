@@ -71,8 +71,8 @@ const LeftSidebar = () => {
 
                 <Nav.Item>
                     <Nav.Link as={NavLink} to="/products" className="d-flex align-items-center gap-2">
-                        <i className="bi bi-cart-fill fs-5"></i>
-                        <span>Хадгалсан</span>
+                        <i className="bi bi-cart fs-5"></i>
+                        <span>Худалдан авалт</span>
                     </Nav.Link>
                 </Nav.Item>
 
