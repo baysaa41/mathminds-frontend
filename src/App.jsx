@@ -55,7 +55,9 @@ import PasswordResetConfirmPage from './pages/PasswordResetConfirmPage.jsx'; //
 import CallbackPage from './pages/CallbackPage'; //
 import HomePage from './pages/HomePage'; //
 import DashboardPage from './pages/DashboardPage'; //
-import PaymentPage from './pages/PaymentPage'; //
+
+// (!!!) QPAY-Н ШИНЭ ХУУДАС
+import ProductListPage from './pages/ProductListPage.jsx';
 
 // Хамгаалалт
 import ProtectedRoute from './components/ProtectedRoute'; //
@@ -118,8 +120,8 @@ function App() {
                     {/* КЛУБ / БҮЛЭГ */}
                     <Route path="/clubs/*" element={<ClubsRoutes />} /> {/* */}
 
-                    {/* КЛУБ / БҮЛЭГ */}
-                    <Route path="/payment" element={<PaymentPage />} /> {/* */}
+                    <Route path="products" element={<ProductListPage />} />
+
 
                 </Route>
 

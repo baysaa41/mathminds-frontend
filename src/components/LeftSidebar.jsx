@@ -69,6 +69,13 @@ const LeftSidebar = () => {
                     </Nav.Link>
                 </Nav.Item>
 
+                <Nav.Item>
+                    <Nav.Link as={NavLink} to="/products" className="d-flex align-items-center gap-2">
+                        <i className="bi bi-cart-fill fs-5"></i>
+                        <span>Хадгалсан</span>
+                    </Nav.Link>
+                </Nav.Item>
+
                 {/* (!!!) ШИНЭ ЦЭС: МИНИЙ ПРОФАЙЛ */}
                 <Nav.Item>
                     <Nav.Link as={NavLink} to="/profile" className="d-flex align-items-center gap-2">
