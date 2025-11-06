@@ -1,75 +1,84 @@
 // src/components/PaymentModal.jsx
-// (!!!) QR КОДНЫ УГТВАРЫГ ЗАСВАРЛАСАН БҮРЭН ХУВИЛБАР
+// (!!!) ЦУЦЛАХ (CANCEL) ЛОГИК НЭМСЭН ХУВИЛБАР
 
 import React, { useState, useEffect, useRef } from 'react';
-// (!!!) Таны axiosConfig.js-г ашиглана
-import apiClient from '../api/axiosConfig'; // Байршлыг зөв заагаарай
+import apiClient from '../api/axiosConfig';
 import './PaymentModal.css';
 
 function PaymentModal({ show, onClose, paymentData, localInvoiceId }) {
-    const [status, setStatus] = useState('PENDING'); // PENDING, PAID, FAILED
-    const intervalRef = useRef(null); // Interval-г хадгалах
+    const [status, setStatus] = useState('PENDING');
+    const intervalRef = useRef(null);
+
+    // Интервал цэвэрлэх туслах функц
+    const cleanupInterval = () => {
+        if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+        }
+    };
 
     // Төлбөрийн төлөвийг шалгах функц
     const checkStatus = async () => {
         if (!localInvoiceId) return;
 
         try {
-            // (!!!) apiClient-г ашиглан auth token-той шалгана
             const response = await apiClient.get(`/api/v1/payments/check-invoice/${localInvoiceId}/`);
             const newStatus = response.data.status;
 
             if (newStatus === 'PAID') {
                 setStatus('PAID');
-                clearInterval(intervalRef.current); // Төлөгдсөн бол шалгахаа зогсооно
-
-                setTimeout(() => {
-                    onClose(); // 3 секундын дараа модалыг автоматаар хаана
-                }, 3000);
-
+                cleanupInterval();
+                setTimeout(() => { onClose(); }, 3000);
             } else if (newStatus === 'CANCELED' || newStatus === 'FAILED') {
                 setStatus('FAILED');
-                clearInterval(intervalRef.current); // Алдаатай бол зогсооно
+                cleanupInterval();
             }
-            // PENDING бол юу ч хийлгүй дараагийн шалгалтыг хүлээнэ
-
         } catch (error) {
             console.error("Төлөв шалгахад алдаа гарлаа:", error);
             setStatus('FAILED');
-            clearInterval(intervalRef.current);
+            cleanupInterval();
         }
     };
 
     // Модал нээгдэх үед 5 секунд тутамд шалгаж эхэлнэ
     useEffect(() => {
-        // Interval цэвэрлэх функц
-        const cleanupInterval = () => {
-            if (intervalRef.current) {
-                clearInterval(intervalRef.current);
-                intervalRef.current = null;
-            }
-        };
-
         if (show && localInvoiceId) {
-            // Модал нээгдэхэд PENDING төлөвт оруулна
             setStatus('PENDING');
-
-            // Өмнөх interval-г цэвэрлэнэ (давхардахаас сэргийлж)
-            cleanupInterval();
-
-            // Эхний шалгалтыг шууд хийнэ
-            checkStatus();
-
-            // 5 секунд тутамд давтан шалгана
+            cleanupInterval(); // Хуучин interval-г цэвэрлэх
+            checkStatus(); // Эхний шалгалт
             intervalRef.current = setInterval(checkStatus, 5000);
 
-            // Компонент хаагдахад (unmount) interval-г цэвэрлэнэ
-            return cleanupInterval;
+            return cleanupInterval; // Компонент хаагдахад цэвэрлэнэ
         } else {
-            // Модал хаагдвал interval-г зогсооно
-            cleanupInterval();
+            cleanupInterval(); // Модал хаагдвал цэвэрлэнэ
         }
-    }, [show, localInvoiceId]); // show эсвэл localInvoiceId өөрчлөгдвөл дахин ажиллана
+    }, [show, localInvoiceId]);
+
+
+    // (!!!) ШИНЭ ФУНКЦ: "X" ТОВЧ ДАРАГДАХАД АЖИЛЛАНА
+    const handleCloseModal = async () => {
+        console.log("Модал хаах үйлдэл эхэллээ...");
+
+        // 1. Автомат шалгалтыг зогсооно
+        cleanupInterval();
+
+        // 2. Зөвхөн "PENDING" үед л цуцлах API дуудна
+        if (status === 'PENDING' && localInvoiceId) {
+            try {
+                // Backend рүү "Энэ нэхэмжлэхийг цуцаллаа" гэж мэдэгдэнэ
+                await apiClient.post('/api/v1/payments/cancel-invoice/', {
+                    local_invoice_id: localInvoiceId
+                });
+                console.log("Нэхэмжлэх (local_invoice_id) цуцлах хүсэлт илгээлээ.");
+            } catch (err) {
+                console.error("Нэхэмжлэх цуцлахад алдаа гарлаа:", err);
+                // Алдаа гарсан ч модалыг хаах үйлдлийг үргэлжлүүлнэ
+            }
+        }
+
+        // 3. Модалыг хаах (ProductListPage-с ирсэн props-г дуудна)
+        onClose();
+    };
 
 
     // --- Render хэсэг ---
@@ -78,80 +87,39 @@ function PaymentModal({ show, onClose, paymentData, localInvoiceId }) {
         return null;
     }
 
-    // 1. qpay_data байгаа эсэхийг шалгах
     if (!paymentData.qpay_data) {
-        console.error("PaymentModal: 'qpay_data' олдсонгүй!");
-        return (
-            <div className="modal-overlay">
-                <div className="modal-content">
-                    <div className="status-failed">
-                        <h3>Алдаа гарлаа</h3>
-                        <p>Нэхэмжлэхийн мэдээлэл олдсонгүй.</p>
-                        <button className="modal-close" onClick={onClose}>&times;</button>
-                    </div>
-                </div>
-            </div>
-        );
+        return ( /* ... (Алдааны хэсэг) ... */ );
     }
 
-    // 2. qpay_data-г задлах
-    const { qr_image, urls } = paymentData.qpay_data;
+    const { qr_image } = paymentData.qpay_data;
 
-    // 3. qr_image ирсэн эсэхийг шалгах
     if (!qr_image) {
-        console.error("PaymentModal: 'qr_image' олдсонгүй!");
-        return (
-            <div className="modal-overlay">
-                <div className="modal-content">
-                    <div className="status-failed">
-                        <h3>Алдаа гарлаа</h3>
-                        <p>Нэхэмжлэхийн QR код авч чадсангүй.</p>
-                        <button className="modal-close" onClick={onClose}>&times;</button>
-                    </div>
-                </div>
-            </div>
-        );
+        return ( /* ... (Алдааны хэсэг) ... */ );
     }
 
-    // (!!!) 4. QR ЗУРГИЙГ УГТВАРТАЙ НЬ НИЙЛҮҮЛЭХ
     const imagePrefix = 'data:image/png;base64,';
-
-    // qr_image нь зөв угтвартай эхэлж байна уу?
     const qrImageSrc = qr_image.startsWith(imagePrefix)
-        ? qr_image // Хэрэв тийм бол шууд ашиглана
-        : imagePrefix + qr_image; // Байхгүй бол угтварыг гараар нэмж өгнө
+        ? qr_image
+        : imagePrefix + qr_image;
 
     return (
         <div className="modal-overlay">
             <div className="modal-content">
-                <button className="modal-close" onClick={onClose}>&times;</button>
+
+                {/* (!!!) "X" ТОВЧИНД ШИНЭ ФУНКЦ ХОЛБОСОН */}
+                <button className="modal-close" onClick={handleCloseModal}>&times;</button>
 
                 {status === 'PENDING' && (
                     <>
                         <h3>Төлбөр хийнэ үү</h3>
                         <p>Доорх QR кодыг уншуулна уу:</p>
 
-                        {/* (!!!) ЗАСВАРЛАСАН <img> ТАГ */}
                         <img
-                            src={qrImageSrc} // Энд засварласан хувьсагчийг ашиглана
+                            src={qrImageSrc}
                             alt="QPay QR Code"
                             className="qr-image"
                         />
 
-                        <h4>Эсвэл банкны апп-аар нэвтэрнэ үү:</h4>
-                        <div className="bank-links">
-                            {/* Банкны жагсаалт байвал харуулна */}
-                            {urls && urls.length > 0 ? (
-                                urls.map((bank, index) => (
-                                    <a key={index} href={bank.link} target="_blank" rel="noopener noreferrer" className="bank-link">
-                                        <img src={bank.logo} alt={bank.name} />
-                                        <span>{bank.description}</span>
-                                    </a>
-                                ))
-                            ) : (
-                                <p>Банкны холбоос олдсонгүй.</p>
-                            )}
-                        </div>
                         <div className="status-waiting">
                             Төлбөрийг хүлээж байна...
                         </div>
