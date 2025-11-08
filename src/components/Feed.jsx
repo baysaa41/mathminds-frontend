@@ -34,7 +34,8 @@ const Feed = () => {
         loadMore,
         refresh,
         setData
-    } = usePaginatedFetch(API_ENDPOINTS.MINDS.POSTS);
+    } = usePaginatedFetch(`${API_ENDPOINTS.MINDS.POSTS}?content_type__in=post,repost`);
+
 
     const { triggerRef } = useInfiniteScroll(loadMore, hasMore, loadingMore);
 

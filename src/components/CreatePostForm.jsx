@@ -41,7 +41,7 @@ const CreatePostForm = ({ onPostCreated }) => {
 
             const response = await apiClient.post('/api/minds/posts/', {
                 content: content.trim(),
-                content_type: 'text' // Одоогоор зөвхөн текст пост
+                content_type: 'post' // Одоогоор зөвхөн текст пост
             });
 
             // (!!!) ЗАСВАР ЭХЛЭЛ: API-с ирсэн хариуг бүрэн post object болгох

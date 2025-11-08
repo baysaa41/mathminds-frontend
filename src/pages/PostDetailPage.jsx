@@ -31,7 +31,7 @@ const PostContentRenderer = ({ post }) => {
     if (!post) return null;
 
     // 1. Энгийн пост ("post")
-    if (post.content_type === 'post') { //
+    if (post.content_type === 'post' || post.content_type === 'reply' ) { //
         if (post.content) {
             return (
                 <Card.Text as="div" className="post-full-content mathjax-content fs-5" style={{ whiteSpace: 'pre-wrap' }}>

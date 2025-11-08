@@ -1,432 +1,161 @@
 // frontend/src/components/CommentSection.jsx
-// ✅ Twitter Style Comment System
+import { useState, useEffect } from "react";
+import apiClient from "../api/axiosConfig";
+import { useAuth } from "../context/AuthContext";
+import PostCard from "./PostCard"; // ← үндсэн PostCard component ашиглана
+import Form from "react-bootstrap/Form";
+import Button from "react-bootstrap/Button";
+import Spinner from "react-bootstrap/Spinner";
+import Alert from "react-bootstrap/Alert";
+import Stack from "react-bootstrap/Stack";
+import { MessageCircle } from "lucide-react";
 
-import { useState, useEffect } from 'react';
-import { MathJax } from 'better-react-mathjax';
-import apiClient from '../api/axiosConfig';
-import { useAuth } from '../context/AuthContext';
-
-// React Bootstrap
-import Card from 'react-bootstrap/Card';
-import Form from 'react-bootstrap/Form';
-import Button from 'react-bootstrap/Button';
-import Stack from 'react-bootstrap/Stack';
-import Spinner from 'react-bootstrap/Spinner';
-import Alert from 'react-bootstrap/Alert';
-import Modal from 'react-bootstrap/Modal';
-
-// Icons
-import { MessageCircle, Send, Edit2, Trash2, X } from 'lucide-react';
-
-// avatar
-import UserAvatar from "./UserAvatar";
-
-// --- CommentItem компонент ---
-const CommentItem = ({ comment, onEdit, onDelete, currentUserId }) => {
-    const [isEditing, setIsEditing] = useState(false);
-    const [editContent, setEditContent] = useState(comment.content);
-    const [saving, setSaving] = useState(false);
-
-    const canEdit = currentUserId === comment.author?.id;
-
-    const handleSaveEdit = async () => {
-        try {
-            setSaving(true);
-            await apiClient.patch(`/api/minds/comments/${comment.id}/`, {
-                content: editContent
-            });
-            onEdit(comment.id, editContent);
-            setIsEditing(false);
-        } catch (error) {
-            console.error('Edit error:', error);
-            alert('Засварлахад алдаа гарлаа');
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    const handleCancelEdit = () => {
-        setEditContent(comment.content);
-        setIsEditing(false);
-    };
-
-    return (
-        <Card className="mb-2 border-0 border-start border-3 border-primary border-opacity-25">
-            <Card.Body className="p-3">
-                <Stack direction="horizontal" gap={2} className="mb-2">
-                    {/* Avatar */}
-                    <div className="flex-shrink-0">
-                        <UserAvatar user={comment.author} size={32} />
-                    </div>
-
-                    {/* Author info */}
-                    <div className="flex-grow-1 min-w-0">
-                        <Stack direction="horizontal" gap={2} className="align-items-baseline flex-wrap">
-                            <span className="fw-semibold small text-truncate">
-                                {comment.author?.first_name || 'User'}
-                            </span>
-                            <span className="text-muted" style={{ fontSize: '0.75rem' }}>
-                                {new Date(comment.created_at).toLocaleString('mn-MN', {
-                                    year: 'numeric',
-                                    month: 'short',
-                                    day: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                })}
-                            </span>
-                        </Stack>
-                    </div>
-
-                    {/* Action buttons */}
-                    {canEdit && !isEditing && (
-                        <Stack direction="horizontal" gap={1}>
-                            <Button
-                                variant="link"
-                                size="sm"
-                                className="p-1 text-muted"
-                                onClick={() => setIsEditing(true)}
-                            >
-                                <Edit2 size={14} />
-                            </Button>
-                            <Button
-                                variant="link"
-                                size="sm"
-                                className="p-1 text-danger"
-                                onClick={() => onDelete(comment.id)}
-                            >
-                                <Trash2 size={14} />
-                            </Button>
-                        </Stack>
-                    )}
-                </Stack>
-
-                {/* Content */}
-                {isEditing ? (
-                    <div>
-                        <Form.Control
-                            as="textarea"
-                            rows={3}
-                            value={editContent}
-                            onChange={(e) => setEditContent(e.target.value)}
-                            className="mb-2"
-                        />
-                        <Stack direction="horizontal" gap={2} className="justify-content-end">
-                            <Button
-                                variant="outline-secondary"
-                                size="sm"
-                                onClick={handleCancelEdit}
-                                disabled={saving}
-                            >
-                                <X size={14} className="me-1" />
-                                Цуцлах
-                            </Button>
-                            <Button
-                                variant="primary"
-                                size="sm"
-                                onClick={handleSaveEdit}
-                                disabled={saving || !editContent.trim()}
-                            >
-                                {saving ? (
-                                    <Spinner animation="border" size="sm" />
-                                ) : (
-                                    <>
-                                        <Send size={14} className="me-1" />
-                                        Хадгалах
-                                    </>
-                                )}
-                            </Button>
-                        </Stack>
-                    </div>
-                ) : (
-                    <MathJax hideUntilTypeset={"first"}>
-                        <div
-                            className="small mathjax-content"
-                            style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
-                        >
-                            {comment.content}
-                        </div>
-                    </MathJax>
-                )}
-            </Card.Body>
-        </Card>
-    );
-};
-
-// --- CommentForm компонент ---
-const CommentForm = ({ postId, onCommentAdded }) => {
-    const [content, setContent] = useState('');
-    const [submitting, setSubmitting] = useState(false);
-    const [error, setError] = useState(null);
+// ----------------------
+// Reply form
+// ----------------------
+const ReplyForm = ({ parentId, onReplyAdded, depth = 0 }) => {
+    const [content, setContent] = useState("");
+    const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
-        if (!content.trim()) {
-            setError('Хариулт хоосон байна');
-            return;
-        }
-
-        try {
-            setSubmitting(true);
-            setError(null);
-
-            const response = await apiClient.post('/api/minds/comments/', {
-                post: postId,
-                content: content.trim()
-            });
-
-            onCommentAdded(response.data);
-            setContent('');
-        } catch (err) {
-            console.error('Comment submit error:', err);
-            setError(err.response?.data?.detail || 'Хариулт илгээхэд алдаа гарлаа');
-        } finally {
-            setSubmitting(false);
-        }
-    };
-
-    return (
-        <Card className="border-0 bg-light">
-            <Card.Body className="p-3">
-                <Form onSubmit={handleSubmit}>
-                    {error && (
-                        <Alert variant="danger" className="small py-2 mb-2">
-                            {error}
-                        </Alert>
-                    )}
-
-                    <Form.Group className="mb-2">
-                        <Form.Control
-                            as="textarea"
-                            rows={3}
-                            placeholder="Хариулт бичих... (LaTeX ашиглаж болно: $x^2$)"
-                            value={content}
-                            onChange={(e) => setContent(e.target.value)}
-                            disabled={submitting}
-                        />
-                        <Form.Text className="text-muted">
-                            Enter дарж мөр солих, LaTeX: $томъёо$
-                        </Form.Text>
-                    </Form.Group>
-
-                    <Stack direction="horizontal" gap={2} className="justify-content-end">
-                        <Button
-                            type="submit"
-                            variant="primary"
-                            size="sm"
-                            disabled={submitting || !content.trim()}
-                        >
-                            {submitting ? (
-                                <>
-                                    <Spinner animation="border" size="sm" className="me-2" />
-                                    Илгээж байна...
-                                </>
-                            ) : (
-                                <>
-                                    <Send size={14} className="me-1" />
-                                    Илгээх
-                                </>
-                            )}
-                        </Button>
-                    </Stack>
-                </Form>
-            </Card.Body>
-        </Card>
-    );
-};
-
-// --- Үндсэн CommentSection ---
-const CommentSection = ({ postId, initialCount = 0, onCountChange }) => {
-    const { user } = useAuth();
-    const [comments, setComments] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const [showComments, setShowComments] = useState(false);
-    const [commentCount, setCommentCount] = useState(initialCount);
-
-    // Delete confirmation modal
-    const [showDeleteModal, setShowDeleteModal] = useState(false);
-    const [deletingCommentId, setDeletingCommentId] = useState(null);
-    const [deleting, setDeleting] = useState(false);
-
-    useEffect(() => {
-        if (showComments) {
-            fetchComments();
-        }
-    }, [showComments, postId]);
-
-    const fetchComments = async () => {
+        if (!content.trim()) return;
         try {
             setLoading(true);
-            setError(null);
-            const response = await apiClient.get(`/api/minds/comments/?post=${postId}`);
-
-            // Pagination шалгах
-            const data = response.data.results || response.data;
-            setComments(Array.isArray(data) ? data : []);
-            setCommentCount(response.data.count || data.length);
+            const res = await apiClient.post("/api/minds/posts/", {
+                content: content.trim(),
+                parent_post: parentId,
+                content_type: "reply",
+            });
+            onReplyAdded(res.data);
+            setContent("");
         } catch (err) {
-            console.error('Fetch comments error:', err);
-            setError('Хариултууд татахад алдаа гарлаа');
+            console.error("Reply error:", err);
         } finally {
             setLoading(false);
         }
     };
 
-    const handleCommentAdded = (newComment) => {
-        setComments(prev => [...prev, newComment]);
-        const newCount = commentCount + 1;
-        setCommentCount(newCount);
+    return (
+        <Form onSubmit={handleSubmit} className="mt-2 ms-4">
+            <Form.Control
+                as="textarea"
+                rows={2}
+                placeholder="Хариулт бичих..."
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                disabled={loading}
+            />
+            <div className="text-end mt-1">
+                <Button size="sm" type="submit" disabled={loading || !content.trim()}>
+                    {loading ? <Spinner size="sm" /> : "Илгээх"}
+                </Button>
+            </div>
+        </Form>
+    );
+};
 
-        // ✅ Parent-д мэдэгдэх
-        if (onCountChange) {
-            onCountChange(newCount);
-        }
-    };
+// ----------------------
+// Comment Section
+// ----------------------
+const CommentSection = ({ postId, initialCount = 0, onCountChange }) => {
+    const { user } = useAuth();
+    const [replies, setReplies] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [show, setShow] = useState(false);
+    const [replyCount, setReplyCount] = useState(initialCount);
 
-    const handleCommentEdited = (commentId, newContent) => {
-        setComments(prev => prev.map(c =>
-            c.id === commentId ? { ...c, content: newContent } : c
-        ));
-    };
-
-    const handleDeleteClick = (commentId) => {
-        setDeletingCommentId(commentId);
-        setShowDeleteModal(true);
-    };
-
-    const handleDeleteConfirm = async () => {
+    const fetchReplies = async () => {
+        setLoading(true);
         try {
-            setDeleting(true);
-            await apiClient.delete(`/api/minds/comments/${deletingCommentId}/`);
-
-            setComments(prev => prev.filter(c => c.id !== deletingCommentId));
-            const newCount = commentCount - 1;
-            setCommentCount(newCount);
-
-            // ✅ Parent-д мэдэгдэх
-            if (onCountChange) {
-                onCountChange(newCount);
-            }
-
-            setShowDeleteModal(false);
-            setDeletingCommentId(null);
+            const res = await apiClient.get(
+                `/api/minds/posts/?parent_post=${postId}&content_type=reply`
+            );
+            const data = res.data.results || res.data;
+            setReplies(Array.isArray(data) ? data : []);
+            setReplyCount(res.data.count || data.length);
         } catch (err) {
-            console.error('Delete error:', err);
-            alert('Устгахад алдаа гарлаа');
+            console.error("Fetch replies error:", err);
         } finally {
-            setDeleting(false);
+            setLoading(false);
         }
     };
 
-    const toggleComments = () => {
-        setShowComments(prev => !prev);
+    useEffect(() => {
+        if (show) fetchReplies();
+    }, [show, postId]);
+
+    // Шинээр хариулт нэмэгдэх үед
+    const handleReplyAdded = (newReply) => {
+        setReplies((prev) => [...prev, newReply]);
+        const newCount = replyCount + 1;
+        setReplyCount(newCount);
+        onCountChange?.(newCount);
     };
+
+    // ----- (!!!) ШИНЭЭР НЭМСЭН ХЭСЭГ (!!!) -----
+    // Reply (PostCard) устгагдах үед
+    const handleReplyDeleted = (deletedReplyId) => {
+        // 1. replies state-с устгагдсан постыг шүүж хасна
+        setReplies((prevReplies) =>
+            prevReplies.filter((reply) => reply.id !== deletedReplyId)
+        );
+        // 2. Тоог нэгээр хасна
+        const newCount = replyCount - 1;
+        setReplyCount(newCount);
+        // 3. Эцэг (PostCard/PostDetailPage) компонент руу мэдэгдэнэ
+        onCountChange?.(newCount);
+    };
+    // ----- (!!!) ЗАСВАР ДУУССАН (!!!) -----
 
     return (
-        <div className="comment-section">
-            {/* Toggle button */}
+        <div className="comment-section mt-2">
             <Button
                 variant="link"
                 size="sm"
-                onClick={toggleComments}
-                className="p-0 text-muted d-flex align-items-center text-decoration-none"
+                onClick={() => setShow(!show)}
+                className="p-0 text-muted text-decoration-none"
             >
                 <MessageCircle size={16} className="me-1" />
-                <span className="small">
-                    {commentCount} {showComments ? '▲' : '▼'}
-                </span>
+                {replyCount} {show ? "▲" : "▼"}
             </Button>
 
-            {/* Comments area */}
-            {showComments && (
-                <div className="mt-3">
-                    {/* Comment form - зөвхөн нэвтэрсэн хэрэглэгч */}
+            {show && (
+                <div className="mt-3 ms-2">
                     {user ? (
-                        <CommentForm
-                            postId={postId}
-                            onCommentAdded={handleCommentAdded}
-                        />
+                        <ReplyForm parentId={postId} onReplyAdded={handleReplyAdded} />
                     ) : (
-                        <Alert variant="info" className="small mb-3">
-                            Хариулт бичихийн тулд нэвтэрнэ үү
+                        <Alert
+                            variant="info"
+                            className="small py-2"
+                        >
+                            Хариулт бичихийн тулд нэвтэрнэ үү.
                         </Alert>
                     )}
 
-                    {/* Loading */}
-                    {loading && (
+                    {loading ? (
                         <div className="text-center py-3">
-                            <Spinner animation="border" size="sm" />
+                            <Spinner size="sm" />
                         </div>
-                    )}
-
-                    {/* Error */}
-                    {error && (
-                        <Alert variant="danger" className="small">
-                            {error}
-                        </Alert>
-                    )}
-
-                    {/* Comments list */}
-                    {!loading && !error && (
-                        <div className="mt-3">
-                            {comments.length === 0 ? (
-                                <div className="text-center text-muted small py-3">
-                                    Хариулт байхгүй байна. Эхний хариултыг та бичээрэй!
-                                </div>
-                            ) : (
-                                comments.map(comment => (
-                                    <CommentItem
-                                        key={comment.id}
-                                        comment={comment}
-                                        onEdit={handleCommentEdited}
-                                        onDelete={handleDeleteClick}
-                                        currentUserId={user?.id}
-                                    />
-                                ))
-                            )}
+                    ) : replies.length === 0 ? (
+                        <div className="text-center text-muted small py-3">
+                            Одоогоор хариулт алга.
                         </div>
+                    ) : (
+                        replies.map((reply) => (
+                            <div key={reply.id} style={{ marginLeft: "2rem" }}>
+                                {/* 🟢 PostCard-г дахин ашиглаж байна */}
+                                <PostCard
+                                    post={reply}
+                                    depth={1}
+                                    // ----- (!!!) ШИНЭЭР НЭМСЭН PROP (!!!) -----
+                                    onPostDeleted={handleReplyDeleted}
+                                />
+                            </div>
+                        ))
                     )}
                 </div>
             )}
-
-            {/* Delete confirmation modal */}
-            <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered>
-                <Modal.Header closeButton>
-                    <Modal.Title className="h6">Хариулт устгах</Modal.Title>
-                </Modal.Header>
-                <Modal.Body>
-                    <p className="mb-0">Та энэ хариултыг үнэхээр устгахыг хүсч байна уу?</p>
-                </Modal.Body>
-                <Modal.Footer>
-                    <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => setShowDeleteModal(false)}
-                        disabled={deleting}
-                    >
-                        Цуцлах
-                    </Button>
-                    <Button
-                        variant="danger"
-                        size="sm"
-                        onClick={handleDeleteConfirm}
-                        disabled={deleting}
-                    >
-                        {deleting ? (
-                            <>
-                                <Spinner animation="border" size="sm" className="me-2" />
-                                Устгаж байна...
-                            </>
-                        ) : (
-                            <>
-                                <Trash2 size={14} className="me-1" />
-                                Устгах
-                            </>
-                        )}
-                    </Button>
-                </Modal.Footer>
-            </Modal>
         </div>
     );
 };

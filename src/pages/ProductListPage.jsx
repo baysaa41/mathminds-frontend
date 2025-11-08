@@ -95,7 +95,7 @@ function ProductListPage() {
                             <img
                                 // (!!!) ЗАСВАР: Зургийг production хаягаас дуудах
                                 // product.image нь /media/... гэсэн харьцангуй зам буцаана гэж үзэв
-                                src={product.image ? `${API_DOMAIN}${product.image}` : 'https://via.placeholder.com/300'}
+                                src={product.image ? `${product.image}` : 'https://via.placeholder.com/300'}
                                 alt={product.name}
                                 className="product.image"
                             />
