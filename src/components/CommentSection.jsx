@@ -1,43 +1,127 @@
 // frontend/src/components/CommentSection.jsx
-import { useState, useEffect } from "react";
+// (!!! ШИНЭЧИЛСЭН: Олон зураг оруулах боломж нэмсэн !!!)
+
+import { useState, useEffect, useRef } from "react";
 import apiClient from "../api/axiosConfig";
 import { useAuth } from "../context/AuthContext";
-import PostCard from "./PostCard"; // ← үндсэн PostCard component ашиглана
+import PostCard from "./PostCard";
 import Form from "react-bootstrap/Form";
 import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
 import Alert from "react-bootstrap/Alert";
 import Stack from "react-bootstrap/Stack";
+import Image from "react-bootstrap/Image";
+import CloseButton from "react-bootstrap/CloseButton";
 import { MessageCircle } from "lucide-react";
 
 // ----------------------
-// Reply form
+// Reply form (Олон зураг дэмждэг болсон)
 // ----------------------
 const ReplyForm = ({ parentId, onReplyAdded, depth = 0 }) => {
     const [content, setContent] = useState("");
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    // (!!! Олон зураг хадгалах State !!!)
+    const [imageFiles, setImageFiles] = useState([]);
+    const [imagePreviews, setImagePreviews] = useState([]);
+    const imageInputRef = useRef(null);
+
+    /**
+     * Олон зураг сонгох үед ажиллана
+     */
+    const handleImageChange = (e) => {
+        setError(null);
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+
+        // Хэзгаар шалгах (10)
+        if (files.length + imageFiles.length > 10) {
+            setError("Нэг дор 10-аас илүүгүй зураг хавсаргах боломжтой.");
+            e.target.value = null;
+            return;
+        }
+
+        // Шинэ файлуудыг state-д нэмэх
+        setImageFiles(prevFiles => [...prevFiles, ...files]);
+
+        // Шинэ preview URL-уудыг state-д нэмэх
+        const newPreviews = files.map(file => URL.createObjectURL(file));
+        setImagePreviews(prevPreviews => [...prevPreviews, ...newPreviews]);
+
+        e.target.value = null;
+    };
+
+    /**
+     * Нэг зургийг preview-с устгах
+     */
+    const clearImage = (indexToRemove) => {
+        URL.revokeObjectURL(imagePreviews[indexToRemove]);
+        setImageFiles(prevFiles => prevFiles.filter((_, index) => index !== indexToRemove));
+        setImagePreviews(prevPreviews => prevPreviews.filter((_, index) => index !== indexToRemove));
+    };
+
+    /**
+     * Бүх зургийг цэвэрлэх
+     */
+    const clearAllImages = () => {
+        imagePreviews.forEach(url => URL.revokeObjectURL(url));
+        setImageFiles([]);
+        setImagePreviews([]);
+        if (imageInputRef.current) imageInputRef.current.value = null;
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!content.trim()) return;
+
+        // Контент эсвэл зураг байх ёстой
+        if (!content.trim() && imageFiles.length === 0) {
+            setError("Текст эсвэл зураг оруулна уу.");
+            return;
+        }
+
         try {
             setLoading(true);
-            const res = await apiClient.post("/api/minds/posts/", {
-                content: content.trim(),
-                parent_post: parentId,
-                content_type: "reply",
-            });
+            setError(null);
+
+            const formData = new FormData();
+            formData.append('content', content.trim());
+            formData.append('parent_post', parentId);
+            formData.append('content_type', 'reply');
+
+            // Олон зургийг 'images' гэсэн *нэг* key-рээ нэмнэ
+            if (imageFiles.length > 0) {
+                imageFiles.forEach(file => {
+                    formData.append('images', file);
+                });
+            }
+
+            const res = await apiClient.post("/api/minds/posts/", formData);
+
             onReplyAdded(res.data);
             setContent("");
+            clearAllImages();
+            setError(null);
         } catch (err) {
             console.error("Reply error:", err);
+            const errorData = err.response?.data;
+            if (typeof errorData === 'object' && errorData !== null) {
+                const errorMessages = Object.values(errorData).join(' ');
+                setError(errorMessages || "Хариулт илгээхэд алдаа гарлаа.");
+            } else {
+                setError("Хариулт илгээхэд алдаа гарлаа.");
+            }
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <Form onSubmit={handleSubmit} className="mt-2 ms-4">
+        <Form onSubmit={handleSubmit} className="mt-2 ms-4 p-3 border rounded bg-light">
+            {/* Алдааны мөр */}
+            {error && <Alert variant="danger" className="py-2 mb-2 small">{error}</Alert>}
+
+            {/* Текст талбар */}
             <Form.Control
                 as="textarea"
                 rows={2}
@@ -45,12 +129,68 @@ const ReplyForm = ({ parentId, onReplyAdded, depth = 0 }) => {
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 disabled={loading}
+                className="mb-2"
             />
-            <div className="text-end mt-1">
-                <Button size="sm" type="submit" disabled={loading || !content.trim()}>
-                    {loading ? <Spinner size="sm" /> : "Илгээх"}
+
+            {/* Зургийн Preview Хэсэг */}
+            {imagePreviews.length > 0 && (
+                <div className="mb-2 d-flex flex-wrap" style={{ gap: '8px' }}>
+                    {imagePreviews.map((previewUrl, index) => (
+                        <div
+                            key={index}
+                            className="position-relative d-inline-block"
+                            style={{ width: '80px', height: '80px' }}
+                        >
+                            <CloseButton
+                                onClick={() => clearImage(index)}
+                                className="position-absolute top-0 end-0 bg-light p-1"
+                                style={{ zIndex: 1, fontSize: '0.5em', opacity: 0.8 }}
+                                title="Устгах"
+                            />
+                            <Image
+                                src={previewUrl}
+                                thumbnail
+                                fluid
+                                style={{ width: '80px', height: '80px', objectFit: 'cover' }}
+                            />
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Далд Файл Input */}
+            <Form.Control
+                type="file"
+                accept="image/*"
+                ref={imageInputRef}
+                onChange={handleImageChange}
+                className="d-none"
+                multiple
+            />
+
+            {/* Доод хэсэг: Зураг нэмэх товч + Илгээх товч */}
+            <Stack direction="horizontal" gap={2}>
+                <Button
+                    variant="link"
+                    size="sm"
+                    className="p-0 text-secondary text-decoration-none"
+                    onClick={() => imageInputRef.current?.click()}
+                    disabled={imageFiles.length >= 10 || loading}
+                >
+                    <i className="bi bi-images me-1"></i>
+                    Зураг {imageFiles.length > 0 && `(${imageFiles.length} / 10)`}
                 </Button>
-            </div>
+
+                <div className="ms-auto">
+                    <Button
+                        size="sm"
+                        type="submit"
+                        disabled={loading || (!content.trim() && imageFiles.length === 0)}
+                    >
+                        {loading ? <Spinner size="sm" /> : "Илгээх"}
+                    </Button>
+                </div>
+            </Stack>
         </Form>
     );
 };
@@ -62,7 +202,7 @@ const CommentSection = ({ postId, initialCount = 0, onCountChange }) => {
     const { user } = useAuth();
     const [replies, setReplies] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [show, setShow] = useState(false);
+    const [show, setShow] = useState(true); // (!!! Анхнаасаа нээлттэй !!!)
     const [replyCount, setReplyCount] = useState(initialCount);
 
     const fetchReplies = async () => {
@@ -93,20 +233,15 @@ const CommentSection = ({ postId, initialCount = 0, onCountChange }) => {
         onCountChange?.(newCount);
     };
 
-    // ----- (!!!) ШИНЭЭР НЭМСЭН ХЭСЭГ (!!!) -----
-    // Reply (PostCard) устгагдах үед
+    // Reply устгагдах үед
     const handleReplyDeleted = (deletedReplyId) => {
-        // 1. replies state-с устгагдсан постыг шүүж хасна
         setReplies((prevReplies) =>
             prevReplies.filter((reply) => reply.id !== deletedReplyId)
         );
-        // 2. Тоог нэгээр хасна
         const newCount = replyCount - 1;
         setReplyCount(newCount);
-        // 3. Эцэг (PostCard/PostDetailPage) компонент руу мэдэгдэнэ
         onCountChange?.(newCount);
     };
-    // ----- (!!!) ЗАСВАР ДУУССАН (!!!) -----
 
     return (
         <div className="comment-section mt-2">
@@ -125,10 +260,7 @@ const CommentSection = ({ postId, initialCount = 0, onCountChange }) => {
                     {user ? (
                         <ReplyForm parentId={postId} onReplyAdded={handleReplyAdded} />
                     ) : (
-                        <Alert
-                            variant="info"
-                            className="small py-2"
-                        >
+                        <Alert variant="info" className="small py-2">
                             Хариулт бичихийн тулд нэвтэрнэ үү.
                         </Alert>
                     )}
@@ -144,11 +276,9 @@ const CommentSection = ({ postId, initialCount = 0, onCountChange }) => {
                     ) : (
                         replies.map((reply) => (
                             <div key={reply.id} style={{ marginLeft: "2rem" }}>
-                                {/* 🟢 PostCard-г дахин ашиглаж байна */}
                                 <PostCard
                                     post={reply}
                                     depth={1}
-                                    // ----- (!!!) ШИНЭЭР НЭМСЭН PROP (!!!) -----
                                     onPostDeleted={handleReplyDeleted}
                                 />
                             </div>

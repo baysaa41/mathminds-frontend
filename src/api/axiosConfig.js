@@ -3,11 +3,27 @@
 import axios from 'axios';
 import authService from '../services/authService';
 
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
 const apiClient = axios.create({
     //baseURL: 'https://api.mathminds.club',
     baseURL: 'http://127.0.0.1:8000', // API-ийн үндсэн хаяг
     headers: {
-        'Content-Type': 'application/json'
+        // 'Content-Type': 'application/json'
+        'X-CSRFToken': getCookie('csrftoken')
     }
 });
 
@@ -19,9 +35,17 @@ apiClient.interceptors.request.use(
     (config) => {
         const token = authService.getToken();
         if (token) {
-            // SimpleJWT нь "Bearer" схем ашигладаг
             config.headers['Authorization'] = `Bearer ${token}`;
         }
+
+        // (!!!) FormData үед Content-Type-г огт тохируулахгүй
+        if (config.data instanceof FormData) {
+            delete config.headers['Content-Type'];
+        } else {
+            // Бусад үед (JSON) 'application/json' гэж тохируулж болно
+            config.headers['Content-Type'] = 'application/json';
+        }
+
         return config;
     },
     (error) => {

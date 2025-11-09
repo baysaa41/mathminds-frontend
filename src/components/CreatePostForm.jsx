@@ -1,216 +1,341 @@
-// frontend/src/components/CreatePostForm.jsx
-// ✅ Twitter Style - Пост үүсгэх форм
-// (!!!) ШИНЭЧИЛСЭН: onPostCreated-г бүрэн object-оор дууддаг болсон
-
-import { useState } from 'react';
-import { MathJax } from 'better-react-mathjax';
+import React, { useState, useEffect, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Form, Button, Spinner, Alert, Stack, Badge, Image, CloseButton } from 'react-bootstrap';
 import apiClient from '../api/axiosConfig';
-import { useAuth } from '../context/AuthContext';
-import UserAvatar from './UserAvatar';
 
-// React Bootstrap
-import Card from 'react-bootstrap/Card';
-import Form from 'react-bootstrap/Form';
-import Button from 'react-bootstrap/Button';
-import Stack from 'react-bootstrap/Stack';
-import Spinner from 'react-bootstrap/Spinner';
-import Alert from 'react-bootstrap/Alert';
-import Collapse from 'react-bootstrap/Collapse';
+// (Жишээ Modal-ууд энд байна гэж үзлээ)
+// import ProblemSelectorModal from './ProblemSelectorModal';
+// import ArticleSelectorModal from './ArticleSelectorModal';
+// ...
 
-// Icons
-import { Send, Eye, EyeOff } from 'lucide-react';
-
+/**
+ * Үндсэн "Universal" пост үүсгэх форм
+ */
 const CreatePostForm = ({ onPostCreated }) => {
-    const { user } = useAuth();
+    // Form fields
+    const [contentType, setContentType] = useState('post');
     const [content, setContent] = useState('');
-    const [submitting, setSubmitting] = useState(false);
+    const [relatedItem, setRelatedItem] = useState(null); // { id: 1, title: "..." }
+
+    // (!!!) Олон зураг хадгалах State (!!!)
+    const [imageFiles, setImageFiles] = useState([]); // File object-н array
+    const [imagePreviews, setImagePreviews] = useState([]); // URL string-н array
+
+    // UI State
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [showPreview, setShowPreview] = useState(false);
+    const [showModal, setShowModal] = useState(false); // "Сонгох..." товчны модал
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    // Refs
+    const contentRef = useRef(null); // "Бэлэг" ирэхэд focus хийхэд ашиглана
+    const imageInputRef = useRef(null); // "Зураг" товч дарахад file input-г дуудах
 
-        if (!content.trim()) {
-            setError('Пост хоосон байна');
+    // Navigation state (бэлэг) хүлээж авах
+    const location = useLocation();
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        // 1. Navigation-р "бэлэг" (state) ирсэн эсэхийг шалгана
+        const prefillData = location.state?.prefill;
+
+        if (prefillData) {
+            // 2. Формын state-г бэлгээр дүүргэнэ
+            setContentType(prefillData.type);
+            setRelatedItem(prefillData.item);
+
+            // 3. Хэрэглэгчийг шууд бичвэр оруулах талбар луу үсэргэнэ
+            contentRef.current?.focus();
+
+            // 4. (Маш чухал) Navigation state-г цэвэрлэнэ.
+            navigate(location.pathname, { replace: true, state: null });
+        }
+    }, [location, navigate]); // Энэ effect зөвхөн location өөрчлөгдөхөд ажиллана
+
+    /**
+     * Олон зураг сонгох үед ажиллана
+     */
+    const handleImageChange = (e) => {
+        setError(null); // Шинэ зураг сонгоход алдааг цэвэрлэх
+        const files = Array.from(e.target.files); // FileList-г array-руу хөрвүүлэх
+        if (files.length === 0) return;
+
+        // Хязгаар шалгах (Backend-тэй адил: 10)
+        if (files.length + imageFiles.length > 10) {
+            setError("Нэг дор 10-аас ихгүй зураг хавсаргах боломжтой.");
+            e.target.value = null; // Input-г цэвэрлэх
             return;
         }
 
-        try {
-            setSubmitting(true);
-            setError(null);
+        // Шинэ файлуудыг state-д нэмэх
+        setImageFiles(prevFiles => [...prevFiles, ...files]);
 
-            const response = await apiClient.post('/api/minds/posts/', {
-                content: content.trim(),
-                content_type: 'post' // Одоогоор зөвхөн текст пост
+        // Шинэ preview URL-уудыг state-д нэмэх
+        const newPreviews = files.map(file => URL.createObjectURL(file));
+        setImagePreviews(prevPreviews => [...prevPreviews, ...newPreviews]);
+
+        e.target.value = null; // Дахин ижил файлыг сонгох боломжтой болгох
+    };
+
+    /**
+     * Нэг зургийг preview-с устгах
+     */
+    const clearImage = (indexToRemove) => {
+        // Memory-с URL-г устгах (memory leak-с сэргийлнэ)
+        URL.revokeObjectURL(imagePreviews[indexToRemove]);
+
+        setImageFiles(prevFiles => prevFiles.filter((_, index) => index !== indexToRemove));
+        setImagePreviews(prevPreviews => prevPreviews.filter((_, index) => index !== indexToRemove));
+    };
+
+    /**
+     * Бүх зургийг цэвэрлэх (Пост илгээсний дараа)
+     */
+    const clearAllImages = () => {
+        imagePreviews.forEach(url => URL.revokeObjectURL(url));
+        setImageFiles([]);
+        setImagePreviews([]);
+        if (imageInputRef.current) imageInputRef.current.value = null;
+    };
+
+    /**
+     * Формыг илгээх (handleSubmit)
+     */
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        setError(null);
+
+        const formData = new FormData();
+
+        // 1. Үндсэн мэдээлэл (бичвэр)
+        formData.append('content', content);
+
+        // 2. Холбоотой контент (Бодлого, Өгүүлэл г.м)
+        if (relatedItem) {
+            formData.append(`related_${contentType}_id`, relatedItem.id);
+        }
+
+        // 3. Олон зургийг 'images' гэсэн *нэг* key-р нэмнэ
+        if (imageFiles.length > 0) {
+            imageFiles.forEach(file => {
+                formData.append('images', file);
             });
+        }
 
-            // (!!!) ЗАСВАР ЭХЛЭЛ: API-с ирсэн хариуг бүрэн post object болгох
-            // API-с ирсэн response.data (жишээ нь, {id: 123, content: "..."}) нь
-            // post.user мэдээллийг бүрэн агуулаагүй байж болзошгүй.
-            // Тиймээс useAuth()-н "user" object-г ашиглан PostCard-д хэрэгтэй
-            // бүрэн object-г гараар үүсгэнэ.
-            const completeNewPost = {
-                ...response.data, // API-с ирсэн (id, content, created_at)
-                user: user,       // useAuth-с авсан бүрэн user object
+        try {
+            // (!!!) ЗАСВАРЛАСАН ХЭСЭГ (!!!)
+            // 'headers' тохиргоог бүхэлд нь устгасан.
+            // Axios үүнийг автоматаар хийнэ.
+            const response = await apiClient.post('/api/minds/posts/', formData);
 
-                // PostCard-д хэрэгтэй байж болох бусад талбаруудын анхны утга
-                favorite_count: 0,
-                comments_count: 0,
-                view_count: 0,
-                related_content: null,
-                is_favorited: false,
-                // created_at-г API буцаагаагүй бол одоогийн цагийг нэмнэ
-                created_at: response.data.created_at || new Date().toISOString()
-            };
-            // (!!!) ЗАСВАР ТӨГСГӨЛ
+            // (!!!) ЗАСВАР ДУУССАН (!!!)
 
-            // Success
+
+            // Эцэг компонент руу мэдэгдэх (Feed-д шинэ пост нэмэх)
             if (onPostCreated) {
-                // (!!!) Шинээр үүсгэсэн "бүрэн" object-г дамжуулах
-                onPostCreated(completeNewPost);
+                onPostCreated(response.data);
             }
 
-            // Form цэвэрлэх
+            // Формыг бүрэн цэвэрлэх
             setContent('');
-            setShowPreview(false);
+            setContentType('post');
+            setRelatedItem(null);
+            clearAllImages();
+
         } catch (err) {
-            console.error('Create post error:', err);
-            setError(err.response?.data?.detail || 'Пост илгээхэд алдаа гарлаа');
+            const errorData = err.response?.data;
+            if (typeof errorData === 'object' && errorData !== null) {
+                const errorMessages = Object.values(errorData).join(' ');
+                setError(errorMessages || "Пост үүсгэхэд алдаа гарлаа.");
+            } else {
+                setError("Пост үүсгэхэд алдаа гарлаа.");
+            }
         } finally {
-            setSubmitting(false);
+            setLoading(false);
         }
     };
 
-    if (!user) {
-        return null; // Нэвтрээгүй бол харуулахгүй
-    }
+    // --- Туслах функцууд (Modal нээх, сонгох) ---
 
+    const handleSelectClick = () => {
+        if (contentType !== 'post') {
+            setShowModal(true);
+        }
+    };
+
+    const handleItemSelected = (item) => {
+        setRelatedItem(item);
+        setShowModal(false);
+        if (!content) {
+            setContent(item.title || item.name || '');
+        }
+    };
+
+    // Сонгогдсон "бэлэг"-г харуулах Badge
+    const renderRelatedItemBadge = () => {
+        if (!relatedItem) return null;
+
+        const typeLabels = {
+            problem: 'Бодлого',
+            article: 'Өгүүлэл',
+            formula: 'Томьёо',
+            quiz: 'Тест',
+        };
+
+        return (
+            <Alert
+                variant="info"
+                onClose={() => setRelatedItem(null)}
+                dismissible
+                className="py-2 px-3 small d-flex justify-content-between align-items-center"
+            >
+                <div>
+                    <Badge pill bg="primary" className="me-2">{typeLabels[contentType]}</Badge>
+                    {relatedItem.title || relatedItem.name}
+                </div>
+            </Alert>
+        );
+    };
+
+    // Аль Modal-г нээхийг сонгох
+    const renderActiveModal = () => {
+        if (!showModal) return null;
+
+        // Энд та өөрийн Selector Modal-уудаа холбоно
+        switch (contentType) {
+            // case 'problem':
+            //     return <ProblemSelectorModal show={showModal} onHide={() => setShowModal(false)} onSelect={handleItemSelected} />;
+            // case 'article':
+            //     return <ArticleSelectorModal show={showModal} onHide={() => setShowModal(false)} onSelect={handleItemSelected} />;
+            default:
+                return (
+                    <Modal show={showModal} onHide={() => setShowModal(false)} centered>
+                        <Modal.Header closeButton>
+                            <Modal.Title>{contentType} сонгох</Modal.Title>
+                        </Modal.Header>
+                        <Modal.Body>
+                            {contentType} сонгох Modal энд хийгдэнэ.
+                        </Modal.Body>
+                    </Modal>
+                );
+        }
+    };
+
+    // --- Үндсэн Render ---
     return (
-        <Card className="border-0 border-bottom rounded-0 mb-0">
-            <Card.Body className="p-3">
-                <Form onSubmit={handleSubmit}>
-                    <Stack direction="horizontal" gap={3} className="align-items-start mb-3">
-                        {/* Avatar */}
-                        <div className="flex-shrink-0">
-                            <UserAvatar user={user} size={40} />
-                        </div>
+        <>
+            <Form onSubmit={handleSubmit} className="p-3 border rounded bg-white shadow-sm mb-3">
 
-                        {/* Textarea */}
-                        <div className="flex-grow-1">
-                            <Form.Control
-                                as="textarea"
-                                rows={3}
-                                placeholder="Юу бодож байна? (LaTeX ашиглаж болно: $x^2$)"
-                                value={content}
-                                onChange={(e) => setContent(e.target.value)}
-                                disabled={submitting}
-                                className="border-0 p-0"
-                                style={{
-                                    resize: 'none',
-                                    fontSize: '1rem'
-                                }}
-                            />
-                        </div>
-                    </Stack>
+                {/* Алдааны мөр */}
+                {error && <Alert variant="danger">{error}</Alert>}
 
-                    {/* Error */}
-                    {error && (
-                        <Alert variant="danger" className="py-2 small mb-3">
-                            {error}
-                        </Alert>
-                    )}
-
-                    {/* Preview */}
-                    <Collapse in={showPreview}>
-                        <div>
-                            <Card className="bg-light border-0 mb-3">
-                                <Card.Body className="p-3">
-                                    <div className="small text-muted mb-2 fw-semibold">
-                                        👁 Preview:
-                                    </div>
-                                    {content.trim() ? (
-                                        <MathJax hideUntilTypeset={"first"}>
-                                            <div
-                                                className="mathjax-content"
-                                                style={{
-                                                    whiteSpace: 'pre-wrap',
-                                                    wordBreak: 'break-word',
-                                                    fontSize: '1rem'
-                                                }}
-                                            >
-                                                {content}
-                                            </div>
-                                        </MathJax>
-                                    ) : (
-                                        <div className="text-muted small fst-italic">
-                                            Preview харагдахгүй байна...
-                                        </div>
-                                    )}
-                                </Card.Body>
-                            </Card>
-                        </div>
-                    </Collapse>
-
-                    {/* Action buttons */}
-                    <Stack direction="horizontal" gap={2} className="justify-content-between align-items-center pt-2 border-top">
-                        {/* Preview toggle */}
-                        <Button
-                            variant="link"
+                {/* --- 1. Төрөл сонгох хэсэг --- */}
+                {/* Зөвхөн "бэлэггүй" (relatedItem=null) үед харуулна */}
+                {!relatedItem && (
+                    <Stack direction="horizontal" gap={2} className="mb-2">
+                        <Form.Label className="fw-bold mb-0">Төрөл:</Form.Label>
+                        <Form.Select
+                            value={contentType}
+                            onChange={(e) => setContentType(e.target.value)}
+                            style={{ width: '150px' }}
                             size="sm"
-                            onClick={() => setShowPreview(!showPreview)}
-                            className="p-0 text-muted text-decoration-none"
                         >
-                            {showPreview ? (
-                                <>
-                                    <EyeOff size={16} className="me-1" />
-                                    <span className="small">Preview нуух</span>
-                                </>
-                            ) : (
-                                <>
-                                    <Eye size={16} className="me-1" />
-                                    <span className="small">Preview харах</span>
-                                </>
-                            )}
-                        </Button>
+                            <option value="post">Энгийн</option>
+                            <option value="problem">Бодлого</option>
+                            <option value="article">Өгүүлэл</option>
+                            <option value="formula">Томьёо</option>
+                            <option value="quiz">Тест</option>
+                        </Form.Select>
 
-                        {/* Character count */}
-                        <Stack direction="horizontal" gap={2}>
-                            <span
-                                className={`small ${content.length > 500 ? 'text-danger' : 'text-muted'}`}
-                            >
-                                {content.length}/500
-                            </span>
-
-                            {/* Submit button */}
-                            <Button
-                                type="submit"
-                                variant="primary"
-                                size="sm"
-                                disabled={submitting || !content.trim() || content.length > 500}
-                                style={{ minWidth: '80px' }}
-                            >
-                                {submitting ? (
-                                    <>
-                                        <Spinner animation="border" size="sm" className="me-1" />
-                                        Илгээж байна...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Send size={14} className="me-1" />
-                                        Илгээх
-                                    </>
-                                )}
+                        {contentType !== 'post' && (
+                            <Button variant="outline-primary" size="sm" onClick={handleSelectClick}>
+                                <i className="bi bi-search me-1"></i> Сонгох...
                             </Button>
-                        </Stack>
+                        )}
                     </Stack>
+                )}
 
-                    {/* Help text */}
-                    <div className="small text-muted mt-2">
-                        💡 LaTeX томъёо: $x^2$ эсвэл $$\int_0^1 x dx$$
+                {/* --- 2. "Бэлэг" харуулах хэсэг --- */}
+                {renderRelatedItemBadge()}
+
+                {/* --- 3. Үндсэн бичвэр --- */}
+                <Form.Group controlId="postContent">
+                    <Form.Control
+                        ref={contentRef}
+                        as="textarea"
+                        rows={3}
+                        placeholder={relatedItem ? "Сэтгэгдлээ бичнэ үү..." : "Юу бодож байна... (YouTube, Vimeo линкээ энд хуулж болно)"}
+                        value={content}
+                        onChange={(e) => setContent(e.target.value)}
+                        // Хэрэв "бэлэг" байхгүй, зураг ч байхгүй бол бичвэр заавал шаардлагатай
+                        required={!relatedItem && imageFiles.length === 0}
+                    />
+                </Form.Group>
+
+                {/* --- 4. Файл нэмэх хэсэг --- */}
+                <Stack direction="horizontal" gap={3} className="mt-2">
+                    <Button
+                        variant="link"
+                        size="sm"
+                        className="p-0 text-secondary text-decoration-none"
+                        onClick={() => imageInputRef.current?.click()}
+                        disabled={imageFiles.length >= 10} // Хязгаар хүрсэн бол идэвхгүй болгох
+                    >
+                        <i className="bi bi-images me-1"></i>
+                        Зураг {imageFiles.length > 0 && `(${imageFiles.length} / 10)`}
+                    </Button>
+
+                    {/* "Видео" болон "YouTube" товчнууд байхгүй */}
+                </Stack>
+
+                {/* Далд Файл Input (multiple-г анхаарна уу) */}
+                <Form.Control
+                    type="file"
+                    accept="image/*"
+                    ref={imageInputRef}
+                    onChange={handleImageChange}
+                    className="d-none"
+                    multiple // Олон зураг сонгохыг зөвшөөрнө
+                />
+
+                {/* --- 5. Зургийн Preview Хэсэг --- */}
+                {imagePreviews.length > 0 && (
+                    <div className="mt-2 d-flex flex-wrap" style={{ gap: '10px' }}>
+                        {imagePreviews.map((previewUrl, index) => (
+                            <div
+                                key={index}
+                                className="position-relative d-inline-block"
+                                style={{ width: '100px', height: '100px' }} // 1:1 харьцаатай жижиг зураг
+                            >
+                                <CloseButton
+                                    onClick={() => clearImage(index)}
+                                    className="position-absolute top-0 end-0 bg-light p-1"
+                                    style={{ zIndex: 1, fontSize: '0.6em', opacity: 0.8 }}
+                                    title="Устгах"
+                                />
+                                <Image
+                                    src={previewUrl}
+                                    thumbnail
+                                    fluid
+                                    style={{ width: '100px', height: '100px', objectFit: 'cover' }}
+                                />
+                            </div>
+                        ))}
                     </div>
-                </Form>
-            </Card.Body>
-        </Card>
+                )}
+
+                {/* --- 6. Илгээх товч --- */}
+                <div className="text-end mt-3">
+                    <Button type="submit" disabled={loading}>
+                        {loading && <Spinner as="span" size="sm" className="me-1" />}
+                        Нийтлэх
+                    </Button>
+                </div>
+            </Form>
+
+            {/* Modal-уудыг рендерлэх хэсэг */}
+            {renderActiveModal()}
+        </>
     );
 };
 

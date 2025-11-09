@@ -24,8 +24,11 @@
     "react": "^19.2.0",
     "react-bootstrap": "^2.10.10",
     "react-dom": "^19.2.0",
+    "react-image-gallery": "^1.4.0",
     "react-router-bootstrap": "^0.26.3",
-    "react-router-dom": "^7.9.4"
+    "react-router-dom": "^7.9.4",
+    "viewerjs": "^1.11.7",
+    "yet-another-react-lightbox": "^3.25.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",

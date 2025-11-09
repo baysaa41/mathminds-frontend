@@ -7,6 +7,7 @@ import App from './App.jsx';
 import './index.css';
 import { AuthProvider } from './context/AuthContext.jsx';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import 'react-image-gallery/styles/css/image-gallery.css';
 import { MathJaxContext } from "better-react-mathjax";
 
 // ✅ React Query import
