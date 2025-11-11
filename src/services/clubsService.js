@@ -25,11 +25,15 @@ export const getClubs = async (params = {}) => {
 /**
  * Зөвхөн хэрэглэгчийн клубуудыг авах (ClubsMine.jsx-д зориулагдсан)
  * GET /api/clubs/my_clubs/
+ * @param {string} username - Хэрэглэгчийн нэр (optional, if not provided returns current user's clubs)
+ * @param {object} params - Нэмэлт параметрүүд
  */
-export const getMyClubs = async (params = {}) => {
+export const getMyClubs = async (username = null, params = {}) => {
     try {
-        console.log('📥 Fetching MY clubs from /api/clubs/my_clubs/', { params });
-        const response = await apiClient.get('/api/clubs/my_clubs/', { params });
+        // If username is provided, add it to params
+        const requestParams = username ? { ...params, username } : params;
+        console.log('📥 Fetching MY clubs from /api/clubs/my_clubs/', { params: requestParams });
+        const response = await apiClient.get('/api/clubs/my_clubs/', { params: requestParams });
         console.log('✅ My clubs fetched:', response.data);
         return response.data;
     } catch (error) {

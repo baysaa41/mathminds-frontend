@@ -14,7 +14,7 @@ const ClubsRoutes = () => {
             {/* Клубуудын жагсаалт */}
             <Route path="/" element={<ClubsList />} />
 
-            <Route path="/mine" element={<ClubsMine />} />
+            <Route path="/mine/:username" element={<ClubsMine />} />
 
             {/* Шинэ клуб үүсгэх */}
             <Route path="/create" element={<CreateClub />} />

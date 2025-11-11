@@ -2,7 +2,7 @@
 // ✅ ШИНЭЧИЛСЭН: "Клуб үүсгэх" товчийг site_role-оор хязгаарлав.
 
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useOutletContext } from 'react-router-dom';
+import { Link, useNavigate, useOutletContext, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext'; // (Аль хэдийн импортлогдсон)
 import { usePrefill } from '../context/PrefillContext';
 
@@ -30,6 +30,7 @@ import { Users, PlusCircle, LogIn, Send, Copy, Eye, List } from 'lucide-react';
 import JoinClubModal from '../components/JoinClubModal';
 
 const ClubsMine = () => {
+    const { username } = useParams(); // Get username from URL params
     const { user } = useAuth(); // (Аль хэдийн дуудагдсан)
     const navigate = useNavigate();
     const { setPageTitle } = useOutletContext();
@@ -47,7 +48,7 @@ const ClubsMine = () => {
         try {
             setLoading(true);
             setError(null);
-            const data = await clubsService.getMyClubs();
+            const data = await clubsService.getMyClubs(username);
 
             if (data?.results && Array.isArray(data.results)) {
                 setClubs(data.results);
@@ -64,10 +65,11 @@ const ClubsMine = () => {
     };
 
     useEffect(() => {
-        setPageTitle('Миний клубууд');
+        const title = username ? `${username}-н клубууд` : 'Миний клубууд';
+        setPageTitle(title);
         fetchMyClubs();
         return () => setPageTitle('Нүүр');
-    }, [setPageTitle]);
+    }, [setPageTitle, username]);
 
     const handleJoinSuccess = (joinedClub) => {
         fetchMyClubs();
@@ -79,7 +81,8 @@ const ClubsMine = () => {
     const handleCopyCode = (club) => { /* ... */ };
 
     if (loading && clubs.length === 0) {
-        return <LoadingState message="Миний клубуудыг ачааллаж байна..." fullPage />;
+        const loadingMessage = username ? `${username}-н клубуудыг ачааллаж байна...` : 'Миний клубуудыг ачааллаж байна...';
+        return <LoadingState message={loadingMessage} fullPage />;
     }
 
     if (error && clubs.length === 0) {
@@ -96,8 +99,8 @@ const ClubsMine = () => {
             </ToastContainer>
 
             <PageHeader
-                title="Миний клубууд"
-                subtitle={`Та ${clubs.length} клубт холбогдсон байна`}
+                title={username ? `${username}-н клубууд` : 'Миний клубууд'}
+                subtitle={username ? `${username} ${clubs.length} клубт холбогдсон байна` : `Та ${clubs.length} клубт холбогдсон байна`}
                 action={
                     <div className="d-flex gap-2 flex-wrap">
                         <Button
@@ -135,10 +138,10 @@ const ClubsMine = () => {
             {!loading && clubs.length === 0 && (
                 <EmptyState
                     icon={Users}
-                    title="Та одоогоор ямар ч клубт элсээгүй байна"
-                    message="Шинэ клуб үүсгэж эсвэл бүртгэлийн кодоор клубт элсээрэй"
-                    actionLabel="Клубт элсэх"
-                    onAction={() => setShowJoinModal(true)}
+                    title={username ? `${username} одоогоор ямар ч клубт элсээгүй байна` : 'Та одоогоор ямар ч клубт элсээгүй байна'}
+                    message={username ? `${username} ямар ч клубт элсээгүй байна` : 'Шинэ клуб үүсгэж эсвэл бүртгэлийн кодоор клубт элсээрэй'}
+                    actionLabel={username ? null : 'Клубт элсэх'}
+                    onAction={username ? null : () => setShowJoinModal(true)}
                 />
             )}
 
