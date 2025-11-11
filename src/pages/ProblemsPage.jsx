@@ -1,9 +1,11 @@
 // frontend/src/pages/ProblemsPage.IMPROVED.jsx
-// ✅ САЙЖРУУЛСАН: Нэгдсэн components, hooks, constants ашигласан
+// ✅ ШИНЭЧИЛСЭН: "Постлох" товч CreatePostForm руу "бэлэг" илгээдэг болсон
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import { usePrefill } from '../context/PrefillContext.jsx';
+// (!!!) apiClient-г хассан (зөвхөн CreateNew-д ашиглагдаж байсан ч одоо API_ENDPOINTS-д орсон)
 import apiClient from '../api/axiosConfig.js';
 import LivePreview from '../components/LivePreview.jsx';
 
@@ -42,21 +44,21 @@ import { Puzzle, Send, Lock, Crown } from 'lucide-react';
 
 const ProblemsPage = () => {
     const { user } = useAuth();
-    const navigate = useNavigate();
+    const navigate = useNavigate(); // (!!!) Энэ hook-г ашиглана
     const { setPageTitle } = useOutletContext();
+    const { setPrefillData } = usePrefill(); // <-- 2. ЭНЭ МӨРИЙГ НЭМЭХ
 
     // State
-    const [activeTab, setActiveTab] = useState('my'); // 'my' эсвэл 'all'
+    const [activeTab, setActiveTab] = useState('my');
     const [creatingNew, setCreatingNew] = useState(false);
-    const [postingId, setPostingId] = useState(null);
+    // (!!!) postingId state-г хассан
     const [showMembershipModal, setShowMembershipModal] = useState(false);
     const [membershipMessage, setMembershipMessage] = useState('');
     const [hasShownMembershipModal, setHasShownMembershipModal] = useState(() => {
-        // localStorage-с уншиж эхлүүлэх (reload хийсэн ч хадгалагдана)
         return localStorage.getItem('membershipModalShown') === 'true';
     });
 
-    // Хоёр өөр endpoint-д зориулсан custom hook
+    // ... (usePaginatedFetch, loadMore, useInfiniteScroll, useToast хэвээрээ) ...
     // Миний бодлогууд
     const {
         data: myProblems,
@@ -133,6 +135,7 @@ const ProblemsPage = () => {
     );
     const { toast, showToast, hideToast } = useToast();
 
+    // ... (useEffect, handleTabChange, handleSearch хэвээрээ) ...
     // Анхны ачаалалт
     useEffect(() => {
         setPageTitle('Бодлогын сан');
@@ -184,32 +187,27 @@ const ProblemsPage = () => {
         }
     };
 
-    // Пост үүсгэх
-    const handleCreatePost = async (e, problemId) => {
-        e.stopPropagation();
-        setPostingId(problemId);
+    // (!!!) ЗАСВАРЛАСАН: Пост үүсгэх (API дуудахын оронд "бэлэг" илгээх)
+    const handleCreatePost = (e, problem) => {
+        e.stopPropagation(); // Картыг дарагдахаас сэргийлэх
 
-        try {
-            const response = await apiClient.post(
-                API_ENDPOINTS.MINDS.CREATE_FROM_PROBLEM,
-                { problem_id: problemId }
-            );
-
-            if (response.status === 201) {
-                showToast(MESSAGES.SUCCESS.POST_CREATED, 'success');
-            } else if (response.status === 200) {
-                showToast(MESSAGES.SUCCESS.POST_ALREADY_EXISTS, 'info');
+        // 1. "Бэлэг"-г бэлтгэх
+        const prefillData = {
+            type: 'problem',
+            item: {
+                id: problem.id,
+                title: problem.title || `Бодлого #${problem.id}`
             }
-        } catch (err) {
-            showToast(
-                err.response?.data?.error || MESSAGES.ERROR.GENERIC,
-                'danger'
-            );
-        } finally {
-            setPostingId(null);
-        }
+        };
+
+        // 2. "Бэлэг"-ээ "Хайрцаг" (Context) руу хийх
+        setPrefillData(prefillData);
+
+        // 3. Feed хуудас руу энгийнээр үсрэх (state-гүйгээр)
+        navigate('/');
     };
 
+    // ... (getProblemTypeLabel, Loading, Error state хэвээрээ) ...
     // Problem type label
     const getProblemTypeLabel = (type) => {
         const types = {
@@ -253,6 +251,7 @@ const ProblemsPage = () => {
                 </Toast>
             </ToastContainer>
 
+            {/* ... (Modal, PageHeader, Tab.Container хэвээрээ) ... */}
             {/* ✅ Гишүүнчлэлийн Modal */}
             <Modal
                 show={showMembershipModal}
@@ -364,6 +363,7 @@ const ProblemsPage = () => {
     function renderTabContent() {
         return (
             <>
+                {/* ... (SearchBar, Loading, Error, Empty хэвээрээ) ... */}
                 {/* ✅ Search Bar */}
                 <SearchBar
                     onSearch={handleSearch}
@@ -407,6 +407,7 @@ const ProblemsPage = () => {
                     />
                 )}
 
+
                 {/* Problems Grid */}
                 {problems.length > 0 && (
                     <Row className="g-3">
@@ -419,6 +420,7 @@ const ProblemsPage = () => {
                                 >
                                     <Card.Body>
                                         <Stack direction="horizontal" gap={2} className="mb-2 flex-wrap">
+                                            {/* ... (Бусад Badges хэвээрээ) ... */}
                                             {problem.level_name && (
                                                 <Badge bg="secondary">{problem.level_name}</Badge>
                                             )}
@@ -434,25 +436,23 @@ const ProblemsPage = () => {
                                                 <Badge bg="primary">Миний</Badge>
                                             )}
 
-                                            {/* Постлох товч */}
+
+                                            {/* (!!!) ЗАСВАРЛАСАН ТОВЧ (!!!) */}
                                             <Button
                                                 variant="outline-primary"
                                                 size="sm"
                                                 className="ms-auto"
-                                                onClick={(e) => handleCreatePost(e, problem.id)}
-                                                disabled={postingId === problem.id}
+                                                // (!!!) onClick-г өөрчилсөн
+                                                onClick={(e) => handleCreatePost(e, problem)}
+                                                // (!!!) disabled-г хассан
                                             >
-                                                {postingId === problem.id ? (
-                                                    <Spinner as="span" size="sm" />
-                                                ) : (
-                                                    <>
-                                                        <Send size={14} className="me-1" />
-                                                        Постлох
-                                                    </>
-                                                )}
+                                                {/* (!!!) Spinner-г хассан */}
+                                                <Send size={14} className="me-1" />
+                                                Постлох
                                             </Button>
                                         </Stack>
 
+                                        {/* ... (Гарчиг, Өгүүлбэр, Мета хэвээрээ) ... */}
                                         {/* Гарчиг */}
                                         <div className="h5 mb-2">
                                             <LivePreview content={problem.title || `Бодлого #${problem.id}`} />
@@ -482,6 +482,7 @@ const ProblemsPage = () => {
                     </Row>
                 )}
 
+                {/* ... (Infinite Scroll, Stats, Гишүүнчлэлийн Alert хэвээрээ) ... */}
                 {/* ✅ Infinite Scroll Trigger */}
                 <div ref={triggerRef} style={{ height: '20px' }} />
 

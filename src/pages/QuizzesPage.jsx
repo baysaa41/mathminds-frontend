@@ -1,12 +1,13 @@
 // frontend/src/pages/QuizzesPage.jsx
-// (!!! ШИНЭЧИЛСЭН: Нийтлэг hook, компонент ашигласан, зөвхөн "Миний" тестүүдийг харуулна)
+// (!!! ШИНЭЧИЛСЭН: "Постлох" товч нэмсэн, CreatePostForm руу "бэлэг" илгээдэг болсон)
 
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import apiClient from '../api/axiosConfig.js';
 import LivePreview from '../components/LivePreview.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
-import { BadgeCheck } from 'lucide-react';
+import { usePrefill } from '../context/PrefillContext.jsx';
+import { BadgeCheck, Send } from 'lucide-react'; // (!!!) Send icon нэмсэн
 
 // (!!!) 1. ШИНЭ HOOK БОЛОН КОМПОНЕНТУУДЫГ ИМПОРТЛОХ
 import usePaginatedFetch from '../hooks/usePagenatedFetch.js';
@@ -31,11 +32,12 @@ import Toast from 'react-bootstrap/Toast';
 import ToastContainer from 'react-bootstrap/ToastContainer';
 
 const QuizzesPage = () => {
-    const { user } = useAuth(); // (!!!) Хэрэглэгчийн мэдээллийг авах
-    const navigate = useNavigate();
+    const { user } = useAuth();
+    const navigate = useNavigate(); // (!!!) Энэ hook-г ашиглана
     const { setPageTitle } = useOutletContext();
+    const { setPrefillData } = usePrefill(); // <-- 2. ЭНЭ МӨРИЙГ НЭМЭХ
 
-    // (!!!) 2. НИЙТЛЭГ HOOK-ҮҮДИЙГ АШИГЛАХ
+    // ... (Hooks, State хэвээрээ) ...
     const { toast, showToast, hideToast } = useToast();
     const {
         data: quizzes,
@@ -50,37 +52,28 @@ const QuizzesPage = () => {
 
     const { triggerRef } = useInfiniteScroll(loadMore, hasMore, loadingMore);
 
-    // (!!!) 3. Дотоод state-үүдийг цомхотгох
     const [isCreatingNew, setIsCreatingNew] = useState(false);
     const [currentQuery, setCurrentQuery] = useState({ search: '' });
 
+    // ... (useEffect, handleSearch, handleCreateNew хэвээрээ) ...
     // Анхны ачаалалт болон гарчиг тохируулах
     useEffect(() => {
-        setPageTitle('Миний тестүүд'); // (!!!) Гарчгийг өөрчлөх
-
-        // (!!!) 4. Хэрэглэгч байвал 'author' шүүлтүүр нэмэх
+        setPageTitle('Миний тестүүд');
         if (user?.id) {
             fetchData({ author: user.id });
         }
-
         return () => { setPageTitle('Нүүр'); };
-    }, [fetchData, setPageTitle, user?.id]); // (!!!) user.id-г dependency-д нэмэх
+    }, [fetchData, setPageTitle, user?.id]);
 
-    // --- Үйлдэл гүйцэтгэх функцууд ---
-
-    // (!!!) 5. Хайлтын функцийг SearchBar-д тохируулах
+    // Хайлтын функц
     const handleSearch = useCallback((query) => {
-        if (!user?.id) return; // Хэрэглэгч байхгүй бол хайхгүй
-
+        if (!user?.id) return;
         const searchQuery = query.search || '';
         setCurrentQuery({ search: searchQuery });
-
-        // (!!!) 6. Хайлт хийхдээ 'author' шүүлтүүрийг хадгалах
         fetchData({ search: searchQuery, author: user.id }, true);
+    }, [fetchData, user?.id]);
 
-    }, [fetchData, user?.id]); // (!!!) user.id-г dependency-д нэмэх
-
-    // Шинэ тест үүсгэх (useToast-г ашиглахаар шинэчилсэн)
+    // Шинэ тест үүсгэх
     const handleCreateNew = async () => {
         setIsCreatingNew(true);
         try {
@@ -88,7 +81,7 @@ const QuizzesPage = () => {
                 title: 'Шинэ тест (Гарчиггүй)',
                 description: 'Тестийн тайлбар...',
                 is_published: false,
-            }); //
+            });
             const newQuizId = response.data.id;
             navigate(`/quiz/${newQuizId}/edit`);
         } catch (err) {
@@ -100,12 +93,33 @@ const QuizzesPage = () => {
     };
 
 
+    // (!!!) ШИНЭ ФУНКЦ: Пост үүсгэх ("бэлэг" илгээх)
+    const handleCreatePost = (e, quiz) => {
+        e.stopPropagation(); // Картыг дарагдахаас сэргийлэх
+
+        // 1. "Бэлэг"-г бэлтгэх
+        const prefillData = {
+            type: 'quiz',
+            item: {
+                id: quiz.id,
+                title: quiz.name || `Тест #${quiz.id}`
+            }
+        };
+
+        // 2. "Бэлэг"-ээ "Хайрцаг" (Context) руу хийх
+        setPrefillData(prefillData);
+
+        // 3. Feed хуудас руу энгийнээр үсрэх (state-гүйгээр)
+        navigate('/');
+    };
+
+
     // --- Render хэсэг ---
 
     return (
         <Container className="py-4">
 
-            {/* (!!!) 7. useToast-д зориулсан ToastContainer */}
+            {/* ... (ToastContainer, PageHeader, SearchBar, Loading, Error, Empty хэвээрээ) ... */}
             <ToastContainer position="top-end" className="p-3" style={{ zIndex: 9999 }}>
                 <Toast
                     show={toast.show}
@@ -120,39 +134,32 @@ const QuizzesPage = () => {
                 </Toast>
             </ToastContainer>
 
-            {/* (!!!) 8. PageHeader компонент ашиглах (icon-г LeftSidebar-тай нийцүүлэх) */}
             <PageHeader
                 title="Миний тестүүд"
                 action={{
                     label: "Шинэ тест",
                     onClick: handleCreateNew,
-                    icon: <i className="bi bi-patch-plus me-1"></i> // (bi-patch-check-н "нэмэх" хувилбар)
+                    icon: <i className="bi bi-patch-plus me-1"></i>
                 }}
                 loading={isCreatingNew}
             />
 
-            {/* (!!!) 9. SearchBar компонент ашиглах */}
             <SearchBar
                 onSearch={handleSearch}
                 placeholder="Миний тестүүдээс хайх..."
                 loading={loading}
-                filters={[]} // Энэ хуудсанд нэмэлт шүүлтүүр (author-с гадна) байхгүй
+                filters={[]}
             />
 
-            {/* (!!!) 10. Loading, Error, Empty state-үүдийг компонентоор солих */}
-
-            {/* Анхны ачаалал */}
             {loading && <LoadingState message="Миний тестүүдийг ачааллаж байна..." />}
 
-            {/* Алдаа */}
             {error && !loading && (
                 <ErrorState message={error} onRetry={refresh} />
             )}
 
-            {/* Хоосон (мэдээллийг өөрчилсөн) */}
             {!loading && !error && quizzes.length === 0 && (
                 <EmptyState
-                    icon={BadgeCheck} // Sidebar icon
+                    icon={BadgeCheck}
                     title={currentQuery.search ? 'Хайлт олдсонгүй' : 'Та тест үүсгээгүй байна'}
                     message={currentQuery.search ? 'Хайлтын утганд тохирох тест таны сан дотор байхгүй байна.' : 'Та эхний тестээ үүсгэнэ үү.'}
                     actionLabel="Шинэ тест үүсгэх"
@@ -160,7 +167,7 @@ const QuizzesPage = () => {
                 />
             )}
 
-            {/* Тестүүдийн жагсаалт (хэвээрээ) */}
+            {/* Тестүүдийн жагсаалт */}
             {!loading && !error && quizzes.length > 0 && (
                 <Row className="g-3">
                     {quizzes.map((quiz) => (
@@ -177,14 +184,24 @@ const QuizzesPage = () => {
                                         ) : (
                                             <Badge bg="warning" text="dark">Ноорог</Badge>
                                         )}
-                                        {/* (!!!) Бүгд "Миний" тул энэ Badge-г харуулж болно, эсвэл хасаж болно */}
                                         <Badge bg="primary">Миний</Badge>
-
-                                        <Badge bg="secondary" className="ms-auto">
+                                        <Badge bg="secondary">
                                             {quiz.problems_count || 0} бодлоготой
                                         </Badge>
+
+                                        {/* (!!!) ШИНЭ ТОВЧ (!!!) */}
+                                        <Button
+                                            variant="outline-primary"
+                                            size="sm"
+                                            className="ms-auto"
+                                            onClick={(e) => handleCreatePost(e, quiz)}
+                                        >
+                                            <Send size={14} className="me-1" />
+                                            Постлох
+                                        </Button>
                                     </Stack>
 
+                                    {/* ... (Гарчиг, Тайлбар, Мета хэвээрээ) ... */}
                                     <div className="h5 mb-2 mathjax-content">
                                         <LivePreview content={quiz.title || `Тест #${quiz.id}`} />
                                     </div>
@@ -204,6 +221,7 @@ const QuizzesPage = () => {
                                             </>
                                         )}
                                     </div>
+
                                 </Card.Body>
                             </Card>
                         </Col>
@@ -211,7 +229,7 @@ const QuizzesPage = () => {
                 </Row>
             )}
 
-            {/* (!!!) 11. Infinite Scroll-н trigger (ref-г солих) */}
+            {/* ... (Infinite Scroll, Stats хэвээрээ) ... */}
             <div ref={triggerRef} style={{ height: '20px' }} />
 
             {loadingMore && (
@@ -221,7 +239,6 @@ const QuizzesPage = () => {
                 </div>
             )}
 
-            {/* Статистик (hasMore-г ашиглахаар шинэчилсэн) */}
             {quizzes.length > 0 && (
                 <div className="mt-4 p-3 bg-light rounded">
                     <small className="text-muted">

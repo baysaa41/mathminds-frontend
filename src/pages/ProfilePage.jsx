@@ -220,7 +220,7 @@ function ProfilePage() {
                                                 title={
                                                     <>
                                                         <Coins size={16} className="me-1" />
-                                                        Coin илгээх
+                                                        Зоос илгээх
                                                     </>
                                                 }
                                             >

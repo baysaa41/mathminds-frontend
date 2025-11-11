@@ -180,7 +180,7 @@ const LivePreview = ({ content }) => {
     }, [content]);
 
     if (!content) {
-        return <div className="text-muted small">(Агуулга байхгүй)</div>;
+        return <></>;
     }
 
     // 2. (!!!) Бүх хэсгийг рендерлэхдээ ГАДНА талын <MathJax> компонентыг АВНА.

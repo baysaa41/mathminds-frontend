@@ -1,14 +1,14 @@
 // frontend/src/components/PostCard.jsx
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, {useState, useEffect, useRef, useCallback} from 'react';
+import {Link, useNavigate} from 'react-router-dom';
 import apiClient from '../api/axiosConfig';
-import { useAuth } from '../context/AuthContext';
+import {useAuth} from '../context/AuthContext';
 
-// (!!!) ШИНЭЧЛЭГДСЭН IMPORT-УУД (!!!)
+// Components
 import LivePreview from './LivePreview';
-import UserAvatar from './UserAvatar';        // Бидний үүсгэсэн компонент
-import EmbedRenderer from './EmbedRenderer';  // Бидний үүсгэсэн компонент
-// import CommentSection from './CommentSection'; // (!!!) УСТГАСАН (Feed-д хэрэггүй)
+import UserAvatar from './UserAvatar';
+import EmbedRenderer from './EmbedRenderer';
+import CommentSection from './CommentSection'; // (!!! НЭМСЭН !!!)
 
 // React Bootstrap
 import Card from 'react-bootstrap/Card';
@@ -24,11 +24,7 @@ import Modal from 'react-bootstrap/Modal';
 // -------------------------------------------------------------------
 // ----------------- PostImageGallery (Туслах компонент) -----------------
 // -------------------------------------------------------------------
-/**
- * Олон зургийг цомог хэлбэрээр харуулна.
- * @param {Array} images - PostImageSerializer-с ирсэн зургийн массив
- */
-const PostImageGallery = ({ images }) => {
+const PostImageGallery = ({images}) => {
     if (!images || images.length === 0) return null;
 
     // 1. Нэг зураг байвал: Бүтэн өргөнөөр
@@ -38,12 +34,12 @@ const PostImageGallery = ({ images }) => {
                 src={images[0].image}
                 className="img-fluid rounded my-2 post-image"
                 alt="Post attachment"
-                style={{ maxHeight: '500px', objectFit: 'cover', width: '100%' }}
+                style={{maxHeight: '500px', objectFit: 'cover', width: '100%'}}
             />
         );
     }
 
-    // 2. 2-4 зураг байвал: Grid (CSS Grid ашиглана)
+    // 2. 2-4 зураг байвал: Grid
     const gridTemplateColumns = (images.length === 2 || images.length === 4) ? '1fr 1fr' : '1fr 1fr';
     const gap = '4px';
 
@@ -54,25 +50,30 @@ const PostImageGallery = ({ images }) => {
                 display: 'grid',
                 gridTemplateColumns: gridTemplateColumns,
                 gap: gap,
-                borderRadius: '8px', // Bootstrap-н 'rounded'
-                overflow: 'hidden'  // Хүрээнээс давахыг нуух
+                borderRadius: '8px',
+                overflow: 'hidden'
             }}
         >
-            {images.slice(0, 4).map((img, index) => ( // Эхний 4-г л харуулна
+            {images.slice(0, 4).map((img, index) => (
                 <div
                     key={img.id}
                     className="position-relative"
                     style={{
-                        paddingTop: '100%', // 1:1 харьцаатай (дөрвөлжин)
+                        paddingTop: '100%',
                         background: `url(${img.image}) no-repeat center center`,
                         backgroundSize: 'cover',
-                        cursor: 'pointer' // (Ирээдүйд click хийхэд томсгодог болгож болно)
+                        cursor: 'pointer'
                     }}
                 >
-                    {/* 4-с илүү зураг байвал сүүлийнх дээр нь тоог харуулна */}
                     {images.length > 4 && index === 3 && (
-                        <div className="position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center"
-                             style={{ backgroundColor: 'rgba(0,0,0,0.5)', color: 'white', fontSize: '1.5rem', fontWeight: 'bold' }}
+                        <div
+                            className="position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center"
+                            style={{
+                                backgroundColor: 'rgba(0,0,0,0.5)',
+                                color: 'white',
+                                fontSize: '1.5rem',
+                                fontWeight: 'bold'
+                            }}
                         >
                             +{images.length - 4}
                         </div>
@@ -83,20 +84,14 @@ const PostImageGallery = ({ images }) => {
     );
 };
 
-
 // -------------------------------------------------------------------
 // ----------------- PostContent (Туслах компонент) ------------------
 // -------------------------------------------------------------------
-/**
- * Холбоотой контент (Бодлого, Томьёо г.м)-г харуулна.
- * @param {object} post - PostSerializer-с ирсэн post объект
- */
-const PostContent = ({ post }) => {
+const PostContent = ({post}) => {
     if (!post) return null;
 
-    // Энгийн пост, repost, reply-г ЭНД харуулахгүй.
+    // Энэ хэсэг хэвээрээ (post, repost, reply-г алгасна)
     if (post.content_type === 'post' || post.content_type === 'repost' || post.content_type === 'reply') {
-        // LivePreview-г үндсэн хэсэгт нь шууд дуудсан
         return null;
     }
 
@@ -110,46 +105,80 @@ const PostContent = ({ post }) => {
         return <div className="text-muted fst-italic">[Холбоотой контент олдсонгүй]</div>;
 
     let title = relatedItem.title || relatedItem.name || `Контент #${relatedItem.id}`;
+
+
+    // (!!! ЗАСВАР: description-г энд тодорхойлно !!!)
     let description =
-        relatedItem.statement ||
-        relatedItem.abstract ||
-        relatedItem.description ||
-        relatedItem.content ||
+        relatedItem.statement ||  // Бодлогын 'statement'
+        relatedItem.content ||      // Томьёо, Өгүүллийн 'content'
+        relatedItem.abstract ||     // Өгүүллийн 'abstract'
+        relatedItem.description ||    // Тестийн 'description'
         '';
+
+    // (!!! ЗАСВАР: typeLabel БА badgeVariant-г хамт тодорхойлно !!!)
     let typeLabel;
+    let badgeVariant; // Badge өнгийг хадгалах хувьсагч
+    let content;
 
     switch (post.content_type) {
-        case 'problem': typeLabel = 'Бодлого'; break;
-        case 'formula': typeLabel = 'Томьёо'; break;
-        case 'article': typeLabel = 'Өгүүлэл'; break;
-        case 'quiz': typeLabel = 'Тест'; break;
-        default: typeLabel = 'Контент';
+        case 'problem':
+            typeLabel = 'Бодлого';
+            badgeVariant = 'secondary'; // Цэнхэр
+            break;
+        case 'formula':
+            typeLabel = 'Томьёо';
+            badgeVariant = 'info'; // Ногоон
+            content = post.content || '';
+            break;
+        case 'article':
+            typeLabel = 'Өгүүлэл';
+            badgeVariant = 'danger';    // Цайвар цэнхэр
+            break;
+        case 'quiz':
+            typeLabel = 'Тест';
+            badgeVariant = 'success'; // Шар
+            break;
+        default:
+            typeLabel = 'Контент';
+            badgeVariant = 'warning'; // Саарал
     }
 
+    // (!!! ЗАСВAR: Бодлого, Томьёо бол бүтэн, бусад бол товч харуулна !!!)
+    const contentToShow = (post.content_type === 'problem' || post.content_type === 'formula')
+        ? description // <-- Бодлого, Томьёо бол бүтнээр нь харуулна
+        : description.substring(0, 100) + (description.length > 100 ? '...' : ''); // <-- Бусад үед (өгүүлэл, тест) товчилж харуулна
+
     return (
-        <Card className="bg-light border shadow-sm mt-2">
-            <Card.Body>
-                <Badge bg="secondary" className="mb-2">{typeLabel}</Badge>
-                <Card.Title className="h6 mathjax-content mb-1">
-                    <LivePreview content={title} />
-                </Card.Title>
-                {description && (
-                    <Card.Text as="div" className="small text-muted mathjax-content">
-                        {/* Хураангуйг 100 тэмдэгтээр хязгаарлая */}
-                        <LivePreview content={description.substring(0, 100) + (description.length > 100 ? '...' : '')} />
-                    </Card.Text>
-                )}
-            </Card.Body>
-        </Card>
+        <>
+            <LivePreview content={post.content}/>
+            <Card className="bg-light border shadow-sm mt-2">
+                <Card.Body>
+                    {/* (!!! ЗАСВАР: badgeVariant-г ашигласан !!!) */}
+                    <Badge bg={badgeVariant} className="mb-2">{typeLabel}</Badge>
+
+                    <Card.Title className="h6 mathjax-content mb-1">
+                        <LivePreview content={title}/>
+
+                    </Card.Title>
+
+                    {/* (!!! ЗАСВАР: contentToShow-г ашигласан !!!) */}
+                    {description && (
+                        <Card.Text as="div" className="small text-muted mathjax-content"
+                                   style={{whiteSpace: 'pre-wrap'}}>
+                            <LivePreview content={contentToShow}/>
+                        </Card.Text>
+                    )}
+                </Card.Body>
+            </Card>
+        </>
     );
 };
-
 
 // -------------------------------------------------------------------
 // ----------------- Үндсэн PostCard компонент -----------------
 // -------------------------------------------------------------------
-const PostCard = ({ post, onPostDeleted, depth = 0 }) => {
-    const { user } = useAuth();
+const PostCard = ({post, onPostDeleted, depth = 0}) => {
+    const {user} = useAuth();
     const navigate = useNavigate();
 
     const [isFavorited, setIsFavorited] = useState(post.is_favored);
@@ -161,7 +190,8 @@ const PostCard = ({ post, onPostDeleted, depth = 0 }) => {
     const [toastMessage, setToastMessage] = useState('');
     const [toastVariant, setToastVariant] = useState('success');
 
-    // (!!!) currentCommentCount-г устгасан (!!!)
+    // (!!! Comment Count State нэмсэн !!!)
+    const [commentCount, setCommentCount] = useState(post.replies_count || 0);
 
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [currentViewCount, setCurrentViewCount] = useState(
@@ -180,7 +210,7 @@ const PostCard = ({ post, onPostDeleted, depth = 0 }) => {
 
     // Favorite / Bookmark
     const handleAction = async (actionType, e) => {
-        e.stopPropagation(); // Карт дээрх navigateToPost-г зогсоох
+        e.stopPropagation();
         if (!user) {
             showNotification('Энэ үйлдлийг хийхийн тулд нэвтэрнэ үү.', 'warning');
             return;
@@ -188,9 +218,14 @@ const PostCard = ({ post, onPostDeleted, depth = 0 }) => {
 
         let url;
         switch (actionType) {
-            case 'favorite': url = `/api/minds/posts/${post.id}/favorite/`; break;
-            case 'bookmark': url = `/api/minds/posts/${post.id}/bookmark/`; break;
-            default: return;
+            case 'favorite':
+                url = `/api/minds/posts/${post.id}/favorite/`;
+                break;
+            case 'bookmark':
+                url = `/api/minds/posts/${post.id}/bookmark/`;
+                break;
+            default:
+                return;
         }
 
         try {
@@ -209,17 +244,11 @@ const PostCard = ({ post, onPostDeleted, depth = 0 }) => {
 
     // Repost
     const handleRepost = async (e) => {
-        e.stopPropagation(); // Карт дээрх navigateToPost-г зогсоох
+        e.stopPropagation();
         if (!user) {
             showNotification('Repost хийхийн тулд нэвтэрнэ үү.', 'warning');
             return;
         }
-
-        // (!!!) ТАЙЛБАР: Энэ хэсэг одоогоор Repost дээр сэтгэгдэл нэмэхгүйгээр
-        // API-г шууд дуудаж байна. Хэрэв та CreatePostForm-г ашигладаг
-        // болгохыг хүсвэл, PostCreateSerializer-г 'reposted_post' ID-г
-        // хүлээж авахаар засварлаад, доорх 'apiClient.post'-н оронд
-        // navigate('/', { state: { prefill: ... } })-г ашиглаарай.
 
         if (isReposting) return;
         if (post.content_type === 'repost') {
@@ -227,17 +256,16 @@ const PostCard = ({ post, onPostDeleted, depth = 0 }) => {
             return;
         }
 
-        // Repost хийх гэж буй эх постны ID
         const targetPostId = post.reposted_post ? post.reposted_post.id : post.id;
 
         setIsReposting(true);
         try {
-            const response = await apiClient.post(`/api/minds/posts/${targetPostId}/repost/`, {
-                content: null // (Хэрэв сэтгэгдэл нэмэхгүй бол)
-            });
-            if (response.status === 201) showNotification('Амжилттай repost хийлээ!', 'success');
-            else if (response.status === 200)
+            const response = await apiClient.post(`/api/minds/posts/${targetPostId}/repost/`);
+            if (response.status === 201) {
+                showNotification('Амжилттай repost хийлээ!', 'success');
+            } else if (response.status === 200) {
                 showNotification(response.data.message || 'Та аль хэдийн repost хийсэн байна.', 'info');
+            }
         } catch (err) {
             console.error('Failed to repost:', err);
             showNotification(err.response?.data?.error || 'Repost хийхэд алдаа гарлаа.', 'danger');
@@ -248,7 +276,7 @@ const PostCard = ({ post, onPostDeleted, depth = 0 }) => {
 
     // Delete
     const handleDeleteClick = (e) => {
-        e.stopPropagation(); // Карт дээрх navigateToPost-г зогсоох
+        e.stopPropagation();
         setShowDeleteModal(true);
     };
 
@@ -257,7 +285,7 @@ const PostCard = ({ post, onPostDeleted, depth = 0 }) => {
         try {
             await apiClient.delete(`/api/minds/posts/${post.id}/`);
             showNotification('Пост амжилттай устлаа.', 'success');
-            if (onPostDeleted) onPostDeleted(post.id); // (!!!) CommentSection-с устгах callback
+            if (onPostDeleted) onPostDeleted(post.id);
         } catch (err) {
             console.error('Failed to delete post:', err);
             showNotification(err.response?.data?.detail || 'Пост устгахад алдаа гарлаа.', 'danger');
@@ -267,17 +295,13 @@ const PostCard = ({ post, onPostDeleted, depth = 0 }) => {
         }
     };
 
-    // Navigation (Дэлгэрэнгүй хуудас руу үсрэх)
+    // Navigation
     const navigateToPost = (e) => {
-        // Линk, товч, dropdown, action товчнууд дээр дарахад хуудас руу үсрэхгүй
-        // (!!!) ЗАСВАР: '.post-image-gallery'-г энэ жагсаалтаас ХАССАН. (!!!)
-        // Ингэснээр зураг дээр дарахад navigateToPost ажиллана.
         if (e.target.closest('a, button, .dropdown-toggle, .dropdown-item, .post-actions')) {
             e.stopPropagation();
             return;
         }
 
-        // Repost бол эх постын дэлгэрэнгүй рүү үсэрнэ
         if (post.content_type === 'repost' && post.reposted_post) {
             navigate(`/post/${post.reposted_post.id}`);
         } else {
@@ -285,12 +309,12 @@ const PostCard = ({ post, onPostDeleted, depth = 0 }) => {
         }
     };
 
-    // View Count (хэвээрээ)
+    // (!!! View Count - Reply (depth > 0) бол ажиллахгүй !!!)
     const incrementViewCount = useCallback(async () => {
         if (!user || viewCountIncremented) return;
+
         setViewCountIncremented(true);
         try {
-            // Эх постын view-г нэмнэ (repost-нхыг биш)
             const targetId = post.reposted_post ? post.reposted_post.id : post.id;
             const response = await apiClient.post(`/api/minds/posts/${targetId}/view/`);
             if (response.data && response.data.view_count !== undefined)
@@ -301,7 +325,8 @@ const PostCard = ({ post, onPostDeleted, depth = 0 }) => {
     }, [user, post.id, post.reposted_post, viewCountIncremented]);
 
     useEffect(() => {
-        if (depth > 0 || !user || viewCountIncremented) return;
+        if (!user || viewCountIncremented) return;
+
         const observer = new IntersectionObserver(
             (entries) => {
                 const entry = entries[0];
@@ -310,15 +335,19 @@ const PostCard = ({ post, onPostDeleted, depth = 0 }) => {
                     if (cardRef.current) observer.unobserve(cardRef.current);
                 }
             },
-            { threshold: 0.5 } // 50% харагдахад
+            {threshold: 0.5}
         );
         const currentCardRef = cardRef.current;
         if (currentCardRef) observer.observe(currentCardRef);
         return () => {
             if (currentCardRef) observer.unobserve(currentCardRef);
         };
-    }, [incrementViewCount, viewCountIncremented, user, depth]);
+    }, [incrementViewCount, viewCountIncremented, user]);
 
+    // (!!! Comment Count өөрчлөгдөх үед callback !!!)
+    const handleCommentCountChange = useCallback((newCount) => {
+        setCommentCount(newCount);
+    }, []);
 
     // --- Render-д зориулсан хувьсагчид ---
     const canEditOrDelete = user && post.author && (user.id === post.author.id || user.is_staff);
@@ -337,7 +366,6 @@ const PostCard = ({ post, onPostDeleted, depth = 0 }) => {
         );
     }
 
-    // Modal-н гарчгийг тохируулах
     const getModalTitle = () => {
         if (post.content_type === 'reply') return "Сэтгэгдэл устгах";
         if (isRepost) return "Repost устгах";
@@ -346,7 +374,7 @@ const PostCard = ({ post, onPostDeleted, depth = 0 }) => {
 
     return (
         <>
-            <ToastContainer position="top-end" className="p-3" style={{ zIndex: 9999 }}>
+            <ToastContainer position="top-end" className="p-3" style={{zIndex: 9999}}>
                 <Toast show={showToast} onClose={() => setShowToast(false)} delay={3000} autohide bg={toastVariant}>
                     <Toast.Body className={toastVariant === 'light' ? 'text-dark' : 'text-white'}>
                         {toastMessage}
@@ -359,14 +387,17 @@ const PostCard = ({ post, onPostDeleted, depth = 0 }) => {
                     <Modal.Title className="h5">{getModalTitle()}</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
-                    Та энэ {post.content_type === 'reply' ? "сэтгэгдлийг" : (isRepost ? "repost-г" : "постыг")} устгахдаа итгэлтэй байна уу?
+                    Та
+                    энэ {post.content_type === 'reply' ? "сэтгэгдлийг" : (isRepost ? "repost-г" : "постыг")} устгахдаа
+                    итгэлтэй байна уу?
                 </Modal.Body>
                 <Modal.Footer>
                     <Button variant="secondary" onClick={() => setShowDeleteModal(false)} disabled={isDeleting}>
                         Болих
                     </Button>
                     <Button variant="danger" onClick={confirmDelete} disabled={isDeleting}>
-                        {isDeleting ? <Spinner as="span" size="sm" className="me-1" /> : <i className="bi bi-trash me-1"></i>}
+                        {isDeleting ? <Spinner as="span" size="sm" className="me-1"/> :
+                            <i className="bi bi-trash me-1"></i>}
                         Устгах
                     </Button>
                 </Modal.Footer>
@@ -376,8 +407,8 @@ const PostCard = ({ post, onPostDeleted, depth = 0 }) => {
             <Card
                 ref={cardRef}
                 className={`shadow-sm m-3 post-card ${depth > 0 ? 'post-reply-card' : ''}`}
-                onClick={depth > 0 ? undefined : navigateToPost} // Reply (depth > 0) бол карт дээр дарахыг идэвхгүй болгосон
-                style={{ cursor: depth > 0 ? 'default' : 'pointer' }}
+                onClick={depth > 0 ? undefined : navigateToPost}
+                style={{cursor: depth > 0 ? 'default' : 'pointer'}}
             >
                 {/* Repost мэдээлэл */}
                 {isRepost && reposterAuthor && (
@@ -392,32 +423,32 @@ const PostCard = ({ post, onPostDeleted, depth = 0 }) => {
                 )}
 
                 <Card.Body className="pb-2">
-                    {/* Repost-н өөрийнх нь сэтгэгдэл (content) */}
+                    {/* Repost-н өөрийнх нь сэтгэгдэл */}
                     {isRepost && post.content && (
                         <div className="mb-2">
-                            <LivePreview content={post.content} />
+                            <LivePreview content={post.content}/>
                         </div>
                     )}
 
                     {/* Repost-н өөрийнх нь зургууд */}
                     {isRepost && post.images && post.images.length > 0 && (
                         <div className="mt-2">
-                            <PostImageGallery images={post.images} />
+                            <PostImageGallery images={post.images}/>
                         </div>
                     )}
 
                     {/* Repost-н өөрийнх нь embed */}
                     {isRepost && post.embed_link && (
-                        <EmbedRenderer url={post.embed_link} />
+                        <EmbedRenderer url={post.embed_link}/>
                     )}
 
-                    {/* Эх постын хэсэг (Repost бол хүрээтэй) */}
+                    {/* Эх постын хэсэг */}
                     <div className={isRepost ? "reposted-content-wrapper border rounded p-3" : ""}>
 
-                        {/* --- Зохиогчийн мэдээлэл (Эх пост) --- */}
+                        {/* Зохиогчийн мэдээлэл */}
                         <Stack direction="horizontal" gap={3} className="align-items-start mb-2">
                             <Link to={`/profile/${originalAuthor.username}`} onClick={(e) => e.stopPropagation()}>
-                                <UserAvatar user={originalAuthor} size={40} />
+                                <UserAvatar user={originalAuthor} size={40}/>
                             </Link>
                             <div className="flex-grow-1">
                                 <Link to={`/profile/${originalAuthor.username}`} onClick={(e) => e.stopPropagation()}
@@ -433,7 +464,7 @@ const PostCard = ({ post, onPostDeleted, depth = 0 }) => {
                                 </p>
                             </div>
 
-                            {/* Устгах / Засах товч (Бүх төрлийн постод харагдана) */}
+                            {/* Устгах / Засах товч */}
                             {canEditOrDelete && (
                                 <Dropdown align="end" onClick={(e) => e.stopPropagation()}>
                                     <Dropdown.Toggle variant="link" size="sm" className="text-muted no-caret p-0"
@@ -449,35 +480,41 @@ const PostCard = ({ post, onPostDeleted, depth = 0 }) => {
                             )}
                         </Stack>
 
-                        {/* --- Постын үндсэн агуулга (Эх пост) --- */}
+                        {/* Постын үндсэн агуулга */}
                         <div className="post-body-content">
-                            {/* 1. Энгийн бичвэр (post, reply) */}
+                            {/* Энгийн бичвэр */}
                             {(originalPost.content_type === 'post' || originalPost.content_type === 'reply') && originalPost.content && (
-                                <LivePreview content={originalPost.content} />
+                                <LivePreview content={originalPost.content}/>
                             )}
 
-                            {/* 2. Зургийн Галерей */}
-                            <PostImageGallery images={originalPost.images} />
+                            {/* Зургийн Галерей */}
+                            <PostImageGallery images={originalPost.images}/>
 
-                            {/* 3. Холбоотой контент (Бодлого, г.м) */}
+                            {/* Холбоотой контент */}
                             {originalPost.content_type !== 'post' && originalPost.content_type !== 'reply' && (
-                                <PostContent post={originalPost} />
+                                <PostContent post={originalPost}/>
                             )}
 
-                            {/* 4. Embed (Видео) */}
+                            {/* Embed */}
                             {originalPost.embed_link && (
-                                <EmbedRenderer url={originalPost.embed_link} />
+                                <EmbedRenderer url={originalPost.embed_link}/>
                             )}
                         </div>
                     </div>
 
-                    {/* (!!!) COMMENTSECTION УСТГАСАН (!!!) */}
-                    {/* Feed дээр коммент харагдахгүй. */}
+                    {/* (!!! COMMENT SECTION - Feed дээр л харуулна (depth === 0) !!!) */}
+                    {depth === 0 && (
+                        <CommentSection
+                            postId={post.id}
+                            initialCount={commentCount}
+                            onCountChange={handleCommentCountChange}
+                            defaultExpanded={false}  // Feed дээр collapsed байна
+                        />
+                    )}
 
                 </Card.Body>
 
                 {/* --- FOOTER: Үйлдлийн товчнууд --- */}
-                {/* (!!!) Reply (depth > 0) байсан ч footer харагдана */}
                 <Card.Footer className="bg-white border-top-0 pt-0">
                     <Stack direction="horizontal" gap={3} className="post-actions align-items-center">
                         {/* Таалагдсан */}
@@ -491,24 +528,23 @@ const PostCard = ({ post, onPostDeleted, depth = 0 }) => {
                             <span className={`ms-1 small ${isFavorited ? 'text-danger' : ''}`}>{favoriteCount}</span>
                         </Button>
 
-                        {/* Коммент (Зөвхөн тоо) */}
+                        {/* Коммент (State-с авсан тоо) */}
                         <div
                             className="text-muted p-1 d-flex align-items-center"
                             style={{cursor: 'default'}}
                             title="Сэтгэгдэл"
                         >
                             <i className="bi bi-chat-square me-1"></i>
-                            {/* (!!!) post.replies_count-г шууд ашиглана */}
-                            <span className="ms-1 small">{post.replies_count || 0}</span>
+                            <span className="ms-1 small">{commentCount}</span>
                         </div>
 
-                        {/* Үзэлт (Эх постынх) */}
+                        {/* Үзэлт */}
                         <span className="text-muted small ms-2 d-flex align-items-center" title="Үзсэн тоо">
                             <i className="bi bi-eye me-1"></i>
                             {currentViewCount || 0}
                         </span>
 
-                        {/* Хадгалах (Bookmark) */}
+                        {/* Хадгалах */}
                         <Button
                             variant="link"
                             className={`text-decoration-none ms-auto p-1 ${isBookmarked ? 'text-primary' : 'text-muted'}`}

@@ -198,11 +198,11 @@ const ReplyForm = ({ parentId, onReplyAdded, depth = 0 }) => {
 // ----------------------
 // Comment Section
 // ----------------------
-const CommentSection = ({ postId, initialCount = 0, onCountChange }) => {
+const CommentSection = ({ postId, initialCount = 0, onCountChange, defaultExpanded = true }) => {
     const { user } = useAuth();
     const [replies, setReplies] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [show, setShow] = useState(true); // (!!! Анхнаасаа нээлттэй !!!)
+    const [show, setShow] = useState(defaultExpanded); // (!!! defaultExpanded prop ашиглана !!!)
     const [replyCount, setReplyCount] = useState(initialCount);
 
     const fetchReplies = async () => {

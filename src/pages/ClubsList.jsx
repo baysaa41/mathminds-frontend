@@ -1,133 +1,221 @@
-import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import apiClient from '../api/axiosConfig';
+// src/pages/ClubsList.jsx
+// ✅ ШИНЭЧИЛСЭН: /clubs замд ажиллана. clubsService.getClubs-г ашиглана.
 
-// -------------------------------
-// Клубуудын жагсаалт
-// -------------------------------
+import React, { useState, useEffect, useCallback } from 'react';
+import { Link, useNavigate, useOutletContext } from 'react-router-dom';
+import { usePrefill } from '../context/PrefillContext';
+
+// ✅ Service
+import clubsService, { formatErrorMessage } from '../services/clubsService'; //
+
+// ✅ Common Components
+import LoadingState from '../components/common/LoadingState';
+import ErrorState from '../components/common/ErrorState';
+import EmptyState from '../components/common/EmptyState';
+import PageHeader from '../components/common/PageHeader';
+import SearchBar from '../components/common/SearchBar';
+import useToast from '../hooks/useToast';
+
+import ClubsMine from './ClubsMine.jsx';
+
+// ✅ React Bootstrap & Icons
+import Container from 'react-bootstrap/Container';
+import Row from 'react-bootstrap/Row';
+import Col from 'react-bootstrap/Col';
+import Card from 'react-bootstrap/Card';
+import Button from 'react-bootstrap/Button';
+import Badge from 'react-bootstrap/Badge';
+import Stack from 'react-bootstrap/Stack';
+import Spinner from 'react-bootstrap/Spinner';
+import Toast from 'react-bootstrap/Toast';
+import ToastContainer from 'react-bootstrap/ToastContainer';
+import { Users, Send, Eye, ShieldCheck, Award, User, PlusCircle } from 'lucide-react';
+
 export default function ClubsList() {
-    const [search, setSearch] = useState('');
+    const navigate = useNavigate();
+    const { setPageTitle } = useOutletContext();
+    const { setPrefillData } = usePrefill();
+    const { toast, showToast, hideToast } = useToast();
 
-    // -------------------------------
-    // React Query hook (v5 syntax)
-    // -------------------------------
-    const {
-        data,
-        isPending,
-        isError,
-        error,
-        refetch,
-    } = useQuery({
-        queryKey: ['clubs', search],
-        queryFn: async () => {
-            const response = await apiClient.get(`/api/clubs/?search=${search}`);
-            return response.data;
-        },
-        staleTime: 1000 * 60, // 1 минут cache
-        retry: 1, // дахин оролдох тоо
-    });
+    // ✅ State
+    const [clubs, setClubs] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [currentQuery, setCurrentQuery] = useState({ search: '' });
+    const [pagination, setPagination] = useState({ next: null, count: 0 });
 
-    // -------------------------------
-    // Render states
-    // -------------------------------
-    if (isPending) {
-        return (
-            <div className="p-6">
-                <h2 className="text-lg font-semibold mb-2">⏳ Клубуудыг ачаалж байна...</h2>
-                <div className="animate-pulse space-y-2">
-                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                    <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                </div>
-            </div>
-        );
+    // ✅ Data Fetching
+    const fetchAllClubs = async (params = {}, reset = false) => {
+        try {
+            setLoading(true);
+            setError(null);
+            const data = await clubsService.getClubs(params); //
+
+            if (data?.results && Array.isArray(data.results)) {
+                setClubs(reset ? data.results : [...clubs, ...data.results]);
+                setPagination({ next: data.next, count: data.count });
+            } else if (Array.isArray(data)) {
+                setClubs(data); // Paginationгүй тохиолдолд
+                setPagination({ next: null, count: data.length });
+            } else {
+                setClubs([]);
+            }
+        } catch (err) {
+            setError(formatErrorMessage(err)); //
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        setPageTitle('Бүх клубууд');
+        fetchAllClubs(currentQuery, true); // (true = reset)
+        return () => setPageTitle('Нүүр');
+    }, []);
+
+    const handleSearch = useCallback((query) => {
+        const searchQuery = query.search || '';
+        const newQuery = { search: searchQuery };
+        setCurrentQuery(newQuery);
+        fetchAllClubs(newQuery, true); // (true = reset)
+    }, []);
+
+    const handleCreatePost = (e, club) => {
+        e.stopPropagation();
+        const prefillData = {
+            type: 'club',
+            item: { id: club.id, title: club.name || `Клуб #${club.id}` }
+        };
+        setPrefillData(prefillData);
+        navigate('/');
+    };
+
+    if (loading && clubs.length === 0) {
+        return <LoadingState message="Клубуудыг ачааллаж байна..." fullPage />;
     }
 
-    if (isError) {
-        return (
-            <div className="p-6 text-red-600">
-                ⚠️ Алдаа гарлаа: {error?.message || 'Мэдээлэл татахад алдаа гарлаа.'}
-                <button
-                    onClick={() => refetch()}
-                    className="ml-4 bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
-                >
-                    Дахин оролдох
-                </button>
-            </div>
-        );
+    if (error && clubs.length === 0) {
+        return <ErrorState message={error} onRetry={() => fetchAllClubs(currentQuery, true)} fullPage />;
     }
 
-    if (!data || data.length === 0) {
-        return (
-            <div className="p-6 text-gray-600">
-                <h2 className="text-lg font-semibold mb-2">Клуб олдсонгүй 😕</h2>
-                <p>Та хайлтын үгээ шалгана уу эсвэл шинэ клуб үүсгээрэй.</p>
-            </div>
-        );
-    }
-
-    // -------------------------------
-    // Sort clubs by category
-    // -------------------------------
-    const official = data.filter((c) => c.is_official);
-    const promoted = data.filter((c) => !c.is_official && c.is_promoted);
-    const others = data.filter((c) => !c.is_official && !c.is_promoted);
-
-    // -------------------------------
-    // Main view
-    // -------------------------------
     return (
-        <div className="p-6 space-y-8">
-            <div className="flex justify-between items-center mb-4">
-                <h1 className="text-2xl font-bold">Клубууд</h1>
-            </div>
+        <Container className="py-4">
+            <ToastContainer position="top-end" className="p-3" style={{ zIndex: 9999 }}>
+                {/* ... (Toast) ... */}
+            </ToastContainer>
 
-            <input
-                type="text"
-                placeholder="Клуб хайх..."
-                className="border rounded-lg px-3 py-2 w-full focus:outline-none focus:ring focus:ring-blue-300"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+            <ClubsMine clubs={clubs} />
+
+            <PageHeader
+                title="Бүх клубууд"
+                subtitle={`Нийт олдсон: ${pagination.count || clubs.length} клуб`}
+                action={
+                    <div className="d-flex gap-2 flex-wrap">
+                        <Button
+                            as={Link}
+                            to="/clubs/mine" //
+                            variant="outline-primary"
+                        >
+                            <Users size={16} className="me-2" />
+                            Миний клубууд
+                        </Button>
+                        <Button
+                            as={Link}
+                            to="/clubs/create" //
+                            variant="primary"
+                        >
+                            <PlusCircle size={16} className="me-2" />
+                            Клуб үүсгэх
+                        </Button>
+                    </div>
+                }
             />
 
-            <ClubSection title="📘 Албан ёсны клубууд" clubs={official} />
-            <ClubSection title="⭐ Онцлох клубууд" clubs={promoted} />
-            <ClubSection title="👥 Бусад клубууд" clubs={others} />
-        </div>
+            <SearchBar
+                onSearch={handleSearch}
+                placeholder="Клубын нэр, тайлбараар хайх..."
+                loading={loading}
+                filters={[]}
+            />
+
+            {/* Empty State */}
+            {!loading && clubs.length === 0 && (
+                <EmptyState
+                    icon={Users}
+                    title={currentQuery.search ? 'Хайлт олдсонгүй' : 'Клуб олдсонгүй'}
+                    message={currentQuery.search ? 'Хайлтын утганд тохирох клуб байхгүй байна.' : 'Одоогоор бүртгэлтэй клуб байхгүй байна.'}
+                />
+            )}
+
+            {/* Club List */}
+            {clubs.length > 0 && (
+                <Row xs={1} md={2} lg={3} className="g-4">
+                    {clubs.map((club) => (
+                        <Col key={club.id}>
+                            <PublicClubCard club={club} onPost={handleCreatePost} />
+                        </Col>
+                    ))}
+                </Row>
+            )}
+
+            {/* (Infinite scroll-г энд нэмж болно) */}
+        </Container>
     );
 }
 
-// -------------------------------
-// Клубын бүлэг тус бүрийн хэсэг
-// -------------------------------
-function ClubSection({ title, clubs }) {
-    if (!clubs || clubs.length === 0) return null;
+// ----------------------------------------------
+// ✅ PublicClubCard (Нийтийн клубын карт)
+// ----------------------------------------------
+function PublicClubCard({ club, onPost }) {
+    const navigate = useNavigate();
+
+    const handleCardClick = () => {
+        // ✅ ЗАСВАР: Үнэмлэхүй зам ашиглах
+        navigate(`/clubs/${club.id}`); //
+    };
 
     return (
-        <section>
-            <h2 className="font-semibold text-xl mb-3">{title}</h2>
-            <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {clubs.map((club) => (
-                    <ClubCard key={club.id} club={club} />
-                ))}
-            </div>
-        </section>
-    );
-}
+        <Card
+            className="h-100 shadow-sm hover-shadow transition"
+            style={{ cursor: 'pointer' }}
+            onClick={handleCardClick}
+        >
+            <Card.Body className="d-flex flex-column">
+                <Stack direction="horizontal" gap={2} className="mb-2 flex-wrap">
+                    {club.is_official && (
+                        <Badge bg="primary"><ShieldCheck size={12} className="me-1" />Албан ёсны</Badge>
+                    )}
+                    {club.is_promoted && !club.is_official && (
+                        <Badge bg="warning" text="dark"><Award size={12} className="me-1" />Онцлох</Badge>
+                    )}
+                    <Badge bg="secondary" pill className="ms-auto"><Users size={12} className="me-1" />{club.member_count || 0}</Badge>
+                </Stack>
+                <Card.Title className="h5 mb-2">{club.name}</Card.Title>
+                <Card.Text className="text-muted small mb-3 flex-grow-1">{club.description || 'Тайлбаргүй'}</Card.Text>
+                <div className="text-muted small mb-3"><User size={14} className="me-1" />{club.creator_name}</div>
 
-// -------------------------------
-// Клубын карт
-// -------------------------------
-function ClubCard({ club }) {
-    return (
-        <div className="border rounded-lg p-4 hover:shadow transition duration-200 ease-in-out bg-white">
-            <h3 className="text-lg font-semibold mb-1 text-gray-900">{club.name}</h3>
-            <p className="text-gray-600 text-sm line-clamp-3 mb-3">
-                {club.description || 'Тайлбар байхгүй.'}
-            </p>
-            <div className="text-xs text-gray-500 flex justify-between items-center">
-                <span>👤 {club.creator_name}</span>
-                <span>{club.member_count} гишүүн</span>
-            </div>
-        </div>
+                <Stack direction="horizontal" gap={2}>
+                    <Button
+                        as={Link}
+                        to={`/clubs/${club.id}`} //
+                        variant="primary"
+                        size="sm"
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex-grow-1"
+                    >
+                        <Eye size={14} className="me-1" />
+                        Харах
+                    </Button>
+                    <Button
+                        variant="outline-primary"
+                        size="sm"
+                        onClick={(e) => onPost(e, club)}
+                        title="Постлох"
+                    >
+                        <Send size={14} />
+                    </Button>
+                </Stack>
+            </Card.Body>
+        </Card>
     );
 }

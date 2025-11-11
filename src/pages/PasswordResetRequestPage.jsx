@@ -1,4 +1,4 @@
-// frontend/src/pages/PasswordResetRequestPage.jsx
+// frontend/src/pages/PasswordResetRequestPage.jsx (ӨӨРЧЛӨГДСӨН)
 
 import { useState } from 'react';
 import apiClient from '../api/axiosConfig';
@@ -12,7 +12,8 @@ import Spinner from 'react-bootstrap/Spinner';
 import Form from 'react-bootstrap/Form';
 
 const PasswordResetRequestPage = () => {
-    const [email, setEmail] = useState('');
+    // Зөвхөн username-г ашиглана
+    const [username, setUsername] = useState('');
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -23,25 +24,26 @@ const PasswordResetRequestPage = () => {
         setSuccess(false);
         setLoading(true);
 
-        // Simple email validation
-        if (!email || !/\S+@\S+\.\S+/.test(email)) {
-            setError('И-мэйл хаяг буруу байна');
+        // Хэрэглэгчийн нэр оруулсан эсэхийг шалгах
+        if (!username) {
+            setError('Хэрэглэгчийн нэрээ оруулна уу.');
             setLoading(false);
             return;
         }
 
         try {
-            await apiClient.post('/users/api/password-reset/request/', {
-                email: email
+            await apiClient.post('/users/api/password/reset/request/', {
+                // Backend одоо зөвхөн 'username' талбарыг хүлээн авна
+                username: username
             });
 
             setSuccess(true);
-            setEmail('');
+            setUsername(''); // Амжилттай бол талбарыг цэвэрлэх
 
         } catch (err) {
             setError(
-                err.response?.data?.error ||
-                'И-мэйл илгээхэд алдаа гарлаа. Дахин оролдоно уу.'
+                err.response?.data?.detail ||
+                'Сэргээх хүсэлт илгээхэд алдаа гарлаа. Дахин оролдоно уу.'
             );
             console.error("Password reset request error:", err);
         } finally {
@@ -50,86 +52,42 @@ const PasswordResetRequestPage = () => {
     };
 
     return (
-        <Container
-            fluid
-            className="d-flex align-items-center justify-content-center min-vh-100"
-            style={{
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-            }}
-        >
-            <Card
-                className="shadow-lg border-0"
-                style={{
-                    maxWidth: '440px',
-                    width: '100%',
-                    borderRadius: '16px'
-                }}
-            >
-                <Card.Body className="p-5">
-                    {/* Лого & Гарчиг */}
-                    <div className="text-center mb-4">
-                        <div
-                            className="d-inline-flex align-items-center justify-content-center rounded-circle mb-3"
-                            style={{
-                                width: '64px',
-                                height: '64px',
-                                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-                            }}
-                        >
-                            <span className="text-white fw-bold" style={{ fontSize: '28px' }}>
-                                🔒
-                            </span>
-                        </div>
-                        <h2 className="fw-bold text-dark mb-1">Нууц үг сэргээх</h2>
-                        <p className="text-muted small mb-0">
-                            Бүртгэлтэй и-мэйл хаягаа оруулна уу
-                        </p>
-                    </div>
-
-                    {/* Амжилтын мэдэгдэл */}
-                    {success && (
-                        <Alert variant="success" className="py-3">
-                            <div className="fw-semibold mb-1">✅ И-мэйл илгээгдлээ!</div>
-                            <div className="small">
-                                Нууц үг сэргээх заавар таны и-мэйл хаягт илгээгдсэн.
-                                И-мэйлээ шалгаад холбоосыг дараарай.
-                            </div>
+        <Container className="d-flex justify-content-center align-items-center" style={{ minHeight: '100vh' }}>
+            <Card style={{ width: '100%', maxWidth: '400px', borderRadius: '16px', boxShadow: '0 8px 16px rgba(0,0,0,0.1)' }}>
+                <Card.Header className="text-center py-4 border-0" style={{ backgroundColor: '#f8f9fa', borderRadius: '16px 16px 0 0' }}>
+                    <h4 className="mb-0 fw-bold text-primary">Нууц үг сэргээх</h4>
+                </Card.Header>
+                <Card.Body className="p-4">
+                    {error && <Alert variant="danger" className="text-center">{error}</Alert>}
+                    {success ? (
+                        <Alert variant="success" className="text-center">
+                            Нууц үг сэргээх линкийг таны бүртгэлтэй и-мэйл хаяг руу илгээлээ. И-мэйлээ шалгана уу.
                         </Alert>
-                    )}
-
-                    {/* Алдааны мэдэгдэл */}
-                    {error && (
-                        <Alert variant="danger" className="py-2 small">
-                            {error}
-                        </Alert>
-                    )}
-
-                    {!success && (
+                    ) : (
                         <Form onSubmit={handleSubmit}>
-                            <Form.Group className="mb-4">
-                                <Form.Label className="small fw-semibold text-secondary">
-                                    И-мэйл хаяг
-                                </Form.Label>
+                            <p className="text-muted small mb-3">
+                                Бүртгэлтэй **хэрэглэгчийн нэрээ** оруулна уу. Бид таны бүртгэлтэй и-мэйл хаяг руу нууц үг сэргээх линк илгээнэ.
+                            </p>
+
+                            <Form.Group className="mb-3" controlId="formUsername">
+                                <Form.Label className="small fw-semibold">Хэрэглэгчийн нэр</Form.Label>
                                 <Form.Control
-                                    type="email"
-                                    placeholder="example@email.com"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    disabled={loading}
+                                    type="text"
+                                    name="username"
+                                    value={username}
+                                    onChange={(e) => setUsername(e.target.value)}
+                                    placeholder="Хэрэглэгчийн нэр"
                                     required
-                                    style={{ borderRadius: '8px' }}
                                 />
-                                <Form.Text className="text-muted small">
-                                    Бүртгэлтэй и-мэйл хаягаа оруулна уу
-                                </Form.Text>
                             </Form.Group>
 
                             <Button
-                                type="submit"
                                 variant="primary"
-                                className="w-100 py-2 fw-semibold"
+                                type="submit"
+                                className="w-100 mt-3"
                                 disabled={loading}
                                 style={{
+                                    height: '50px',
                                     borderRadius: '8px',
                                     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                                     border: 'none'

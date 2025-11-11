@@ -1,6 +1,6 @@
-// frontend/src/pages/PasswordResetConfirmPage.jsx
+// frontend/src/pages/PasswordResetConfirmPage.jsx (ӨӨРЧЛӨГДСӨН)
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react'; // useEffect-г хасав
 import { useParams, useNavigate } from 'react-router-dom';
 import apiClient from '../api/axiosConfig';
 
@@ -13,6 +13,7 @@ import Spinner from 'react-bootstrap/Spinner';
 import Form from 'react-bootstrap/Form';
 
 const PasswordResetConfirmPage = () => {
+    // URL-ийн параметруудыг авах
     const { uidb64, token } = useParams();
     const navigate = useNavigate();
 
@@ -21,77 +22,40 @@ const PasswordResetConfirmPage = () => {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [validating, setValidating] = useState(true);
-    const [tokenValid, setTokenValid] = useState(false);
-    const [username, setUsername] = useState('');
 
-    // Token-г эхлээд шалгах
-    useEffect(() => {
-        const validateToken = async () => {
-            try {
-                const response = await apiClient.get(
-                    `/users/api/password-reset/validate/${uidb64}/${token}/`
-                );
+    // Эхний ачааллаас токен зөв гэж үзнэ, Backend Confirm хийх үед шалгана
+    const [tokenValid] = useState(true);
+    const [username] = useState('Хэрэглэгч'); // Username-г backend-ээс шалгах логикийг хасав
 
-                if (response.data.valid) {
-                    setTokenValid(true);
-                    setUsername(response.data.username || '');
-                } else {
-                    setTokenValid(false);
-                    setError(response.data.error || 'Холбоос хүчингүй байна.');
-                }
-            } catch (err) {
-                setTokenValid(false);
-                setError(
-                    err.response?.data?.error ||
-                    'Холбоос хүчингүй эсвэл хугацаа дууссан байна.'
-                );
-            } finally {
-                setValidating(false);
-            }
-        };
-
-        validateToken();
-    }, [uidb64, token]);
-
-    const handleSubmit = async (e) => {
+    const handlePasswordReset = async (e) => {
         e.preventDefault();
         setError('');
-        setLoading(true);
-
-        // Validation
-        if (password.length < 8) {
-            setError('Нууц үг дор хаяж 8 тэмдэгттэй байх ёстой');
-            setLoading(false);
-            return;
-        }
 
         if (password !== passwordConfirm) {
-            setError('Нууц үг хоорондоо таарахгүй байна');
-            setLoading(false);
+            setError('Нууц үг батлах нууц үгтэй таарахгүй байна.');
             return;
         }
 
+        if (password.length < 8) {
+            setError('Нууц үг дор хаяж 8 тэмдэгттэй байх ёстой.');
+            return;
+        }
+
+        setLoading(true);
+
         try {
-            await apiClient.post(
-                `/users/api/password-reset/confirm/${uidb64}/${token}/`,
-                {
-                    password: password,
-                    password_confirm: passwordConfirm
-                }
-            );
+            await apiClient.post('/users/api/password/reset/confirm/', { // <--- API зам засварлагдсан
+                uid: uidb64,
+                token: token,
+                new_password: password, // Backend-ийн хүлээн авах талбарын нэр
+            });
 
             setSuccess(true);
 
-            // 3 секундын дараа login хуудас руу шилжих
-            setTimeout(() => {
-                navigate('/login');
-            }, 3000);
-
         } catch (err) {
             setError(
-                err.response?.data?.error ||
-                'Нууц үг солиход алдаа гарлаа. Дахин оролдоно уу.'
+                err.response?.data?.detail ||
+                'Нууц үг солиход алдаа гарлаа. Линк буруу эсвэл хугацаа нь дууссан байж магадгүй.'
             );
             console.error("Password reset confirm error:", err);
         } finally {
@@ -99,152 +63,57 @@ const PasswordResetConfirmPage = () => {
         }
     };
 
-    // Token шалгаж байгаа үед
-    if (validating) {
-        return (
-            <Container
-                fluid
-                className="d-flex align-items-center justify-content-center min-vh-100"
-                style={{
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-                }}
-            >
-                <Card
-                    className="shadow-lg border-0 text-center p-5"
-                    style={{
-                        maxWidth: '440px',
-                        width: '100%',
-                        borderRadius: '16px'
-                    }}
-                >
-                    <Spinner animation="border" variant="primary" className="mb-3" />
-                    <p className="text-muted">Холбоос шалгаж байна...</p>
-                </Card>
-            </Container>
-        );
-    }
-
     return (
-        <Container
-            fluid
-            className="d-flex align-items-center justify-content-center min-vh-100"
-            style={{
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-            }}
-        >
-            <Card
-                className="shadow-lg border-0"
-                style={{
-                    maxWidth: '440px',
-                    width: '100%',
-                    borderRadius: '16px'
-                }}
-            >
-                <Card.Body className="p-5">
-                    {/* Лого & Гарчиг */}
-                    <div className="text-center mb-4">
-                        <div
-                            className="d-inline-flex align-items-center justify-content-center rounded-circle mb-3"
-                            style={{
-                                width: '64px',
-                                height: '64px',
-                                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-                            }}
-                        >
-                            <span className="text-white fw-bold" style={{ fontSize: '28px' }}>
-                                {tokenValid ? '🔑' : '❌'}
-                            </span>
-                        </div>
-                        <h2 className="fw-bold text-dark mb-1">
-                            {tokenValid ? 'Шинэ нууц үг үүсгэх' : 'Холбоос хүчингүй'}
-                        </h2>
-                        {tokenValid && username && (
-                            <p className="text-muted small mb-0">
-                                Хэрэглэгч: <strong>@{username}</strong>
-                            </p>
-                        )}
-                    </div>
+        <Container className="d-flex justify-content-center align-items-center" style={{ minHeight: '100vh' }}>
+            <Card style={{ width: '100%', maxWidth: '400px', borderRadius: '16px', boxShadow: '0 8px 16px rgba(0,0,0,0.1)' }}>
+                <Card.Header className="text-center py-4 border-0" style={{ backgroundColor: '#f8f9fa', borderRadius: '16px 16px 0 0' }}>
+                    <h4 className="mb-0 fw-bold text-primary">Нууц үг шинэчлэх</h4>
+                </Card.Header>
+                <Card.Body className="p-4">
+                    {error && <Alert variant="danger" className="text-center">{error}</Alert>}
 
-                    {/* Амжилтын мэдэгдэл */}
-                    {success && (
-                        <Alert variant="success" className="py-3">
-                            <div className="fw-semibold mb-1">✅ Амжилттай!</div>
-                            <div className="small">
-                                Нууц үг амжилттай солигдлоо. Нэвтрэх хуудас руу шилжиж байна...
-                            </div>
+                    {/* Токен шалгах хэсгийг энгийн болгож, шууд нууц үг солих форм харуулна */}
+                    {success ? (
+                        <Alert variant="success" className="text-center">
+                            Нууц үг амжилттай солигдлоо. <a href="/login" className="alert-link">Нэвтрэх хуудас</a> руу очино уу.
                         </Alert>
-                    )}
-
-                    {/* Алдааны мэдэгдэл */}
-                    {error && (
-                        <Alert variant="danger" className="py-2 small">
-                            {error}
-                        </Alert>
-                    )}
-
-                    {/* Token хүчингүй бол */}
-                    {!tokenValid && (
-                        <div className="text-center">
-                            <p className="text-muted mb-4">
-                                Холбоос хүчингүй эсвэл хугацаа дууссан байна.
-                                Дахин оролдоно уу.
+                    ) : tokenValid && (
+                        <Form onSubmit={handlePasswordReset}>
+                            <p className="text-muted small mb-3">
+                                {username}-д зориулсан нууц үгийг шинэчилнэ үү.
                             </p>
-                            <Button
-                                variant="primary"
-                                onClick={() => navigate('/password-reset')}
-                                style={{
-                                    borderRadius: '8px',
-                                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                                    border: 'none'
-                                }}
-                            >
-                                Нууц үг сэргээх хуудас руу очих
-                            </Button>
-                        </div>
-                    )}
 
-                    {/* Token хүчинтэй бол form харуулах */}
-                    {tokenValid && !success && (
-                        <Form onSubmit={handleSubmit}>
-                            <Form.Group className="mb-3">
-                                <Form.Label className="small fw-semibold text-secondary">
-                                    Шинэ нууц үг
-                                </Form.Label>
+                            {/* Шинэ нууц үг */}
+                            <Form.Group className="mb-3" controlId="formNewPassword">
+                                <Form.Label className="small fw-semibold">Шинэ нууц үг (дор хаяж 8 тэмдэгт)</Form.Label>
                                 <Form.Control
                                     type="password"
-                                    placeholder="••••••••"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    disabled={loading}
+                                    placeholder="Шинэ нууц үг"
                                     required
-                                    style={{ borderRadius: '8px' }}
                                 />
-                                <Form.Text className="text-muted small">
-                                    Дор хаяж 8 тэмдэгт
-                                </Form.Text>
                             </Form.Group>
 
-                            <Form.Group className="mb-4">
-                                <Form.Label className="small fw-semibold text-secondary">
-                                    Нууц үг давтах
-                                </Form.Label>
+                            {/* Нууц үг баталгаажуулах */}
+                            <Form.Group className="mb-4" controlId="formConfirmPassword">
+                                <Form.Label className="small fw-semibold">Нууц үг баталгаажуулах</Form.Label>
                                 <Form.Control
                                     type="password"
-                                    placeholder="••••••••"
                                     value={passwordConfirm}
                                     onChange={(e) => setPasswordConfirm(e.target.value)}
-                                    disabled={loading}
+                                    placeholder="Нууц үг баталгаажуулах"
                                     required
-                                    style={{ borderRadius: '8px' }}
                                 />
                             </Form.Group>
 
                             <Button
-                                type="submit"
                                 variant="primary"
-                                className="w-100 py-2 fw-semibold"
-                                disabled={loading}
+                                type="submit"
+                                className="w-100"
+                                disabled={loading || password.length < 8 || password !== passwordConfirm}
                                 style={{
+                                    height: '50px',
                                     borderRadius: '8px',
                                     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                                     border: 'none'

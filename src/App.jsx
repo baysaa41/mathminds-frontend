@@ -44,7 +44,8 @@ import FollowingPage from './pages/FollowingPage.jsx';
 import CoinTransferPage from './pages/CoinTransferPage.jsx';
 
 // Клуб / бүлгийн хуудсууд
-import ClubsList from './pages/ClubsList.jsx';
+import ClubsRoutes  from "./routes/ClubsRoutes.jsx";
+import ClubsList from "./pages/ClubsList.jsx";
 
 // Нэвтрэх болон бусад хуудсууд
 import LoginPage from './pages/LoginPage.jsx';
@@ -70,7 +71,11 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/password-reset" element={<PasswordResetRequestPage />} />
-            <Route path="/password-reset/confirm/:uidb64/:token" element={<PasswordResetConfirmPage />} />
+            {/* Нууц үг баталгаажуулах/шинэчлэх зам. uidb64 болон token-г URL-аас авна */}
+            <Route
+                path="/reset-password/:uidb64/:token"
+                element={<PasswordResetConfirmPage />}
+            />
             <Route path="/callback" element={<CallbackPage />} />
 
             {/* Хамгаалагдсан хуудсууд - Layout дотор */}
@@ -114,7 +119,7 @@ function App() {
                 <Route path="coins/transfer" element={<CoinTransferPage />} />
 
                 {/* Клубууд */}
-                <Route path="clubs" element={<ClubsList />} />
+                <Route path="/clubs/*" element={<ClubsRoutes />} />
 
                 {/* Products */}
                 <Route path="products" element={<ProductListPage />} />

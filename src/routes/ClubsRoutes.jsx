@@ -3,7 +3,8 @@
 
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
-import Clubs from '../pages/Clubs';
+import ClubsList from '../pages/ClubsList';
+import ClubsMine from '../pages/ClubsMine.jsx';
 import ClubDetail from '../pages/ClubDetail';
 import CreateClub from '../pages/CreateClub';
 
@@ -11,7 +12,9 @@ const ClubsRoutes = () => {
     return (
         <Routes>
             {/* Клубуудын жагсаалт */}
-            <Route path="/" element={<Clubs />} />
+            <Route path="/" element={<ClubsList />} />
+
+            <Route path="/mine" element={<ClubsMine />} />
 
             {/* Шинэ клуб үүсгэх */}
             <Route path="/create" element={<CreateClub />} />

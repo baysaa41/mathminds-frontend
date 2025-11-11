@@ -1,23 +1,43 @@
 // src/services/clubsService.js
-// Клубын бүх API хүсэлтүүд (/api/clubs endpoint)
+// ✅ ШИНЭЧИЛСЭН: getMyClubs функц нэмэгдсэн.
 
 import apiClient from '../api/axiosConfig';
 
 /**
- * Хэрэглэгчийн бүх клубууд авах
+ * Бүх клубуудын жагсаалт авах (ClubsList.jsx-д зориулагдсан)
  * GET /api/clubs/
  */
-export const getClubs = async () => {
+export const getClubs = async (params = {}) => {
     try {
-        console.log('📥 Fetching clubs from /api/clubs/...');
-        const response = await apiClient.get('/api/clubs/');
-        console.log('✅ Clubs fetched:', response.data);
+        console.log('📥 Fetching ALL clubs from /api/clubs/', { params });
+        const response = await apiClient.get('/api/clubs/', { params });
+        console.log('✅ All clubs fetched:', response.data);
         return response.data;
     } catch (error) {
-        console.error('❌ Error fetching clubs:', error);
+        console.error('❌ Error fetching all clubs:', error);
         throw error;
     }
 };
+
+// -----------------------------------------------------------------
+// ✅ ШИНЭЭР НЭМСЭН ФУНКЦ
+// -----------------------------------------------------------------
+/**
+ * Зөвхөн хэрэглэгчийн клубуудыг авах (ClubsMine.jsx-д зориулагдсан)
+ * GET /api/clubs/my_clubs/
+ */
+export const getMyClubs = async (params = {}) => {
+    try {
+        console.log('📥 Fetching MY clubs from /api/clubs/my_clubs/', { params });
+        const response = await apiClient.get('/api/clubs/my_clubs/', { params });
+        console.log('✅ My clubs fetched:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error('❌ Error fetching my clubs:', error);
+        throw error;
+    }
+};
+
 
 /**
  * Клубын дэлгэрэнгүй мэдээлэл авах
@@ -156,6 +176,7 @@ export const formatErrorMessage = (error) => {
 // Default export
 const clubsService = {
     getClubs,
+    getMyClubs, // <-- Нэмэгдсэн
     getClubDetail,
     createClub,
     updateClub,

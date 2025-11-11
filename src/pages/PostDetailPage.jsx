@@ -29,6 +29,7 @@ import Badge from 'react-bootstrap/Badge';
 
 /**
  * Холбоотой контент (Бодлого, Томьёо г.м)-г харуулна.
+ * (Энэ компонент өөрчлөгдөөгүй)
  */
 const PostContentRenderer = ({ post }) => {
     if (!post) return null;
@@ -77,6 +78,7 @@ const PostContentRenderer = ({ post }) => {
 /**
  * Зургийн цомог (Grid) харуулах компонент
  * ViewerJS-тэй ажиллахаар тохируулсан
+ * (Энэ компонент өөрчлөгдөөгүй)
  */
 const PostDetailGallery = ({ images, galleryRef }) => {
     if (!images || images.length === 0) return null;
@@ -116,15 +118,21 @@ const PostDetailPage = () => {
     const [error, setError] = useState(null);
     const [commentCount, setCommentCount] = useState(0);
 
+    // (!!!) ЗАСВАР: Үзэлтийг хянах state нэмсэн
+    const [viewIncremented, setViewIncremented] = useState(false);
+
     // (!!! ViewerJS-д зориулсан ref !!!)
     const galleryRef = useRef(null);
     const viewerInstance = useRef(null);
 
-    // Пост татах
+    // (!!!) ЗАСВАР: useEffect-г хоёр хуваасан (Пост татах)
     useEffect(() => {
         const fetchPost = async () => {
             setLoading(true);
             setError(null);
+            setPost(null); // Хуучин постыг цэвэрлэх
+            setViewIncremented(false); // Үзэлтийг шинээр шалгахад бэлтгэх
+
             try {
                 const response = await apiClient.get(`/api/minds/posts/${postId}/`);
                 setPost(response.data);
@@ -136,18 +144,35 @@ const PostDetailPage = () => {
                 setLoading(false);
             }
         };
-        const incrementView = async () => {
-            try {
-                await apiClient.post(`/api/minds/posts/${postId}/view/`);
-            } catch (err) {
-                console.warn('Could not increment view count:', err);
-            }
-        };
         fetchPost();
-        if (user) { incrementView(); }
-    }, [postId, user]);
+    }, [postId]); // <-- Зөвхөн postId солигдоход ажиллана
+
+    // (!!!) ЗАСВАР: Үзэлтийг нэг удаа нэмэх useEffect
+    useEffect(() => {
+        // Нэвтэрсэн, loading дууссан, пост амжилттай татагдсан,
+        // мөн энэ постын үзэлтийг тоолоогүй бол
+        if (user && !loading && post && !viewIncremented) {
+
+            // Үзэлтийг тоолсон гэж тэр даруй тэмдэглэнэ
+            // Ингэснээр comment бичих үеийн re-render-д дахин ажиллахгүй
+            setViewIncremented(true);
+
+            const incrementView = async () => {
+                try {
+                    await apiClient.post(`/api/minds/posts/${postId}/view/`);
+                } catch (err) {
+                    // Алдаа гарсан ч дахин оролдохгүй (true хэвээр үлдээ)
+                    console.warn('Could not increment view count:', err);
+                }
+            };
+
+            incrementView();
+        }
+    }, [postId, user, loading, post, viewIncremented]); // <-- Хамаарлыг шинэчилсэн
+
 
     // (!!! ViewerJS-ийг эхлүүлэх !!!)
+    // (Энэ хэсэг өөрчлөгдөөгүй)
     useEffect(() => {
         if (post?.images && post.images.length > 0 && galleryRef.current) {
             console.log('Initializing ViewerJS with', post.images.length, 'images');
@@ -208,7 +233,7 @@ const PostDetailPage = () => {
                 hasGalleryRef: !!galleryRef.current
             });
         }
-    }, [post]);
+    }, [post]); // <-- 'post' state-с зөв хамаарч байна
 
     const handleCommentCountChange = (newCount) => {
         setCommentCount(newCount);
@@ -301,6 +326,7 @@ const PostDetailPage = () => {
                             {post.embed_link && (
                                 <div className="mt-3">
                                     <EmbedRenderer url={post.embed_link} />
+                                    -------------------------------------------------
                                 </div>
                             )}
 
@@ -329,6 +355,7 @@ const PostDetailPage = () => {
                                 postId={post.id}
                                 initialCount={commentCount}
                                 onCountChange={handleCommentCountChange}
+                                defaultExpanded={true}  // <-- Нэмэх
                             />
                         </Card.Body>
                     </Card>

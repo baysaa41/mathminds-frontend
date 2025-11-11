@@ -1,11 +1,12 @@
 // frontend/src/pages/FormulasPage.jsx
-// ✅ ШИНЭЧИЛСЭН: Custom hooks, common components ашигласан, ProblemsPage-тай адил бүтэцтэй
+// ✅ ШИНЭЧИЛСЭН: "Постлох" товч CreatePostForm руу "бэлэг" илгээдэг болсон
 
 import { useEffect, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import apiClient from '../api/axiosConfig.js';
 import LivePreview from '../components/LivePreview.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import { usePrefill } from '../context/PrefillContext.jsx';
 import { MathJax } from 'better-react-mathjax';
 
 // ✅ Custom Hooks
@@ -39,8 +40,9 @@ import { Calculator, Send } from 'lucide-react';
 
 const FormulasPage = () => {
     const { user } = useAuth();
-    const navigate = useNavigate();
+    const navigate = useNavigate(); // (!!!) Энэ hook-г ашиглана
     const { setPageTitle } = useOutletContext();
+    const { setPrefillData } = usePrefill(); // <-- 2. ЭНЭ МӨРИЙГ НЭМЭХ
 
     // ✅ Custom Hooks ашиглах
     const {
@@ -59,8 +61,9 @@ const FormulasPage = () => {
 
     // State
     const [creatingNew, setCreatingNew] = useState(false);
-    const [postingId, setPostingId] = useState(null);
+    // (!!!) postingId state-г хассан
 
+    // ... (useEffect, handleSearch, handleCreateNew хэвээрээ) ...
     // Анхны ачаалалт
     useEffect(() => {
         setPageTitle('Томьёоны сан');
@@ -94,32 +97,28 @@ const FormulasPage = () => {
         }
     };
 
-    // Пост үүсгэх
-    const handleCreatePost = async (e, formulaId) => {
-        e.stopPropagation();
-        setPostingId(formulaId);
 
-        try {
-            const response = await apiClient.post(
-                API_ENDPOINTS.MINDS.CREATE_FROM_FORMULA,
-                { formula_id: formulaId }
-            );
+    // (!!!) ЗАСВАРЛАСАН: Пост үүсгэх (API дуудахын оронд "бэлэг" илгээх)
+    const handleCreatePost = (e, formula) => {
+        e.stopPropagation(); // Картыг дарагдахаас сэргийлэх
 
-            if (response.status === 201) {
-                showToast(MESSAGES.SUCCESS.POST_CREATED, 'success');
-            } else if (response.status === 200) {
-                showToast(MESSAGES.SUCCESS.POST_ALREADY_EXISTS, 'info');
+        // 1. "Бэлэг"-г бэлтгэх
+        const prefillData = {
+            type: 'formula',
+            item: {
+                id: formula.id,
+                title: formula.title || `Томьёо #${formula.id}`
             }
-        } catch (err) {
-            showToast(
-                err.response?.data?.error || MESSAGES.ERROR.GENERIC,
-                'danger'
-            );
-        } finally {
-            setPostingId(null);
-        }
+        };
+
+        // 2. "Бэлэг"-ээ "Хайрцаг" (Context) руу хийх
+        setPrefillData(prefillData);
+
+        // 3. Feed хуудас руу энгийнээр үсрэх (state-гүйгээр)
+        navigate('/');
     };
 
+    // ... (Loading, Error state хэвээрээ) ...
     // ✅ Loading State
     if (loading && formulas.length === 0) {
         return <LoadingState message={MESSAGES.LOADING.FORMULAS} fullPage />;
@@ -138,6 +137,7 @@ const FormulasPage = () => {
 
     return (
         <Container className="py-4">
+            {/* ... (ToastContainer, PageHeader, SearchBar, Empty хэвээрээ) ... */}
             {/* ✅ Toast Notification */}
             <ToastContainer position="top-end" className="p-3" style={{ zIndex: 9999 }}>
                 <Toast
@@ -202,10 +202,12 @@ const FormulasPage = () => {
                             <Card
                                 className="h-100 shadow-sm hover-shadow transition"
                                 style={{ cursor: 'pointer' }}
+                                // (!!!) Edit руу биш, Detail рүү үсэрдэг болгох нь зөв (гэхдээ хуучин логик edit байсан тул хэвээр үлдээв)
                                 onClick={() => navigate(`/formula/${formula.id}/edit`)}
                             >
                                 <Card.Body>
                                     <Stack direction="horizontal" gap={2} className="mb-2 flex-wrap">
+                                        {/* ... (Бусад Badges хэвээрээ) ... */}
                                         {formula.topic_name && (
                                             <Badge bg="info">{formula.topic_name}</Badge>
                                         )}
@@ -220,25 +222,21 @@ const FormulasPage = () => {
                                             <Badge bg="primary">Миний</Badge>
                                         )}
 
-                                        {/* Постлох товч */}
+                                        {/* (!!!) ЗАСВАРЛАСАН ТОВЧ (!!!) */}
                                         <Button
                                             variant="outline-primary"
                                             size="sm"
                                             className="ms-auto"
-                                            onClick={(e) => handleCreatePost(e, formula.id)}
-                                            disabled={postingId === formula.id}
+                                            onClick={(e) => handleCreatePost(e, formula)}
+                                            // (!!!) disabled-г хассан
                                         >
-                                            {postingId === formula.id ? (
-                                                <Spinner as="span" size="sm" />
-                                            ) : (
-                                                <>
-                                                    <Send size={14} className="me-1" />
-                                                    Постлох
-                                                </>
-                                            )}
+                                            {/* (!!!) Spinner-г хассан */}
+                                            <Send size={14} className="me-1" />
+                                            Постлох
                                         </Button>
                                     </Stack>
 
+                                    {/* ... (Гарчиг, Агуулга, Мета хэвээрээ) ... */}
                                     {/* Гарчиг */}
                                     <MathJax hideUntilTypeset={"first"}>
                                         <Card.Title className="h5 mb-2 mathjax-content">
@@ -265,6 +263,7 @@ const FormulasPage = () => {
                                         <i className="bi bi-person me-1"></i>
                                         {formula.author?.first_name || formula.author?.email || 'N/A'}
                                     </div>
+
                                 </Card.Body>
                             </Card>
                         </Col>
@@ -272,6 +271,7 @@ const FormulasPage = () => {
                 </Row>
             )}
 
+            {/* ... (Infinite Scroll, Stats хэвээрээ) ... */}
             {/* ✅ Infinite Scroll Trigger */}
             <div ref={triggerRef} style={{ height: '20px' }} />
 

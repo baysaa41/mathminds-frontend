@@ -1,12 +1,13 @@
 // frontend/src/pages/ArticlesPage.jsx
-// (!!! ШИНЭЧИЛСЭН: Зөвхөн өөрийн өгүүллийг харуулдаг болсон)
+// (!!! ШИНЭЧИЛСЭН: "Постлох" товч CreatePostForm руу "бэлэг" илгээдэг болсон)
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import apiClient from '../api/axiosConfig.js';
 import LivePreview from '../components/LivePreview.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
-import { FileText } from 'lucide-react';
+import { usePrefill } from '../context/PrefillContext.jsx';
+import { FileText, Send } from 'lucide-react'; // (!!!) Send icon нэмсэн
 
 import usePaginatedFetch from '../hooks/usePagenatedFetch.js';
 import useInfiniteScroll from '../hooks/useInfiniteScroll.js';
@@ -30,9 +31,10 @@ import ToastContainer from 'react-bootstrap/ToastContainer';
 
 
 const ArticlesPage = () => {
-    const { user } = useAuth(); // (!!!) 1. Хэрэглэгчийн мэдээллийг авах
-    const navigate = useNavigate();
+    const { user } = useAuth();
+    const navigate = useNavigate(); // (!!!) navigate hook-г ашиглана
     const { setPageTitle } = useOutletContext();
+    const { setPrefillData } = usePrefill(); // <-- 2. ЭНЭ МӨРИЙГ НЭМЭХ
 
     const { toast, showToast, hideToast } = useToast();
     const {
@@ -49,35 +51,25 @@ const ArticlesPage = () => {
     const { triggerRef } = useInfiniteScroll(loadMore, hasMore, loadingMore);
 
     const [isCreatingNew, setIsCreatingNew] = useState(false);
-    const [postingId, setPostingId] = useState(null);
+    // (!!!) postingId state-г хассан
     const [currentQuery, setCurrentQuery] = useState({ search: '' });
 
+    // ... (useEffect, handleSearch, handleCreateNew хэвээрээ) ...
     // Анхны ачаалалт болон гарчиг тохируулах
     useEffect(() => {
-        // (!!!) 2. Гарчгийг өөрчлөх
         setPageTitle('Миний өгүүллүүд');
-
-        // (!!!) 3. Хэрэглэгч байвал 'author' шүүлтүүр нэмэх
         if (user?.id) {
             fetchData({ author: user.id });
         }
-
         return () => { setPageTitle('Нүүр'); };
-        // (!!!) 4. 'user.id'-г dependency-д нэмэх
     }, [fetchData, setPageTitle, user?.id]);
 
     // Хайлтын функц
     const handleSearch = useCallback((query) => {
-        // (!!!) 5. Хэрэглэгч байхгүй бол хайхгүй
         if (!user?.id) return;
-
         const searchQuery = query.search || '';
         setCurrentQuery({ search: searchQuery });
-
-        // (!!!) 6. Хайлт хийхдээ 'author' шүүлтүүрийг хадгалах
         fetchData({ search: searchQuery, author: user.id }, true);
-
-        // (!!!) 7. 'user.id'-г dependency-д нэмэх
     }, [fetchData, user?.id]);
 
     // Шинэ өгүүлэл үүсгэх (хэвээрээ)
@@ -99,28 +91,24 @@ const ArticlesPage = () => {
         }
     };
 
-    // Пост үүсгэх (хэвээрээ)
-    const handleCreatePost = async (e, articleId) => {
-        e.stopPropagation();
-        setPostingId(articleId);
+    // (!!!) ЗАСВАРЛАСАН: Пост үүсгэх (API дуудахын оронд "бэлэг" илгээх)
+    const handleCreatePost = (e, article) => {
+        e.stopPropagation(); // Картыг дарагдахаас сэргийлэх
 
-        try {
-            const response = await apiClient.post('/api/minds/posts/create-from-article/', {
-                article_id: articleId
-            });
-
-            if (response.status === 201) {
-                showToast('Пост амжилттай үүслээ!', 'success');
-            } else if (response.status === 200 && response.data.message === "Post already exists.") {
-                showToast('Та энэ өгүүллийг аль хэдийн постлосон байна.', 'info');
+        // 1. "Бэлэг"-г бэлтгэх
+        const prefillData = {
+            type: 'article',
+            item: {
+                id: article.id,
+                title: article.title || `Өгүүлэл #${article.id}`
             }
-        } catch (err) {
-            console.error('Failed to create post:', err);
-            const errorMsg = err.response?.data?.error || 'Пост үүсгэхэд алдаа гарлаа.';
-            showToast(errorMsg, 'danger');
-        } finally {
-            setPostingId(null);
-        }
+        };
+
+        // 2. "Бэлэг"-ээ "Хайрцаг" (Context) руу хийх
+        setPrefillData(prefillData);
+
+        // 3. Feed хуудас руу энгийнээр үсрэх (state-гүйгээр)
+        navigate('/');
     };
 
 
@@ -129,6 +117,7 @@ const ArticlesPage = () => {
     return (
         <Container className="py-4">
 
+            {/* ... (ToastContainer, PageHeader, SearchBar, Loading, Error, Empty хэвээрээ) ... */}
             <ToastContainer position="top-end" className="p-3" style={{ zIndex: 9999 }}>
                 <Toast
                     show={toast.show}
@@ -143,7 +132,6 @@ const ArticlesPage = () => {
                 </Toast>
             </ToastContainer>
 
-            {/* (!!!) 8. PageHeader-н гарчгийг болон icon-г өөрчлөх */}
             <PageHeader
                 title="Миний өгүүллүүд"
                 action={{
@@ -161,15 +149,12 @@ const ArticlesPage = () => {
                 filters={[]}
             />
 
-            {/* Анхны ачаалал */}
             {loading && <LoadingState message="Миний өгүүллүүдийг ачааллаж байна..." />}
 
-            {/* Алдаа */}
             {error && !loading && (
                 <ErrorState message={error} onRetry={refresh} />
             )}
 
-            {/* (!!!) 9. EmptyState-н мэдээллийг өөрчлөх */}
             {!loading && !error && articles.length === 0 && (
                 <EmptyState
                     icon={FileText}
@@ -192,20 +177,29 @@ const ArticlesPage = () => {
                             >
                                 <Card.Body>
                                     <Stack direction="horizontal" gap={2} className="mb-2 flex-wrap">
+                                        {/* ... (Бусад Badges хэвээрээ) ... */}
                                         {article.published ? (
                                             <Badge bg="success">Нийтлэгдсэн</Badge>
                                         ) : (
                                             <Badge bg="warning" text="dark">Ноорог</Badge>
                                         )}
-                                        {/* (!!!) Бүх өгүүлэл "Миний" тул энэ Badge-г харуулж болно эсвэл бүр хасч болно */}
                                         <Badge bg="primary">Миний</Badge>
 
-                                        <Button variant="outline-primary" size="sm" className="ms-auto" onClick={(e) => handleCreatePost(e, article.id)} disabled={postingId === article.id}>
-                                            {postingId === article.id ? <Spinner as="span" size="sm" /> : <i className="bi bi-send-plus me-1"></i> }
-                                            {postingId !== article.id && 'Постлох'}
+                                        {/* (!!!) ЗАСВАРЛАСАН ТОВЧ (!!!) */}
+                                        <Button
+                                            variant="outline-primary"
+                                            size="sm"
+                                            className="ms-auto"
+                                            onClick={(e) => handleCreatePost(e, article)}
+                                            // (!!!) disabled-г хассан
+                                        >
+                                            {/* (!!!) Spinner-г хассан, icon-г сольсон */}
+                                            <Send size={14} className="me-1" />
+                                            Постлох
                                         </Button>
                                     </Stack>
 
+                                    {/* ... (Гарчиг, Хураангуй, Мета хэвээрээ) ... */}
                                     <div className="h5 mb-2 mathjax-content">
                                         <LivePreview content={article.title || `Өгүүлэл #${article.id}`} />
                                     </div>
@@ -215,7 +209,6 @@ const ArticlesPage = () => {
                                     </div>
 
                                     <div className="text-muted small mt-2">
-                                        {/* (!!!) Зохиогч нь үргэлж 'user' тул харуулж болно, эсвэл огноог л харуулж болно */}
                                         <i className="bi bi-person me-1"></i>
                                         {article.author?.first_name || article.author?.email || 'N/A'}
                                         {article.published && (
@@ -233,6 +226,7 @@ const ArticlesPage = () => {
                 </Row>
             )}
 
+            {/* ... (Infinite Scroll, Stats хэвээрээ) ... */}
             <div ref={triggerRef} style={{ height: '20px' }} />
 
             {loadingMore && (
@@ -242,7 +236,6 @@ const ArticlesPage = () => {
                 </div>
             )}
 
-            {/* Статистик */}
             {articles.length > 0 && (
                 <div className="mt-4 p-3 bg-light rounded">
                     <small className="text-muted">

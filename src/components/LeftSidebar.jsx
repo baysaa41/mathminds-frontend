@@ -76,6 +76,7 @@ const LeftSidebar = () => {
                     </Nav.Link>
                 </Nav.Item>
 
+                <hr />
                 {/* (!!!) ШИНЭ ЦЭС: МИНИЙ ПРОФАЙЛ */}
                 <Nav.Item>
                     <Nav.Link as={NavLink} to="/profile" className="d-flex align-items-center gap-2">
@@ -83,11 +84,9 @@ const LeftSidebar = () => {
                         <span>Миний профайл</span>
                     </Nav.Link>
                 </Nav.Item>
-
             </Nav>
 
             {/* User Profile Footer */}
-            <hr />
             {user && (
                 <div className="mt-auto pt-3 border-top">
                     <p className="fw-bold mb-0 text-dark">{user.first_name || 'User'}</p>
