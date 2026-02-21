@@ -1,0 +1,344 @@
+// src/App.jsx
+
+import React, { Suspense, lazy } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import 'bootstrap-icons/font/bootstrap-icons.css';
+
+// Critical components - loaded immediately
+import Layout from './components/Layout';
+import ProtectedRoute from './components/ProtectedRoute';
+import AdminRoute from './components/AdminRoute';
+import LoadingState from './components/common/LoadingState';
+
+// Lazy-loaded page components
+const Feed = lazy(() => import('./components/Feed'));
+const BookmarksPage = lazy(() => import('./pages/BookmarksPage.jsx'));
+const NotificationsPage = lazy(() => import('./pages/NotificationsPage.jsx'));
+const MessagesPage = lazy(() => import('./pages/MessagesPage.jsx'));
+const ConversationViewPage = lazy(() => import('./pages/ConversationViewPage.jsx'));
+
+// Articles
+const ArticleDetailPage = lazy(() => import('./pages/ArticleDetailPage.jsx'));
+const ArticleEditPage = lazy(() => import('./pages/ArticleEditPage.jsx'));
+const ArticlesPage = lazy(() => import('./pages/ArticlesPage.jsx'));
+
+// Posts
+const PostDetailPage = lazy(() => import('./pages/PostDetailPage.jsx'));
+
+// Problems
+const ProblemDetailPage = lazy(() => import('./pages/ProblemDetailPage.jsx'));
+const ProblemEditPage = lazy(() => import('./pages/ProblemEditPage.jsx'));
+const ProblemsPage = lazy(() => import('./pages/ProblemsPage.jsx'));
+const ProblemsBrowsePage = lazy(() => import('./pages/ProblemsBrowsePage.jsx'));
+const SolutionEditPage = lazy(() => import('./pages/SolutionEditPage.jsx'));
+
+// Formulas
+const FormulasPage = lazy(() => import('./pages/FormulasPage.jsx'));
+const FormulaEditPage = lazy(() => import('./pages/FormulaEditPage.jsx'));
+const FormulaDetailPage = lazy(() => import('./pages/FormulaDetailPage.jsx'));
+const LaTeXExamplesPage = lazy(() => import('./pages/LaTeXExamplesPage.jsx'));
+
+// Quizzes
+const QuizzesPage = lazy(() => import('./pages/QuizzesPage.jsx'));
+const QuizDetailPage = lazy(() => import('./pages/QuizDetailPage.jsx'));
+const QuizEditPage = lazy(() => import('./pages/QuizEditPage.jsx'));
+const QuizTakePage = lazy(() => import('./pages/QuizTakePage.jsx'));
+const QuizResultPage = lazy(() => import('./pages/QuizResultPage.jsx'));
+
+// Profile
+const ProfilePage = lazy(() => import('./pages/ProfilePage.jsx'));
+const MyProfileRedirect = lazy(() => import('./pages/MyProfileRedirect.jsx'));
+const ProfileEditPage = lazy(() => import('./pages/ProfileEditPage.jsx'));
+const FollowersPage = lazy(() => import('./pages/FollowersPage.jsx'));
+const FollowingPage = lazy(() => import('./pages/FollowingPage.jsx'));
+const SuggestedUsersPage = lazy(() => import('./pages/SuggestedUsersPage.jsx'));
+
+// Coins
+const CoinTransferPage = lazy(() => import('./pages/CoinTransferPage.jsx'));
+
+// Clubs
+const ClubsRoutes = lazy(() => import('./routes/ClubsRoutes.jsx'));
+const TeacherInvitationsPage = lazy(() => import('./pages/TeacherInvitationsPage.jsx'));
+
+// Auth & Public
+const LoginPage = lazy(() => import('./pages/LoginPage.jsx'));
+const RegisterPage = lazy(() => import('./pages/RegisterPage.jsx'));
+const PasswordResetRequestPage = lazy(() => import('./pages/PasswordResetRequestPage.jsx'));
+const PasswordResetConfirmPage = lazy(() => import('./pages/PasswordResetConfirmPage.jsx'));
+const CallbackPage = lazy(() => import('./pages/CallbackPage'));
+const HomePage = lazy(() => import('./pages/HomePage'));
+
+// Info Pages
+const AboutPage = lazy(() => import('./pages/AboutPage.jsx'));
+const TopTeachersPage = lazy(() => import('./pages/TopTeachersPage.jsx'));
+const TeacherEditPage = lazy(() => import('./pages/TeacherEditPage.jsx'));
+const Nomads360Page = lazy(() => import('./pages/Nomads360Page.jsx'));
+const TermsPage = lazy(() => import('./pages/TermsPage.jsx'));
+const PrivacyPage = lazy(() => import('./pages/PrivacyPage.jsx'));
+const MembershipGuidePage = lazy(() => import('./pages/MembershipGuidePage.jsx'));
+
+// Admin
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const ReportsPage = lazy(() => import('./pages/ReportsPage.jsx'));
+const MMOImportPage = lazy(() => import('./pages/MMOImportPage.jsx'));
+const AllUsersPage = lazy(() => import('./pages/AllUsersPage.jsx'));
+const SalesStatsPage = lazy(() => import('./pages/SalesStatsPage.jsx'));
+
+// Email Campaigns
+const EmailCampaignsPage = lazy(() => import('./pages/EmailCampaignsPage.jsx'));
+const EmailCampaignCreatePage = lazy(() => import('./pages/EmailCampaignCreatePage.jsx'));
+const EmailCampaignDetailPage = lazy(() => import('./pages/EmailCampaignDetailPage.jsx'));
+
+// Products
+const ProductListPage = lazy(() => import('./pages/ProductListPage.jsx'));
+const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage.jsx'));
+const CartPage = lazy(() => import('./pages/CartPage.jsx'));
+const CheckoutPage = lazy(() => import('./pages/CheckoutPage.jsx'));
+const MyPurchasesPage = lazy(() => import('./pages/MyPurchasesPage.jsx'));
+const MembershipPlansPage = lazy(() => import('./pages/MembershipPlansPage.jsx'));
+
+function App() {
+  return (
+    <Suspense fallback={<LoadingState />}>
+      <Routes>
+        {/* Public routes */}
+        <Route path="/welcome" element={<HomePage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/password-reset" element={<PasswordResetRequestPage />} />
+        {/* Нууц үг баталгаажуулах/шинэчлэх зам. uidb64 болон token-г URL-аас авна */}
+        <Route path="/reset-password/:uidb64/:token" element={<PasswordResetConfirmPage />} />
+        <Route path="/callback" element={<CallbackPage />} />
+
+        {/* Info Pages - Нэвтрэхгүйгээр үзэх боломжтой */}
+        <Route path="/about" element={<AboutPage />} />
+        <Route path="/nomads360" element={<Nomads360Page />} />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/teachers" element={<TopTeachersPage />} />
+        <Route path="/membership-guide" element={<MembershipGuidePage />} />
+
+        {/* Хамгаалагдсан хуудсууд - Layout дотор */}
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <Layout />
+            </ProtectedRoute>
+          }
+        >
+          {/* Үндсэн feed */}
+          <Route index element={<Feed />} />
+          <Route path="bookmarks" element={<BookmarksPage />} />
+          <Route path="notifications" element={<NotificationsPage />} />
+          <Route path="messages" element={<MessagesPage />} />
+          <Route path="ai-chat" element={<MessagesPage aiOnly={true} />} />
+          <Route
+            path="messages/conversation/:conversationUuid"
+            element={<ConversationViewPage />}
+          />
+
+          {/* Post дэлгэрэнгүй */}
+          <Route path="post/:postId" element={<PostDetailPage />} />
+
+          {/* Article хуудсууд */}
+          <Route path="article/:uuid" element={<ArticleDetailPage />} />
+          <Route path="article/:uuid/edit" element={<ArticleEditPage />} />
+          <Route path="articles" element={<ArticlesPage />} />
+
+          {/* Problem хуудсууд */}
+          <Route path="problem/:uuid" element={<ProblemDetailPage />} />
+          <Route path="problem/:uuid/edit" element={<ProblemEditPage />} />
+          <Route path="problem/:uuid/solution/new" element={<SolutionEditPage />} />
+          <Route path="solution/:solutionUuid/edit" element={<SolutionEditPage />} />
+          <Route path="problems" element={<ProblemsPage />} />
+
+          {/* Formula хуудсууд */}
+          <Route path="formulas" element={<FormulasPage />} />
+          <Route path="formula/:uuid" element={<FormulaDetailPage />} />
+          <Route path="formula/:uuid/edit" element={<FormulaEditPage />} />
+          <Route path="latex-examples" element={<LaTeXExamplesPage />} />
+
+          {/* Тестүүд */}
+          <Route path="quizzes" element={<QuizzesPage />} />
+          <Route path="quiz/:uuid" element={<QuizDetailPage />} />
+          <Route path="quiz/:uuid/edit" element={<QuizEditPage />} />
+          <Route path="quiz/:uuid/take" element={<QuizTakePage />} />
+          <Route path="quiz/:quizUuid/result/:sheetId" element={<QuizResultPage />} />
+
+          {/* Профайл */}
+          <Route path="profile" element={<MyProfileRedirect />} />
+          <Route path="profile/:username" element={<ProfilePage />} />
+          <Route path="profile/edit" element={<ProfileEditPage />} />
+          <Route path="profile/:username/followers" element={<FollowersPage />} />
+          <Route path="profile/:username/following" element={<FollowingPage />} />
+          <Route path="users/suggested" element={<SuggestedUsersPage />} />
+
+          {/* Coin шилжүүлэх */}
+          <Route path="coins/transfer" element={<CoinTransferPage />} />
+
+          {/* Клубууд */}
+          <Route path="clubs/*" element={<ClubsRoutes />} />
+
+          {/* Багшийн урилгууд */}
+          <Route path="teacher-invitations" element={<TeacherInvitationsPage />} />
+
+          {/* Reports - Admin болон Teacher нар л хандах боломжтой */}
+          <Route
+            path="reports"
+            element={
+              <AdminRoute allowTeacher={true}>
+                <ReportsPage />
+              </AdminRoute>
+            }
+          />
+        </Route>
+
+        {/* Бодлогын сан - Fullscreen browse */}
+        <Route
+          path="/problems/browse"
+          element={
+            <ProtectedRoute>
+              <ProblemsBrowsePage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* E-commerce хуудсууд - Layout-гүй, бие даасан */}
+        <Route
+          path="/products"
+          element={
+            <ProtectedRoute>
+              <ProductListPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/products/:id"
+          element={
+            <ProtectedRoute>
+              <ProductDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/cart"
+          element={
+            <ProtectedRoute>
+              <CartPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/checkout"
+          element={
+            <ProtectedRoute>
+              <CheckoutPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/my-purchases"
+          element={
+            <ProtectedRoute>
+              <MyPurchasesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/purchases/:userId"
+          element={
+            <ProtectedRoute>
+              <MyPurchasesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/membership"
+          element={
+            <ProtectedRoute>
+              <MembershipPlansPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Admin Dashboard */}
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <DashboardPage />
+            </AdminRoute>
+          }
+        />
+
+        {/* MMO Import - Staff only */}
+        <Route
+          path="/admin/mmo-import"
+          element={
+            <AdminRoute>
+              <MMOImportPage />
+            </AdminRoute>
+          }
+        />
+
+        {/* All Users - Staff only */}
+        <Route
+          path="/admin/all-users"
+          element={
+            <AdminRoute>
+              <AllUsersPage />
+            </AdminRoute>
+          }
+        />
+
+        {/* Sales Stats - Staff only */}
+        <Route
+          path="/admin/sales-stats"
+          element={
+            <AdminRoute>
+              <SalesStatsPage />
+            </AdminRoute>
+          }
+        />
+
+        {/* Email Campaigns - Staff only */}
+        <Route
+          path="/admin/emails"
+          element={
+            <AdminRoute>
+              <Layout />
+            </AdminRoute>
+          }
+        >
+          <Route index element={<EmailCampaignsPage />} />
+          <Route path="create" element={<EmailCampaignCreatePage />} />
+          <Route path=":id" element={<EmailCampaignDetailPage />} />
+        </Route>
+
+        {/* Teacher Edit - Staff only */}
+        <Route
+          path="/teacher/new"
+          element={
+            <AdminRoute>
+              <TeacherEditPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/teacher/:id/edit"
+          element={
+            <AdminRoute>
+              <TeacherEditPage />
+            </AdminRoute>
+          }
+        />
+
+        {/* Catch all */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
+  );
+}
+
+export default App;

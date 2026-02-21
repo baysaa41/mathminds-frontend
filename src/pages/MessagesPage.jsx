@@ -1,0 +1,907 @@
+// frontend/src/pages/MessagesPage.jsx
+// Шинэ Message API ашигласан мессежийн хуудас
+
+import { useState, useEffect, useRef, memo } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import UserAvatar from '../components/UserAvatar';
+import UserName from '../components/UserName';
+import LivePreview from '../components/LivePreview';
+import NewConversationModal from '../components/NewConversationModal';
+
+// ViewerJS for image viewing
+import Viewer from 'viewerjs';
+
+// React Bootstrap компонентууд
+import Spinner from 'react-bootstrap/Spinner';
+import Alert from 'react-bootstrap/Alert';
+import Badge from 'react-bootstrap/Badge';
+import {
+  MessageCircle,
+  Send,
+  ArrowLeft,
+  Image,
+  X,
+  AlertTriangle,
+  Smile,
+  Link2,
+  Check,
+  Plus,
+  User,
+} from 'lucide-react';
+
+// Services
+import {
+  getConversations,
+  getConversationMessages,
+  sendMessage,
+  createConversation,
+  archiveConversation,
+  unarchiveConversation,
+  pollConversation,
+} from '../services/conversationService';
+
+import './PrivateMessagesPage.css';
+
+// formatTime компонентоос гадагш — render бүрт шинэ функц үүсгэхгүй
+const formatTime = (dateString) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInHours = (now - date) / (1000 * 60 * 60);
+  if (diffInHours < 24) {
+    return date.toLocaleTimeString('mn-MN', { hour: '2-digit', minute: '2-digit' });
+  } else if (diffInHours < 48) {
+    return 'Өчигдөр';
+  } else {
+    return date.toLocaleDateString('mn-MN', { month: 'short', day: 'numeric' });
+  }
+};
+
+// React.memo: message prop өөрчлөгдөөгүй бол re-render хийхгүй
+// → MathJax/LivePreview зөвхөн шинэ мессеж дээр л ажиллана
+const MessageBubble = memo(function MessageBubble({ message, currentUserId }) {
+  const isSent = message.author?.id === currentUserId;
+  return (
+    <div className={`message ${isSent ? 'sent' : 'received'}`}>
+      <div className="message-bubble">
+        <div className="message-content">
+          <LivePreview content={message.content} />
+        </div>
+        {message.attachments && message.attachments.length > 0 && (
+          <div className="message-images">
+            {message.attachments.map((attachment) => (
+              <img
+                key={attachment.id}
+                src={attachment.file}
+                alt=""
+                className="message-image"
+                style={{ cursor: 'pointer' }}
+                title="Томруулж харах"
+              />
+            ))}
+          </div>
+        )}
+        <div className="message-time">
+          {formatTime(message.created_at)}
+          {message.is_edited && <span className="ms-1">(засварласан)</span>}
+        </div>
+      </div>
+    </div>
+  );
+});
+
+const isAiConv = (conv) => conv?.user1?.is_ai_teacher || conv?.user2?.is_ai_teacher
+
+const MessagesPage = ({ aiOnly = false }) => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // State
+  const [conversations, setConversations] = useState([]);
+  const [selectedConversation, setSelectedConversation] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [error, setError] = useState(null);
+  const [messageInput, setMessageInput] = useState('');
+  const [sending, setSending] = useState(false);
+  const [aiTyping, setAiTyping] = useState(false);
+  const [uploadedImages, setUploadedImages] = useState([]);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [showNewConversationModal, setShowNewConversationModal] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
+  const [archivingConv, setArchivingConv] = useState(null);
+
+  // Refs
+  const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const emojiPickerRef = useRef(null);
+  const imageGalleryRef = useRef(null);
+  const viewerInstance = useRef(null);
+  const lastMessageIdRef = useRef(0);
+
+  // Fetch conversations
+  useEffect(() => {
+    const fetchConversations = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await getConversations();
+        // Handle pagination response
+        const all = data.results || data;
+        const convList = aiOnly ? all.filter(isAiConv) : all.filter((c) => !isAiConv(c));
+        setConversations(convList);
+
+        // Check if we need to select a conversation by UUID (from /messages/conversation/:uuid)
+        const selectUuid = location.state?.conversationUuid;
+        if (selectUuid) {
+          const conv = convList.find((c) => c.uuid === selectUuid);
+          if (conv) setSelectedConversation(conv);
+          navigate(location.pathname, { replace: true, state: {} });
+        }
+
+        // Check if we need to start a conversation with a specific user
+        const startWith = location.state?.startConversationWith;
+        if (startWith) {
+          // Find existing conversation with this user
+          const existingConv = convList.find((conv) => {
+            const otherUser = conv.user1.id === user?.id ? conv.user2 : conv.user1;
+            return otherUser.username === startWith;
+          });
+
+          if (existingConv) {
+            // Select existing conversation
+            setSelectedConversation(existingConv);
+          } else {
+            // Create new conversation
+            try {
+              const newConv = await createConversation(startWith);
+              // Refresh conversations
+              const refreshedData = await getConversations();
+              const refreshedList = refreshedData.results || refreshedData;
+              setConversations(refreshedList);
+
+              // Select the new conversation
+              const createdConv = refreshedList.find((c) => c.uuid === newConv.uuid);
+              if (createdConv) {
+                setSelectedConversation(createdConv);
+              }
+            } catch (err) {
+              console.error('Error creating conversation:', err);
+              setError('Харилцан яриа үүсгэхэд алдаа гарлаа.');
+            }
+          }
+
+          // Clear the state so it doesn't trigger again on refresh
+          navigate(location.pathname, { replace: true, state: {} });
+        }
+      } catch (err) {
+        setError('Харилцан яриануудыг ачаалахад алдаа гарлаа.');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchConversations();
+  }, [location.state, user, navigate, location.pathname]);
+
+  // Fetch messages when conversation selected
+  useEffect(() => {
+    if (!selectedConversation) {
+      setMessages([]);
+      return;
+    }
+
+    const fetchMessages = async () => {
+      try {
+        setLoadingMessages(true);
+        lastMessageIdRef.current = 0;
+        const data = await getConversationMessages(selectedConversation.uuid);
+        const msgs = data.messages || [];
+        setMessages(msgs);
+        if (msgs.length) lastMessageIdRef.current = msgs[msgs.length - 1].id || 0;
+
+        // Refresh conversations to update unread count
+        // (backend automatically marks messages as read when fetching)
+        const convData = await getConversations();
+        const allConvs = convData.results || convData;
+        setConversations(aiOnly ? allConvs.filter(isAiConv) : allConvs.filter((c) => !isAiConv(c)));
+      } catch (err) {
+        console.error('Error loading messages:', err);
+        setMessages([]);
+      } finally {
+        setLoadingMessages(false);
+      }
+    };
+
+    fetchMessages();
+  }, [selectedConversation]);
+
+  // Auto-poll: шинэ мессеж + AI typing status
+  // Зөвхөн AI харилцагчтай харилцаанд л polling хийнэ.
+  // Хүн-хүний чатад polling огт хэрэггүй.
+  useEffect(() => {
+    if (!selectedConversation) return
+    const isAiConversation =
+      selectedConversation.user1?.is_ai_teacher || selectedConversation.user2?.is_ai_teacher
+    if (!isAiConversation) return
+
+    let timeoutId
+    let abortController
+    let cancelled = false
+
+    const poll = async () => {
+      if (cancelled) return
+      abortController = new AbortController()
+      try {
+        const data = await pollConversation(
+          selectedConversation.uuid,
+          lastMessageIdRef.current,
+          abortController.signal,
+        )
+        if (cancelled) return
+        setAiTyping(data.ai_typing || false)
+        if (data.messages?.length > 0) {
+          setMessages((prev) => {
+            const realMessages = prev.filter((m) => !m._isOptimistic)
+            return [...realMessages, ...data.messages]
+          })
+          const last = data.messages[data.messages.length - 1]
+          if (last.id) lastMessageIdRef.current = last.id
+        }
+      } catch (err) {
+        // AbortError болон CanceledError (axios) — дохио дамжуулж зогсоосон тул орхино
+        if (cancelled || err?.name === 'AbortError' || err?.name === 'CanceledError') return
+        // Бусад алдаа чимээгүй орхино
+      }
+      if (!cancelled) {
+        timeoutId = setTimeout(poll, 2000)
+      }
+    }
+
+    // Анхны poll 2 секундын дараа эхэлнэ
+    timeoutId = setTimeout(poll, 2000)
+
+    return () => {
+      cancelled = true
+      clearTimeout(timeoutId)
+      abortController?.abort()
+    }
+  }, [selectedConversation])
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    if (messages.length > 0 && !loadingMessages) {
+      // Use setTimeout to ensure DOM is fully rendered
+      const timer = setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [messages, loadingMessages]);
+
+  // Initialize ViewerJS for image viewing
+  useEffect(() => {
+    const hasAttachments = messages.some(
+      (msg) => msg.attachments && msg.attachments.length > 0
+    );
+
+    if (hasAttachments && imageGalleryRef.current) {
+      const timer = setTimeout(() => {
+        if (viewerInstance.current) {
+          viewerInstance.current.destroy();
+          viewerInstance.current = null;
+        }
+
+        const images = imageGalleryRef.current.querySelectorAll('.message-image');
+        if (images.length === 0) return;
+
+        viewerInstance.current = new Viewer(imageGalleryRef.current, {
+          inline: false,
+          button: true,
+          navbar: images.length > 1,
+          title: false,
+          toolbar: {
+            zoomIn: 1,
+            zoomOut: 1,
+            oneToOne: 1,
+            reset: 1,
+            prev: images.length > 1 ? 1 : 0,
+            next: images.length > 1 ? 1 : 0,
+            rotateLeft: 1,
+            rotateRight: 1,
+            flipHorizontal: 1,
+            flipVertical: 1,
+          },
+          tooltip: true,
+          movable: true,
+          zoomable: true,
+          rotatable: true,
+          scalable: true,
+          transition: true,
+          fullscreen: true,
+          keyboard: true,
+          zoomRatio: 0.1,
+          minZoomRatio: 0.1,
+          maxZoomRatio: 3,
+          filter: (image) => image.classList.contains('message-image'),
+        });
+      }, 200);
+
+      return () => {
+        clearTimeout(timer);
+        if (viewerInstance.current) {
+          viewerInstance.current.destroy();
+          viewerInstance.current = null;
+        }
+      };
+    }
+  }, [messages]);
+
+  // Close emoji picker when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target)) {
+        setShowEmojiPicker(false);
+      }
+    };
+
+    if (showEmojiPicker) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showEmojiPicker]);
+
+  // Get other user from conversation
+  const getOtherUser = (conversation) => {
+    if (!conversation || !user) return null;
+    return conversation.user1.id === user.id ? conversation.user2 : conversation.user1;
+  };
+
+  // Handle image upload
+  const handleImageSelect = (e) => {
+    const files = Array.from(e.target.files);
+    setUploadedImages((prev) => [...prev, ...files]);
+  };
+
+  // Remove uploaded image
+  const removeImage = (index) => {
+    setUploadedImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Add emoji to message
+  const addEmoji = (emoji) => {
+    setMessageInput((prev) => prev + emoji);
+    setShowEmojiPicker(false);
+  };
+
+  // Common emojis
+  const commonEmojis = [
+    '😊',
+    '😂',
+    '🤣',
+    '😍',
+    '😭',
+    '😘',
+    '😅',
+    '😎',
+    '🤔',
+    '😉',
+    '👍',
+    '👏',
+    '🙏',
+    '💪',
+    '🎉',
+    '❤️',
+    '🔥',
+    '✨',
+    '💯',
+    '👌',
+    '😢',
+    '😡',
+    '🤗',
+    '😴',
+    '🤩',
+    '😇',
+    '🥺',
+    '😱',
+    '😳',
+    '🤯',
+  ];
+
+  // Handle new conversation created
+  const handleConversationCreated = async (conversation) => {
+    try {
+      // Refresh conversations
+      const data = await getConversations();
+      const all = data.results || data;
+      const convList = aiOnly ? all.filter(isAiConv) : all.filter((c) => !isAiConv(c));
+      setConversations(convList);
+
+      // Select the new conversation
+      const newConv = convList.find((c) => c.uuid === conversation.uuid);
+      if (newConv) {
+        setSelectedConversation(newConv);
+      }
+    } catch (err) {
+      console.error('Error refreshing conversations:', err);
+    }
+  };
+
+  // Copy conversation link
+  const copyConversationLink = () => {
+    if (!selectedConversation) return;
+
+    // UUID-based линк
+    const url = `${window.location.origin}/messages/conversation/${selectedConversation.uuid}`;
+
+    navigator.clipboard
+      .writeText(url)
+      .then(() => {
+        setLinkCopied(true);
+        setTimeout(() => setLinkCopied(false), 2000);
+      })
+      .catch((err) => {
+        console.error('Failed to copy link:', err);
+        alert('Линк хуулахад алдаа гарлаа');
+      });
+  };
+
+  // Send message
+  const handleSendMessage = async (e) => {
+    e.preventDefault()
+
+    const inputText = messageInput.trim()
+    if (!inputText && uploadedImages.length === 0) return
+    if (!selectedConversation) return
+
+    // Optimistic: мессежийг шууд харуулах
+    const tempId = 'temp-' + Date.now()
+    setMessages((prev) => [
+      ...prev,
+      {
+        uuid: tempId,
+        author: user,
+        content: inputText,
+        created_at: new Date().toISOString(),
+        attachments: [],
+        _isOptimistic: true,
+      },
+    ])
+    setMessageInput('')
+    setUploadedImages([])
+    if (fileInputRef.current) fileInputRef.current.value = ''
+
+    try {
+      setSending(true)
+
+      const sentMessage = await sendMessage({
+        conversationUuid: selectedConversation.uuid,
+        content: inputText,
+        attachments: uploadedImages,
+      })
+
+      // Optimistic-г бодит мессежээр солих; ID шинэчлэх
+      setMessages((prev) => prev.map((m) => (m.uuid === tempId ? sentMessage : m)))
+      if (sentMessage.id) lastMessageIdRef.current = Math.max(lastMessageIdRef.current, sentMessage.id)
+
+      // Conversation жагсаалт шинэчлэх
+      const convData = await getConversations()
+      setConversations(convData.results || convData)
+      if (showArchived) setShowArchived(false)
+    } catch (err) {
+      setMessages((prev) => prev.filter((m) => m.uuid !== tempId))
+      setMessageInput(inputText)
+      console.error('Error sending message:', err)
+      const errorData = err.response?.data
+      const errorMsg = typeof errorData === 'string' ? errorData : JSON.stringify(errorData)
+      alert(`Мессеж илгээхэд алдаа гарлаа: ${errorMsg || err.message}`)
+    } finally {
+      setSending(false)
+    }
+  }
+
+  // Handle Enter key to send
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage(e);
+    }
+  };
+
+  // Archive conversation
+  const handleArchive = async (conv) => {
+    try {
+      setArchivingConv(conv.uuid);
+      await archiveConversation(conv.uuid);
+
+      // Refresh conversations
+      const data = await getConversations();
+      const all = data.results || data;
+      const convList = aiOnly ? all.filter(isAiConv) : all.filter((c) => !isAiConv(c));
+      setConversations(convList);
+
+      // Deselect if the archived conversation was selected
+      if (selectedConversation?.uuid === conv.uuid) {
+        setSelectedConversation(null);
+      }
+    } catch (err) {
+      console.error('Error archiving conversation:', err);
+      alert('Архивлахад алдаа гарлаа.');
+    } finally {
+      setArchivingConv(null);
+    }
+  };
+
+  // Unarchive conversation
+  const handleUnarchive = async (conv) => {
+    try {
+      setArchivingConv(conv.uuid);
+      await unarchiveConversation(conv.uuid);
+
+      // Refresh conversations
+      const data = await getConversations();
+      const all = data.results || data;
+      const convList = aiOnly ? all.filter(isAiConv) : all.filter((c) => !isAiConv(c));
+      setConversations(convList);
+    } catch (err) {
+      console.error('Error unarchiving conversation:', err);
+      alert('Архиваас гаргахад алдаа гарлаа.');
+    } finally {
+      setArchivingConv(null);
+    }
+  };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div
+        className="d-flex justify-content-center align-items-center"
+        style={{ minHeight: '400px' }}
+      >
+        <Spinner animation="border" role="status">
+          <span className="visually-hidden">Ачааллаж байна...</span>
+        </Spinner>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <Alert variant="danger" className="m-3">
+        {error}
+      </Alert>
+    );
+  }
+
+  // Empty state
+  if (conversations.length === 0) {
+    return (
+      <>
+        <div className="text-center p-5">
+          <MessageCircle size={64} className="text-muted mb-3" />
+          <h4 className="text-muted">Харилцан яриа байхгүй байна</h4>
+          <p className="text-muted">{aiOnly ? 'AI багштай харилцан яриа эхлүүлнэ үү.' : '"+" товч дарж шинэ харилцан яриа эхлүүлнэ үү.'}</p>
+          <button className="btn btn-primary" onClick={() => setShowNewConversationModal(true)}>
+            <Plus size={18} className="me-2" />
+            Шинэ харилцан яриа
+          </button>
+        </div>
+
+        {/* New Conversation Modal */}
+        <NewConversationModal
+          show={showNewConversationModal}
+          onHide={() => setShowNewConversationModal(false)}
+          onConversationCreated={handleConversationCreated}
+        />
+      </>
+    );
+  }
+
+  const otherUser = selectedConversation ? getOtherUser(selectedConversation) : null;
+
+  return (
+    <div className="private-messages-container">
+      {/* Conversations List */}
+      <div className={`conversations-sidebar ${selectedConversation ? 'd-none d-md-flex' : ''}`}>
+        <div className="conversations-header">
+          <div className="d-flex align-items-center gap-2">
+            <MessageCircle size={20} />
+            <h5 className="mb-0 fw-bold">{aiOnly ? 'AI Багш нар' : 'Мессежүүд'}</h5>
+          </div>
+          <div className="d-flex align-items-center gap-2">
+            <Badge bg="primary" pill>
+              {conversations.filter((c) => showArchived ? c.is_archived_by_user : !c.is_archived_by_user).length}
+            </Badge>
+            <button
+              className="btn btn-sm btn-primary"
+              onClick={() => setShowNewConversationModal(true)}
+              title="Шинэ харилцан яриа үүсгэх"
+            >
+              <Plus size={16} />
+            </button>
+          </div>
+        </div>
+
+        {/* Archive/Active toggle */}
+        <div className="px-3 py-2 border-bottom">
+          <div className="btn-group w-100" role="group">
+            <button
+              type="button"
+              className={`btn btn-sm ${!showArchived ? 'btn-primary' : 'btn-outline-secondary'}`}
+              onClick={() => setShowArchived(false)}
+            >
+              Идэвхтэй
+            </button>
+            <button
+              type="button"
+              className={`btn btn-sm ${showArchived ? 'btn-primary' : 'btn-outline-secondary'}`}
+              onClick={() => setShowArchived(true)}
+            >
+              Архив
+            </button>
+          </div>
+        </div>
+
+        <div className="conversations-list">
+          {conversations
+            .filter((c) => showArchived ? c.is_archived_by_user : !c.is_archived_by_user)
+            .map((conversation) => {
+            const partner = getOtherUser(conversation);
+            const lastMsg = conversation.last_message;
+            const unreadCount = conversation.unread_count || 0;
+
+            return (
+              <div
+                key={conversation.uuid}
+                className={`conversation-item ${selectedConversation?.uuid === conversation.uuid ? 'active' : ''}`}
+                onClick={() => setSelectedConversation(conversation)}
+              >
+                <div className="conversation-avatar">
+                  <UserAvatar user={partner} size={48} />
+                </div>
+                <div className="conversation-info">
+                  <div className="conversation-name">
+                    {conversation.title || <UserName user={partner} showLink={false} />}
+                  </div>
+                  {lastMsg && (
+                    <div className="conversation-preview">
+                      {lastMsg.content
+                        ?.replace(/\$[^$]+\$/g, '[math]')
+                        ?.replace(/\\\([^)]+\\\)/g, '[math]')
+                        ?.substring(0, 50)}
+                      {lastMsg.content?.length > 50 ? '...' : ''}
+                    </div>
+                  )}
+                </div>
+                <div className="conversation-meta">
+                  {lastMsg && (
+                    <div className="conversation-time">{formatTime(lastMsg.created_at)}</div>
+                  )}
+                  {unreadCount > 0 && (
+                    <Badge bg="danger" pill className="mt-1">
+                      {unreadCount}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Chat Area */}
+      <div className={`chat-area ${!selectedConversation ? 'd-none d-md-flex' : ''}`}>
+        {selectedConversation ? (
+          <>
+            {/* Chat Header */}
+            <div className="chat-header">
+              <button
+                className="btn btn-link d-md-none p-0 me-2"
+                onClick={() => setSelectedConversation(null)}
+              >
+                <ArrowLeft size={20} />
+              </button>
+              <div className="d-flex align-items-center gap-2 flex-grow-1">
+                <div className="chat-avatar">
+                  <UserAvatar user={otherUser} size={40} />
+                </div>
+                <div className="flex-grow-1">
+                  <div className="fw-bold">
+                    {selectedConversation.title || <UserName user={otherUser} showLink={false} />}
+                  </div>
+                  <div
+                    className="text-muted small"
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => navigate(`/profile/${otherUser?.username}`)}
+                  >
+                    @{otherUser?.username}
+                  </div>
+                </div>
+                <div className="d-flex align-items-center gap-2">
+                  <div className="text-warning small d-flex align-items-center gap-1">
+                    <AlertTriangle size={14} />
+                    <span className="d-none d-md-inline">Нийтэд нээлттэй</span>
+                  </div>
+                  <button
+                    className="btn btn-sm btn-outline-primary"
+                    onClick={() => navigate(`/profile/${otherUser?.username}`)}
+                    title="Профайл харах"
+                  >
+                    <User size={16} />
+                  </button>
+                  <button
+                    className="btn btn-sm btn-outline-secondary"
+                    onClick={copyConversationLink}
+                    title="Харилцааны линк хуулах"
+                  >
+                    {linkCopied ? <Check size={16} /> : <Link2 size={16} />}
+                  </button>
+                  <button
+                    className={`btn btn-sm ${selectedConversation?.is_archived_by_user ? 'btn-warning' : 'btn-outline-secondary'}`}
+                    onClick={() => {
+                      if (selectedConversation?.is_archived_by_user) {
+                        handleUnarchive(selectedConversation);
+                      } else {
+                        handleArchive(selectedConversation);
+                      }
+                    }}
+                    disabled={archivingConv === selectedConversation?.uuid}
+                    title={selectedConversation?.is_archived_by_user ? 'Архиваас гаргах' : 'Архивлах'}
+                  >
+                    {archivingConv === selectedConversation?.uuid ? (
+                      <Spinner animation="border" size="sm" />
+                    ) : selectedConversation?.is_archived_by_user ? (
+                      '↩'
+                    ) : (
+                      '📦'
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Messages */}
+            <div className="chat-messages" ref={imageGalleryRef}>
+              {loadingMessages ? (
+                <div className="d-flex justify-content-center p-4">
+                  <Spinner animation="border" size="sm" />
+                </div>
+              ) : (
+                messages.map((message) => (
+                  <MessageBubble
+                    key={message.uuid}
+                    message={message}
+                    currentUserId={user?.id}
+                  />
+                ))
+              )}
+              {/* AI typing indicator */}
+              {aiTyping && (
+                <div className="message received">
+                  <div className="message-bubble typing-bubble">
+                    <span className="typing-dot" />
+                    <span className="typing-dot" />
+                    <span className="typing-dot" />
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Message Input */}
+            <div className="chat-input-area">
+              {/* Image Previews */}
+              {uploadedImages.length > 0 && (
+                <div className="uploaded-images-preview">
+                  {uploadedImages.map((image, index) => (
+                    <div key={index} className="preview-image-container">
+                      <img
+                        src={URL.createObjectURL(image)}
+                        alt={`Upload ${index + 1}`}
+                        className="preview-image"
+                      />
+                      <button
+                        type="button"
+                        className="remove-image-btn"
+                        onClick={() => removeImage(index)}
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Input Form */}
+              <form onSubmit={handleSendMessage} className="message-input-form">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleImageSelect}
+                  accept="image/*"
+                  multiple
+                  style={{ display: 'none' }}
+                />
+
+                <div className="input-buttons">
+                  <button
+                    type="button"
+                    className="btn btn-light image-upload-btn"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={sending}
+                    title="Зураг оруулах"
+                  >
+                    <Image size={20} />
+                  </button>
+
+                  <div className="emoji-picker-container" ref={emojiPickerRef}>
+                    <button
+                      type="button"
+                      className="btn btn-light emoji-btn"
+                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                      disabled={sending}
+                      title="Emoji нэмэх"
+                    >
+                      <Smile size={20} />
+                    </button>
+
+                    {showEmojiPicker && (
+                      <div className="emoji-picker">
+                        {commonEmojis.map((emoji, index) => (
+                          <button
+                            key={index}
+                            type="button"
+                            className="emoji-item"
+                            onClick={() => addEmoji(emoji)}
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <textarea
+                  className="form-control message-textarea"
+                  placeholder="Мессеж бичих..."
+                  value={messageInput}
+                  onChange={(e) => setMessageInput(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  disabled={sending}
+                  rows={1}
+                />
+
+                <button
+                  type="submit"
+                  className="btn btn-primary send-btn"
+                  disabled={sending || (!messageInput.trim() && uploadedImages.length === 0)}
+                >
+                  {sending ? <Spinner animation="border" size="sm" /> : <Send size={20} />}
+                </button>
+              </form>
+            </div>
+          </>
+        ) : (
+          <div className="d-none d-md-flex align-items-center justify-content-center flex-column h-100 text-muted">
+            <MessageCircle size={64} className="mb-3" />
+            <p>Харилцагчаа сонгоно уу</p>
+          </div>
+        )}
+      </div>
+
+      {/* New Conversation Modal */}
+      <NewConversationModal
+        show={showNewConversationModal}
+        onHide={() => setShowNewConversationModal(false)}
+        onConversationCreated={handleConversationCreated}
+      />
+    </div>
+  );
+};
+
+export default MessagesPage;

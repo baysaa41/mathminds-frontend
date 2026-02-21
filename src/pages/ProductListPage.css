@@ -1,0 +1,104 @@
+/* src/pages/ProductListPage.css */
+
+.product-list-page {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.product-list-page h1 {
+  text-align: center;
+  margin-bottom: 30px;
+  color: #333;
+}
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 50vh;
+  font-size: 1.2em;
+  color: #555;
+}
+
+.product-list {
+  display: grid;
+  /* Нэг мөрөнд 280px-с багагүй, зай таарвал дүүргээд
+      хэдэн ч бүтээгдэхүүн байрлуулах тохиргоо (responsive)
+    */
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 25px;
+}
+
+.product-card {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+  background: #ffffff;
+  overflow: hidden; /* Зургийг булантай болгох */
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.3s ease;
+}
+
+.product-card:hover {
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+}
+
+.product-image {
+  width: 100%;
+  height: 220px;
+  object-fit: cover; /* Зургийг зөв харьцаатай тааруулах */
+}
+
+.product-info {
+  padding: 20px;
+  flex-grow: 1; /* Картын доод хэсэгт зай эзлүүлэх */
+  display: flex;
+  flex-direction: column;
+}
+
+.product-info h3 {
+  font-size: 1.3em;
+  font-weight: 600;
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
+.product-info p {
+  font-size: 0.9em;
+  color: #555;
+  flex-grow: 1; /* Тайлбар урт байсан ч товч доошоо түлхэгдэнэ */
+  margin-bottom: 15px;
+  line-height: 1.5;
+}
+
+.product-price {
+  font-size: 1.4em;
+  font-weight: bold;
+  color: #007bff;
+  margin-bottom: 15px;
+}
+
+.product-info button {
+  width: 100%;
+  padding: 12px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  transition: background-color 0.3s ease;
+}
+
+.product-info button:hover {
+  background-color: #0056b3;
+}
+
+.product-info button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}

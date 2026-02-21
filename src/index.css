@@ -1,0 +1,151 @@
+/* frontend/src/index.css (Одоо байгаа дээр нь нэмнэ) */
+
+body {
+  margin: 0;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell',
+    'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  font-size: 17px; /* Үндсэн үсгийн хэмжээ - анхдагчаас 6% том */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f8f9fa; /* Bootstrap-тэй төстэй фон */
+}
+
+/* --- PostCard hover эффект --- */
+.hover-card {
+  transition: all 0.2s ease-in-out;
+}
+
+.hover-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* --- Товчлуурын hover эффект --- */
+.btn-icon-hover {
+  transition: all 0.2s ease-in-out;
+}
+
+.btn-icon-hover:hover {
+  transform: scale(1.1);
+}
+
+/* --- MathJax агуулгад зориулсан --- */
+.mathjax-content {
+  /* MathJax-ийн математик томьёонууд зөв харагдах */
+}
+
+/* --- Navigation pills custom загвар --- */
+.nav-pills-custom .nav-link {
+  color: #495057;
+  font-weight: 500;
+  transition: all 0.2s ease-in-out;
+  text-decoration: none;
+}
+
+.nav-pills-custom .nav-link:hover {
+  background-color: #e9ecef;
+}
+
+/* React Router-ийн NavLink-ийн active class */
+.nav-pills-custom .nav-link.active {
+  background-color: #e7f1ff !important;
+  color: #0d6efd !important;
+  font-weight: 600;
+}
+
+.nav-pills-custom .nav-link.disabled {
+  color: #adb5bd;
+  pointer-events: none;
+  cursor: default;
+  background-color: transparent;
+  opacity: 0.6;
+}
+
+/* --- Scrollbar загвар (сонголттой) --- */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* --- LeftSidebar тусгай загвар --- */
+/* Sidebar өөрөө scroll хийгдэхгүй, зөвхөн дотрох агуулга */
+.sidebar-container {
+  height: 100vh;
+  overflow-y: auto;
+  position: sticky;
+  top: 0;
+}
+
+.sidebar-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-container::-webkit-scrollbar-thumb {
+  background: #dee2e6;
+  border-radius: 3px;
+}
+
+.sidebar-container::-webkit-scrollbar-thumb:hover {
+  background: #adb5bd;
+}
+
+/* --- Loading spinner --- */
+.spinner-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+}
+
+/* --- Responsive утас дээр --- */
+@media (max-width: 767.98px) {
+  .hover-card {
+    transform: none !important;
+  }
+
+  .hover-card:hover {
+    transform: none !important;
+  }
+}
+
+/* --- Animation --- */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+/* --- VIP Membership Shine Animation --- */
+@keyframes shine {
+  0% {
+    background-position: 0% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
