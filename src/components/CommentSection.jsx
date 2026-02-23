@@ -202,6 +202,12 @@ const ReplyForm = ({ parentId, onReplyAdded }) => {
 // ----------------------
 // Comment Section
 // ----------------------
+const SORT_OPTIONS = [
+  { value: '-created_at', label: 'Шинэ' },
+  { value: 'created_at',  label: 'Хуучин' },
+  { value: '-favorite_count', label: 'Таалагдсан' },
+];
+
 const CommentSection = ({
   postId,
   initialCount = 0,
@@ -215,6 +221,7 @@ const CommentSection = ({
   const [loading, setLoading] = useState(false);
   const [internalShow, setInternalShow] = useState(defaultExpanded);
   const [replyCount, setReplyCount] = useState(initialCount);
+  const [ordering, setOrdering] = useState('-created_at');
 
   // Гаднаас удирдвал externalShow ашиглана, үгүй бол internal state
   const show = externalShow !== null ? externalShow : internalShow;
@@ -226,10 +233,12 @@ const CommentSection = ({
     }
   };
 
-  const fetchReplies = async () => {
+  const fetchReplies = async (ord = ordering) => {
     setLoading(true);
     try {
-      const res = await apiClient.get(`/api/minds/posts/?parent_post=${postId}&content_type=reply`);
+      const res = await apiClient.get(
+        `/api/minds/posts/?parent_post=${postId}&content_type=reply&ordering=${ord}`
+      );
       const data = res.data.results || res.data;
       setReplies(Array.isArray(data) ? data : []);
       setReplyCount(res.data.count || data.length);
@@ -238,6 +247,11 @@ const CommentSection = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSortChange = (newOrdering) => {
+    setOrdering(newOrdering);
+    fetchReplies(newOrdering);
   };
 
   useEffect(() => {
@@ -280,6 +294,23 @@ const CommentSection = ({
             <Alert variant="info" className="small py-2">
               Хариулт бичихийн тулд нэвтэрнэ үү.
             </Alert>
+          )}
+
+          {replies.length > 0 && (
+            <div className="d-flex gap-1 mt-3 mb-2">
+              {SORT_OPTIONS.map((opt) => (
+                <Button
+                  key={opt.value}
+                  size="sm"
+                  variant={ordering === opt.value ? 'secondary' : 'outline-secondary'}
+                  className="py-0 px-2"
+                  style={{ fontSize: '0.75rem' }}
+                  onClick={() => handleSortChange(opt.value)}
+                >
+                  {opt.label}
+                </Button>
+              ))}
+            </div>
           )}
 
           {loading ? (

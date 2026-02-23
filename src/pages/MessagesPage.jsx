@@ -28,16 +28,19 @@ import {
   Check,
   Plus,
   User,
+  Trash2,
 } from 'lucide-react';
 
 // Services
 import {
   getConversations,
+  getConversation,
   getConversationMessages,
   sendMessage,
   createConversation,
   archiveConversation,
   unarchiveConversation,
+  deleteConversation,
   pollConversation,
 } from '../services/conversationService';
 
@@ -113,6 +116,7 @@ const MessagesPage = ({ aiOnly = false }) => {
   const [showNewConversationModal, setShowNewConversationModal] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [archivingConv, setArchivingConv] = useState(null);
+  const [deletingConv, setDeletingConv] = useState(null);
 
   // Refs
   const messagesEndRef = useRef(null);
@@ -138,7 +142,17 @@ const MessagesPage = ({ aiOnly = false }) => {
         const selectUuid = location.state?.conversationUuid;
         if (selectUuid) {
           const conv = convList.find((c) => c.uuid === selectUuid);
-          if (conv) setSelectedConversation(conv);
+          if (conv) {
+            setSelectedConversation(conv);
+          } else {
+            // Conversation байхгүй бол (жишээ нь archived) API-аас шууд татах
+            try {
+              const fetchedConv = await getConversation(selectUuid);
+              if (fetchedConv) setSelectedConversation(fetchedConv);
+            } catch (e) {
+              console.error('Conversation татахад алдаа:', e);
+            }
+          }
           navigate(location.pathname, { replace: true, state: {} });
         }
 
@@ -554,6 +568,22 @@ const MessagesPage = ({ aiOnly = false }) => {
     }
   };
 
+  // Delete conversation
+  const handleDelete = async (conv) => {
+    if (!window.confirm('Харилцан ярианы устгах уу? Нөгөө тал дахин мессеж илгээх хүртэл харилцан яриа таны жагсаалтаас нуугдана.')) return;
+    try {
+      setDeletingConv(conv.uuid);
+      await deleteConversation(conv.uuid);
+      setConversations((prev) => prev.filter((c) => c.uuid !== conv.uuid));
+      if (selectedConversation?.uuid === conv.uuid) setSelectedConversation(null);
+    } catch (err) {
+      console.error('Error deleting conversation:', err);
+      alert('Устгахад алдаа гарлаа.');
+    } finally {
+      setDeletingConv(null);
+    }
+  };
+
   // Loading state
   if (loading) {
     return (
@@ -577,8 +607,8 @@ const MessagesPage = ({ aiOnly = false }) => {
     );
   }
 
-  // Empty state
-  if (conversations.length === 0) {
+  // Empty state — selectedConversation байгаа бол хоосон state харуулахгүй
+  if (conversations.length === 0 && !selectedConversation) {
     return (
       <>
         <div className="text-center p-5">
@@ -686,6 +716,18 @@ const MessagesPage = ({ aiOnly = false }) => {
                       {unreadCount}
                     </Badge>
                   )}
+                  <button
+                    className="btn btn-sm btn-link text-danger p-0 mt-1"
+                    title="Устгах"
+                    disabled={deletingConv === conversation.uuid}
+                    onClick={(e) => { e.stopPropagation(); handleDelete(conversation); }}
+                  >
+                    {deletingConv === conversation.uuid ? (
+                      <Spinner animation="border" size="sm" />
+                    ) : (
+                      <Trash2 size={14} />
+                    )}
+                  </button>
                 </div>
               </div>
             );
@@ -722,7 +764,7 @@ const MessagesPage = ({ aiOnly = false }) => {
                   </div>
                 </div>
                 <div className="d-flex align-items-center gap-2">
-                  <div className="text-warning small d-flex align-items-center gap-1">
+                  <div className="text-secondary small d-flex align-items-center gap-1">
                     <AlertTriangle size={14} />
                     <span className="d-none d-md-inline">Нийтэд нээлттэй</span>
                   </div>
@@ -758,6 +800,18 @@ const MessagesPage = ({ aiOnly = false }) => {
                       '↩'
                     ) : (
                       '📦'
+                    )}
+                  </button>
+                  <button
+                    className="btn btn-sm btn-outline-danger"
+                    onClick={() => handleDelete(selectedConversation)}
+                    disabled={deletingConv === selectedConversation?.uuid}
+                    title="Харилцан яриа устгах"
+                  >
+                    {deletingConv === selectedConversation?.uuid ? (
+                      <Spinner animation="border" size="sm" />
+                    ) : (
+                      <Trash2 size={16} />
                     )}
                   </button>
                 </div>

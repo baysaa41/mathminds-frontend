@@ -172,6 +172,21 @@ function applyLatexFilters(text) {
   html = html.replace(/``(.*?)\'\'/g, '<q>$1</q>');
   html = html.replace(/\\begin{center}(.*?)\\end{center}/gs, '<div class="text-center">$1</div>');
   html = html.replace(/\n\n/g, '<br/><br/>');
+
+  // @mention → profile link
+  // HTML tag дотор байгаа @-г орхино
+  html = html.replace(
+    /(?<![="'a-zA-Z0-9_/@])@([a-zA-Z0-9_]+)/g,
+    '<a href="/profile/$1" class="mention-link text-primary text-decoration-none fw-semibold">@$1</a>'
+  );
+
+  // URLs → clickable links
+  // href=, src= гэх мэт HTML attribute дотор аль хэдийн байгаа URL-г орхино
+  html = html.replace(
+    /(?<![="'>])(https?:\/\/[^\s<>"']+)/g,
+    '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
+  );
+
   return html;
 }
 

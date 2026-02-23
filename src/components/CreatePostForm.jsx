@@ -146,7 +146,7 @@ const CreatePostForm = ({ onPostCreated, clubId = null, clubName = null }) => {
     }
 
     if (relatedItem) {
-      formData.append(`related_${contentType}_id`, relatedItem.id);
+      formData.append(`related_${contentType}_id`, relatedItem.uuid || relatedItem.id);
     }
     if (imageFiles.length > 0) {
       imageFiles.forEach((file) => {

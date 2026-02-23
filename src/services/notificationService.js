@@ -11,8 +11,10 @@ import apiClient from '../api/axiosConfig';
  * @param {number} page - Хуудасны дугаар
  * @returns {Promise} Мэдэгдлүүдийн жагсаалт
  */
-export const getNotifications = async (page = 1) => {
-  const response = await apiClient.get(`/api/minds/notifications/?page=${page}`);
+export const getNotifications = async (page = 1, type = null) => {
+  const params = { page };
+  if (type) params.type = type;
+  const response = await apiClient.get('/api/minds/notifications/', { params });
   return response.data;
 };
 
@@ -42,6 +44,18 @@ export const markAllAsRead = async () => {
 export const markAsRead = async (notificationId) => {
   const response = await apiClient.post(`/api/minds/notifications/${notificationId}/mark_as_read/`);
   return response.data;
+};
+
+/**
+ * Олон мэдэгдлийг (grouped) нэгэн зэрэг уншсан болгох
+ * @param {number[]} notificationIds - Мэдэгдлийн ID-үүд
+ */
+export const markGroupAsRead = async (notificationIds) => {
+  await Promise.all(
+    notificationIds.map((id) =>
+      apiClient.post(`/api/minds/notifications/${id}/mark_as_read/`),
+    ),
+  );
 };
 
 export const getPrivateMessagesCount = async () => {

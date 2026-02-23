@@ -22,11 +22,13 @@ const apiService = {
   /**
    * Хэрэглэгчийн профайлыг шинэчлэх.
    */
-  updateUserProfile: async (profileData) => {
+  updateUserProfile: async (profileData, username = null) => {
     console.log('DEBUG: Шинэчлэх хүсэлт илгээж байна...', profileData);
     try {
-      // (!!!) ЗАСВАР: 'users/profile/update/' -> 'users/api/profile/update/'
-      const response = await apiClient.put('users/api/profile/update/', profileData);
+      const url = username
+        ? `users/api/profile/update/?username=${username}`
+        : 'users/api/profile/update/';
+      const response = await apiClient.put(url, profileData);
       console.log('DEBUG: Серверээс 200 OK хариу ирлээ:', response);
       console.log('DEBUG: response.data-г буцааж байна:', response.data);
       return response.data;
@@ -46,9 +48,12 @@ const apiService = {
     }
   },
 
-  uploadProfilePicture: async (formData) => {
+  uploadProfilePicture: async (formData, username = null) => {
     try {
-      const response = await apiClient.post('users/api/profile/upload-picture/', formData, {
+      const url = username
+        ? `users/api/profile/upload-picture/?username=${username}`
+        : 'users/api/profile/upload-picture/';
+      const response = await apiClient.post(url, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },

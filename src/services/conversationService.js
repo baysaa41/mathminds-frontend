@@ -14,6 +14,15 @@ export const getConversations = async () => {
 };
 
 /**
+ * UUID-аар нэг харилцан яриаг авах
+ * @param {string} conversationUuid - Харилцан ярианы UUID
+ */
+export const getConversation = async (conversationUuid) => {
+  const response = await apiClient.get(`/api/minds/conversations/${conversationUuid}/`);
+  return response.data;
+};
+
+/**
  * Тодорхой хэрэглэгчтэй байгаа харилцан яриануудыг авах
  * @param {string} username - Хэрэглэгчийн нэр
  */

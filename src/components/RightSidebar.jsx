@@ -7,7 +7,7 @@ import Stack from 'react-bootstrap/Stack';
 import ClubMenuWidget from './ClubMenuWidget';
 import ClubPaymentInfoWidget from './ClubPaymentInfoWidget';
 import TrendingPostsWidget from './TrendingPostsWidget';
-import SuggestedUsersWidget from './SuggestedUsersWidget';
+
 import LatexTutorialWidget from './LatexTutorialWidget';
 import SearchWidget from './SearchWidget';
 
@@ -30,9 +30,6 @@ const RightSidebar = ({
       {/* Төлбөрийн мэдээлэл - зөвхөн STUDY клубт */}
       {clubData && clubData.club_type === 'STUDY' && <ClubPaymentInfoWidget club={clubData} />}
 
-
-      {/* Санал болгох хэрэглэгчид (клубын хуудас биш үед) */}
-      {!clubData && !isClubsPage && <SuggestedUsersWidget />}
 
       {/* Trending Widget (клубын хуудас биш үед) */}
       {!clubData && !isClubsPage && <TrendingPostsWidget />}

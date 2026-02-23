@@ -1,7 +1,7 @@
 // frontend/src/pages/ProfileEditPage.jsx (ШИНЭ ФАЙЛ)
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import apiService from '../services/apiService';
 import apiClient from '../api/axiosConfig';
@@ -22,6 +22,14 @@ import Modal from 'react-bootstrap/Modal';
 function ProfileEditPage() {
   const { user, updateUser } = useAuth(); // updateUser-г context-с авна
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Staff editing another user
+  const targetUsername = searchParams.get('username');
+  const isEditingOther = user?.is_staff && targetUsername && targetUsername !== user?.username;
+
+  const [targetUser, setTargetUser] = useState(null);
+  const [loadingTarget, setLoadingTarget] = useState(false);
 
   const [formData, setFormData] = useState({
     first_name: '',
@@ -30,7 +38,7 @@ function ProfileEditPage() {
     picture_url: '',
   });
 
-  // Username солих
+  // Username солих (зөвхөн өөрийн профайл засах үед)
   const [newUsername, setNewUsername] = useState('');
   const [usernameAvailable, setUsernameAvailable] = useState(null);
   const [checkingUsername, setCheckingUsername] = useState(false);
@@ -53,18 +61,38 @@ function ProfileEditPage() {
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
 
-  // user мэдээлэл context-с ачаалагдсаны дараа form-г дүүргэнэ
+  // Staff: бусад хэрэглэгчийн мэдээллийг татах
   useEffect(() => {
-    if (user) {
+    if (isEditingOther) {
+      setLoadingTarget(true);
+      apiService.getUserProfile(targetUsername)
+        .then((data) => {
+          setTargetUser(data);
+          setFormData({
+            first_name: data.first_name || '',
+            last_name: data.last_name || '',
+            site_role: data.site_role || 'OTHER',
+            picture_url: data.picture_url || '',
+          });
+          setImagePreview(data.picture_url || null);
+        })
+        .catch(() => setError('Хэрэглэгчийн мэдээлэл татахад алдаа гарлаа.'))
+        .finally(() => setLoadingTarget(false));
+    }
+  }, [isEditingOther, targetUsername]);
+
+  // Өөрийн профайл: user мэдээлэл context-с ачаалагдсаны дараа form-г дүүргэнэ
+  useEffect(() => {
+    if (!isEditingOther && user) {
       setFormData({
         first_name: user.first_name || '',
         last_name: user.last_name || '',
-        site_role: user.site_role || 'OTHER', // Үндсэн үүрэг
+        site_role: user.site_role || 'OTHER',
         picture_url: user.picture_url || '',
       });
       setImagePreview(user.picture_url || null);
     }
-  }, [user]);
+  }, [isEditingOther, user]);
 
   const handleChange = (e) => {
     setFormData({
@@ -181,10 +209,15 @@ function ProfileEditPage() {
       const formData = new FormData();
       formData.append('picture', selectedImage);
 
-      const response = await apiService.uploadProfilePicture(formData);
+      const response = await apiService.uploadProfilePicture(
+        formData,
+        isEditingOther ? targetUsername : null
+      );
 
-      // Update user picture_url
-      updateUser({ ...user, picture_url: response.picture_url });
+      // Update user picture_url (only update context if editing own profile)
+      if (!isEditingOther) {
+        updateUser({ ...user, picture_url: response.picture_url });
+      }
       setFormData((prev) => ({ ...prev, picture_url: response.picture_url }));
       setSuccess('Профайл зураг амжилттай солигдлоо!');
       setSelectedImage(null);
@@ -298,17 +331,25 @@ function ProfileEditPage() {
         picture_url: formData.picture_url,
       };
 
-      const updatedUser = await apiService.updateUserProfile(dataToUpdate);
+      const updatedUser = await apiService.updateUserProfile(
+        dataToUpdate,
+        isEditingOther ? targetUsername : null
+      );
 
-      // (!!!) Маш чухал: Context-г шинэчлэх
-      updateUser(updatedUser);
+      // Context-г шинэчлэх (зөвхөн өөрийн профайл засаж байгаа үед)
+      if (!isEditingOther) {
+        updateUser(updatedUser);
+      }
 
       setSuccess('Амжилттай шинэчлэгдлээ.');
       setLoading(false);
 
       // 2 секундын дараа профайл хуудас руу буцах
+      const redirectTo = isEditingOther
+        ? `/profile/${targetUsername}`
+        : '/profile';
       setTimeout(() => {
-        navigate('/profile'); // Энэ нь /profile/:username руу автоматаар очно
+        navigate(redirectTo);
       }, 2000);
     } catch (err) {
       setLoading(false);
@@ -322,64 +363,85 @@ function ProfileEditPage() {
     }
   };
 
+  if (loadingTarget) {
+    return (
+      <div className="d-flex justify-content-center align-items-center" style={{ height: '80vh' }}>
+        <Spinner animation="border" />
+      </div>
+    );
+  }
+
+  const displayUser = isEditingOther ? targetUser : user;
+
   return (
     <Container className="my-4" style={{ maxWidth: '800px' }}>
       <Card className="shadow-sm border-0">
         <Card.Header className="bg-light p-4 border-0">
           <h2 className="h4 fw-bold mb-0">Профайл засах</h2>
-          <p className="text-muted mb-0">@{user?.username}</p>
+          <p className="text-muted mb-0">@{displayUser?.username}</p>
+          {isEditingOther && (
+            <p className="text-warning small mb-0">Staff: бусад хэрэглэгчийн профайл засаж байна</p>
+          )}
         </Card.Header>
         <Card.Body className="p-4">
           <Form onSubmit={handleSubmit}>
             {error && <Alert variant="danger">{error}</Alert>}
             {success && <Alert variant="success">{success}</Alert>}
 
-            {/* Username солих */}
-            <Form.Group className="mb-3" controlId="username">
-              <Form.Label className="fw-semibold">
-                Хэрэглэгчийн нэр
-                <small className="text-muted ms-2">(Одоо: @{user?.username})</small>
-              </Form.Label>
-              <div className="d-flex gap-2">
-                <div className="flex-grow-1">
-                  <Form.Control
-                    type="text"
-                    value={newUsername}
-                    onChange={handleUsernameChange}
-                    placeholder={user?.username || 'Шинэ хэрэглэгчийн нэр'}
-                    isInvalid={usernameAvailable === false}
-                    isValid={usernameAvailable === true && newUsername}
-                  />
-                  {checkingUsername && (
-                    <Form.Text className="text-muted">
-                      <Spinner as="span" animation="border" size="sm" className="me-1" />
-                      Шалгаж байна...
-                    </Form.Text>
-                  )}
-                  {usernameAvailable === true && newUsername && (
-                    <Form.Text className="text-success d-block">✓ Боломжтой</Form.Text>
-                  )}
-                  {usernameAvailable === false && usernameError && (
-                    <Form.Control.Feedback type="invalid" className="d-block">
-                      {usernameError}
-                    </Form.Control.Feedback>
-                  )}
-                </div>
-                <Button
-                  variant="outline-primary"
-                  onClick={handleUsernameSubmit}
-                  disabled={changingUsername || !usernameAvailable || !newUsername}
-                  style={{ minWidth: '100px' }}
-                >
-                  {changingUsername ? <Spinner as="span" animation="border" size="sm" /> : 'Солих'}
-                </Button>
-              </div>
-              <Form.Text className="text-muted">
-                3-30 тэмдэгт, зөвхөн үсэг, тоо, доогуур зураас
-              </Form.Text>
-            </Form.Group>
+            {/* Username солих - зөвхөн өөрийн профайл засах үед */}
+            {!isEditingOther && (
+              <>
+                <Form.Group className="mb-3" controlId="username">
+                  <Form.Label className="fw-semibold">
+                    Хэрэглэгчийн нэр
+                    <small className="text-muted ms-2">(Одоо: @{user?.username})</small>
+                  </Form.Label>
+                  <div className="d-flex gap-2">
+                    <div className="flex-grow-1">
+                      <Form.Control
+                        type="text"
+                        value={newUsername}
+                        onChange={handleUsernameChange}
+                        placeholder={user?.username || 'Шинэ хэрэглэгчийн нэр'}
+                        isInvalid={usernameAvailable === false}
+                        isValid={usernameAvailable === true && newUsername}
+                      />
+                      {checkingUsername && (
+                        <Form.Text className="text-muted">
+                          <Spinner as="span" animation="border" size="sm" className="me-1" />
+                          Шалгаж байна...
+                        </Form.Text>
+                      )}
+                      {usernameAvailable === true && newUsername && (
+                        <Form.Text className="text-success d-block">✓ Боломжтой</Form.Text>
+                      )}
+                      {usernameAvailable === false && usernameError && (
+                        <Form.Control.Feedback type="invalid" className="d-block">
+                          {usernameError}
+                        </Form.Control.Feedback>
+                      )}
+                    </div>
+                    <Button
+                      variant="outline-primary"
+                      onClick={handleUsernameSubmit}
+                      disabled={changingUsername || !usernameAvailable || !newUsername}
+                      style={{ minWidth: '100px' }}
+                    >
+                      {changingUsername ? (
+                        <Spinner as="span" animation="border" size="sm" />
+                      ) : (
+                        'Солих'
+                      )}
+                    </Button>
+                  </div>
+                  <Form.Text className="text-muted">
+                    3-30 тэмдэгт, зөвхөн үсэг, тоо, доогуур зураас
+                  </Form.Text>
+                </Form.Group>
 
-            <hr className="my-4" />
+                <hr className="my-4" />
+              </>
+            )}
 
             {/* Нэр, Овог */}
             <Row>
@@ -500,7 +562,11 @@ function ProfileEditPage() {
             </Form.Group>
 
             <div className="d-flex justify-content-end gap-2 mt-4">
-              <Button variant="secondary" onClick={() => navigate('/profile')} disabled={loading}>
+              <Button
+                variant="secondary"
+                onClick={() => navigate(isEditingOther ? `/profile/${targetUsername}` : '/profile')}
+                disabled={loading}
+              >
                 Цуцлах
               </Button>
               <Button variant="primary" type="submit" disabled={loading}>

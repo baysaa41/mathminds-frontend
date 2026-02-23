@@ -20,7 +20,7 @@ import Stack from 'react-bootstrap/Stack';
 
 const ArticleDetailPage = () => {
   // (!!!) "articleId"-г "id" болгож өөрчилсөн (App.jsx-тэй нийцүүлсэн)
-  const { id } = useParams();
+  const { uuid: id } = useParams();
   const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -114,7 +114,7 @@ const ArticleDetailPage = () => {
     setPrefillData({
       type: 'article',
       item: {
-        id: article.id,
+        id: article.uuid,
         title: article.title
       }
     });
@@ -202,7 +202,7 @@ const ArticleDetailPage = () => {
       </MathJax>
 
       <hr className="mt-5" />
-      <Link to="/articles" className="btn btn-outline-secondary btn-sm mt-3">
+      <Link to="/content/browse?type=articles" className="btn btn-outline-secondary btn-sm mt-3">
         &laquo; Өгүүллийн сан руу буцах
       </Link>
     </Container>

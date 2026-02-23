@@ -11,6 +11,8 @@ import UserName from '../components/UserName.jsx';
 
 // React Bootstrap components
 import Container from 'react-bootstrap/Container';
+import Row from 'react-bootstrap/Row';
+import Col from 'react-bootstrap/Col';
 import Spinner from 'react-bootstrap/Spinner';
 import Alert from 'react-bootstrap/Alert';
 import Breadcrumb from 'react-bootstrap/Breadcrumb';
@@ -19,9 +21,10 @@ import Stack from 'react-bootstrap/Stack';
 import Card from 'react-bootstrap/Card';
 import ListGroup from 'react-bootstrap/ListGroup';
 import Modal from 'react-bootstrap/Modal';
+import Badge from 'react-bootstrap/Badge';
 
 const QuizDetailPage = () => {
-  const { id } = useParams();
+  const { uuid: id } = useParams();
   const [quiz, setQuiz] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -95,7 +98,7 @@ const QuizDetailPage = () => {
     return (
       <Container className="mt-4">
         <Alert variant="danger">{error}</Alert>
-        <Link to="/quizzes"> &laquo; Тестийн сан руу буцах</Link>
+        <Link to="/content/browse?type=quizzes"> &laquo; Тестийн сан руу буцах</Link>
       </Container>
     );
   }
@@ -121,7 +124,7 @@ const QuizDetailPage = () => {
     setPrefillData({
       type: 'quiz',
       item: {
-        id: quiz.id,
+        id: quiz.uuid,
         title: quiz.title
       }
     });
@@ -146,7 +149,7 @@ const QuizDetailPage = () => {
   };
 
   return (
-    <Container className="py-4">
+    <Container fluid className="py-4 px-4">
       <Breadcrumb className="mb-3">
         <Breadcrumb.Item linkAs={Link} linkProps={{ to: '/' }}>
           Нүүр
@@ -157,207 +160,133 @@ const QuizDetailPage = () => {
         <Breadcrumb.Item active>{quiz.title || 'Тест'}</Breadcrumb.Item>
       </Breadcrumb>
 
-      {/* Гарчиг ба Засварлах товч */}
-      <Stack direction="horizontal" gap={3} className="align-items-start mb-3">
-        <div className="flex-grow-1">
-          <h1 className="h3 fw-bold mathjax-content mb-1">
-            <LivePreview content={quiz.title || 'Гарчиггүй тест'} />
-          </h1>
-          <div className="text-muted small">
-            Зохиогч: <UserName user={quiz.author} />
+      <Row className="g-4">
+        {/* Зүүн хэсэг: Тестийн мэдээлэл */}
+        <Col lg={4} xl={3}>
+          {/* Гарчиг */}
+          <div className="mb-3">
+            <h1 className="h4 fw-bold mathjax-content mb-1">
+              <LivePreview content={quiz.title || 'Гарчиггүй тест'} />
+            </h1>
+            <div className="text-muted small">
+              Зохиогч: <UserName user={quiz.author} />
+            </div>
           </div>
-        </div>
-        {canEdit && (
-          <>
-            <Button
-              variant="outline-success"
-              size="sm"
-              onClick={handleCreatePost}
-              className="flex-shrink-0"
-            >
-              <i className="bi bi-megaphone me-1"></i>
-              Постлох
-            </Button>
-            <Button
-              variant="outline-primary"
-              size="sm"
-              onClick={handleEditClick}
-              className="flex-shrink-0"
-            >
-              <i className="bi bi-pencil me-1"></i>
-              Засварлах
-            </Button>
-          </>
-        )}
-      </Stack>
 
-      {/* Тайлбар */}
-      {quiz.description && (
-        <Card className="mb-4 bg-light">
-          <Card.Body>
-            <Card.Text as="div" className="mathjax-content">
-              <LivePreview content={quiz.description} />
-            </Card.Text>
-          </Card.Body>
-        </Card>
-      )}
-
-      {/* Тестийн статистик */}
-      {quiz.statistics && (
-        <Card className="mb-4 border-primary">
-          <Card.Body>
-            <h6 className="mb-3">
-              <i className="bi bi-bar-chart text-primary me-2"></i>
-              Тестийн статистик
-            </h6>
-            <Stack direction="horizontal" gap={4} className="flex-wrap">
-              <div>
-                <i className="bi bi-people text-primary me-2"></i>
-                <strong className="fs-4">{quiz.statistics.participants_count}</strong>
-                <div className="text-muted small">оролцогч</div>
-              </div>
-              <div>
-                <i className="bi bi-award text-success me-2"></i>
-                <strong className="fs-4">{quiz.statistics.average_score}</strong>
-                <div className="text-muted small">дундаж оноо</div>
-              </div>
-              <div>
-                <i className="bi bi-trophy text-warning me-2"></i>
-                <strong className="fs-4">{quiz.statistics.highest_score}</strong>
-                <div className="text-muted small">хамгийн өндөр</div>
-              </div>
-            </Stack>
-          </Card.Body>
-        </Card>
-      )}
-
-      {/* Бодлогын статистик */}
-      {quiz.problems && quiz.problems.length > 0 && (
-        <Card className="mb-4">
-          <Card.Body>
-            <h6 className="mb-3">Бодлогын статистик:</h6>
-            <Stack direction="horizontal" gap={3} className="flex-wrap">
-              {(() => {
-                const stats = {
-                  traditional: quiz.problems.filter((p) => p.type === 0).length,
-                  multipleChoice: quiz.problems.filter((p) => p.type === 1).length,
-                  fillInBlank: quiz.problems.filter((p) => p.type === 4).length,
-                };
-                return (
-                  <>
-                    {stats.traditional > 0 && (
-                      <div>
-                        <i className="bi bi-pencil-square text-secondary me-1"></i>
-                        <strong>{stats.traditional}</strong> уламжлалт
-                      </div>
-                    )}
-                    {stats.multipleChoice > 0 && (
-                      <div>
-                        <i className="bi bi-check-circle text-info me-1"></i>
-                        <strong>{stats.multipleChoice}</strong> сонгох
-                      </div>
-                    )}
-                    {stats.fillInBlank > 0 && (
-                      <div>
-                        <i className="bi bi-input-cursor text-warning me-1"></i>
-                        <strong>{stats.fillInBlank}</strong> нөхөх
-                      </div>
-                    )}
-                  </>
-                );
-              })()}
-            </Stack>
-          </Card.Body>
-        </Card>
-      )}
-
-      <hr />
-
-      {/* Тест эхлүүлэх */}
-      <div className="d-grid gap-2 mb-4">
-        <Button
-          variant="primary"
-          size="lg"
-          onClick={() => navigate(`/quiz/${id}/take`)}
-          disabled={!quiz.problems || quiz.problems.length === 0}
-        >
-          <i className="bi bi-play-circle me-2"></i>
-          Тест эхлүүлэх
-        </Button>
-        {(!quiz.problems || quiz.problems.length === 0) && (
-          <small className="text-muted text-center">Энэ тестэд бодлого байхгүй байна</small>
-        )}
-      </div>
-
-      {/* Агуулагдсан бодлогууд */}
-      <h4 className="mb-3">Тестэд багтсан бодлогууд ({quiz.problems?.length || 0})</h4>
-
-      {quiz.problems && quiz.problems.length > 0 ? (
-        <ListGroup variant="flush">
-          {quiz.problems.map((problem, index) => (
-            <ListGroup.Item
-              key={problem.id}
-              className="d-flex justify-content-between align-items-start p-3"
-            >
-              <div className="ms-2 me-auto">
-                <div className="fw-bold mathjax-content mb-2">
-                  <LivePreview
-                    content={`${index + 1}. ${problem.title || `Бодлого #${problem.id}`}`}
-                  />
-                </div>
-                <div className="text-muted small mathjax-content">
-                  <LivePreview content={problem.statement?.substring(0, 150) + '...'} />
-                </div>
-              </div>
-              <Button
-                variant="outline-secondary"
-                size="sm"
-                onClick={() => navigate(`/problem/${problem.id}`)}
-                title="Бодлогыг харах"
-              >
-                <i className="bi bi-eye"></i>
+          {/* Засварлах товчнууд */}
+          {canEdit && (
+            <Stack gap={2} className="mb-3">
+              <Button variant="outline-primary" size="sm" onClick={handleEditClick}>
+                <i className="bi bi-pencil me-1"></i>
+                Засварлах
               </Button>
-            </ListGroup.Item>
-          ))}
-        </ListGroup>
-      ) : (
-        <Alert variant="info">Энэ тестэд одоогоор бодлого нэмэгдээгүй байна.</Alert>
-      )}
+              <Button variant="outline-success" size="sm" onClick={handleCreatePost}>
+                <i className="bi bi-megaphone me-1"></i>
+                Постлох
+              </Button>
+            </Stack>
+          )}
 
-      {/* Миний оролдлогууд */}
-      {user && myAttempts && myAttempts.length > 0 && (
-        <>
-          <hr className="mt-5" />
-          <h4 className="mb-3">
+          {/* Тайлбар */}
+          {quiz.description && (
+            <Card className="mb-3 bg-light">
+              <Card.Body className="py-2">
+                <Card.Text as="div" className="mathjax-content small">
+                  <LivePreview content={quiz.description} />
+                </Card.Text>
+              </Card.Body>
+            </Card>
+          )}
+
+          {/* Тестийн статистик */}
+          {quiz.statistics && (
+            <Card className="mb-3 border-primary">
+              <Card.Body className="py-2">
+                <div className="text-muted small mb-2">
+                  <i className="bi bi-bar-chart text-primary me-1"></i>
+                  Статистик
+                </div>
+                <Stack gap={2}>
+                  <div className="d-flex justify-content-between align-items-center">
+                    <span className="text-muted small"><i className="bi bi-people me-1"></i>Оролцогч</span>
+                    <strong>{quiz.statistics.participants_count}</strong>
+                  </div>
+                  <div className="d-flex justify-content-between align-items-center">
+                    <span className="text-muted small"><i className="bi bi-award me-1"></i>Дундаж</span>
+                    <strong>{quiz.statistics.average_score}</strong>
+                  </div>
+                  <div className="d-flex justify-content-between align-items-center">
+                    <span className="text-muted small"><i className="bi bi-trophy me-1"></i>Хамгийн өндөр</span>
+                    <strong>{quiz.statistics.highest_score}</strong>
+                  </div>
+                </Stack>
+              </Card.Body>
+            </Card>
+          )}
+
+          {/* Бодлогын статистик */}
+          {quiz.problems && quiz.problems.length > 0 && (
+            <Card className="mb-3">
+              <Card.Body className="py-2">
+                <div className="text-muted small mb-2">Бодлогын төрөл</div>
+                <Stack gap={1}>
+                  {quiz.problems.filter((p) => p.type === 0).length > 0 && (
+                    <div className="d-flex justify-content-between">
+                      <span className="small"><i className="bi bi-pencil-square text-secondary me-1"></i>Уламжлалт</span>
+                      <Badge bg="secondary">{quiz.problems.filter((p) => p.type === 0).length}</Badge>
+                    </div>
+                  )}
+                  {quiz.problems.filter((p) => p.type === 1).length > 0 && (
+                    <div className="d-flex justify-content-between">
+                      <span className="small"><i className="bi bi-check-circle text-info me-1"></i>Сонгох</span>
+                      <Badge bg="info">{quiz.problems.filter((p) => p.type === 1).length}</Badge>
+                    </div>
+                  )}
+                  {quiz.problems.filter((p) => p.type === 4).length > 0 && (
+                    <div className="d-flex justify-content-between">
+                      <span className="small"><i className="bi bi-input-cursor text-warning me-1"></i>Нөхөх</span>
+                      <Badge bg="warning" text="dark">{quiz.problems.filter((p) => p.type === 4).length}</Badge>
+                    </div>
+                  )}
+                </Stack>
+              </Card.Body>
+            </Card>
+          )}
+
+          <Link to="/content/browse?type=quizzes" className="btn btn-outline-secondary btn-sm w-100">
+            &laquo; Тестийн сан
+          </Link>
+        </Col>
+
+        {/* Баруун хэсэг: Миний оролдлогууд */}
+        <Col lg={8} xl={9}>
+          <h5 className="mb-3 fw-bold">
             <i className="bi bi-clock-history me-2"></i>
             Миний оролдлогууд
-          </h4>
-          {attemptsLoading ? (
+          </h5>
+
+          {!user ? (
+            <Alert variant="info">Оролдлогуудаа харахын тулд нэвтэрнэ үү.</Alert>
+          ) : attemptsLoading ? (
             <div className="text-center py-3">
               <Spinner animation="border" size="sm" />
             </div>
+          ) : myAttempts.length === 0 ? (
+            <Alert variant="light" className="text-muted">Оролдлого байхгүй байна.</Alert>
           ) : (
             <ListGroup>
               {myAttempts.map((attempt) => {
                 const statusBadge = {
-                  completed: { variant: 'success', icon: 'check-circle', text: 'Дууссан' },
-                  in_progress: { variant: 'primary', icon: 'play-circle', text: 'Явагдаж байгаа' },
-                  paused: { variant: 'warning', icon: 'pause-circle', text: 'Түр зогссон' },
-                }[attempt.status] || {
-                  variant: 'secondary',
-                  icon: 'question-circle',
-                  text: attempt.status,
-                };
+                  completed: { variant: 'success', text: 'Дууссан' },
+                  in_progress: { variant: 'primary', text: 'Явагдаж байгаа' },
+                  paused: { variant: 'warning', text: 'Түр зогссон' },
+                }[attempt.status] || { variant: 'secondary', text: attempt.status };
 
                 const formatDate = (dateString) => {
                   if (!dateString) return 'Тодорхойгүй';
-                  const date = new Date(dateString);
-                  return date.toLocaleString('mn-MN', {
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit',
+                  return new Date(dateString).toLocaleString('mn-MN', {
+                    year: 'numeric', month: '2-digit', day: '2-digit',
+                    hour: '2-digit', minute: '2-digit',
                   });
                 };
 
@@ -374,22 +303,13 @@ const QuizDetailPage = () => {
                   >
                     <div>
                       <div className="mb-1">
-                        <i className={`bi bi-${statusBadge.icon} me-1`}></i>
-                        <strong>{formatDate(attempt.started_at)}</strong>
+                        <Badge bg={statusBadge.variant} className="me-2">{statusBadge.text}</Badge>
+                        <span className="small">{formatDate(attempt.started_at)}</span>
                       </div>
                       <Stack direction="horizontal" gap={3} className="text-muted small">
-                        <span>
-                          <i className="bi bi-trophy me-1"></i>
-                          {attempt.score || 0} оноо
-                        </span>
-                        <span>
-                          <i className="bi bi-clock me-1"></i>
-                          {formatTime(attempt.total_time_spent || 0)}
-                        </span>
-                        <span>
-                          <i className="bi bi-check-circle me-1"></i>
-                          {attempt.answers_count || 0} хариулт
-                        </span>
+                        <span><i className="bi bi-trophy me-1"></i>{attempt.score || 0} оноо</span>
+                        <span><i className="bi bi-clock me-1"></i>{formatTime(attempt.total_time_spent || 0)}</span>
+                        <span><i className="bi bi-check-circle me-1"></i>{attempt.answers_count || 0} хариулт</span>
                       </Stack>
                     </div>
                     <div>
@@ -418,13 +338,24 @@ const QuizDetailPage = () => {
               })}
             </ListGroup>
           )}
-        </>
-      )}
 
-      <hr className="mt-5" />
-      <Link to="/quizzes" className="btn btn-outline-secondary btn-sm mt-3">
-        &laquo; Тестийн сан руу буцах
-      </Link>
+          {/* Эхлүүлэх товч */}
+          <div className="d-grid mt-4">
+            <Button
+              variant="primary"
+              size="lg"
+              onClick={() => navigate(`/quiz/${id}/take`)}
+              disabled={!quiz.problems || quiz.problems.length === 0}
+            >
+              <i className="bi bi-play-circle me-2"></i>
+              Эхлүүлэх
+            </Button>
+            {(!quiz.problems || quiz.problems.length === 0) && (
+              <small className="text-muted text-center mt-1">Бодлого байхгүй байна</small>
+            )}
+          </div>
+        </Col>
+      </Row>
 
       {/* Нийтлэгдсэн тест засах Modal */}
       <Modal show={showCloneModal} onHide={() => setShowCloneModal(false)} centered>

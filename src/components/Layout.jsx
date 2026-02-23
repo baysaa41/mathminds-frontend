@@ -34,7 +34,7 @@ import {
   List,
   LogIn,
   PlusCircle,
-  FileText,
+
   HelpCircle,
   Calculator,
   Info,
@@ -147,36 +147,11 @@ const Layout = () => {
             {/* Main Navigation */}
             <Navbar.Collapse id="main-navbar">
               <Nav className="me-auto">
-                {/* Content Dropdown */}
-                <Dropdown as={Nav.Item}>
-                  <Dropdown.Toggle as={Nav.Link} className="d-flex align-items-center">
-                    <FileText size={18} className="me-1" />
-                    <span>Контент</span>
-                  </Dropdown.Toggle>
-                  <Dropdown.Menu>
-                    <Dropdown.Item as={Link} to="/articles">
-                      <i className="bi bi-file-text me-2"></i>
-                      Нийтлэлүүд
-                    </Dropdown.Item>
-                    <Dropdown.Item as={Link} to="/problems">
-                      <i className="bi bi-puzzle me-2"></i>
-                      Бодлогууд
-                    </Dropdown.Item>
-                    <Dropdown.Item as={Link} to="/formulas">
-                      <i className="bi bi-calculator me-2"></i>
-                      Томъёонууд
-                    </Dropdown.Item>
-                    <Dropdown.Item as={Link} to="/quizzes">
-                      <i className="bi bi-card-checklist me-2"></i>
-                      Тест, Олимпиад
-                    </Dropdown.Item>
-                    <Dropdown.Divider />
-                    <Dropdown.Item as={Link} to="/latex-examples">
-                      <i className="bi bi-calculator me-2"></i>
-                      LaTeX Зөвлөгөө
-                    </Dropdown.Item>
-                  </Dropdown.Menu>
-                </Dropdown>
+                {/* Контентийн сан */}
+                <Nav.Link as={Link} to="/content/browse" className="d-flex align-items-center">
+                  <i className="bi bi-collection me-1"></i>
+                  <span>Контентийн сан</span>
+                </Nav.Link>
 
                 {/* Clubs Dropdown */}
                 <Dropdown as={Nav.Item}>
@@ -350,26 +325,9 @@ const Layout = () => {
           </Offcanvas.Header>
           <Offcanvas.Body>
             <Nav className="flex-column">
-              <div className="mt-2 mb-1 px-3 text-muted small">Контент</div>
-              <Nav.Link as={Link} to="/articles" onClick={() => setShowSidebar(false)}>
-                <i className="bi bi-file-text me-2"></i>
-                Нийтлэлүүд
-              </Nav.Link>
-              <Nav.Link as={Link} to="/problems" onClick={() => setShowSidebar(false)}>
-                <i className="bi bi-puzzle me-2"></i>
-                Бодлогууд
-              </Nav.Link>
-              <Nav.Link as={Link} to="/formulas" onClick={() => setShowSidebar(false)}>
-                <i className="bi bi-calculator me-2"></i>
-                Томъёонууд
-              </Nav.Link>
-              <Nav.Link as={Link} to="/quizzes" onClick={() => setShowSidebar(false)}>
-                <i className="bi bi-card-checklist me-2"></i>
-                Тест, Олимпиад
-              </Nav.Link>
-              <Nav.Link as={Link} to="/latex-examples" onClick={() => setShowSidebar(false)}>
-                <i className="bi bi-calculator me-2"></i>
-                LaTeX Зөвлөгөө
+              <Nav.Link as={Link} to="/content/browse" onClick={() => setShowSidebar(false)}>
+                <i className="bi bi-collection me-2"></i>
+                Контентийн сан
               </Nav.Link>
 
               <div className="mt-3 mb-1 px-3 text-muted small">Клубууд</div>
@@ -497,9 +455,9 @@ const Layout = () => {
           <Row className="g-0 h-100">
             {/* Main Content */}
             <Col
-              lg={location.pathname === '/messages' || location.pathname === '/ai-chat' || location.pathname.match(/^\/quiz\/[^/]+\/edit$/) ? 12 : 9}
-              xl={location.pathname === '/messages' || location.pathname === '/ai-chat' || location.pathname.match(/^\/quiz\/[^/]+\/edit$/) ? 12 : 8}
-              className={location.pathname === '/messages' || location.pathname === '/ai-chat' || location.pathname.match(/^\/quiz\/[^/]+\/edit$/) ? '' : 'border-end'}
+              lg={location.pathname === '/messages' || location.pathname === '/ai-chat' || location.pathname.startsWith('/quiz/') ? 12 : 9}
+              xl={location.pathname === '/messages' || location.pathname === '/ai-chat' || location.pathname.startsWith('/quiz/') ? 12 : 8}
+              className={location.pathname === '/messages' || location.pathname === '/ai-chat' || location.pathname.startsWith('/quiz/') ? '' : 'border-end'}
             >
               <div
                 ref={mainScrollRef}
@@ -524,8 +482,8 @@ const Layout = () => {
               </div>
             </Col>
 
-            {/* Right Sidebar - Hide on messages, ai-chat and quiz edit pages */}
-            {location.pathname !== '/messages' && location.pathname !== '/ai-chat' && !location.pathname.match(/^\/quiz\/[^/]+\/edit$/) && (
+            {/* Right Sidebar - Hide on messages, ai-chat and all quiz pages */}
+            {location.pathname !== '/messages' && location.pathname !== '/ai-chat' && !location.pathname.startsWith('/quiz/') && (
               <Col lg={3} xl={4} className="bg-light">
                 <div style={{ height: 'calc(100vh - 60px)', overflowY: 'auto' }} className="p-3">
                   <RightSidebar clubData={clubData} />

@@ -238,6 +238,8 @@ function ProfilePage() {
 
   if (profile) {
     const isOwnProfile = currentUser && currentUser.id === profile.id;
+    const canEdit = isOwnProfile || currentUser?.is_staff;
+    const canViewCoins = isOwnProfile || currentUser?.is_staff;
 
     return (
       <>
@@ -344,34 +346,42 @@ function ProfilePage() {
 
                   {/* Өөрийнх бол: Coin илгээх + Засах товч */}
                   {isOwnProfile && (
-                    <>
-                      <DropdownButton
-                        variant="primary"
-                        size="sm"
-                        title={
-                          <>
-                            <Coins size={16} className="me-1" />
-                            Зоос илгээх
-                          </>
-                        }
-                      >
-                        {coinTypes.map((coin) => (
-                          <Dropdown.Item
-                            key={coin.value}
-                            onClick={() =>
-                              navigate('/coins/transfer', { state: { coinType: coin.value } })
-                            }
-                          >
-                            <span style={{ fontSize: '18px' }}>{coin.emoji}</span> {coin.label}
-                          </Dropdown.Item>
-                        ))}
-                      </DropdownButton>
-                      <LinkContainer to="/profile/edit">
-                        <Button variant="outline-secondary" size="sm">
-                          Профайл засах
-                        </Button>
-                      </LinkContainer>
-                    </>
+                    <DropdownButton
+                      variant="primary"
+                      size="sm"
+                      title={
+                        <>
+                          <Coins size={16} className="me-1" />
+                          Зоос илгээх
+                        </>
+                      }
+                    >
+                      {coinTypes.map((coin) => (
+                        <Dropdown.Item
+                          key={coin.value}
+                          onClick={() =>
+                            navigate('/coins/transfer', { state: { coinType: coin.value } })
+                          }
+                        >
+                          <span style={{ fontSize: '18px' }}>{coin.emoji}</span> {coin.label}
+                        </Dropdown.Item>
+                      ))}
+                    </DropdownButton>
+                  )}
+
+                  {/* Засах товч: өөрийнх эсвэл staff */}
+                  {canEdit && (
+                    <Button
+                      variant="outline-secondary"
+                      size="sm"
+                      onClick={() =>
+                        isOwnProfile
+                          ? navigate('/profile/edit')
+                          : navigate(`/profile/edit?username=${profile.username}`)
+                      }
+                    >
+                      Профайл засах
+                    </Button>
                   )}
                 </Stack>
               </Col>
@@ -395,23 +405,25 @@ function ProfilePage() {
                 </ListGroup>
               </Col>
 
-              {/* Баруун тал: Coin балансууд */}
-              <Col md={6} className="mt-4 mt-md-0">
-                <h5 className="fw-semibold mb-3">Хэтэвчин дэх зоос 💰</h5>
-                <ListGroup variant="flush">
-                  {coinTypes.map((coin) => (
-                    <ListGroup.Item
-                      key={coin.value}
-                      className="d-flex justify-content-between px-0"
-                    >
-                      <span className="text-muted">
-                        <span style={{ fontSize: '18px' }}>{coin.emoji}</span> {coin.label}:
-                      </span>
-                      <strong>{(profile[`${coin.value}_coins`] || 0).toLocaleString()}</strong>
-                    </ListGroup.Item>
-                  ))}
-                </ListGroup>
-              </Col>
+              {/* Баруун тал: Coin балансууд - зөвхөн өөрөө эсвэл staff харна */}
+              {canViewCoins && (
+                <Col md={6} className="mt-4 mt-md-0">
+                  <h5 className="fw-semibold mb-3">Хэтэвчин дэх зоос 💰</h5>
+                  <ListGroup variant="flush">
+                    {coinTypes.map((coin) => (
+                      <ListGroup.Item
+                        key={coin.value}
+                        className="d-flex justify-content-between px-0"
+                      >
+                        <span className="text-muted">
+                          <span style={{ fontSize: '18px' }}>{coin.emoji}</span> {coin.label}:
+                        </span>
+                        <strong>{(profile[`${coin.value}_coins`] || 0).toLocaleString()}</strong>
+                      </ListGroup.Item>
+                    ))}
+                  </ListGroup>
+                </Col>
+              )}
             </Row>
 
             {/* Гишүүнчлэлийн мэдээлэл */}
@@ -621,9 +633,9 @@ function ProfilePage() {
           show={showPrivatePostModal}
           onHide={() => setShowPrivatePostModal(false)}
           recipientUsername={profile.username}
-          onSuccess={(post) => {
-            console.log('Хувийн пост амжилттай илгээгдлээ:', post);
-            // Optional: Show success message
+          onSuccess={(conversationUuid) => {
+            const dest = profile.is_ai_teacher ? '/ai-chat' : '/messages';
+            navigate(dest, { state: { conversationUuid } });
           }}
         />
       </>

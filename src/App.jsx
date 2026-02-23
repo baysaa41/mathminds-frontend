@@ -21,6 +21,7 @@ const ConversationViewPage = lazy(() => import('./pages/ConversationViewPage.jsx
 const ArticleDetailPage = lazy(() => import('./pages/ArticleDetailPage.jsx'));
 const ArticleEditPage = lazy(() => import('./pages/ArticleEditPage.jsx'));
 const ArticlesPage = lazy(() => import('./pages/ArticlesPage.jsx'));
+const ArticlesBrowsePage = lazy(() => import('./pages/ArticlesBrowsePage.jsx'));
 
 // Posts
 const PostDetailPage = lazy(() => import('./pages/PostDetailPage.jsx'));
@@ -34,12 +35,15 @@ const SolutionEditPage = lazy(() => import('./pages/SolutionEditPage.jsx'));
 
 // Formulas
 const FormulasPage = lazy(() => import('./pages/FormulasPage.jsx'));
+const FormulasBrowsePage = lazy(() => import('./pages/FormulasBrowsePage.jsx'));
 const FormulaEditPage = lazy(() => import('./pages/FormulaEditPage.jsx'));
 const FormulaDetailPage = lazy(() => import('./pages/FormulaDetailPage.jsx'));
 const LaTeXExamplesPage = lazy(() => import('./pages/LaTeXExamplesPage.jsx'));
 
 // Quizzes
 const QuizzesPage = lazy(() => import('./pages/QuizzesPage.jsx'));
+const QuizzesBrowsePage = lazy(() => import('./pages/QuizzesBrowsePage.jsx'));
+const ContentBrowsePage = lazy(() => import('./pages/ContentBrowsePage.jsx'));
 const QuizDetailPage = lazy(() => import('./pages/QuizDetailPage.jsx'));
 const QuizEditPage = lazy(() => import('./pages/QuizEditPage.jsx'));
 const QuizTakePage = lazy(() => import('./pages/QuizTakePage.jsx'));
@@ -110,6 +114,9 @@ function App() {
         <Route path="/reset-password/:uidb64/:token" element={<PasswordResetConfirmPage />} />
         <Route path="/callback" element={<CallbackPage />} />
 
+        {/* Нийтэд нээлттэй харилцан яриа харах */}
+        <Route path="/messages/conversation/:conversationUuid" element={<ConversationViewPage />} />
+
         {/* Info Pages - Нэвтрэхгүйгээр үзэх боломжтой */}
         <Route path="/about" element={<AboutPage />} />
         <Route path="/nomads360" element={<Nomads360Page />} />
@@ -133,10 +140,6 @@ function App() {
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="messages" element={<MessagesPage />} />
           <Route path="ai-chat" element={<MessagesPage aiOnly={true} />} />
-          <Route
-            path="messages/conversation/:conversationUuid"
-            element={<ConversationViewPage />}
-          />
 
           {/* Post дэлгэрэнгүй */}
           <Route path="post/:postId" element={<PostDetailPage />} />
@@ -144,23 +147,23 @@ function App() {
           {/* Article хуудсууд */}
           <Route path="article/:uuid" element={<ArticleDetailPage />} />
           <Route path="article/:uuid/edit" element={<ArticleEditPage />} />
-          <Route path="articles" element={<ArticlesPage />} />
+          <Route path="articles" element={<Navigate to="/content/browse?type=articles" replace />} />
 
           {/* Problem хуудсууд */}
           <Route path="problem/:uuid" element={<ProblemDetailPage />} />
           <Route path="problem/:uuid/edit" element={<ProblemEditPage />} />
           <Route path="problem/:uuid/solution/new" element={<SolutionEditPage />} />
           <Route path="solution/:solutionUuid/edit" element={<SolutionEditPage />} />
-          <Route path="problems" element={<ProblemsPage />} />
+          <Route path="problems" element={<Navigate to="/content/browse?type=problems" replace />} />
 
           {/* Formula хуудсууд */}
-          <Route path="formulas" element={<FormulasPage />} />
+          <Route path="formulas" element={<Navigate to="/content/browse?type=formulas" replace />} />
           <Route path="formula/:uuid" element={<FormulaDetailPage />} />
           <Route path="formula/:uuid/edit" element={<FormulaEditPage />} />
           <Route path="latex-examples" element={<LaTeXExamplesPage />} />
 
           {/* Тестүүд */}
-          <Route path="quizzes" element={<QuizzesPage />} />
+          <Route path="quizzes" element={<Navigate to="/content/browse?type=quizzes" replace />} />
           <Route path="quiz/:uuid" element={<QuizDetailPage />} />
           <Route path="quiz/:uuid/edit" element={<QuizEditPage />} />
           <Route path="quiz/:uuid/take" element={<QuizTakePage />} />
@@ -200,6 +203,46 @@ function App() {
           element={
             <ProtectedRoute>
               <ProblemsBrowsePage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Өгүүллийн сан - Fullscreen browse */}
+        <Route
+          path="/articles/browse"
+          element={
+            <ProtectedRoute>
+              <ArticlesBrowsePage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Томьёоны сан - Fullscreen browse */}
+        <Route
+          path="/formulas/browse"
+          element={
+            <ProtectedRoute>
+              <FormulasBrowsePage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Тестийн сан - Fullscreen browse */}
+        <Route
+          path="/quizzes/browse"
+          element={
+            <ProtectedRoute>
+              <QuizzesBrowsePage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Нэгдсэн контентийн сан */}
+        <Route
+          path="/content/browse"
+          element={
+            <ProtectedRoute>
+              <ContentBrowsePage />
             </ProtectedRoute>
           }
         />

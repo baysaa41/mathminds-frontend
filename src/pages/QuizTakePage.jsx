@@ -21,7 +21,7 @@ import InputGroup from 'react-bootstrap/InputGroup';
 import Modal from 'react-bootstrap/Modal';
 
 const QuizTakePage = () => {
-  const { id } = useParams(); // quiz id
+  const { uuid: id } = useParams(); // quiz uuid
   const { user } = useAuth();
   const navigate = useNavigate();
   const { setPageTitle } = useOutletContext();
@@ -251,7 +251,7 @@ const QuizTakePage = () => {
 
     // Хариултыг хадгалах
     if (currentAnswer) {
-      await submitAnswer(currentProblem.id, currentAnswer, imageFile);
+      await submitAnswer(currentProblem.uuid, currentAnswer, imageFile);
     }
 
     // Дараагийн бодлого руу шилжих
@@ -307,7 +307,7 @@ const QuizTakePage = () => {
       const currentAnswer = answers[currentProblem?.id];
       const imageFile = selectedImages[currentProblem?.id];
       if (currentAnswer && currentProblem) {
-        await submitAnswer(currentProblem.id, currentAnswer, imageFile);
+        await submitAnswer(currentProblem.uuid, currentAnswer, imageFile);
       }
 
       // Тест дуусгах

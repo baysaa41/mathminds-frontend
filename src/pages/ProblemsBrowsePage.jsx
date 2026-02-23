@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { MathJaxContext } from 'better-react-mathjax'
 import { mathJaxConfig } from '../mathjax.config.js'
@@ -8,7 +8,10 @@ import { stripPSTricks } from '../utils/stripPSTricks.js'
 import { formatDate } from '../utils/dateFormatter'
 import LoadingState from '../components/common/LoadingState.jsx'
 import UserName from '../components/UserName.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
 import { API_ENDPOINTS } from '../constants/api.js'
+import usePaginatedFetch from '../hooks/usePagenatedFetch.js'
+import useInfiniteScroll from '../hooks/useInfiniteScroll.js'
 
 import Container from 'react-bootstrap/Container'
 import Row from 'react-bootstrap/Row'
@@ -36,7 +39,9 @@ const getProblemTypeLabel = (type) => {
 
 function ProblemsBrowsePage() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
+  const mainColRef = useRef(null)
 
   // Categories & Topics
   const [categories, setCategories] = useState([])
@@ -46,16 +51,27 @@ function ProblemsBrowsePage() {
   const [categoriesLoading, setCategoriesLoading] = useState(true)
   const [topicsLoading, setTopicsLoading] = useState(false)
 
-  // Problems
-  const [problems, setProblems] = useState([])
-  const [problemsLoading, setProblemsLoading] = useState(true)
-  const [problemsLoadingMore, setProblemsLoadingMore] = useState(false)
-  const [nextPage, setNextPage] = useState(null)
-  const [totalCount, setTotalCount] = useState(0)
-
-  // Search & Filters
+  // Filters
   const [searchInput, setSearchInput] = useState(searchParams.get('search') || '')
   const [selectedTypes, setSelectedTypes] = useState([])
+  const [myOnly, setMyOnly] = useState(false)
+
+  const {
+    data: problems, loading, loadingMore, hasMore,
+    fetchData, loadMore,
+  } = usePaginatedFetch(API_ENDPOINTS.INTEGRAL.PROBLEMS)
+
+  const { triggerRef } = useInfiniteScroll(loadMore, hasMore, loadingMore, mainColRef)
+
+  const buildParams = useCallback(() => {
+    const params = {}
+    if (myOnly && user?.id) params.author = user.id
+    if (selectedTopic) params.topic = selectedTopic.id
+    else if (selectedCategory) params.category = selectedCategory.id
+    if (searchInput) params.search = searchInput
+    if (selectedTypes.length > 0) params.type = selectedTypes.join(',')
+    return params
+  }, [myOnly, user?.id, selectedTopic, selectedCategory, searchInput, selectedTypes])
 
   // Initialize from URL params
   useEffect(() => {
@@ -63,11 +79,8 @@ function ProblemsBrowsePage() {
     const topicParam = searchParams.get('topic')
     const typeParam = searchParams.get('type')
 
-    if (typeParam) {
-      setSelectedTypes(typeParam.split(','))
-    }
+    if (typeParam) setSelectedTypes(typeParam.split(','))
 
-    // Fetch categories first, then set selections after
     fetchCategories().then((cats) => {
       if (categoryParam) {
         const catId = parseInt(categoryParam)
@@ -82,27 +95,25 @@ function ProblemsBrowsePage() {
             }
           })
         }
+      } else {
+        fetchData({})
       }
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Fetch problems when filters change
+  // Re-fetch when filters change
   useEffect(() => {
-    fetchProblems()
+    const params = buildParams()
+    const urlParams = {}
+    if (selectedCategory) urlParams.category = selectedCategory.id
+    if (selectedTopic) urlParams.topic = selectedTopic.id
+    if (searchInput) urlParams.search = searchInput
+    if (selectedTypes.length > 0) urlParams.type = selectedTypes.join(',')
+    setSearchParams(urlParams, { replace: true })
+    fetchData(params)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCategory, selectedTopic, selectedTypes])
-
-  // Update URL params
-  useEffect(() => {
-    const params = {}
-    if (selectedCategory) params.category = selectedCategory.id
-    if (selectedTopic) params.topic = selectedTopic.id
-    if (searchInput) params.search = searchInput
-    if (selectedTypes.length > 0) params.type = selectedTypes.join(',')
-    setSearchParams(params, { replace: true })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCategory, selectedTopic, selectedTypes])
+  }, [selectedCategory, selectedTopic, selectedTypes, myOnly])
 
   const fetchCategories = async () => {
     setCategoriesLoading(true)
@@ -111,7 +122,6 @@ function ProblemsBrowsePage() {
       setCategories(res.data)
       return res.data
     } catch {
-      console.error('Failed to fetch categories')
       return []
     } finally {
       setCategoriesLoading(false)
@@ -127,51 +137,9 @@ function ProblemsBrowsePage() {
       setTopics(res.data)
       return res.data
     } catch {
-      console.error('Failed to fetch topics')
       return []
     } finally {
       setTopicsLoading(false)
-    }
-  }
-
-  const fetchProblems = useCallback(
-    async (searchOverride) => {
-      setProblemsLoading(true)
-      try {
-        const params = {}
-        if (selectedTopic) {
-          params.topic = selectedTopic.id
-        } else if (selectedCategory) {
-          params.category = selectedCategory.id
-        }
-        const search = searchOverride !== undefined ? searchOverride : searchInput
-        if (search) params.search = search
-        if (selectedTypes.length > 0) params.type = selectedTypes.join(',')
-
-        const res = await apiClient.get(API_ENDPOINTS.INTEGRAL.PROBLEMS, { params })
-        setProblems(res.data.results || res.data)
-        setNextPage(res.data.next || null)
-        setTotalCount(res.data.count || (res.data.results || res.data).length)
-      } catch {
-        console.error('Failed to fetch problems')
-      } finally {
-        setProblemsLoading(false)
-      }
-    },
-    [selectedCategory, selectedTopic, searchInput, selectedTypes],
-  )
-
-  const loadMore = async () => {
-    if (!nextPage || problemsLoadingMore) return
-    setProblemsLoadingMore(true)
-    try {
-      const res = await apiClient.get(nextPage)
-      setProblems((prev) => [...prev, ...(res.data.results || res.data)])
-      setNextPage(res.data.next || null)
-    } catch {
-      console.error('Failed to load more problems')
-    } finally {
-      setProblemsLoadingMore(false)
     }
   }
 
@@ -180,17 +148,11 @@ function ProblemsBrowsePage() {
     setSelectedCategory(category)
     setSelectedTopic(null)
     setTopics([])
-    if (category) {
-      fetchTopics(category.id)
-    }
+    if (category) fetchTopics(category.id)
   }
 
   const handleTopicClick = (topic) => {
-    if (selectedTopic?.id === topic?.id) {
-      setSelectedTopic(null)
-    } else {
-      setSelectedTopic(topic)
-    }
+    setSelectedTopic(selectedTopic?.id === topic.id ? null : topic)
   }
 
   const handleTypeChange = (typeValue) => {
@@ -201,15 +163,12 @@ function ProblemsBrowsePage() {
 
   const handleSearch = (e) => {
     e.preventDefault()
-    setSearchParams(
-      (prev) => {
-        if (searchInput) prev.set('search', searchInput)
-        else prev.delete('search')
-        return prev
-      },
-      { replace: true },
-    )
-    fetchProblems(searchInput)
+    fetchData(buildParams())
+    setSearchParams((prev) => {
+      if (searchInput) prev.set('search', searchInput)
+      else prev.delete('search')
+      return prev
+    }, { replace: true })
   }
 
   const handleClearAll = () => {
@@ -218,35 +177,27 @@ function ProblemsBrowsePage() {
     setTopics([])
     setSelectedTypes([])
     setSearchInput('')
+    setMyOnly(false)
     setSearchParams({}, { replace: true })
   }
+
+  const hasActiveFilters = selectedCategory || selectedTypes.length > 0 || searchInput || myOnly
 
   return (
     <MathJaxContext config={mathJaxConfig}>
       <div className="d-flex flex-column vh-100">
         {/* Top Navbar */}
         <Navbar bg="white" className="border-bottom shadow-sm px-3" style={{ zIndex: 10 }}>
-          <Navbar.Brand
-            onClick={() => navigate('/')}
-            style={{ cursor: 'pointer' }}
-            className="d-flex align-items-center"
-          >
+          <Navbar.Brand onClick={() => navigate('/')} style={{ cursor: 'pointer' }} className="d-flex align-items-center">
             <i className="bi bi-puzzle-fill text-primary me-2 fs-4"></i>
             <span className="fw-bold">Бодлогын сан</span>
           </Navbar.Brand>
 
-          <Form
-            onSubmit={handleSearch}
-            className="d-flex mx-auto"
-            style={{ maxWidth: 500, flex: 1 }}
-          >
+          <Form onSubmit={handleSearch} className="d-flex mx-auto" style={{ maxWidth: 500, flex: 1 }}>
             <InputGroup>
               <Form.Control
-                type="text"
-                placeholder="Бодлого хайх..."
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                size="sm"
+                type="text" placeholder="Бодлого хайх..."
+                value={searchInput} onChange={(e) => setSearchInput(e.target.value)} size="sm"
               />
               <Button variant="outline-primary" type="submit" size="sm">
                 <i className="bi bi-search"></i>
@@ -254,9 +205,8 @@ function ProblemsBrowsePage() {
             </InputGroup>
           </Form>
 
-          <Button variant="outline-secondary" size="sm" onClick={() => navigate('/problems')}>
-            <i className="bi bi-arrow-left me-1"></i>
-            Буцах
+          <Button variant="outline-secondary" size="sm" onClick={() => navigate('/content/browse?type=problems')}>
+            <i className="bi bi-arrow-left me-1"></i>Буцах
           </Button>
         </Navbar>
 
@@ -264,74 +214,57 @@ function ProblemsBrowsePage() {
         <div className="flex-grow-1 overflow-hidden">
           <Row className="g-0 h-100">
             {/* Left Sidebar */}
-            <Col
-              lg={3}
-              md={4}
-              className="border-end bg-light h-100 overflow-auto d-none d-md-block"
-            >
+            <Col lg={3} md={4} className="border-end bg-light h-100 overflow-auto d-none d-md-block">
               <div className="p-3">
-                {/* Categories */}
+                {user && (
+                  <>
+                    <h6 className="text-uppercase text-muted small fw-bold mb-2">
+                      <i className="bi bi-person me-1"></i>Шүүлтүүр
+                    </h6>
+                    <Form.Check
+                      type="checkbox" id="my-only"
+                      label="Зөвхөн миний"
+                      checked={myOnly}
+                      onChange={(e) => setMyOnly(e.target.checked)}
+                      className="mb-3 small"
+                    />
+                    <hr className="my-2" />
+                  </>
+                )}
+
                 <h6 className="text-uppercase text-muted small fw-bold mb-2">
-                  <i className="bi bi-folder me-1"></i>
-                  Ангилал
+                  <i className="bi bi-folder me-1"></i>Ангилал
                 </h6>
 
                 {categoriesLoading ? (
-                  <div className="text-center py-3">
-                    <Spinner animation="border" size="sm" />
-                  </div>
+                  <div className="text-center py-3"><Spinner animation="border" size="sm" /></div>
                 ) : (
                   <ListGroup variant="flush" className="mb-3">
-                    <ListGroup.Item
-                      action
-                      active={!selectedCategory}
-                      onClick={() => handleCategoryClick(null)}
-                      className="py-2 px-3 small"
-                    >
-                      <i className="bi bi-grid-3x3-gap me-2"></i>
-                      Бүгд
+                    <ListGroup.Item action active={!selectedCategory} onClick={() => handleCategoryClick(null)} className="py-2 px-3 small">
+                      <i className="bi bi-grid-3x3-gap me-2"></i>Бүгд
                     </ListGroup.Item>
                     {categories.map((cat) => (
-                      <ListGroup.Item
-                        key={cat.id}
-                        action
-                        active={selectedCategory?.id === cat.id}
-                        onClick={() => handleCategoryClick(cat)}
-                        className="py-2 px-3 small"
-                      >
-                        <i className="bi bi-folder2 me-2"></i>
-                        {cat.name}
+                      <ListGroup.Item key={cat.id} action active={selectedCategory?.id === cat.id} onClick={() => handleCategoryClick(cat)} className="py-2 px-3 small">
+                        <i className="bi bi-folder2 me-2"></i>{cat.name}
                       </ListGroup.Item>
                     ))}
                   </ListGroup>
                 )}
 
-                {/* Topics */}
                 {selectedCategory && (
                   <>
                     <h6 className="text-uppercase text-muted small fw-bold mb-2">
-                      <i className="bi bi-tag me-1"></i>
-                      Сэдэв
+                      <i className="bi bi-tag me-1"></i>Сэдэв
                     </h6>
-
                     {topicsLoading ? (
-                      <div className="text-center py-3">
-                        <Spinner animation="border" size="sm" />
-                      </div>
+                      <div className="text-center py-3"><Spinner animation="border" size="sm" /></div>
                     ) : topics.length === 0 ? (
                       <p className="text-muted small px-3">Сэдэв байхгүй</p>
                     ) : (
                       <ListGroup variant="flush" className="mb-3">
                         {topics.map((topic) => (
-                          <ListGroup.Item
-                            key={topic.id}
-                            action
-                            active={selectedTopic?.id === topic.id}
-                            onClick={() => handleTopicClick(topic)}
-                            className="py-2 px-3 small"
-                          >
-                            <i className="bi bi-hash me-1"></i>
-                            {topic.name}
+                          <ListGroup.Item key={topic.id} action active={selectedTopic?.id === topic.id} onClick={() => handleTopicClick(topic)} className="py-2 px-3 small">
+                            <i className="bi bi-hash me-1"></i>{topic.name}
                           </ListGroup.Item>
                         ))}
                       </ListGroup>
@@ -339,218 +272,124 @@ function ProblemsBrowsePage() {
                   </>
                 )}
 
-                {/* Type Filters */}
                 <h6 className="text-uppercase text-muted small fw-bold mb-2 mt-3">
-                  <i className="bi bi-funnel me-1"></i>
-                  Төрөл
+                  <i className="bi bi-funnel me-1"></i>Төрөл
                 </h6>
                 {PROBLEM_TYPES.map((type) => (
                   <Form.Check
-                    key={type.value}
-                    type="checkbox"
-                    id={`browse-type-${type.value}`}
-                    label={type.label}
+                    key={type.value} type="checkbox"
+                    id={`browse-type-${type.value}`} label={type.label}
                     checked={selectedTypes.includes(type.value)}
                     onChange={() => handleTypeChange(type.value)}
                     className="mb-1 small"
                   />
                 ))}
 
-                {/* Clear Filters */}
-                {(selectedCategory || selectedTypes.length > 0 || searchInput) && (
-                  <Button
-                    variant="outline-secondary"
-                    size="sm"
-                    className="w-100 mt-3"
-                    onClick={handleClearAll}
-                  >
-                    <i className="bi bi-x-circle me-1"></i>
-                    Шүүлтүүр цэвэрлэх
+                {hasActiveFilters && (
+                  <Button variant="outline-secondary" size="sm" className="w-100 mt-3" onClick={handleClearAll}>
+                    <i className="bi bi-x-circle me-1"></i>Шүүлтүүр цэвэрлэх
                   </Button>
                 )}
               </div>
             </Col>
 
             {/* Main Problem List */}
-            <Col lg={9} md={8} className="h-100 overflow-auto">
+            <Col lg={9} md={8} className="h-100 overflow-auto" ref={mainColRef}>
               <Container fluid className="py-3 px-4">
                 {/* Breadcrumb */}
                 <div className="d-flex align-items-center justify-content-between mb-3">
                   <Breadcrumb className="mb-0">
-                    <Breadcrumb.Item
-                      onClick={() => handleClearAll()}
-                      active={!selectedCategory}
-                      linkProps={{ style: { cursor: 'pointer' } }}
-                    >
-                      Бүгд
-                    </Breadcrumb.Item>
+                    <Breadcrumb.Item onClick={handleClearAll} active={!selectedCategory} linkProps={{ style: { cursor: 'pointer' } }}>Бүгд</Breadcrumb.Item>
                     {selectedCategory && (
-                      <Breadcrumb.Item
-                        onClick={() => {
-                          setSelectedTopic(null)
-                        }}
-                        active={!selectedTopic}
-                        linkProps={{ style: { cursor: 'pointer' } }}
-                      >
+                      <Breadcrumb.Item onClick={() => setSelectedTopic(null)} active={!selectedTopic} linkProps={{ style: { cursor: 'pointer' } }}>
                         {selectedCategory.name}
                       </Breadcrumb.Item>
                     )}
-                    {selectedTopic && (
-                      <Breadcrumb.Item active>{selectedTopic.name}</Breadcrumb.Item>
-                    )}
+                    {selectedTopic && <Breadcrumb.Item active>{selectedTopic.name}</Breadcrumb.Item>}
                   </Breadcrumb>
-
-                  <Badge bg="secondary" className="ms-2">
-                    {totalCount} бодлого
-                  </Badge>
+                  <Badge bg="secondary" className="ms-2">{problems.length} бодлого</Badge>
                 </div>
 
                 {/* Mobile Filters */}
                 <div className="d-md-none mb-3">
+                  {user && (
+                    <Form.Check type="checkbox" id="my-only-mobile" label="Зөвхөн миний" checked={myOnly} onChange={(e) => setMyOnly(e.target.checked)} className="mb-2 small" />
+                  )}
                   <div className="d-flex gap-2 overflow-auto pb-2">
-                    <Button
-                      variant={!selectedCategory ? 'primary' : 'outline-primary'}
-                      size="sm"
-                      onClick={() => handleCategoryClick(null)}
-                      className="text-nowrap"
-                    >
-                      Бүгд
-                    </Button>
+                    <Button variant={!selectedCategory ? 'primary' : 'outline-primary'} size="sm" onClick={() => handleCategoryClick(null)} className="text-nowrap">Бүгд</Button>
                     {categories.map((cat) => (
-                      <Button
-                        key={cat.id}
-                        variant={selectedCategory?.id === cat.id ? 'primary' : 'outline-primary'}
-                        size="sm"
-                        onClick={() => handleCategoryClick(cat)}
-                        className="text-nowrap"
-                      >
-                        {cat.name}
-                      </Button>
+                      <Button key={cat.id} variant={selectedCategory?.id === cat.id ? 'primary' : 'outline-primary'} size="sm" onClick={() => handleCategoryClick(cat)} className="text-nowrap">{cat.name}</Button>
                     ))}
                   </div>
                   {selectedCategory && topics.length > 0 && (
                     <div className="d-flex gap-2 overflow-auto pb-2 mt-2">
                       {topics.map((topic) => (
-                        <Button
-                          key={topic.id}
-                          variant={selectedTopic?.id === topic.id ? 'info' : 'outline-info'}
-                          size="sm"
-                          onClick={() => handleTopicClick(topic)}
-                          className="text-nowrap"
-                        >
-                          {topic.name}
-                        </Button>
+                        <Button key={topic.id} variant={selectedTopic?.id === topic.id ? 'info' : 'outline-info'} size="sm" onClick={() => handleTopicClick(topic)} className="text-nowrap">{topic.name}</Button>
                       ))}
                     </div>
                   )}
                 </div>
 
                 {/* Problem Cards */}
-                {problemsLoading ? (
+                {loading && problems.length === 0 ? (
                   <LoadingState message="Бодлогуудыг ачааллаж байна..." />
                 ) : problems.length === 0 ? (
                   <div className="text-center py-5">
                     <i className="bi bi-search fs-1 text-muted"></i>
                     <p className="text-muted mt-3">Бодлого олдсонгүй</p>
-                    {(selectedCategory || selectedTypes.length > 0 || searchInput) && (
-                      <Button variant="outline-primary" size="sm" onClick={handleClearAll}>
-                        Шүүлтүүр цэвэрлэх
-                      </Button>
+                    {hasActiveFilters && (
+                      <Button variant="outline-primary" size="sm" onClick={handleClearAll}>Шүүлтүүр цэвэрлэх</Button>
                     )}
                   </div>
                 ) : (
-                  <>
-                    <Row className="g-3">
-                      {problems.map((problem) => (
-                        <Col key={problem.id} lg={6} xl={4}>
-                          <Card
-                            className="h-100 shadow-sm"
-                            style={{ cursor: 'pointer' }}
-                            onClick={() => navigate(`/problem/${problem.uuid}`)}
-                          >
-                            <Card.Body className="d-flex flex-column">
-                              <div className="d-flex gap-1 flex-wrap mb-2">
-                                {problem.level_name && (
-                                  <Badge bg="secondary" className="small">
-                                    {problem.level_name}
-                                  </Badge>
-                                )}
-                                {problem.type !== undefined && (
-                                  <Badge bg="info" className="small">
-                                    {getProblemTypeLabel(problem.type)}
-                                  </Badge>
-                                )}
-                              </div>
+                  <Row className="g-3">
+                    {problems.map((problem) => (
+                      <Col key={problem.id} lg={6} xl={4}>
+                        <Card className="h-100 shadow-sm" style={{ cursor: 'pointer' }} onClick={() => navigate(`/problem/${problem.uuid}`)}>
+                          <Card.Body className="d-flex flex-column">
+                            <div className="d-flex gap-1 flex-wrap mb-2">
+                              {problem.level_name && <Badge bg="secondary" className="small">{problem.level_name}</Badge>}
+                              {problem.type !== undefined && <Badge bg="info" className="small">{getProblemTypeLabel(problem.type)}</Badge>}
+                              {problem.is_public ? (
+                                <Badge bg="success" className="small">Нийтэд харагдана</Badge>
+                              ) : (
+                                <Badge bg="secondary" className="small">Хувийн</Badge>
+                              )}
+                            </div>
+                            <div className="fw-semibold mb-2" style={{ fontSize: '0.95rem' }}>
+                              <LivePreview content={stripPSTricks(problem.title || `Бодлого #${problem.id}`, 80)} />
+                            </div>
+                            <div className="text-muted small flex-grow-1" style={{ overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' }}>
+                              <LivePreview content={stripPSTricks(problem.statement || 'Агуулга байхгүй', 150)} />
+                            </div>
+                            <div className="text-muted small mt-2 pt-2 border-top">
+                              <i className="bi bi-person me-1"></i>
+                              <UserName user={problem.author} />
+                              {problem.last_edited && (
+                                <><span className="mx-1">·</span><span>{formatDate(problem.last_edited)}</span></>
+                              )}
+                            </div>
+                          </Card.Body>
+                        </Card>
+                      </Col>
+                    ))}
+                  </Row>
+                )}
 
-                              <div className="fw-semibold mb-2" style={{ fontSize: '0.95rem' }}>
-                                <LivePreview
-                                  content={stripPSTricks(
-                                    problem.title || `Бодлого #${problem.id}`,
-                                    80,
-                                  )}
-                                />
-                              </div>
+                {/* Infinite scroll trigger */}
+                <div ref={triggerRef} style={{ height: '1px', marginTop: '16px' }} />
 
-                              <div
-                                className="text-muted small flex-grow-1"
-                                style={{
-                                  overflow: 'hidden',
-                                  display: '-webkit-box',
-                                  WebkitLineClamp: 3,
-                                  WebkitBoxOrient: 'vertical',
-                                }}
-                              >
-                                <LivePreview
-                                  content={stripPSTricks(
-                                    problem.statement || 'Агуулга байхгүй',
-                                    150,
-                                  )}
-                                />
-                              </div>
+                {loadingMore && (
+                  <div className="text-center py-3">
+                    <Spinner animation="border" size="sm" />
+                    <span className="ms-2 text-muted small">Ачааллаж байна...</span>
+                  </div>
+                )}
 
-                              <div className="text-muted small mt-2 pt-2 border-top">
-                                <i className="bi bi-person me-1"></i>
-                                <UserName user={problem.author} />
-                                {problem.last_edited && (
-                                  <>
-                                    <span className="mx-1">·</span>
-                                    <span>{formatDate(problem.last_edited)}</span>
-                                  </>
-                                )}
-                              </div>
-                            </Card.Body>
-                          </Card>
-                        </Col>
-                      ))}
-                    </Row>
-
-                    {/* Load More */}
-                    {nextPage && (
-                      <div className="text-center mt-4 mb-3">
-                        <Button
-                          variant="outline-primary"
-                          onClick={loadMore}
-                          disabled={problemsLoadingMore}
-                        >
-                          {problemsLoadingMore ? (
-                            <>
-                              <Spinner animation="border" size="sm" className="me-2" />
-                              Ачааллаж байна...
-                            </>
-                          ) : (
-                            <>
-                              <i className="bi bi-arrow-down-circle me-1"></i>
-                              Цааш үзэх
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    )}
-
-                    <div className="text-center text-muted small mt-3 mb-4">
-                      {problems.length} / {totalCount} бодлого харагдаж байна
-                    </div>
-                  </>
+                {problems.length > 0 && !hasMore && (
+                  <div className="text-center text-muted small mt-3 mb-4">
+                    Нийт {problems.length} бодлого харагдаж байна
+                  </div>
                 )}
               </Container>
             </Col>

@@ -29,25 +29,25 @@ const LeftSidebar = () => {
           </Nav.Link>
         </Nav.Item>
         <Nav.Item>
-          <Nav.Link as={NavLink} to="/articles" className="d-flex align-items-center gap-2">
+          <Nav.Link as={NavLink} to="/content/browse?type=articles" className="d-flex align-items-center gap-2">
             <i className="bi bi-journal-text fs-5"></i>
             <span>Өгүүллүүд</span>
           </Nav.Link>
         </Nav.Item>
         <Nav.Item>
-          <Nav.Link as={NavLink} to="/problems" className="d-flex align-items-center gap-2">
+          <Nav.Link as={NavLink} to="/content/browse?type=problems" className="d-flex align-items-center gap-2">
             <i className="bi bi-puzzle fs-5"></i>
             <span>Бодлогууд</span>
           </Nav.Link>
         </Nav.Item>
         <Nav.Item>
-          <Nav.Link as={NavLink} to="/formulas" className="d-flex align-items-center gap-2">
+          <Nav.Link as={NavLink} to="/content/browse?type=formulas" className="d-flex align-items-center gap-2">
             <i className="bi bi-infinity fs-5"></i>
             <span>Томьёо</span>
           </Nav.Link>
         </Nav.Item>
         <Nav.Item>
-          <Nav.Link as={NavLink} to="/quizzes" className="d-flex align-items-center gap-2">
+          <Nav.Link as={NavLink} to="/content/browse?type=quizzes" className="d-flex align-items-center gap-2">
             <i className="bi bi-patch-check fs-5"></i>
             <span>Тестүүд</span>
           </Nav.Link>

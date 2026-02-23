@@ -9,15 +9,15 @@ import {
   CloseButton,
   Spinner,
 } from 'react-bootstrap';
-import { Send, ImagePlus, X } from 'lucide-react';
-import apiClient from '../api/axiosConfig';
+import { Send, ImagePlus } from 'lucide-react';
+import { sendMessage } from '../services/conversationService';
 
 /**
- * Хувийн пост илгээх Modal
+ * Хувийн мессеж илгээх Modal
  * @param {Boolean} show - Modal харуулах эсэх
  * @param {Function} onHide - Modal хаах callback
  * @param {String} recipientUsername - Хүлээн авагчийн username
- * @param {Function} onSuccess - Амжилттай илгээсний дараах callback
+ * @param {Function} onSuccess - Амжилттай илгээсний дараах callback (conversationUuid)
  */
 const PrivatePostModal = ({ show, onHide, recipientUsername, onSuccess }) => {
   const [content, setContent] = useState('');
@@ -42,7 +42,6 @@ const PrivatePostModal = ({ show, onHide, recipientUsername, onSuccess }) => {
     const newImageFiles = [...imageFiles, ...files];
     setImageFiles(newImageFiles);
 
-    // Preview үүсгэх
     const newPreviews = [...imagePreviews];
     files.forEach((file) => {
       const reader = new FileReader();
@@ -56,24 +55,18 @@ const PrivatePostModal = ({ show, onHide, recipientUsername, onSuccess }) => {
     e.target.value = null;
   };
 
-  // Зураг устгах
   const removeImage = (index) => {
-    const newFiles = imageFiles.filter((_, i) => i !== index);
-    const newPreviews = imagePreviews.filter((_, i) => i !== index);
-    setImageFiles(newFiles);
-    setImagePreviews(newPreviews);
+    setImageFiles((prev) => prev.filter((_, i) => i !== index));
+    setImagePreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Бүх зураг устгах
-  const clearAllImages = () => {
+  const clearAll = () => {
     setImageFiles([]);
     setImagePreviews([]);
-    if (imageInputRef.current) {
-      imageInputRef.current.value = null;
-    }
+    if (imageInputRef.current) imageInputRef.current.value = null;
   };
 
-  // Хувийн пост илгээх
+  // Мессеж илгээх
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
@@ -84,48 +77,37 @@ const PrivatePostModal = ({ show, onHide, recipientUsername, onSuccess }) => {
     }
 
     setLoading(true);
-
-    const formData = new FormData();
-    formData.append('content', content);
-    // Array-г зөв илгээх (DRF ListField-д зориулж)
-    formData.append('private_recipient_usernames', recipientUsername);
-
-    if (imageFiles.length > 0) {
-      imageFiles.forEach((file) => {
-        formData.append('images', file);
-      });
-    }
-
     try {
-      const response = await apiClient.post('/api/minds/posts/', formData);
+      const sentMessage = await sendMessage({
+        otherUsername: recipientUsername,
+        content: content.trim(),
+        attachments: imageFiles,
+      });
 
-      // Амжилттай илгээсэн
       setContent('');
-      clearAllImages();
+      clearAll();
 
       if (onSuccess) {
-        onSuccess(response.data);
+        onSuccess(sentMessage.conversation_uuid);
       }
 
       onHide();
     } catch (err) {
       const errorData = err.response?.data;
-      if (typeof errorData === 'object' && errorData !== null) {
-        const errorMessages = Object.values(errorData).join(' ');
-        setError(errorMessages || 'Хувийн пост илгээхэд алдаа гарлаа.');
-      } else {
-        setError('Хувийн пост илгээхэд алдаа гарлаа.');
-      }
+      const errorMsg =
+        typeof errorData === 'object' && errorData !== null
+          ? Object.values(errorData).flat().join(' ')
+          : 'Мессеж илгээхэд алдаа гарлаа.';
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
   };
 
-  // Modal хаах үед цэвэрлэх
   const handleClose = () => {
     setContent('');
     setError(null);
-    clearAllImages();
+    clearAll();
     onHide();
   };
 
@@ -143,7 +125,6 @@ const PrivatePostModal = ({ show, onHide, recipientUsername, onSuccess }) => {
 
         <Alert variant="info" className="small mb-3">
           <strong>@{recipientUsername}</strong>-д хувийн мессеж илгээх гэж байна.
-          Зөвхөн та хоёр энэ постыг feed дээр харна, гэхдээ линкээр бусад хэрэглэгч харж болно.
         </Alert>
 
         <Form onSubmit={handleSubmit}>
@@ -158,7 +139,6 @@ const PrivatePostModal = ({ show, onHide, recipientUsername, onSuccess }) => {
             />
           </Form.Group>
 
-          {/* Зургийн preview */}
           {imagePreviews.length > 0 && (
             <div className="mb-3">
               <div className="d-flex flex-wrap gap-2">
@@ -181,7 +161,6 @@ const PrivatePostModal = ({ show, onHide, recipientUsername, onSuccess }) => {
             </div>
           )}
 
-          {/* Зураг хавсаргах товч */}
           <div className="mb-3">
             <input
               type="file"

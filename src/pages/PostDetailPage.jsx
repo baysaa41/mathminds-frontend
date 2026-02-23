@@ -1,476 +1,281 @@
 // frontend/src/pages/PostDetailPage.jsx
-// (!!! ШИНЭЧИЛСЭН: ViewerJS шууд ашиглан зургийн харагдацыг сайжруулав !!!)
 
-import React, { useState, useEffect, useRef } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import apiClient from '../api/axiosConfig';
 
-// (!!! ViewerJS ИМПОРТ (!!!)
-import Viewer from 'viewerjs';
-// CSS нь public/index.html дээр CDN-ээс ачаалагдана
-
-// Components
-import LivePreview from '../components/LivePreview';
-import CommentSection from '../components/CommentSection';
+import PostCard from '../components/PostCard';
 import UserAvatar from '../components/UserAvatar';
-import EmbedRenderer from '../components/EmbedRenderer';
-import UserName from '../components/UserName';
-import PostTimestamp from '../components/PostTimestamp';
 
-// Bootstrap
 import Container from 'react-bootstrap/Container';
-import Row from 'react-bootstrap/Row';
-import Col from 'react-bootstrap/Col';
-import Card from 'react-bootstrap/Card';
 import Spinner from 'react-bootstrap/Spinner';
 import Alert from 'react-bootstrap/Alert';
-import Stack from 'react-bootstrap/Stack';
 import Button from 'react-bootstrap/Button';
-import Badge from 'react-bootstrap/Badge';
+import Form from 'react-bootstrap/Form';
 
-/**
- * Холбоотой контент (Бодлого, Томьёо г.м)-г харуулна.
- * (Энэ компонент өөрчлөгдөөгүй)
- */
-const PostContentRenderer = ({ post }) => {
-  if (!post) return null;
-  if (post.content_type === 'post' || post.content_type === 'reply') {
-    if (post.content) {
-      return (
-        <Card.Text
-          as="div"
-          className="post-full-content mathjax-content fs-5"
-          style={{ whiteSpace: 'pre-wrap' }}
-        >
-          <LivePreview content={post.content} />
-        </Card.Text>
-      );
+// ── Tree builder: flat BFS list → мод бүтэц ─────────────────
+const buildTree = (posts) => {
+  if (!posts.length) return null;
+  const byUuid = {};
+  posts.forEach(p => { byUuid[p.uuid] = { ...p, children: [] }; });
+  let root = null;
+  posts.forEach(p => {
+    const parentUuid = p.parent_post?.uuid;
+    if (parentUuid && byUuid[parentUuid]) {
+      byUuid[parentUuid].children.push(byUuid[p.uuid]);
+    } else if (!root) {
+      root = byUuid[p.uuid];
     }
-    return null;
-  }
-  const relatedItem =
-    post.related_problem || post.related_formula || post.related_article || post.related_quiz;
-  if (!relatedItem) {
-    return <Alert variant="warning">[Холбоотой контент олдсонгүй]</Alert>;
-  }
-  let title = relatedItem.title || relatedItem.name || `Контент #${relatedItem.id}`;
-  let description =
-    relatedItem.statement ||
-    relatedItem.content ||
-    relatedItem.description ||
-    relatedItem.abstract ||
-    '';
-  let linkTo = `/${post.content_type}/${relatedItem.id}`;
-  let typeLabel;
-  switch (post.content_type) {
-    case 'problem':
-      typeLabel = 'Бодлого';
-      break;
-    case 'formula':
-      typeLabel = 'Томьёо';
-      break;
-    case 'article':
-      typeLabel = 'Өгүүлэл';
-      break;
-    case 'quiz':
-      typeLabel = 'Тест';
-      break;
-    default:
-      typeLabel = 'Контент';
-  }
-  return (
-    <div className="related-content-full mt-3">
-      <div className="d-flex justify-content-between align-items-center mb-2">
-        <Badge bg="secondary" className="fs-6">
-          {typeLabel}
-        </Badge>
-        <Link to={linkTo} className="btn btn-outline-primary btn-sm">
-          {typeLabel}-г дэлгэрэнгүй үзэх <i className="bi bi-arrow-right-short"></i>
-        </Link>
-      </div>
-      <h2 className="h4 mathjax-content mb-3">
-        <LivePreview content={title} />
-      </h2>
-      {description && (
-        <div className="mathjax-content fs-5 border-top pt-3" style={{ whiteSpace: 'pre-wrap' }}>
-          <LivePreview content={description} />
-        </div>
-      )}
-    </div>
-  );
+  });
+  return root;
 };
 
-/**
- * Зургийн цомог (Grid) харуулах компонент
- * ViewerJS-тэй ажиллахаар тохируулсан
- */
-const PostDetailGallery = ({ images, galleryRef }) => {
-  if (!images || images.length === 0) return null;
+// ── DFS flatten: мод → дараалсан жагсаалт (DFS эрэмбэтэй) ──
+const flattenDFS = (node, result = [], depth = 0) => {
+  if (!node) return result;
+  result.push({ ...node, thread_level: depth });
+  for (const child of node.children) {
+    flattenDFS(child, result, depth + 1);
+  }
+  return result;
+};
 
-  // Нэг зураг бол бүтнээр нь харуулах
-  if (images.length === 1) {
+// ── Level өнгүүд ─────────────────────────────────────────────
+const LEVEL_COLORS = ['#0d6efd', '#6f42c1', '#20c997', '#fd7e14', '#dc3545'];
+const levelColor = (lvl) => LEVEL_COLORS[Math.min(lvl, LEVEL_COLORS.length - 1)];
+
+// ── Reply composer ───────────────────────────────────────────
+const ReplyComposer = ({ postId, user, onReplyAdded }) => {
+  const [content, setContent] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState(null);
+
+  if (!user) {
     return (
-      <div className="my-3 post-detail-gallery" ref={galleryRef}>
-        <img
-          src={images[0].image}
-          alt="Зураг"
-          style={{
-            maxWidth: '100%',
-            maxHeight: '600px',
-            height: 'auto',
-            objectFit: 'contain',
-            cursor: 'pointer',
-            borderRadius: '8px',
-            border: '1px solid #eee',
-            display: 'block',
-            margin: '0 auto',
-          }}
-        />
+      <div className="px-sm-4 px-3 py-3 border-top text-muted small">
+        Хариулт бичихийн тулд нэвтэрнэ үү.
       </div>
     );
   }
 
-  // Олон зураг бол grid-ээр харуулах
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!content.trim()) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const fd = new FormData();
+      fd.append('content', content.trim());
+      fd.append('parent_post', postId);
+      fd.append('content_type', 'reply');
+      const res = await apiClient.post('/api/minds/posts/', fd);
+      onReplyAdded(res.data);
+      setContent('');
+    } catch (err) {
+      const d = err.response?.data;
+      setError(typeof d === 'object' ? Object.values(d).join(' ') : 'Алдаа гарлаа.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="my-3 post-detail-gallery" ref={galleryRef}>
-      <Row className="g-2">
-        {images.map((img) => (
-          <Col key={img.id} xs={6} md={4} lg={3}>
-            <img
-              src={img.image}
-              alt={`Зураг ${img.id}`}
-              style={{
-                width: '100%',
-                height: '200px',
-                objectFit: 'cover',
-                cursor: 'pointer',
-                borderRadius: '8px',
-                border: '1px solid #eee',
-              }}
-            />
-          </Col>
-        ))}
-      </Row>
+    <div className="d-flex gap-3 px-sm-4 px-3 py-3 border-top" style={{ background: '#f8f9fa' }}>
+      <div className="flex-shrink-0">
+        <UserAvatar user={user} size={36} />
+      </div>
+      <Form onSubmit={handleSubmit} className="flex-grow-1">
+        {error && <Alert variant="danger" className="py-2 small mb-2">{error}</Alert>}
+        <Form.Control
+          as="textarea" rows={2}
+          placeholder="Хариулт бичих..."
+          value={content}
+          onChange={e => setContent(e.target.value)}
+          disabled={loading}
+          className="border-0 ps-0 bg-transparent"
+          style={{ boxShadow: 'none', resize: 'none' }}
+        />
+        <div className="d-flex justify-content-end mt-1">
+          <Button
+            type="submit" size="sm" variant="primary"
+            disabled={loading || !content.trim()}
+            className="rounded-pill px-3"
+          >
+            {loading ? <Spinner size="sm" /> : 'Хариулах'}
+          </Button>
+        </div>
+      </Form>
     </div>
   );
 };
 
-// --- Үндсэн Detail Page Компонент ---
+// ── Үндсэн хуудас ────────────────────────────────────────────
 const PostDetailPage = () => {
   const { postId } = useParams();
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const [post, setPost] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [commentCount, setCommentCount] = useState(0);
+  const { user }   = useAuth();
+  const navigate   = useNavigate();
 
-  // (!!!) ЗАСВАР: Үзэлтийг хянах state нэмсэн
-  const [viewIncremented, setViewIncremented] = useState(false);
+  const [thread, setThread]               = useState([]);
+  const [focusedUuid, setFocusedUuid]     = useState(null);
+  const [focusedPostId, setFocusedPostId] = useState(null);
+  const [loading, setLoading]             = useState(true);
+  const [error, setError]                 = useState(null);
+  const [viewDone, setViewDone]           = useState(false);
+  const focusedRef = useRef(null);
 
-  // Favorite болон Bookmark state
-  const [isFavorited, setIsFavorited] = useState(false);
-  const [favoriteCount, setFavoriteCount] = useState(0);
-  const [isBookmarked, setIsBookmarked] = useState(false);
+  // BFS жагсаалт → мод → DFS дараалал
+  const flatList = useMemo(() => {
+    const root = buildTree(thread);
+    return flattenDFS(root);
+  }, [thread]);
 
-  // (!!! ViewerJS-д зориулсан ref !!!)
-  const galleryRef = useRef(null);
-  const viewerInstance = useRef(null);
-
-  // (!!!) ЗАСВАР: useEffect-г хоёр хуваасан (Пост татах)
-  useEffect(() => {
-    const fetchPost = async () => {
-      setLoading(true);
-      setError(null);
-      setPost(null); // Хуучин постыг цэвэрлэх
-      setViewIncremented(false); // Үзэлтийг шинээр шалгахад бэлтгэх
-
-      try {
-        const response = await apiClient.get(`/api/minds/posts/${postId}/`);
-        setPost(response.data);
-        setCommentCount(response.data.replies_count || 0);
-        setIsFavorited(response.data.is_favored || false);
-        setFavoriteCount(response.data.favorite_count || 0);
-        setIsBookmarked(response.data.is_bookmarked || false);
-      } catch (err) {
-        console.error('Failed to fetch post:', err);
-        setError(err.response?.data?.detail || 'Пост олдсонгүй.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchPost();
-  }, [postId]); // <-- Зөвхөн postId солигдоход ажиллана
-
-  // (!!!) ЗАСВАР: Үзэлтийг нэг удаа нэмэх useEffect
-  useEffect(() => {
-    // Нэвтэрсэн, loading дууссан, пост амжилттай татагдсан,
-    // мөн энэ постын үзэлтийг тоолоогүй бол
-    if (user && !loading && post && !viewIncremented) {
-      // Үзэлтийг тоолсон гэж тэр даруй тэмдэглэнэ
-      // Ингэснээр comment бичих үеийн re-render-д дахин ажиллахгүй
-      setViewIncremented(true);
-
-      const incrementView = async () => {
-        try {
-          await apiClient.post(`/api/minds/posts/${postId}/view/`);
-        } catch (err) {
-          // Алдаа гарсан ч дахин оролдохгүй (true хэвээр үлдээ)
-          console.warn('Could not increment view count:', err);
-        }
-      };
-
-      incrementView();
-    }
-  }, [postId, user, loading, post, viewIncremented]); // <-- Хамаарлыг шинэчилсэн
-
-  // (!!! ViewerJS-ийг эхлүүлэх !!!)
-  // (Энэ хэсэг өөрчлөгдөөгүй)
-  useEffect(() => {
-    if (post?.images && post.images.length > 0 && galleryRef.current) {
-      console.log('Initializing ViewerJS with', post.images.length, 'images');
-
-      // ViewerJS instance үүсгэх
-      viewerInstance.current = new Viewer(galleryRef.current, {
-        inline: false,
-        button: true,
-        navbar: true,
-        title: true,
-        toolbar: {
-          zoomIn: 1,
-          zoomOut: 1,
-          oneToOne: 1,
-          reset: 1,
-          prev: 1,
-          play: 1,
-          next: 1,
-          rotateLeft: 1,
-          rotateRight: 1,
-          flipHorizontal: 1,
-          flipVertical: 1,
-        },
-        tooltip: true,
-        movable: true,
-        zoomable: true,
-        rotatable: true,
-        scalable: true,
-        transition: true,
-        fullscreen: true,
-        keyboard: true,
-        zoomRatio: 0.1,
-        minZoomRatio: 0.1,
-        maxZoomRatio: 3,
-        ready: function () {
-          console.log('✅ ViewerJS is ready');
-        },
-        show: function () {
-          console.log('✅ ViewerJS shown');
-        },
-      });
-
-      console.log('ViewerJS instance created:', viewerInstance.current);
-
-      // Cleanup функц
-      return () => {
-        if (viewerInstance.current) {
-          console.log('Destroying ViewerJS instance');
-          viewerInstance.current.destroy();
-          viewerInstance.current = null;
-        }
-      };
-    } else {
-      console.log('ViewerJS not initialized:', {
-        hasPost: !!post,
-        hasImages: !!post?.images,
-        imageCount: post?.images?.length,
-        hasGalleryRef: !!galleryRef.current,
-      });
-    }
-  }, [post]); // <-- 'post' state-с зөв хамаарч байна
-
-  const handleCommentCountChange = (newCount) => {
-    setCommentCount(newCount);
-  };
-
-  // Favorite товчийг дарах
-  const handleFavorite = async () => {
-    if (!user) {
-      alert('Таалагдсан гэж тэмдэглэхийн тулд нэвтэрнэ үү.');
-      return;
-    }
+  // Thread татах
+  const fetchThread = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const response = await apiClient.post(`/api/minds/posts/${post.uuid}/favorite/`);
-      setIsFavorited(response.data.is_favored);
-      setFavoriteCount(response.data.favorite_count);
+      const res = await apiClient.get(`/api/minds/posts/${postId}/thread/`);
+      const posts = res.data.thread || [];
+      setThread(posts);
+      setFocusedUuid(res.data.focused_uuid);
+      const focused = posts.find(p => p.uuid === res.data.focused_uuid);
+      if (focused) setFocusedPostId(focused.id);
     } catch (err) {
-      console.error('Failed to toggle favorite:', err);
-      alert('Таалагдсан гэж тэмдэглэхэд алдаа гарлаа.');
+      setError(err.response?.data?.detail || 'Thread олдсонгүй.');
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [postId]);
 
-  // Bookmark товчийг дарах
-  const handleBookmark = async () => {
-    if (!user) {
-      alert('Bookmark хийхийн тулд нэвтэрнэ үү.');
-      return;
-    }
-    try {
-      const response = await apiClient.post(`/api/minds/posts/${post.uuid}/bookmark/`);
-      setIsBookmarked(response.data.is_bookmarked);
-    } catch (err) {
-      console.error('Failed to toggle bookmark:', err);
-      alert('Bookmark хийхэд алдаа гарлаа.');
-    }
-  };
+  useEffect(() => {
+    setViewDone(false);
+    fetchThread();
+  }, [fetchThread]);
 
-  // Loading
+  // Focused пост руу scroll
+  useEffect(() => {
+    if (!loading && focusedRef.current) {
+      const t = setTimeout(() => {
+        focusedRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+      return () => clearTimeout(t);
+    }
+  }, [loading]);
+
+  // Үзэлт
+  useEffect(() => {
+    if (user && !loading && focusedUuid && !viewDone) {
+      setViewDone(true);
+      apiClient.post(`/api/minds/posts/${postId}/view/`).catch(() => {});
+    }
+  }, [postId, user, loading, focusedUuid, viewDone]);
+
+  // Пост карт дарахад focus солих
+  const handleCardClick = useCallback((clickedPost) => {
+    setFocusedUuid(clickedPost.uuid);
+    setFocusedPostId(clickedPost.id);
+    setTimeout(() => {
+      focusedRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  }, []);
+
+  // Хариулт нэмэгдсэний дараа thread refresh
+  const handleReplyAdded = useCallback(() => {
+    fetchThread();
+  }, [fetchThread]);
+
+  // Пост устгагдсан үед жагсаалтаас хасах
+  const handlePostDeleted = useCallback((deletedId) => {
+    setThread(prev => prev.filter(p => p.id !== deletedId));
+  }, []);
+
+  // ── Loading / Error ──
   if (loading) {
     return (
       <Container className="my-5 text-center">
-        <Spinner animation="border" role="status" variant="primary">
-          <span className="visually-hidden">Уншиж байна...</span>
-        </Spinner>
+        <Spinner animation="border" variant="primary" />
       </Container>
     );
   }
-
-  // Error
   if (error) {
     return (
       <Container className="my-5">
         <Alert variant="danger">
-          <Alert.Heading>Алдаа гарлаа</Alert.Heading>
+          <Alert.Heading>Алдаа</Alert.Heading>
           <p>{error}</p>
-          <Button variant="outline-danger" onClick={() => navigate(-1)}>
-            Буцах
-          </Button>
+          <Button variant="outline-danger" onClick={() => navigate(-1)}>Буцах</Button>
         </Alert>
       </Container>
     );
   }
 
-  if (!post) return null;
-
-  const author = post.author;
-  if (!author) {
-    return (
-      <Container className="my-5">
-        <Alert variant="warning">Зохиогчийн мэдээлэл олдсонгүй.</Alert>
-      </Container>
-    );
-  }
-
   return (
-    <Container className="my-4">
-      <Row>
-        <Col>
-          {/* Буцах товч */}
-          <Button
-            variant="link"
-            onClick={() => navigate(-1)}
-            className="mb-2 p-0 text-decoration-none text-muted"
-          >
-            <i className="bi bi-arrow-left me-1"></i> Буцах
-          </Button>
+    <Container fluid className="my-4 ps-0 pe-2" style={{ maxWidth: '100%' }}>
+      {/* Буцах */}
+      <Button
+        variant="link"
+        onClick={() => navigate(-1)}
+        className="mb-3 ms-3 ms-sm-0 p-0 text-decoration-none text-muted"
+      >
+        <i className="bi bi-arrow-left me-1" /> Буцах
+      </Button>
 
-          {/* Постын үндсэн карт */}
-          <Card className="shadow-sm border-0">
-            <Card.Body className="p-sm-4 p-3">
-              {/* Зохиогчийн мэдээлэл */}
-              <Stack direction="horizontal" gap={3} className="align-items-start mb-3">
-                <Link to={`/profile/${author.username}`}>
-                  <UserAvatar user={author} size={50} />
-                </Link>
-                <div className="flex-grow-1">
-                  <div>
-                    <UserName user={author} className="fw-bold h5 mb-0" />
-                  </div>
-                  <PostTimestamp
-                    date={post.created_at}
-                    className="text-muted small mb-0 d-block"
+      {/* Thread feed — DFS дараалал, хуучин visual */}
+      <div className="bg-white overflow-hidden">
+        {flatList.length === 0 ? (
+          <div className="text-center text-muted py-5">
+            <i className="bi bi-chat-square me-2" />
+            Thread олдсонгүй.
+          </div>
+        ) : (
+          flatList.map((post, idx) => {
+            const isFocused = post.uuid === focusedUuid;
+            const lvl = post.thread_level ?? 0;
+
+            return (
+              <React.Fragment key={post.id}>
+                <div
+                  ref={isFocused ? focusedRef : null}
+                  className={idx > 0 ? 'border-top' : ''}
+                  style={{
+                    borderLeft: `3px solid ${isFocused ? '#0d6efd' : lvl > 0 ? levelColor(lvl) + '55' : 'transparent'}`,
+                    background: isFocused ? '#f0f7ff' : undefined,
+                  }}
+                >
+                  {lvl > 0 && (
+                    <div
+                      className="px-3 pt-2"
+                      style={{
+                        fontSize: '0.72rem',
+                        color: levelColor(lvl),
+                        fontWeight: 500,
+                        paddingLeft: `${Math.min(lvl * 12 + 12, 48)}px`,
+                      }}
+                    >
+                      {'└ '}{'Хариулт' + (lvl > 1 ? ` (түвшин ${lvl})` : '')}
+                    </div>
+                  )}
+                  <PostCard
+                    post={post}
+                    compact
+                    onCardClick={handleCardClick}
+                    onPostDeleted={handlePostDeleted}
                   />
                 </div>
-              </Stack>
 
-              {/* ЗУРГИЙН ЦОМОГ (GRID) - ViewerJS ашиглана */}
-              <PostDetailGallery images={post.images} galleryRef={galleryRef} />
-
-              {/* Постын үндсэн агуулга */}
-              <PostContentRenderer post={post} />
-
-              {/* Embed Видео */}
-              {post.embed_link && (
-                <div className="mt-3">
-                  <EmbedRenderer url={post.embed_link} postId={post.id} />
-                </div>
-              )}
-
-              {/* Үйлдлийн товчнууд */}
-              <Stack
-                direction="horizontal"
-                gap={3}
-                className="mt-4 pt-3 border-top"
-              >
-                <Button
-                  variant={isFavorited ? 'danger' : 'outline-danger'}
-                  size="sm"
-                  onClick={handleFavorite}
-                  className="d-flex align-items-center gap-2"
-                >
-                  <i className={`bi bi-heart${isFavorited ? '-fill' : ''}`}></i>
-                  <span>{isFavorited ? 'Таалагдсан' : 'Таалагдах'}</span>
-                  <Badge bg={isFavorited ? 'light' : 'secondary'} text={isFavorited ? 'dark' : 'light'}>
-                    {favoriteCount}
-                  </Badge>
-                </Button>
-
-                <Button
-                  variant={isBookmarked ? 'primary' : 'outline-primary'}
-                  size="sm"
-                  onClick={handleBookmark}
-                  className="d-flex align-items-center gap-2"
-                >
-                  <i className={`bi bi-bookmark${isBookmarked ? '-fill' : ''}`}></i>
-                  <span>{isBookmarked ? 'Хадгалсан' : 'Хадгалах'}</span>
-                </Button>
-              </Stack>
-
-              {/* Статистик */}
-              <Stack
-                direction="horizontal"
-                gap={3}
-                className="mt-3 text-muted small"
-              >
-                <span>
-                  <i className="bi bi-eye me-1"></i> {post.view_count || 0} үзэлт
-                </span>
-                <span>
-                  <i className="bi bi-heart me-1"></i> {post.favorite_count || 0} таалагдсан
-                </span>
-                <span>
-                  <i className="bi bi-chat-square me-1"></i> {commentCount} сэтгэгдэл
-                </span>
-              </Stack>
-            </Card.Body>
-          </Card>
-
-          {/* Коммент хэсэг */}
-          <Card className="shadow-sm mt-4 border-0">
-            <Card.Header className="h5 bg-white border-bottom">
-              Сэтгэгдлүүд ({commentCount})
-            </Card.Header>
-            <Card.Body>
-              <CommentSection
-                postId={post.id}
-                initialCount={commentCount}
-                onCountChange={handleCommentCountChange}
-                defaultExpanded={true} // <-- Нэмэх
-              />
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
+                {isFocused && (
+                  <ReplyComposer
+                    postId={focusedPostId}
+                    user={user}
+                    onReplyAdded={handleReplyAdded}
+                  />
+                )}
+              </React.Fragment>
+            );
+          })
+        )}
+      </div>
     </Container>
   );
 };

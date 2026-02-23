@@ -1,16 +1,13 @@
 // frontend/src/pages/QuizzesPage.jsx
-// (!!! ШИНЭЧИЛСЭН: "Постлох" товч нэмсэн, CreatePostForm руу "бэлэг" илгээдэг болсон)
 
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useOutletContext, Link } from 'react-router-dom';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import apiClient from '../api/axiosConfig.js';
 import LivePreview from '../components/LivePreview.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { usePrefill } from '../context/PrefillContext.jsx';
 import { stripPSTricks } from '../utils/stripPSTricks.js';
-// Lucide icons ашиглахгүй болсон - Bootstrap Icons-руу шилжсэн
 
-// (!!!) 1. ШИНЭ HOOK БОЛОН КОМПОНЕНТУУДЫГ ИМПОРТЛОХ
 import usePaginatedFetch from '../hooks/usePagenatedFetch.js';
 import useInfiniteScroll from '../hooks/useInfiniteScroll.js';
 import useToast from '../hooks/useToast.js';
@@ -21,7 +18,6 @@ import PageHeader from '../components/common/PageHeader.jsx';
 import SearchBar from '../components/common/SearchBar.jsx';
 import UserName from '../components/UserName.jsx';
 
-// React Bootstrap components
 import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
@@ -32,107 +28,105 @@ import Badge from 'react-bootstrap/Badge';
 import Stack from 'react-bootstrap/Stack';
 import Toast from 'react-bootstrap/Toast';
 import ToastContainer from 'react-bootstrap/ToastContainer';
-import Breadcrumb from 'react-bootstrap/Breadcrumb';
+import Nav from 'react-bootstrap/Nav';
+import Tab from 'react-bootstrap/Tab';
 
 const QuizzesPage = () => {
   const { user } = useAuth();
-  const navigate = useNavigate(); // (!!!) Энэ hook-г ашиглана
-  const { setPageTitle } = useOutletContext();
-  const { setPrefillData } = usePrefill(); // <-- 2. ЭНЭ МӨРИЙГ НЭМЭХ
-
-  // ... (Hooks, State хэвээрээ) ...
+  const navigate = useNavigate();
+  const { setPageTitle, mainScrollRef } = useOutletContext();
+  const { setPrefillData } = usePrefill();
   const { toast, showToast, hideToast } = useToast();
-  const {
-    data: quizzes,
-    loading,
-    loadingMore,
-    error,
-    hasMore,
-    fetchData,
-    loadMore,
-    refresh,
-  } = usePaginatedFetch('/api/integral/quizzes/'); //
 
-  const { triggerRef } = useInfiniteScroll(loadMore, hasMore, loadingMore);
-
+  const [activeTab, setActiveTab] = useState('my');
   const [isCreatingNew, setIsCreatingNew] = useState(false);
-  const [currentQuery, setCurrentQuery] = useState({ search: '' });
 
-  // ... (useEffect, handleSearch, handleCreateNew хэвээрээ) ...
-  // Анхны ачаалалт болон гарчиг тохируулах
+  // Миний тестүүд
+  const {
+    data: myQuizzes, loading: myLoading, loadingMore: myLoadingMore,
+    error: myError, hasMore: myHasMore,
+    fetchData: fetchMyData, loadMore: loadMyMore, refresh: refreshMy,
+  } = usePaginatedFetch('/api/integral/quizzes/');
+
+  // Бүх тестүүд
+  const {
+    data: allQuizzes, loading: allLoading, loadingMore: allLoadingMore,
+    error: allError, hasMore: allHasMore,
+    fetchData: fetchAllData, loadMore: loadAllMore, refresh: refreshAll,
+  } = usePaginatedFetch('/api/integral/quizzes/');
+
+  const quizzes     = activeTab === 'my' ? myQuizzes     : allQuizzes;
+  const loading     = activeTab === 'my' ? myLoading     : allLoading;
+  const loadingMore = activeTab === 'my' ? myLoadingMore : allLoadingMore;
+  const error       = activeTab === 'my' ? myError       : allError;
+  const hasMore     = activeTab === 'my' ? myHasMore     : allHasMore;
+  const refresh     = activeTab === 'my' ? refreshMy     : refreshAll;
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore) return;
+    if (activeTab === 'my') await loadMyMore();
+    else await loadAllMore();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, loadMyMore, loadAllMore]);
+
+  const { triggerRef } = useInfiniteScroll(loadMore, hasMore, loadingMore, mainScrollRef);
+
   useEffect(() => {
-    setPageTitle('Миний тестүүд');
-    if (user?.id) {
-      fetchData({ author: user.id });
+    setPageTitle('Тестийн сан');
+    if (user?.id) fetchMyData({ author: user.id });
+    return () => setPageTitle('Нүүр');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'all' && allQuizzes.length === 0 && !allLoading && !allError) {
+      fetchAllData();
     }
-    return () => {
-      setPageTitle('Нүүр');
-    };
-  }, [fetchData, setPageTitle, user?.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
-  // Хайлтын функц
-  const handleSearch = useCallback(
-    (query) => {
-      if (!user?.id) return;
-      const searchQuery = query.search || '';
-      setCurrentQuery({ search: searchQuery });
-      fetchData({ search: searchQuery, author: user.id }, true);
-    },
-    [fetchData, user?.id]
-  );
+  const handleSearch = ({ search }) => {
+    const params = {};
+    if (search) params.search = search;
+    if (activeTab === 'my') {
+      if (user?.id) params.author = user.id;
+      fetchMyData(params);
+    } else {
+      fetchAllData(params);
+    }
+  };
 
-  // Шинэ тест үүсгэх
   const handleCreateNew = async () => {
     setIsCreatingNew(true);
     try {
       const response = await apiClient.post('/api/integral/quizzes/', {
         title: 'Шинэ тест (Гарчиггүй)',
         description: 'Тестийн тайлбар...',
-        is_published: false,
+        is_public: false,
       });
-      const newQuizId = response.data.id;
-      navigate(`/quiz/${newQuizId}/edit`);
-    } catch (err) {
-      console.error('Failed to create new quiz:', err);
+      navigate(`/quiz/${response.data.uuid}/edit`);
+    } catch {
       showToast('Шинэ тест үүсгэхэд алдаа гарлаа.', 'danger');
     } finally {
       setIsCreatingNew(false);
     }
   };
 
-  // (!!!) ШИНЭ ФУНКЦ: Пост үүсгэх ("бэлэг" илгээх)
   const handleCreatePost = (e, quiz) => {
-    e.stopPropagation(); // Картыг дарагдахаас сэргийлэх
-
-    // 1. "Бэлэг"-г бэлтгэх
-    const prefillData = {
-      type: 'quiz',
-      item: {
-        id: quiz.id,
-        title: quiz.title || `Тест #${quiz.id}`,
-      },
-    };
-
-    // 2. "Бэлэг"-ээ "Хайрцаг" (Context) руу хийх
-    setPrefillData(prefillData);
-
-    // 3. Feed хуудас руу энгийнээр үсрэх (state-гүйгээр)
+    e.stopPropagation();
+    setPrefillData({ type: 'quiz', item: { id: quiz.uuid, title: quiz.title || `Тест #${quiz.id}` } });
     navigate('/');
   };
 
-  // --- Render хэсэг ---
+  if (loading && quizzes.length === 0) {
+    return <LoadingState message="Тестүүдийг ачааллаж байна..." fullPage />;
+  }
+  if (error && quizzes.length === 0) {
+    return <ErrorState message={error} onRetry={refresh} fullPage />;
+  }
 
   return (
     <Container className="py-4">
-      {/* Breadcrumb Navigation */}
-      <Breadcrumb className="mb-3">
-        <Breadcrumb.Item linkAs={Link} linkProps={{ to: '/' }}>
-          Нүүр
-        </Breadcrumb.Item>
-        <Breadcrumb.Item active>Тестүүд</Breadcrumb.Item>
-      </Breadcrumb>
-
-      {/* ... (ToastContainer, PageHeader, SearchBar, Loading, Error, Empty хэвээрээ) ... */}
       <ToastContainer position="top-end" className="p-3" style={{ zIndex: 9999 }}>
         <Toast show={toast.show} onClose={hideToast} delay={3000} autohide bg={toast.variant}>
           <Toast.Body className={toast.variant === 'light' ? 'text-dark' : 'text-white'}>
@@ -142,128 +136,137 @@ const QuizzesPage = () => {
       </ToastContainer>
 
       <PageHeader
-        title="Миний тестүүд"
-        action={{
-          label: 'Шинэ тест',
-          onClick: handleCreateNew,
-          icon: <i className="bi bi-patch-plus me-1"></i>,
-        }}
-        loading={isCreatingNew}
+        title="Тестийн сан"
+        subtitle={`Нийт ${quizzes.length} тест`}
+        action={
+          <Stack direction="horizontal" gap={2}>
+            <Button variant="outline-primary" size="sm" onClick={() => navigate('/quizzes/browse')}>
+              <i className="bi bi-grid-3x3-gap me-1"></i>
+              Ангиллаар үзэх
+            </Button>
+            <Button variant="primary" size="sm" onClick={handleCreateNew} disabled={isCreatingNew}>
+              {isCreatingNew ? <Spinner as="span" animation="border" size="sm" /> : (
+                <><i className="bi bi-patch-plus me-1"></i>Шинэ тест</>
+              )}
+            </Button>
+          </Stack>
+        }
       />
 
-      <SearchBar
-        onSearch={handleSearch}
-        placeholder="Миний тестүүдээс хайх..."
-        loading={loading}
-        filters={[]}
-      />
+      <Tab.Container activeKey={activeTab} onSelect={(k) => setActiveTab(k)}>
+        <Nav variant="tabs" className="mb-4">
+          <Nav.Item>
+            <Nav.Link eventKey="my">
+              <i className="bi bi-patch-check me-2"></i>Миний тестүүд
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link eventKey="all">
+              <i className="bi bi-grid-3x3-gap me-2"></i>Бүх тестүүд
+            </Nav.Link>
+          </Nav.Item>
+        </Nav>
 
-      {loading && <LoadingState message="Миний тестүүдийг ачааллаж байна..." />}
+        <Tab.Content>
+          <Tab.Pane eventKey={activeTab} active>
+            {renderContent()}
+          </Tab.Pane>
+        </Tab.Content>
+      </Tab.Container>
 
-      {error && !loading && <ErrorState message={error} onRetry={refresh} />}
-
-      {!loading && !error && quizzes.length === 0 && (
-        <EmptyState
-          icon={() => <i className="bi bi-patch-check"></i>}
-          title={currentQuery.search ? 'Хайлт олдсонгүй' : 'Та тест үүсгээгүй байна'}
-          message={
-            currentQuery.search
-              ? 'Хайлтын утганд тохирох тест таны сан дотор байхгүй байна.'
-              : 'Та эхний тестээ үүсгэнэ үү.'
-          }
-          actionLabel="Шинэ тест үүсгэх"
-          onAction={handleCreateNew}
-        />
-      )}
-
-      {/* Тестүүдийн жагсаалт */}
-      {!loading && !error && quizzes.length > 0 && (
-        <Row className="g-3">
-          {quizzes.map((quiz) => (
-            <Col key={quiz.id} xs={12}>
-              <Card
-                className="h-100 shadow-sm hover-shadow transition"
-                style={{ cursor: 'pointer' }}
-                onClick={() => navigate(`/quiz/${quiz.id}`)}
-              >
-                <Card.Body>
-                  <Stack direction="horizontal" gap={2} className="mb-2 flex-wrap">
-                    {quiz.is_published ? (
-                      <Badge bg="success">Нийтлэгдсэн</Badge>
-                    ) : (
-                      <Badge bg="warning" text="dark">
-                        Ноорог
-                      </Badge>
-                    )}
-                    <Badge bg="secondary">{quiz.problems_count || 0} бодлоготой</Badge>
-
-                    {/* (!!!) ШИНЭ ТОВЧ (!!!) */}
-                    <Button
-                      variant="outline-primary"
-                      size="sm"
-                      className="ms-auto"
-                      onClick={(e) => handleCreatePost(e, quiz)}
-                    >
-                      <i className="bi bi-send me-1"></i>
-                      Постлох
-                    </Button>
-                  </Stack>
-
-                  {/* ... (Гарчиг, Тайлбар, Мета хэвээрээ) ... */}
-                  <div className="h5 mb-2 mathjax-content">
-                    <LivePreview content={stripPSTricks(quiz.title || `Тест #${quiz.id}`, 100)} />
-                  </div>
-
-                  <div className="text-muted small mathjax-content">
-                    <LivePreview
-                      content={stripPSTricks(quiz.description || 'Тайлбар байхгүй...', 200)}
-                    />
-                  </div>
-
-                  <div className="text-muted small mt-2">
-                    <i className="bi bi-person me-1"></i>
-                    <UserName user={quiz.author} />
-                    {quiz.updated_at && (
-                      <>
-                        <span className="mx-2">•</span>
-                        <i className="bi bi-clock me-1"></i>
-                        {new Date(quiz.updated_at).toLocaleString()}
-                      </>
-                    )}
-                  </div>
-                </Card.Body>
-              </Card>
-            </Col>
-          ))}
-        </Row>
-      )}
-
-      {/* ... (Infinite Scroll, Stats хэвээрээ) ... */}
-      <div ref={triggerRef} style={{ height: '20px' }} />
-
-      {loadingMore && (
-        <div className="text-center mt-4 py-3">
-          <Spinner as="span" animation="border" size="sm" />
-          <span className="ms-2">Ачааллаж байна...</span>
-        </div>
-      )}
-
-      {quizzes.length > 0 && (
-        <div className="mt-4 p-3 bg-light rounded">
-          <small className="text-muted">
-            Нийт: <strong>{quizzes.length}</strong> тест
-            {currentQuery.search ? (
-              <>
-                {' '}
-                • (Одоогийн хайлтаар <strong>{quizzes.length}</strong> олдсон)
-              </>
-            ) : null}
-            {hasMore && !loading && <> • (Гүйлгэж илүү ихийг ачаална уу)</>}
-          </small>
-        </div>
-      )}
+      <div ref={triggerRef} style={{ height: '1px', marginTop: '1px', visibility: 'hidden' }} />
     </Container>
   );
+
+  function renderContent() {
+    return (
+      <>
+        <SearchBar onSearch={handleSearch} placeholder="Тестүүдээс хайх..." loading={loading} />
+
+        {loading && quizzes.length === 0 && <LoadingState message="Ачааллаж байна..." />}
+        {error && quizzes.length === 0 && <ErrorState message={error} onRetry={refresh} />}
+
+        {!loading && quizzes.length === 0 && (
+          <EmptyState
+            icon={() => <i className="bi bi-patch-check"></i>}
+            title={activeTab === 'my' ? 'Та тест үүсгээгүй байна' : 'Тест байхгүй байна'}
+            message="Шинэ тест нэмж эхлээрэй!"
+            actionLabel="Шинэ тест үүсгэх"
+            onAction={handleCreateNew}
+          />
+        )}
+
+        {quizzes.length > 0 && (
+          <Row className="g-3">
+            {quizzes.map((quiz) => (
+              <Col key={quiz.id} xs={12}>
+                <Card
+                  className="h-100 shadow-sm hover-shadow transition"
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => navigate(`/quiz/${quiz.uuid}`)}
+                >
+                  <Card.Body>
+                    <Stack direction="horizontal" gap={2} className="mb-2 flex-wrap">
+                      {quiz.is_public ? (
+                        <Badge bg="success">Нийтэд харагдана</Badge>
+                      ) : (
+                        <Badge bg="secondary">Хувийн</Badge>
+                      )}
+                      <Badge bg="secondary">{quiz.problems_count || 0} бодлоготой</Badge>
+                      {user && quiz.author && user.id === quiz.author.id && (
+                        <Badge bg="primary">Миний</Badge>
+                      )}
+                      <Button
+                        variant="outline-primary"
+                        size="sm"
+                        className="ms-auto"
+                        onClick={(e) => handleCreatePost(e, quiz)}
+                      >
+                        <i className="bi bi-send me-1"></i>Постлох
+                      </Button>
+                    </Stack>
+
+                    <div className="h5 mb-2 mathjax-content">
+                      <LivePreview content={stripPSTricks(quiz.title || `Тест #${quiz.id}`, 100)} />
+                    </div>
+
+                    <div className="text-muted small mathjax-content">
+                      <LivePreview content={stripPSTricks(quiz.description || 'Тайлбар байхгүй...', 200)} />
+                    </div>
+
+                    <div className="text-muted small mt-2">
+                      <i className="bi bi-person me-1"></i>
+                      <UserName user={quiz.author} />
+                      {quiz.updated_at && (
+                        <><span className="mx-2">•</span><i className="bi bi-clock me-1"></i>
+                        {new Date(quiz.updated_at).toLocaleDateString('mn-MN')}</>
+                      )}
+                    </div>
+                  </Card.Body>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        )}
+
+        {loadingMore && (
+          <div className="text-center mt-4 py-3">
+            <Spinner animation="border" size="sm" />
+            <span className="ms-2">Ачааллаж байна...</span>
+          </div>
+        )}
+
+        {quizzes.length > 0 && (
+          <div className="mt-4 p-3 bg-light rounded">
+            <small className="text-muted">
+              Нийт: <strong>{quizzes.length}</strong> тест
+              {hasMore && <> • Гүйлгэж илүүг харна уу</>}
+            </small>
+          </div>
+        )}
+      </>
+    );
+  }
 };
 
 export default QuizzesPage;

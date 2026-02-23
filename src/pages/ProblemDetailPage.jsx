@@ -25,7 +25,7 @@ import Card from 'react-bootstrap/Card';
 import { Lightbulb, BookOpen, FileText } from 'lucide-react';
 
 const ProblemDetailPage = () => {
-  const { id } = useParams();
+  const { uuid: id } = useParams();
   const [problem, setProblem] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -89,7 +89,7 @@ const ProblemDetailPage = () => {
     return (
       <Container className="mt-4">
         <Alert variant="danger">{error}</Alert>
-        <Link to="/problems"> &laquo; Бодлогын сан руу буцах</Link>{' '}
+        <Link to="/content/browse?type=problems"> &laquo; Бодлогын сан руу буцах</Link>{' '}
         {/* "/" -г "/problems" болгосон */}
       </Container>
     );
@@ -110,8 +110,9 @@ const ProblemDetailPage = () => {
     setPrefillData({
       type: 'problem',
       item: {
-        id: problem.id,
-        title: problem.title
+        id: problem.uuid,
+        title: problem.title,
+        statement: problem.statement,
       }
     });
     navigate('/');
@@ -172,12 +173,10 @@ const ProblemDetailPage = () => {
       <Stack direction="horizontal" gap={2} className="mb-3 flex-wrap">
         {problem.level_name && <Badge bg="secondary">{problem.level_name}</Badge>}
         {problem.type !== undefined && <Badge bg="info">{getProblemTypeLabel(problem.type)}</Badge>}
-        {problem.is_published ? (
-          <Badge bg="success">Нийтэлсэн</Badge>
+        {problem.is_public ? (
+          <Badge bg="success">Нийтэд харагдана</Badge>
         ) : (
-          <Badge bg="warning" text="dark">
-            Ноорог
-          </Badge>
+          <Badge bg="secondary">Хувийн</Badge>
         )}
       </Stack>
 
@@ -344,7 +343,7 @@ const ProblemDetailPage = () => {
         )}
 
       <hr className="mt-5" />
-      <Link to="/problems" className="btn btn-outline-secondary btn-sm mt-3">
+      <Link to="/content/browse?type=problems" className="btn btn-outline-secondary btn-sm mt-3">
         &laquo; Бодлогын сан руу буцах
       </Link>
     </Container>

@@ -133,7 +133,7 @@ const PSTricksRenderer = ({ code }) => {
 
 // --- Үндсэн Засварлах Хуудас ---
 const ProblemEditPage = () => {
-  const { id } = useParams();
+  const { uuid: id } = useParams();
   const navigate = useNavigate();
   const { setPageTitle } = useOutletContext();
   const { user } = useAuth();
@@ -181,7 +181,7 @@ const ProblemEditPage = () => {
       setError(null);
       //
       const response = await apiClient.get(`/api/integral/problems/${problemId}/`);
-      setProblem(response.data);
+      setProblem({ ...response.data, is_public: response.data.is_public ?? false });
       setChoices(response.data.choices?.map((c) => ({ ...c, DELETE: false })) || []);
       setKeywords(response.data.keywords || []);
       setOriginalTitle(response.data.title || '');
@@ -383,7 +383,7 @@ const ProblemEditPage = () => {
       level: problem.level || null,
       type: problem.type || 0,
       answer: problem.answer || '',
-      is_published: problem.is_published,
+      is_public: problem.is_public ?? false,
       rendering: problem.rendering,
       mute_comments: problem.mute_comments,
       //
@@ -416,7 +416,7 @@ const ProblemEditPage = () => {
     try {
       //
       await apiClient.delete(`/api/integral/problems/${id}/`);
-      navigate('/problems');
+      navigate('/content/browse?type=problems');
     } catch (err) {
       console.error('Failed to delete problem:', err);
       setError('Бодлогыг устгахад алдаа гарлаа.');
@@ -671,10 +671,10 @@ const ProblemEditPage = () => {
               <Col md={4} className="d-flex align-items-center pt-3">
                 <Form.Check
                   type="switch"
-                  id="id_is_published"
-                  label="Нийтлэх"
-                  name="is_published"
-                  checked={problem.is_published}
+                  id="id_is_public"
+                  label="Нийтэд харагдах"
+                  name="is_public"
+                  checked={problem.is_public || false}
                   onChange={handleProblemChange}
                 />
               </Col>

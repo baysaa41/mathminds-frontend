@@ -20,7 +20,7 @@ import ListGroup from 'react-bootstrap/ListGroup';
 import Breadcrumb from 'react-bootstrap/Breadcrumb';
 
 const QuizResultPage = () => {
-  const { quizId, sheetId } = useParams();
+  const { quizUuid: quizId, sheetId } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
   const { setPageTitle } = useOutletContext();
@@ -267,7 +267,7 @@ const QuizResultPage = () => {
           <i className="bi bi-arrow-left me-1"></i>
           Тест руу буцах
         </Link>
-        <Link to="/quizzes" className="btn btn-outline-primary ms-auto">
+        <Link to="/content/browse?type=quizzes" className="btn btn-outline-primary ms-auto">
           <i className="bi bi-list me-1"></i>
           Тестийн сан
         </Link>

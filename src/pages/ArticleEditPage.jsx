@@ -32,7 +32,7 @@ import {
 } from 'lucide-react';
 
 const ArticleEditPage = () => {
-  const { id } = useParams();
+  const { uuid: id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -47,6 +47,7 @@ const ArticleEditPage = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [isPublic, setIsPublic] = useState(false);
   const [viewMode, setViewMode] = useState('visual'); // 'visual' or 'source'
 
   useEffect(() => {
@@ -67,6 +68,7 @@ const ArticleEditPage = () => {
         setOriginalTitle(articleData.title || '');
         setAbstract(articleData.abstract || '');
         setContent(articleData.content || '');
+        setIsPublic(articleData.is_public ?? false);
         setInitialAuthorId(articleData.author.id);
       } catch (err) {
         if (err.response && err.response.status === 404) {
@@ -97,6 +99,7 @@ const ArticleEditPage = () => {
         title: title,
         abstract: abstract,
         content: content,
+        is_public: isPublic,
       });
       navigate(`/article/${id}`);
     } catch (err) {
@@ -120,7 +123,7 @@ const ArticleEditPage = () => {
 
     try {
       await apiClient.delete(`/api/integral/articles/${id}/`);
-      navigate('/articles');
+      navigate('/content/browse?type=articles');
     } catch (err) {
       setError('Өгүүллийг устгахад алдаа гарлаа.');
       console.error(err);
@@ -256,6 +259,17 @@ const ArticleEditPage = () => {
             />
           )}
         </Form.Group>
+
+        {/* Нийтэд харагдах */}
+        <Form.Check
+          type="switch"
+          id="article-is-public"
+          label="Нийтэд харагдах"
+          checked={isPublic}
+          onChange={(e) => setIsPublic(e.target.checked)}
+          disabled={saving}
+          className="mb-3"
+        />
 
         {/* Товчууд */}
         <Stack direction="horizontal" gap={2} className="justify-content-end mt-4">

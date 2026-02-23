@@ -191,7 +191,7 @@ const PostContent = ({ post }) => {
 // -------------------------------------------------------------------
 // ----------------- Үндсэн PostCard компонент -----------------
 // -------------------------------------------------------------------
-const PostCard = ({ post, onPostDeleted, depth = 0 }) => {
+const PostCard = ({ post, onPostDeleted, depth = 0, compact = false, onCardClick }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -450,6 +450,11 @@ const PostCard = ({ post, onPostDeleted, depth = 0 }) => {
       return;
     }
 
+    if (onCardClick) {
+      onCardClick(currentPost);
+      return;
+    }
+
     if (currentPost.content_type === 'repost' && currentPost.reposted_post) {
       const postId = currentPost.reposted_post.uuid || currentPost.reposted_post.id;
       navigate(`/post/${postId}`);
@@ -692,7 +697,7 @@ const PostCard = ({ post, onPostDeleted, depth = 0 }) => {
       {/* --- Үндсэн Пост Карт --- */}
       <Card
         ref={cardRef}
-        className={`shadow-sm m-3 post-card ${depth > 0 ? 'post-reply-card' : ''}`}
+        className={`shadow-sm post-card ${compact ? 'mx-1 my-2' : 'm-3'} ${depth > 0 ? 'post-reply-card' : ''}`}
         onClick={depth > 0 ? undefined : navigateToPost}
         style={{ cursor: depth > 0 ? 'default' : 'pointer' }}
       >
@@ -838,7 +843,9 @@ const PostCard = ({ post, onPostDeleted, depth = 0 }) => {
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                if (depth === 0) {
+                if (onCardClick) {
+                  onCardClick(currentPost);
+                } else if (depth === 0) {
                   const postId = post.uuid || post.id;
                   navigate(`/post/${postId}`);
                 }

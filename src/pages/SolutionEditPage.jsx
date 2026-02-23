@@ -78,7 +78,7 @@ const LivePreview = ({ content, label }) => {
 
 // --- Үндсэн компонент ---
 const SolutionEditPage = () => {
-  const { id } = useParams(); // problem ID
+  const { uuid: id } = useParams(); // problem UUID
   const navigate = useNavigate();
   const { setPageTitle } = useOutletContext();
   const { user } = useAuth();

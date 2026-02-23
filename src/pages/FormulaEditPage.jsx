@@ -59,7 +59,7 @@ const useDebounce = (value, delay) => {
 
 // --- Томьёо Засварлах Хуудас ---
 const FormulaEditPage = () => {
-  const { id } = useParams();
+  const { uuid: id } = useParams();
   const navigate = useNavigate();
   const { setPageTitle } = useOutletContext();
   const { user } = useAuth();
@@ -112,7 +112,7 @@ const FormulaEditPage = () => {
         formulaData.topic = null;
       }
 
-      setFormula(formulaData);
+      setFormula({ ...formulaData, is_public: formulaData.is_public ?? false });
       setKeywords(response.data.keywords || []);
       setOriginalTitle(response.data.title || '');
       setPageTitle(response.data.title || `Томьёо #${formulaId} засах`);
@@ -149,7 +149,7 @@ const FormulaEditPage = () => {
     const { name, value, type, checked } = e.target;
     let processedValue;
 
-    if (type === 'checkbox' || name === 'status') {
+    if (type === 'checkbox' || name === 'is_public') {
       processedValue = checked;
     } else if (name === 'topic') {
       // Empty string болон integer хоёуланг зөв боловсруулах
@@ -238,7 +238,7 @@ const FormulaEditPage = () => {
       title: formula.title,
       content: formula.content,
       topic: formula.topic || null,
-      status: formula.status || false,
+      is_public: formula.is_public ?? false,
     };
 
     try {
@@ -487,15 +487,15 @@ const FormulaEditPage = () => {
               )}
             </Form.Group>
 
-            {/* Идэвхжүүлэх */}
+            {/* Нийтэд харагдах */}
             <Row>
               <Col md={4} className="d-flex align-items-center pt-3">
                 <Form.Check
                   type="switch"
-                  id="id_status"
-                  label="Идэвхтэй"
-                  name="status"
-                  checked={formula.status || false}
+                  id="id_is_public"
+                  label="Нийтэд харагдах"
+                  name="is_public"
+                  checked={formula.is_public ?? false}
                   onChange={handleFormulaChange}
                 />
               </Col>
@@ -560,7 +560,7 @@ const FormulaEditPage = () => {
             <Button
               variant="secondary"
               className="me-2"
-              onClick={() => navigate('/formulas')}
+              onClick={() => navigate('/content/browse?type=formulas')}
               disabled={saving}
             >
               <X size={16} className="me-2" />

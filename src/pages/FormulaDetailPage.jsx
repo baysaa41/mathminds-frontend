@@ -28,7 +28,7 @@ import Breadcrumb from 'react-bootstrap/Breadcrumb';
 import { Copy, Check, Edit, Trash2 } from 'lucide-react';
 
 const FormulaDetailPage = () => {
-  const { id } = useParams();
+  const { uuid: id } = useParams();
   const navigate = useNavigate();
   const { setPageTitle } = useOutletContext();
   const { user } = useAuth();
@@ -87,7 +87,7 @@ const FormulaDetailPage = () => {
     setError(null);
     try {
       await apiClient.delete(`/api/integral/formulas/${id}/`);
-      navigate('/formulas');
+      navigate('/content/browse?type=formulas');
     } catch (err) {
       console.error('Failed to delete formula:', err);
       setError('Томьёог устгахад алдаа гарлаа.');
@@ -115,7 +115,7 @@ const FormulaDetailPage = () => {
     setPrefillData({
       type: 'formula',
       item: {
-        id: formula.id,
+        id: formula.uuid,
         title: formula.title
       }
     });
