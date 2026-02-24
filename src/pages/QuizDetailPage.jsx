@@ -22,6 +22,7 @@ import Card from 'react-bootstrap/Card';
 import ListGroup from 'react-bootstrap/ListGroup';
 import Modal from 'react-bootstrap/Modal';
 import Badge from 'react-bootstrap/Badge';
+import Form from 'react-bootstrap/Form';
 
 const QuizDetailPage = () => {
   const { uuid: id } = useParams();
@@ -38,6 +39,16 @@ const QuizDetailPage = () => {
   // Нийтлэгдсэн тест засах modal
   const [showCloneModal, setShowCloneModal] = useState(false);
   const [cloning, setCloning] = useState(false);
+
+  // Клубт оруулах modal
+  const [showAddToClubModal, setShowAddToClubModal] = useState(false);
+  const [teacherClubs, setTeacherClubs] = useState([]);
+  const [clubsLoading, setClubsLoading] = useState(false);
+  const [selectedClubId, setSelectedClubId] = useState('');
+  const [addingToClub, setAddingToClub] = useState(false);
+  const [addProgress, setAddProgress] = useState({ current: 0, total: 0 });
+  const [addError, setAddError] = useState(null);
+  const [addSuccess, setAddSuccess] = useState(false);
 
   useEffect(() => {
     const fetchQuiz = async () => {
@@ -148,6 +159,53 @@ const QuizDetailPage = () => {
     }
   };
 
+  const handleShowAddToClub = async () => {
+    setShowAddToClubModal(true);
+    setAddError(null);
+    setAddSuccess(false);
+    setSelectedClubId('');
+    setAddProgress({ current: 0, total: 0 });
+    setClubsLoading(true);
+    try {
+      const res = await apiClient.get('/api/clubs/my_clubs/');
+      const clubs = res.data?.results || res.data || [];
+      setTeacherClubs(clubs.filter((c) => c.role === 'teacher'));
+    } catch {
+      setAddError('Клубын жагсаалт ачааллахад алдаа гарлаа.');
+    } finally {
+      setClubsLoading(false);
+    }
+  };
+
+  const handleAddToClub = async () => {
+    if (!selectedClubId || !quiz.problems?.length) return;
+    setAddingToClub(true);
+    setAddError(null);
+    const problems = quiz.problems;
+    setAddProgress({ current: 0, total: problems.length });
+    let successCount = 0;
+    for (let i = 0; i < problems.length; i++) {
+      setAddProgress({ current: i + 1, total: problems.length });
+      try {
+        await apiClient.post('/api/minds/posts/', {
+          related_problem_id: problems[i].uuid,
+          club: parseInt(selectedClubId),
+          content: '',
+        });
+        successCount++;
+      } catch (err) {
+        console.error(`Бодлого #${problems[i].id} оруулахад алдаа:`, err);
+      }
+    }
+    setAddingToClub(false);
+    if (successCount > 0) {
+      setAddSuccess(true);
+      setAddProgress({ current: successCount, total: problems.length });
+    } else {
+      setAddError('Бодлого оруулахад алдаа гарлаа. Та клубын багш мөн эсэхийг шалгана уу.');
+    }
+  };
+
   return (
     <Container fluid className="py-4 px-4">
       <Breadcrumb className="mb-3">
@@ -183,6 +241,16 @@ const QuizDetailPage = () => {
               <Button variant="outline-success" size="sm" onClick={handleCreatePost}>
                 <i className="bi bi-megaphone me-1"></i>
                 Постлох
+              </Button>
+            </Stack>
+          )}
+
+          {/* Клубт оруулах (багш нарт) */}
+          {user && quiz.problems?.length > 0 && (
+            <Stack gap={2} className="mb-3">
+              <Button variant="outline-info" size="sm" onClick={handleShowAddToClub}>
+                <i className="bi bi-collection me-1"></i>
+                Клубт дасгал болгох
               </Button>
             </Stack>
           )}
@@ -414,6 +482,100 @@ const QuizDetailPage = () => {
             <i className="bi bi-pencil me-2"></i>
             Засварлах
           </Button>
+        </Modal.Footer>
+      </Modal>
+      {/* Клубт дасгал болгох Modal */}
+      <Modal
+        show={showAddToClubModal}
+        onHide={() => !addingToClub && setShowAddToClubModal(false)}
+        centered
+      >
+        <Modal.Header closeButton={!addingToClub}>
+          <Modal.Title>
+            <i className="bi bi-collection me-2"></i>
+            Клубт дасгал болгох
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {clubsLoading ? (
+            <div className="text-center py-3">
+              <Spinner animation="border" size="sm" />
+              <span className="ms-2 text-muted">Клубуудыг ачааллаж байна...</span>
+            </div>
+          ) : teacherClubs.length === 0 && !addError ? (
+            <Alert variant="info" className="mb-0">
+              Та багш байгаа клуб олдсонгүй. Клубын admin болж нэгдсэний дараа ашиглах боломжтой.
+            </Alert>
+          ) : (
+            <>
+              <p className="text-muted small mb-3">
+                Тестийн <strong>{quiz.problems?.length}</strong> бодлогыг сонгосон клубын{' '}
+                <strong>Дасгал</strong> хэсэгт пост болгон оруулна.
+              </p>
+              <Form.Group className="mb-3">
+                <Form.Label className="fw-semibold small">Клуб сонгох</Form.Label>
+                <Form.Select
+                  value={selectedClubId}
+                  onChange={(e) => setSelectedClubId(e.target.value)}
+                  disabled={addingToClub || addSuccess}
+                >
+                  <option value="">— Клуб сонгох —</option>
+                  {teacherClubs.map((club) => (
+                    <option key={club.id} value={club.id}>
+                      {club.name}
+                    </option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
+            </>
+          )}
+
+          {addError && <Alert variant="danger" className="mb-0">{addError}</Alert>}
+
+          {addSuccess && (
+            <Alert variant="success" className="mb-0">
+              <i className="bi bi-check-circle me-2"></i>
+              <strong>{addProgress.current}/{addProgress.total}</strong> бодлого амжилттай
+              клубын дасгал болгон оруулагдлаа!
+            </Alert>
+          )}
+
+          {addingToClub && (
+            <div className="text-center mt-3">
+              <Spinner animation="border" size="sm" className="me-2" />
+              <span className="text-muted small">
+                {addProgress.current}/{addProgress.total} бодлого оруулж байна...
+              </span>
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="secondary"
+            onClick={() => setShowAddToClubModal(false)}
+            disabled={addingToClub}
+          >
+            {addSuccess ? 'Хаах' : 'Цуцлах'}
+          </Button>
+          {!addSuccess && teacherClubs.length > 0 && (
+            <Button
+              variant="primary"
+              onClick={handleAddToClub}
+              disabled={!selectedClubId || addingToClub || clubsLoading}
+            >
+              {addingToClub ? (
+                <>
+                  <Spinner as="span" size="sm" className="me-2" />
+                  {addProgress.current}/{addProgress.total}
+                </>
+              ) : (
+                <>
+                  <i className="bi bi-collection me-1"></i>
+                  Оруулах
+                </>
+              )}
+            </Button>
+          )}
         </Modal.Footer>
       </Modal>
     </Container>

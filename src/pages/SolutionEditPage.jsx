@@ -2,9 +2,10 @@
 // ✅ ШИНЭЧИЛСЭН: Preview талбар бүрийн яг доор
 
 import { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate, useOutletContext } from 'react-router-dom';
+import { useParams, Link, useNavigate, useOutletContext, useLocation } from 'react-router-dom';
 import apiClient from '../api/axiosConfig.js';
 import { MathJax } from 'better-react-mathjax';
+import GlobalLivePreview from '../components/LivePreview.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
 // React Bootstrap components
@@ -17,9 +18,10 @@ import Form from 'react-bootstrap/Form';
 import Stack from 'react-bootstrap/Stack';
 import Badge from 'react-bootstrap/Badge';
 import Breadcrumb from 'react-bootstrap/Breadcrumb';
+import Modal from 'react-bootstrap/Modal';
 
 // Icons
-import { Save, X, Lightbulb, FileText, StickyNote, ArrowLeft } from 'lucide-react';
+import { Save, X, Lightbulb, FileText, StickyNote, ArrowLeft, Sparkles, PlusCircle, Wand2 } from 'lucide-react';
 
 // --- Debounce Hook ---
 const useDebounce = (value, delay) => {
@@ -58,20 +60,11 @@ const LivePreview = ({ content, label }) => {
         backgroundColor: '#f8f9fa',
         borderRadius: '0.375rem',
         border: '1px solid #dee2e6',
+        lineHeight: '1.7',
       }}
     >
       <div className="small text-muted mb-1 fw-semibold">👁 Preview:</div>
-      <MathJax hideUntilTypeset={'first'}>
-        <div
-          className="mathjax-content"
-          style={{
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-            lineHeight: '1.7',
-          }}
-          dangerouslySetInnerHTML={{ __html: content }}
-        />
-      </MathJax>
+      <GlobalLivePreview content={content} />
     </div>
   );
 };
@@ -80,6 +73,7 @@ const LivePreview = ({ content, label }) => {
 const SolutionEditPage = () => {
   const { uuid: id } = useParams(); // problem UUID
   const navigate = useNavigate();
+  const location = useLocation();
   const { setPageTitle } = useOutletContext();
   const { user } = useAuth();
 
@@ -88,6 +82,14 @@ const SolutionEditPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [generatingAI, setGeneratingAI] = useState(false);
+  const [generatingNote, setGeneratingNote] = useState(false);
+  const [improvingAI, setImprovingAI] = useState(false);
+  const [showImproveModal, setShowImproveModal] = useState(false);
+  const [improveMode, setImproveMode] = useState('expand');
+  const [improveDest, setImproveDest] = useState('replace');
+  const [improveComment, setImproveComment] = useState('');
+  const [aiError, setAiError] = useState(null);
 
   // Засварлаж байгаа solution
   const [currentSolution, setCurrentSolution] = useState(null);
@@ -133,19 +135,24 @@ const SolutionEditPage = () => {
 
       setSolutions(solutionsData);
 
-      // Анхны solution-г автоматаар сонгох
-      if (solutionsData.length > 0) {
-        const firstSolution = solutionsData[0];
-        setCurrentSolution(firstSolution);
-        setFormData({
-          hint: firstSolution.hint || '',
-          solution: firstSolution.solution || '',
-          note: firstSolution.note || '',
-        });
-      } else {
-        // Шинэ solution
+      const forceNew = location.state?.forceNew;
+      const solutionId = location.state?.solutionId;
+
+      if (forceNew || solutionsData.length === 0) {
+        // "Шинэ бодолт нэмэх" товчоор ирсэн, эсвэл бодолт байхгүй
         setCurrentSolution(null);
         setFormData({ hint: '', solution: '', note: '' });
+      } else {
+        // Тодорхой бодолт дамжуулсан бол тэр бодолтыг, үгүй бол эхнийхийг сонго
+        const target = solutionId
+          ? solutionsData.find((s) => s.id === solutionId) ?? solutionsData[0]
+          : solutionsData[0];
+        setCurrentSolution(target);
+        setFormData({
+          hint: target.hint || '',
+          solution: target.solution || '',
+          note: target.note || '',
+        });
       }
     } catch (err) {
       console.error('❌ Error fetching data:', err);
@@ -197,6 +204,41 @@ const SolutionEditPage = () => {
     navigate(`/problem/${id}`);
   };
 
+  const handleGenerateAI = async () => {
+    try {
+      setGeneratingAI(true);
+      setAiError(null);
+      await apiClient.post(`/api/integral/problems/${id}/generate_ai_solution/`);
+      await fetchProblemAndSolutions();
+    } catch (err) {
+      console.error('AI бодолт үүсгэхэд алдаа:', err);
+      setAiError(err.response?.data?.error || 'AI бодолт үүсгэж чадсангүй.');
+    } finally {
+      setGeneratingAI(false);
+    }
+  };
+
+  const handleGenerateNote = async () => {
+    if (!formData.hint && !formData.solution) {
+      setAiError('Заавар эсвэл бодолт талбарыг эхлээд бөглөнө үү.');
+      return;
+    }
+    try {
+      setGeneratingNote(true);
+      setAiError(null);
+      const res = await apiClient.post(`/api/integral/problems/${id}/generate_solution_note/`, {
+        hint: formData.hint,
+        solution: formData.solution,
+      });
+      handleChange('note', res.data.note);
+    } catch (err) {
+      console.error('AI дүгнэлт үүсгэхэд алдаа:', err);
+      setAiError(err.response?.data?.error || 'AI дүгнэлт үүсгэж чадсангүй.');
+    } finally {
+      setGeneratingNote(false);
+    }
+  };
+
   const handleSolutionSwitch = (solution) => {
     setCurrentSolution(solution);
     setFormData({
@@ -204,6 +246,40 @@ const SolutionEditPage = () => {
       solution: solution.solution || '',
       note: solution.note || '',
     });
+  };
+
+  const handleNewSolution = () => {
+    setCurrentSolution(null);
+    setFormData({ hint: '', solution: '', note: '' });
+    setError(null);
+    setAiError(null);
+  };
+
+  const handleImprove = async () => {
+    if (!currentSolution) return;
+    setShowImproveModal(false);
+    setImprovingAI(true);
+    setAiError(null);
+    try {
+      const res = await apiClient.post(
+        `/api/integral/solutions/${currentSolution.id}/improve/`,
+        { mode: improveMode, comment: improveComment.trim() }
+      );
+      if (improveDest === 'note') {
+        const combined = [res.data.hint, res.data.solution].filter(Boolean).join('\n\n---\n\n');
+        setFormData((prev) => ({ ...prev, note: combined }));
+      } else {
+        setFormData((prev) => ({
+          ...prev,
+          hint: res.data.hint || prev.hint,
+          solution: res.data.solution || prev.solution,
+        }));
+      }
+    } catch (err) {
+      setAiError(err.response?.data?.error || 'Бодолтыг сайжруулахад алдаа гарлаа.');
+    } finally {
+      setImprovingAI(false);
+    }
   };
 
   // Permission check
@@ -265,22 +341,20 @@ const SolutionEditPage = () => {
       </Breadcrumb>
 
       {/* Header - Бодлогын мэдээлэл */}
-      <Stack direction="horizontal" gap={3} className="align-items-start mb-3">
-        <div className="flex-grow-1">
-          <MathJax hideUntilTypeset={'first'}>
-            <h1 className="h3 fw-bold mathjax-content mb-2">{problem.title || `Бодлого #${id}`}</h1>
-          </MathJax>
-          <Stack direction="horizontal" gap={2} className="mb-2">
-            {problem.level_name && <Badge bg="secondary">{problem.level_name}</Badge>}
-            {currentSolution && <Badge bg="success">Одоогийн бодолт</Badge>}
-            {!currentSolution && <Badge bg="primary">Шинэ бодолт</Badge>}
-          </Stack>
-        </div>
-        <Button variant="outline-secondary" size="sm" as={Link} to={`/problem/${id}`}>
-          <ArrowLeft size={16} className="me-1" />
-          Буцах
-        </Button>
-      </Stack>
+      <div className="mb-3">
+        <MathJax hideUntilTypeset={'first'}>
+          <h1 className="h3 fw-bold mathjax-content mb-2">{problem.title || `Бодлого #${id}`}</h1>
+        </MathJax>
+        <Stack direction="horizontal" gap={2} className="flex-wrap">
+          {problem.level_name && <Badge bg="secondary">{problem.level_name}</Badge>}
+          {currentSolution && <Badge bg="success">Одоогийн бодолт</Badge>}
+          {!currentSolution && <Badge bg="primary">Шинэ бодолт</Badge>}
+          <Button variant="outline-secondary" size="sm" as={Link} to={`/problem/${id}`} className="ms-auto">
+            <ArrowLeft size={16} className="me-1" />
+            Буцах
+          </Button>
+        </Stack>
+      </div>
 
       {/* Бодлогын нөхцөл - товч харуулах */}
       <Card className="mb-4 bg-light border-0">
@@ -308,12 +382,26 @@ const SolutionEditPage = () => {
             {error}
           </Alert>
         )}
+        {aiError && (
+          <Alert variant="warning" className="mb-4" dismissible onClose={() => setAiError(null)}>
+            {aiError}
+          </Alert>
+        )}
 
-        {/* Бусад бодолтууд сонгох (олон бодолт байвал) */}
-        {solutions.length > 1 && (
+        {/* Бодолт сонгох / шинэ нэмэх */}
+        {solutions.length > 0 && (
           <Card className="mb-4">
-            <Card.Header className="bg-light">
-              <strong>Одоо байгаа бодолтууд ({solutions.length})</strong>
+            <Card.Header className="bg-light d-flex align-items-center justify-content-between">
+              <strong>Бодолтууд ({solutions.length})</strong>
+              <Button
+                variant="outline-success"
+                size="sm"
+                onClick={handleNewSolution}
+                disabled={!currentSolution}
+              >
+                <PlusCircle size={15} className="me-1" />
+                Шинэ бодолт нэмэх
+              </Button>
             </Card.Header>
             <Card.Body className="p-2">
               <Stack direction="horizontal" gap={2} className="flex-wrap">
@@ -325,9 +413,14 @@ const SolutionEditPage = () => {
                     onClick={() => handleSolutionSwitch(sol)}
                   >
                     Бодолт #{idx + 1}
-                    {sol.author && ` (${sol.author.first_name})`}
+                    {sol.author && ` (${sol.author.first_name || sol.author.username})`}
                   </Button>
                 ))}
+                {!currentSolution && (
+                  <Button variant="success" size="sm" disabled>
+                    + Шинэ
+                  </Button>
+                )}
               </Stack>
             </Card.Body>
           </Card>
@@ -404,10 +497,29 @@ const SolutionEditPage = () => {
               <StickyNote size={18} className="text-info" />
               <strong>Тэмдэглэл (Note)</strong>
               {formData.note && (
-                <Badge bg="info" className="ms-auto">
+                <Badge bg="info">
                   {formData.note.length} тэмдэгт
                 </Badge>
               )}
+              <Button
+                variant="outline-info"
+                size="sm"
+                className="ms-auto"
+                onClick={handleGenerateNote}
+                disabled={saving || generatingNote || generatingAI}
+              >
+                {generatingNote ? (
+                  <>
+                    <Spinner animation="border" size="sm" className="me-1" />
+                    Дүгнэж байна...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={14} className="me-1" />
+                    AI дүгнэлт
+                  </>
+                )}
+              </Button>
             </Stack>
           </Card.Header>
           <Card.Body>
@@ -442,6 +554,30 @@ const SolutionEditPage = () => {
           </ul>
         </Alert>
 
+        {/* Бодолтыг сайжруулах */}
+        {currentSolution && (
+          <div className="mb-4 d-flex justify-content-end">
+            <Button
+              variant="outline-primary"
+              size="sm"
+              onClick={() => setShowImproveModal(true)}
+              disabled={improvingAI || saving || generatingAI}
+            >
+              {improvingAI ? (
+                <>
+                  <Spinner animation="border" size="sm" className="me-1" />
+                  Сайжруулж байна...
+                </>
+              ) : (
+                <>
+                  <Wand2 size={15} className="me-1" />
+                  Бодолтыг сайжруулах
+                </>
+              )}
+            </Button>
+          </div>
+        )}
+
         {/* Action Buttons */}
         <Stack direction="horizontal" gap={2} className="justify-content-end">
           <Button variant="outline-secondary" onClick={handleCancel} disabled={saving}>
@@ -468,6 +604,88 @@ const SolutionEditPage = () => {
       <Link to={`/problem/${id}`} className="btn btn-outline-secondary btn-sm">
         &laquo; Бодлого руу буцах
       </Link>
+
+      {/* Бодолтыг сайжруулах Modal */}
+      <Modal show={showImproveModal} onHide={() => setShowImproveModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title className="h5">
+            <Wand2 size={18} className="me-2 text-primary" />
+            Бодолтыг сайжруулах
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {/* Горим */}
+          <p className="fw-semibold small mb-2">Сайжруулах горим:</p>
+          <div className="d-grid gap-2 mb-4">
+            {[
+              { value: 'expand', icon: <FileText size={15} className="me-2" />, label: 'Дэлгэрэнгүй болгох', desc: 'Алхам бүрийг тайлбарлах' },
+              { value: 'shorten', icon: <Lightbulb size={15} className="me-2" />, label: 'Товчлох', desc: 'Зөвхөн гол алхмуудыг үлдээх' },
+              { value: 'fix', icon: <Sparkles size={15} className="me-2" />, label: 'Засах', desc: 'Математикийн алдаа болон логикийг шалгах' },
+            ].map(({ value, icon, label, desc }) => (
+              <Button
+                key={value}
+                variant={improveMode === value ? 'primary' : 'outline-secondary'}
+                size="sm"
+                className="text-start"
+                onClick={() => setImproveMode(value)}
+              >
+                {icon}
+                <strong>{label}</strong>
+                <span className="text-muted fw-normal ms-1">— {desc}</span>
+              </Button>
+            ))}
+          </div>
+
+          {/* Хадгалах байршил */}
+          <p className="fw-semibold small mb-2">Үр дүнг хаана бичих:</p>
+          <div className="d-grid gap-2 mb-4">
+            <Button
+              variant={improveDest === 'replace' ? 'primary' : 'outline-secondary'}
+              size="sm"
+              className="text-start"
+              onClick={() => setImproveDest('replace')}
+            >
+              <Wand2 size={15} className="me-2" />
+              <strong>Бодолтыг шинээр бичих</strong>
+              <span className="text-muted fw-normal ms-1">— Заавар ба бодолт талбарыг солих</span>
+            </Button>
+            <Button
+              variant={improveDest === 'note' ? 'primary' : 'outline-secondary'}
+              size="sm"
+              className="text-start"
+              onClick={() => setImproveDest('note')}
+            >
+              <StickyNote size={15} className="me-2" />
+              <strong>Note хэсэгт хадгалах</strong>
+              <span className="text-muted fw-normal ms-1">— Одоогийн бодолтыг хэвээр үлдээх</span>
+            </Button>
+          </div>
+
+          {/* Нэмэлт коммент */}
+          <Form.Group>
+            <Form.Label className="fw-semibold small mb-1">
+              Нэмэлт зааварчилгаа <span className="text-muted fw-normal">(заавал биш)</span>
+            </Form.Label>
+            <Form.Control
+              as="textarea"
+              rows={3}
+              value={improveComment}
+              onChange={(e) => setImproveComment(e.target.value)}
+              placeholder={'Жишээ: "3-р алхамд алдаа байна, зөв хариулт 42"\n"Геометрийн аргаар бод"\n"Хариулт нь бутархай байх ёстой"'}
+            />
+          </Form.Group>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" size="sm" onClick={() => setShowImproveModal(false)}>
+            <X size={15} className="me-1" />
+            Цуцлах
+          </Button>
+          <Button variant="primary" size="sm" onClick={handleImprove}>
+            <Wand2 size={15} className="me-1" />
+            Сайжруулах
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </Container>
   );
 };

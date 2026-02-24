@@ -9,6 +9,7 @@ import ClubPaymentInfoWidget from './ClubPaymentInfoWidget';
 import TrendingPostsWidget from './TrendingPostsWidget';
 
 import LatexTutorialWidget from './LatexTutorialWidget';
+import RecentlyVisitedWidget from './RecentlyVisitedWidget';
 import SearchWidget from './SearchWidget';
 
 const RightSidebar = ({
@@ -33,6 +34,9 @@ const RightSidebar = ({
 
       {/* Trending Widget (клубын хуудас биш үед) */}
       {!clubData && !isClubsPage && <TrendingPostsWidget />}
+
+      {/* Сүүлд үзсэн холбоосууд */}
+      <RecentlyVisitedWidget />
 
       {/* LaTeX Tutorial Widget (клубын хуудас биш үед) */}
       {!clubData && !isClubsPage && <LatexTutorialWidget />}

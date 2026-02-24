@@ -9,18 +9,15 @@ import Col from 'react-bootstrap/Col';
 import Card from 'react-bootstrap/Card';
 import Button from 'react-bootstrap/Button';
 import Spinner from 'react-bootstrap/Spinner';
-import { Users, Trophy, Target, Heart, Zap, Award, BookOpen } from 'lucide-react';
+import { Users, Trophy, Target, Heart, Zap, BookOpen } from 'lucide-react';
 import apiClient from '../api/axiosConfig';
-import UserAvatar from '../components/UserAvatar';
 
 export default function AboutPage() {
   const [statistics, setStatistics] = useState(null);
-  const [teachers, setTeachers] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchStatistics();
-    fetchTeachers();
   }, []);
 
   const fetchStatistics = async () => {
@@ -32,16 +29,6 @@ export default function AboutPage() {
       console.error('Статистик татахад алдаа:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchTeachers = async () => {
-    try {
-      const response = await apiClient.get('/users/api/teachers/');
-      const data = response.data.results || response.data;
-      setTeachers(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error('Багш нарын мэдээлэл татахад алдаа:', error);
     }
   };
 
@@ -222,70 +209,6 @@ export default function AboutPage() {
             </Card>
           </Col>
         </Row>
-
-        {/* Teachers */}
-        <div className="mb-5">
-          <div className="text-center mb-4">
-            <h2 className="h3 fw-bold">Манай багш нар</h2>
-            <p className="text-muted">
-              Математик, физик, хими, биологийн туршлагатай, мэргэшсэн багш нар
-            </p>
-          </div>
-          {teachers.length > 0 ? (
-            <>
-              <Row className="g-4 mb-4">
-                {teachers.slice(0, 4).map((teacher) => (
-                  <Col key={teacher.id} sm={6} md={3}>
-                    <Card className="h-100 shadow-sm border-0 text-center">
-                      <div className="bg-primary bg-gradient py-4 px-3">
-                        {teacher.user_details ? (
-                          <div className="mb-2">
-                            <UserAvatar
-                              user={teacher.user_details}
-                              size={100}
-                              border={true}
-                              borderClass="border border-3 border-white shadow-sm"
-                            />
-                          </div>
-                        ) : (
-                          <div
-                            className="d-flex align-items-center justify-content-center rounded-circle mx-auto mb-2"
-                            style={{
-                              width: '100px',
-                              height: '100px',
-                              background: 'rgba(255, 255, 255, 0.2)',
-                            }}
-                          >
-                            <Trophy size={40} className="text-white" />
-                          </div>
-                        )}
-                        <h6 className="text-white fw-bold mb-1 small">{teacher.name}</h6>
-                        <p className="text-white opacity-75 mb-1" style={{ fontSize: '0.75rem' }}>
-                          {teacher.title}
-                        </p>
-                        {teacher.subject_display && (
-                          <span
-                            className="badge bg-white text-primary"
-                            style={{ fontSize: '0.65rem' }}
-                          >
-                            {teacher.subject_display}
-                          </span>
-                        )}
-                      </div>
-                    </Card>
-                  </Col>
-                ))}
-              </Row>
-              <div className="text-center">
-                <Link to="/teachers" className="btn btn-primary">
-                  Багш нарын танилцуулга
-                </Link>
-              </div>
-            </>
-          ) : (
-            <p className="text-center text-muted">Багш нарын мэдээлэл уншиж байна...</p>
-          )}
-        </div>
 
         {/* Values */}
         <Row className="mb-5">

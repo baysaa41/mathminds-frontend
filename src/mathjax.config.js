@@ -7,6 +7,10 @@ export const mathJaxConfig = {
       ['$', '$'],
       ['\\(', '\\)'],
     ],
+    displayMath: [
+      ['$$', '$$'],
+      ['\\[', '\\]'],
+    ],
     macros: {
       tg: '\\operatorname{tg}',
       ctg: '\\operatorname{ctg}',
@@ -21,5 +25,10 @@ export const mathJaxConfig = {
   },
   svg: {
     scale: 1.05,
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+    ignoreHtmlClass: 'tex2jax_ignore',
+    processHtmlClass: 'tex2jax_process',
   },
 };

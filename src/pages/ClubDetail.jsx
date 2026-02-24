@@ -2,7 +2,7 @@
 // ✅ ШИНЭЧИЛСЭН: Club Feed нэмэгдсэн
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Outlet, useOutletContext } from 'react-router-dom';
+import { useParams, useNavigate, Outlet, useOutletContext, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Container from 'react-bootstrap/Container';
 import Spinner from 'react-bootstrap/Spinner';
@@ -34,6 +34,7 @@ const ClubDetail = () => {
     setAddingTeacher
   } = useOutletContext(); // RightSidebar болон PageTitle
 
+  const location = useLocation();
   const [club, setClub] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -51,6 +52,13 @@ const ClubDetail = () => {
   useEffect(() => {
     fetchClubDetails();
   }, [id]);
+
+  // Дэд хуудас өөрчлөгдөх бүрт клубын нэрийг RecentlyVisitedWidget-д мэдэгдэх
+  useEffect(() => {
+    if (club?.name) {
+      setPageTitle(club.name);
+    }
+  }, [location.pathname, club]);
 
   const fetchClubDetails = async () => {
     try {

@@ -62,6 +62,7 @@ const CoinTransferPage = lazy(() => import('./pages/CoinTransferPage.jsx'));
 
 // Clubs
 const ClubsRoutes = lazy(() => import('./routes/ClubsRoutes.jsx'));
+const ClubsBrowsePage = lazy(() => import('./pages/ClubsBrowsePage.jsx'));
 const TeacherInvitationsPage = lazy(() => import('./pages/TeacherInvitationsPage.jsx'));
 
 // Auth & Public
@@ -73,6 +74,7 @@ const CallbackPage = lazy(() => import('./pages/CallbackPage'));
 const HomePage = lazy(() => import('./pages/HomePage'));
 
 // Info Pages
+const InfoPage = lazy(() => import('./pages/InfoPage.jsx'));
 const AboutPage = lazy(() => import('./pages/AboutPage.jsx'));
 const TopTeachersPage = lazy(() => import('./pages/TopTeachersPage.jsx'));
 const TeacherEditPage = lazy(() => import('./pages/TeacherEditPage.jsx'));
@@ -85,6 +87,7 @@ const MembershipGuidePage = lazy(() => import('./pages/MembershipGuidePage.jsx')
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const ReportsPage = lazy(() => import('./pages/ReportsPage.jsx'));
 const MMOImportPage = lazy(() => import('./pages/MMOImportPage.jsx'));
+const DocImportPage = lazy(() => import('./pages/DocImportPage.jsx'));
 const AllUsersPage = lazy(() => import('./pages/AllUsersPage.jsx'));
 const SalesStatsPage = lazy(() => import('./pages/SalesStatsPage.jsx'));
 
@@ -117,13 +120,13 @@ function App() {
         {/* Нийтэд нээлттэй харилцан яриа харах */}
         <Route path="/messages/conversation/:conversationUuid" element={<ConversationViewPage />} />
 
-        {/* Info Pages - Нэвтрэхгүйгээр үзэх боломжтой */}
-        <Route path="/about" element={<AboutPage />} />
-        <Route path="/nomads360" element={<Nomads360Page />} />
+        {/* Info Pages - /info/* руу redirect */}
+        <Route path="/about" element={<Navigate to="/info/about" replace />} />
+        <Route path="/nomads360" element={<Navigate to="/info/nomads360" replace />} />
+        <Route path="/membership-guide" element={<Navigate to="/info/membership-guide" replace />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
-        <Route path="/teachers" element={<TopTeachersPage />} />
-        <Route path="/membership-guide" element={<MembershipGuidePage />} />
+        <Route path="/teachers" element={<Navigate to="/info/teachers" replace />} />
 
         {/* Хамгаалагдсан хуудсууд - Layout дотор */}
         <Route
@@ -247,6 +250,25 @@ function App() {
           }
         />
 
+        {/* Клубуудын жагсаалт - Fullscreen browse */}
+        <Route
+          path="/clubs/browse"
+          element={
+            <ProtectedRoute>
+              <ClubsBrowsePage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Мэдээлэл хуудас - sidebar цэстэй */}
+        <Route path="/info" element={<InfoPage />}>
+          <Route index element={<Navigate to="/info/about" replace />} />
+          <Route path="about" element={<AboutPage />} />
+          <Route path="membership-guide" element={<MembershipGuidePage />} />
+          <Route path="nomads360" element={<Nomads360Page />} />
+          <Route path="teachers" element={<TopTeachersPage />} />
+        </Route>
+
         {/* E-commerce хуудсууд - Layout-гүй, бие даасан */}
         <Route
           path="/products"
@@ -321,6 +343,16 @@ function App() {
           element={
             <AdminRoute>
               <MMOImportPage />
+            </AdminRoute>
+          }
+        />
+
+        {/* Doc Import - Staff only */}
+        <Route
+          path="/admin/doc-import"
+          element={
+            <AdminRoute>
+              <DocImportPage />
             </AdminRoute>
           }
         />

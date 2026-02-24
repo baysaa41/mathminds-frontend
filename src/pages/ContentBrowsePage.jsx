@@ -436,7 +436,7 @@ function ContentBrowsePage() {
 
                 {user && (
                   <Button
-                    variant={config.color}
+                    variant="primary"
                     size="sm"
                     className="w-100 mt-3"
                     onClick={handleCreateNew}
@@ -454,6 +454,15 @@ function ContentBrowsePage() {
                     <i className="bi bi-x-circle me-1"></i>Шүүлтүүр цэвэрлэх
                   </Button>
                 )}
+
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="w-100 mt-2 text-muted text-decoration-none"
+                  onClick={() => navigate('/latex-examples')}
+                >
+                  <i className="bi bi-book me-1"></i>LaTeX заавар
+                </Button>
               </div>
             </Col>
 

@@ -1,12 +1,14 @@
 // frontend/src/pages/ProblemDetailPage.jsx
 // (!!! ШИНЭЧИЛСЭН: LivePreview ашигласан)
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate, useOutletContext } from 'react-router-dom';
+import Viewer from 'viewerjs';
+import 'viewerjs/dist/viewer.css';
 import apiClient from '../api/axiosConfig.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { usePrefill } from '../context/PrefillContext.jsx';
-import LivePreview from '../components/LivePreview.jsx'; // (!!!) 1. LivePreview импортлох
+import LivePreview from '../components/LivePreview.jsx';
 import UserName from '../components/UserName.jsx';
 import { formatDate } from '../utils/dateFormatter';
 
@@ -22,49 +24,102 @@ import Accordion from 'react-bootstrap/Accordion';
 import Card from 'react-bootstrap/Card';
 
 // Icons
-import { Lightbulb, BookOpen, FileText } from 'lucide-react';
+import { Lightbulb, BookOpen, FileText, Sparkles, Pencil, Trash2, StickyNote } from 'lucide-react';
 
+// ─── Бодлогын зургийн gallery (viewerjs) ─────────────────────────────────
+const ProblemImageGallery = ({ images }) => {
+  const galleryRef = useRef(null);
+  const viewerRef = useRef(null);
+
+  useEffect(() => {
+    if (!galleryRef.current || !images || images.length === 0) return;
+
+    viewerRef.current = new Viewer(galleryRef.current, {
+      toolbar: {
+        zoomIn: 1, zoomOut: 1, oneToOne: 1, reset: 1,
+        prev: images.length > 1 ? 1 : 0,
+        play: 0,
+        next: images.length > 1 ? 1 : 0,
+        rotateLeft: 1, rotateRight: 1,
+        flipHorizontal: 0, flipVertical: 0,
+      },
+      navbar: images.length > 1,
+      title: false,
+    });
+
+    return () => {
+      if (viewerRef.current) {
+        viewerRef.current.destroy();
+        viewerRef.current = null;
+      }
+    };
+  }, [images]);
+
+  if (!images || images.length === 0) return null;
+
+  return (
+    <div ref={galleryRef} className="d-flex flex-wrap gap-2 mt-3">
+      {images.map((img, i) => (
+        <img
+          key={img.id || i}
+          src={img.image}
+          alt={`Зураг ${i + 1}`}
+          style={{
+            height: 120,
+            maxWidth: 200,
+            objectFit: 'contain',
+            borderRadius: 8,
+            border: '1px solid #dee2e6',
+            background: '#f8f9fa',
+            cursor: 'zoom-in',
+          }}
+        />
+      ))}
+    </div>
+  );
+};
+
+// ─── Main Component ───────────────────────────────────────────────────────
 const ProblemDetailPage = () => {
   const { uuid: id } = useParams();
   const [problem, setProblem] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [generatingAI, setGeneratingAI] = useState(false);
+  const [aiSuccess, setAiSuccess] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
   const { setPrefillData } = usePrefill();
   const { setPageTitle } = useOutletContext();
 
-  useEffect(() => {
-    const fetchProblem = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const response = await apiClient.get(`/api/integral/problems/${id}/`);
-        setProblem(response.data);
+  const fetchProblem = async (problemId) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await apiClient.get(`/api/integral/problems/${problemId}/`);
+      setProblem(response.data);
 
-        // LivePreview LaTeX-г харуулдаг тул setPageTitle-д цэвэр текст хэрэгтэй
-        // Эсвэл энгийнээр тавина
-        if (response.data?.title) {
-          // Энгийн арга: LaTeX тэмдэгтүүдийг устгах
-          const plainTitle = response.data.title.replace(/\$[^\$]*\$|\$\$[^\$]*\$\$/g, '').trim();
-          setPageTitle(plainTitle || `Бодлого #${id}`);
-        } else {
-          setPageTitle(`Бодлого #${id}`);
-        }
-      } catch (err) {
-        if (err.response && err.response.status === 404) {
-          setError('Бодлого олдсонгүй.');
-        } else {
-          setError('Бодлогыг уншихад алдаа гарлаа.');
-        }
-        console.error(err);
-      } finally {
-        setLoading(false);
+      if (response.data?.title) {
+        const plainTitle = response.data.title.replace(/\$[^\$]*\$|\$\$[^\$]*\$\$/g, '').trim();
+        setPageTitle(plainTitle || `Бодлого #${problemId}`);
+      } else {
+        setPageTitle(`Бодлого #${problemId}`);
       }
-    };
+    } catch (err) {
+      if (err.response && err.response.status === 404) {
+        setError('Бодлого олдсонгүй.');
+      } else {
+        setError('Бодлогыг уншихад алдаа гарлаа.');
+      }
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     if (id) {
-      fetchProblem();
+      fetchProblem(id);
     } else {
       setError('Бодлогын дугаар (ID) олдсонгүй.');
       setLoading(false);
@@ -76,6 +131,32 @@ const ProblemDetailPage = () => {
       setPageTitle('Нүүр'); // Компонент unmount хийгдэхэд гарчгийг буцаах
     };
   }, [id, setPageTitle]);
+
+  const handleGenerateAI = async () => {
+    try {
+      setGeneratingAI(true);
+      setAiSuccess(false);
+      await apiClient.post(`/api/integral/problems/${id}/generate_ai_solution/`);
+      setAiSuccess(true);
+      await fetchProblem(id);
+    } catch (err) {
+      console.error('AI бодолт үүсгэхэд алдаа:', err);
+      setError(err.response?.data?.error || 'AI бодолт үүсгэж чадсангүй.');
+    } finally {
+      setGeneratingAI(false);
+    }
+  };
+
+  const handleDeleteSolution = async (solutionId) => {
+    if (!window.confirm('Энэ бодолтыг устгах уу?')) return;
+    try {
+      await apiClient.delete(`/api/integral/solutions/${solutionId}/`);
+      await fetchProblem(id);
+    } catch (err) {
+      console.error('Бодолт устгахад алдаа:', err);
+      setError(err.response?.data?.error || 'Бодолт устгаж чадсангүй.');
+    }
+  };
 
   if (loading) {
     return (
@@ -150,13 +231,19 @@ const ProblemDetailPage = () => {
         </Breadcrumb.Item>
       </Breadcrumb>
 
+      {aiSuccess && (
+        <Alert variant="success" dismissible onClose={() => setAiSuccess(false)} className="mb-3">
+          AI бодолт амжилттай үүслээ!
+        </Alert>
+      )}
+
       {/* Гарчиг ба Засварлах товч */}
-      <Stack direction="horizontal" gap={3} className="align-items-start mb-3">
-        <h1 className="h3 fw-bold mb-0 flex-grow-1">
+      <div className="mb-3">
+        <h1 className="h3 fw-bold mb-2">
           <LivePreview content={problem.title || `Бодлого #${id}`} />
         </h1>
         {canEdit && (
-          <>
+          <Stack direction="horizontal" gap={2}>
             <Button variant="outline-success" size="sm" onClick={handleCreatePost}>
               <i className="bi bi-megaphone me-1"></i>
               Постлох
@@ -165,9 +252,9 @@ const ProblemDetailPage = () => {
               <i className="bi bi-pencil me-1"></i>
               Засварлах
             </Button>
-          </>
+          </Stack>
         )}
-      </Stack>
+      </div>
 
       {/* Мэдээллийн badges */}
       <Stack direction="horizontal" gap={2} className="mb-3 flex-wrap">
@@ -201,6 +288,16 @@ const ProblemDetailPage = () => {
         <div className="problem-statement p-3 bg-light rounded">
           <LivePreview content={problem.statement || '(Нөхцөл оруулаагүй)'} />
         </div>
+        {/* Хавсралт зурагнууд */}
+        {problem.images && problem.images.length > 0 && (
+          <div className="mt-3">
+            <small className="text-muted fw-semibold d-block mb-2">
+              <i className="bi bi-images me-1" />
+              ХАВСРАЛТ ЗУРАГНУУД ({problem.images.length})
+            </small>
+            <ProblemImageGallery images={problem.images} />
+          </div>
+        )}
       </div>
 
       {/* Сонголтууд */}
@@ -236,23 +333,44 @@ const ProblemDetailPage = () => {
       {/* Заавар ба бодолт */}
       {hasSolutions && (
         <div className="mb-4">
-          <Stack direction="horizontal" gap={3} className="align-items-center mb-3">
-            <h5 className="fw-semibold mb-0 d-flex align-items-center gap-2">
+          <div className="mb-3">
+            <h5 className="fw-semibold mb-2 d-flex align-items-center gap-2">
               <BookOpen size={20} />
               Заавар ба Бодолт
             </h5>
             {canEdit && (
-              <Button
-                as={Link}
-                to={`/problem/${id}/solution/edit`}
-                variant="outline-success"
-                size="sm"
-              >
-                <FileText size={16} className="me-1" />
-                Бодолт засах/нэмэх
-              </Button>
+              <Stack direction="horizontal" gap={2}>
+                <Button
+                  as={Link}
+                  to={`/problem/${id}/solution/new`}
+                  variant="outline-success"
+                  size="sm"
+                  state={{ forceNew: true }}
+                >
+                  <i className="bi bi-plus-lg me-1" />
+                  Шинэ бодолт нэмэх
+                </Button>
+                <Button
+                  variant="outline-warning"
+                  size="sm"
+                  onClick={handleGenerateAI}
+                  disabled={generatingAI}
+                >
+                  {generatingAI ? (
+                    <>
+                      <Spinner animation="border" size="sm" className="me-1" />
+                      Үүсгэж байна...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={16} className="me-1" />
+                      AI бодолт
+                    </>
+                  )}
+                </Button>
+              </Stack>
             )}
-          </Stack>
+          </div>
 
           <Alert variant="info" className="small mb-3">
             💡 Та эхлээд өөрөө бодохыг оролдоод, шаардлагатай үед л заавар болон бодолт харна уу.
@@ -260,57 +378,86 @@ const ProblemDetailPage = () => {
 
           <Accordion>
             {problem.solutions.map((solution, i) => (
-              <div key={solution.id || i}>
-                {solution.hint && (
-                  <Accordion.Item eventKey={`hint-${solution.id || i}`}>
-                    <Accordion.Header>
-                      <Stack direction="horizontal" gap={2}>
-                        <Lightbulb size={18} className="text-warning" />
-                        <span>Заавар {problem.solutions.length > 1 ? `#${i + 1}` : ''}</span>
-                      </Stack>
-                    </Accordion.Header>
-                    <Accordion.Body>
-                      <LivePreview content={solution.hint} />
-                    </Accordion.Body>
-                  </Accordion.Item>
-                )}
+              <Accordion.Item key={solution.id || i} eventKey={`sol-${solution.id || i}`}>
+                <Accordion.Header>
+                  <Stack direction="horizontal" gap={2}>
+                    <BookOpen size={18} className="text-primary flex-shrink-0" />
+                    <span className="fw-semibold">Бодолт #{i + 1}</span>
+                    {solution.author && (
+                      <span className="text-muted fw-normal small">
+                        — {solution.author.first_name || solution.author.username}
+                      </span>
+                    )}
+                  </Stack>
+                </Accordion.Header>
+                <Accordion.Body>
+                  {solution.hint && (
+                    <div className="mb-4">
+                      <div className="d-flex align-items-center gap-2 mb-2">
+                        <Lightbulb size={16} className="text-warning" />
+                        <strong className="small text-uppercase text-muted">Заавар</strong>
+                      </div>
+                      <div className="ps-3 border-start border-warning border-2">
+                        <LivePreview content={solution.hint} />
+                      </div>
+                    </div>
+                  )}
 
-                {solution.solution && (
-                  <Accordion.Item eventKey={`solution-${solution.id || i}`}>
-                    <Accordion.Header>
-                      <Stack direction="horizontal" gap={2}>
-                        <FileText size={18} className="text-success" />
-                        <span>Бодолт {problem.solutions.length > 1 ? `#${i + 1}` : ''}</span>
-                      </Stack>
-                    </Accordion.Header>
-                    <Accordion.Body>
+                  {solution.solution && (
+                    <div className="mb-4">
+                      <div className="d-flex align-items-center gap-2 mb-2">
+                        <FileText size={16} className="text-success" />
+                        <strong className="small text-uppercase text-muted">Бодолт</strong>
+                      </div>
                       <div className="bg-light p-3 rounded">
                         <LivePreview content={solution.solution} />
                       </div>
-                      {solution.author && (
-                        <div className="text-muted small mt-3 pt-3 border-top">
-                          <strong>Бодлогыг бодсон:</strong>{' '}
-                          {solution.author.first_name || solution.author.email}
-                        </div>
-                      )}
-                    </Accordion.Body>
-                  </Accordion.Item>
-                )}
+                    </div>
+                  )}
 
-                {solution.note && (
-                  <Accordion.Item eventKey={`note-${solution.id || i}`}>
-                    <Accordion.Header>
-                      <Stack direction="horizontal" gap={2}>
-                        <i className="bi bi-sticky"></i>
-                        <span>Тэмдэглэл {problem.solutions.length > 1 ? `#${i + 1}` : ''}</span>
-                      </Stack>
-                    </Accordion.Header>
-                    <Accordion.Body>
+                  {solution.note && (
+                    <div className="mb-4">
+                      <div className="d-flex align-items-center gap-2 mb-2">
+                        <StickyNote size={16} className="text-info" />
+                        <strong className="small text-uppercase text-muted">Тэмдэглэл</strong>
+                      </div>
                       <LivePreview content={solution.note} />
-                    </Accordion.Body>
-                  </Accordion.Item>
-                )}
-              </div>
+                    </div>
+                  )}
+
+                  <div className="d-flex align-items-center justify-content-between pt-3 border-top">
+                    <div className="text-muted small">
+                      {solution.author && (
+                        <span>
+                          Бодсон: <strong>{solution.author.first_name || solution.author.username}</strong>
+                        </span>
+                      )}
+                    </div>
+                    {canEdit && (
+                      <Stack direction="horizontal" gap={2}>
+                        <Button
+                          variant="outline-primary"
+                          size="sm"
+                          as={Link}
+                          to={`/problem/${id}/solution/new`}
+                          state={{ solutionId: solution.id }}
+                        >
+                          <Pencil size={14} className="me-1" />
+                          Засах
+                        </Button>
+                        <Button
+                          variant="outline-danger"
+                          size="sm"
+                          onClick={() => handleDeleteSolution(solution.id)}
+                        >
+                          <Trash2 size={14} className="me-1" />
+                          Устгах
+                        </Button>
+                      </Stack>
+                    )}
+                  </div>
+                </Accordion.Body>
+              </Accordion.Item>
             ))}
           </Accordion>
         </div>
@@ -323,9 +470,29 @@ const ProblemDetailPage = () => {
             <Card.Body className="text-center py-4">
               <BookOpen size={32} className="text-muted mb-3" />
               <p className="text-muted mb-3">Энэ бодлогод заавар ба бодолт байхгүй байна.</p>
-              <Button variant="primary" size="sm" as={Link} to={`/problem/${id}/solution/edit`}>
-                Бодолт нэмэх
-              </Button>
+              <Stack direction="horizontal" gap={2} className="justify-content-center">
+                <Button variant="primary" size="sm" as={Link} to={`/problem/${id}/solution/new`}>
+                  Бодолт нэмэх
+                </Button>
+                <Button
+                  variant="outline-warning"
+                  size="sm"
+                  onClick={handleGenerateAI}
+                  disabled={generatingAI}
+                >
+                  {generatingAI ? (
+                    <>
+                      <Spinner animation="border" size="sm" className="me-1" />
+                      Үүсгэж байна...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={16} className="me-1" />
+                      AI бодолт үүсгэх
+                    </>
+                  )}
+                </Button>
+              </Stack>
             </Card.Body>
           </Card>
         </div>

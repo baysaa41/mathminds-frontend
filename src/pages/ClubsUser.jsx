@@ -134,7 +134,7 @@ const ClubsUser = () => {
         action={
           // Зөвхөн RightSidebar харагдахгүй үед (< xl) товчнуудыг харуулах
           <div className="d-flex gap-2 flex-wrap d-xl-none">
-            <Button as={Link} to="/clubs" variant="outline-secondary">
+            <Button as={Link} to="/clubs/browse" variant="outline-secondary">
               <List size={16} className="me-2" />
               Бүх клубууд
             </Button>

@@ -53,6 +53,7 @@ const QuizEditPage = () => {
   // Нийтлэгдсэн тест засварлах анхааруулга
   const [showPublishedWarning, setShowPublishedWarning] = useState(false);
   const [warningAcknowledged, setWarningAcknowledged] = useState(false);
+  const [wasInitiallyPublic, setWasInitiallyPublic] = useState(false);
 
   const [showProblemModal, setShowProblemModal] = useState(false);
   const [modalSearchQuery, setModalSearchQuery] = useState('');
@@ -82,6 +83,8 @@ const QuizEditPage = () => {
         setOriginalTitle(quizData.title || '');
         setDescription(quizData.description || '');
         setIsPublic(quizData.is_public ?? false);
+        setWasInitiallyPublic(quizData.is_public ?? false);
+        if (quizData.is_public) setShowPublishedWarning(true);
         setDefaultTimeLimit(quizData.default_time_limit ?? '');
         setGradeId(quizData.grade?.id ?? '');
         setSelectedProblems(quizData.problems || []);
@@ -125,7 +128,7 @@ const QuizEditPage = () => {
   // (!!!) 2. ШИНЭ ФУНКЦ: Drag дуусахад ажиллах
   const handleDragEnd = (result) => {
     // Анхааруулга уншаагүй бол drag-г зөвшөөрөхгүй
-    if (!warningAcknowledged && isPublic) {
+    if (!warningAcknowledged && wasInitiallyPublic) {
       return;
     }
 
@@ -255,6 +258,8 @@ const QuizEditPage = () => {
     };
   }, [modalNextPageUrl, handleModalLoadMore]);
   const [generatingSummaryFor, setGeneratingSummaryFor] = useState(null);
+  const [generatingAll, setGeneratingAll] = useState(false);
+  const [generateAllProgress, setGenerateAllProgress] = useState({ current: 0, total: 0 });
 
   const handleGenerateSummary = async (problem) => {
     setGeneratingSummaryFor(problem.id);
@@ -269,6 +274,28 @@ const QuizEditPage = () => {
     } finally {
       setGeneratingSummaryFor(null);
     }
+  };
+
+  const handleGenerateAllMissing = async () => {
+    const missing = selectedProblems.filter((p) => !p.ai_summary);
+    if (!missing.length) return;
+    setGeneratingAll(true);
+    setGenerateAllProgress({ current: 0, total: missing.length });
+    for (let i = 0; i < missing.length; i++) {
+      const problem = missing[i];
+      setGenerateAllProgress({ current: i + 1, total: missing.length });
+      try {
+        const response = await apiClient.post(`/api/integral/problems/${problem.uuid}/generate_summary/`);
+        const newSummary = response.data.ai_summary;
+        setSelectedProblems((prev) =>
+          prev.map((p) => (p.id === problem.id ? { ...p, ai_summary: newSummary } : p))
+        );
+      } catch (err) {
+        console.error(`AI summary error for problem ${problem.id}:`, err);
+      }
+    }
+    setGeneratingAll(false);
+    setGenerateAllProgress({ current: 0, total: 0 });
   };
 
   // --- Сонгогдсон бодлогыг удирдах (хэвээрээ) ---
@@ -325,17 +352,40 @@ const QuizEditPage = () => {
           <Col lg={8}>
             <DragDropContext onDragEnd={handleDragEnd}>
               <Card className="mb-4">
-                <Card.Header as="h5" className="d-flex justify-content-between align-items-center">
-                  Тестэд багтсан бодлогууд ({selectedProblems.length})
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={handleShowProblemModal}
-                    disabled={!warningAcknowledged && isPublic}
-                  >
-                    <PlusCircle size={16} className="me-1" />
-                    Бодлого нэмэх
-                  </Button>
+                <Card.Header as="h5" className="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                  <span>Тестэд багтсан бодлогууд ({selectedProblems.length})</span>
+                  <div className="d-flex gap-2">
+                    {selectedProblems.some((p) => !p.ai_summary) && (
+                      <Button
+                        variant="outline-warning"
+                        size="sm"
+                        onClick={handleGenerateAllMissing}
+                        disabled={generatingAll || generatingSummaryFor !== null}
+                        title="AI summary байхгүй бодлогуудыг бүгдийг тооцох"
+                      >
+                        {generatingAll ? (
+                          <>
+                            <Spinner as="span" size="sm" className="me-1" />
+                            {generateAllProgress.current}/{generateAllProgress.total}
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles size={14} className="me-1" />
+                            Бүгдийг тооцох ({selectedProblems.filter((p) => !p.ai_summary).length})
+                          </>
+                        )}
+                      </Button>
+                    )}
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={handleShowProblemModal}
+                      disabled={!warningAcknowledged && wasInitiallyPublic}
+                    >
+                      <PlusCircle size={16} className="me-1" />
+                      Бодлого нэмэх
+                    </Button>
+                  </div>
                 </Card.Header>
 
                 <Droppable droppableId="selectedProblemsList">
@@ -369,19 +419,26 @@ const QuizEditPage = () => {
                                   <LivePreview
                                     content={problem.title || `Бодлого #${problem.id}`}
                                   />
-                                  {problem.ai_summary && (
-                                    <div className="text-muted small mt-1">
-                                      <Sparkles size={12} className="me-1 text-warning" />
-                                      {problem.ai_summary}
-                                    </div>
-                                  )}
+                                  <div className="small mt-1">
+                                    {problem.ai_summary ? (
+                                      <span className="text-muted">
+                                        <Sparkles size={12} className="me-1 text-warning" />
+                                        {problem.ai_summary}
+                                      </span>
+                                    ) : (
+                                      <span className="text-secondary fst-italic">
+                                        <Sparkles size={12} className="me-1 text-secondary" />
+                                        AI summary байхгүй
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
 
                                 <Button
                                   variant="outline-secondary"
                                   size="sm"
                                   onClick={() => handleGenerateSummary(problem)}
-                                  disabled={saving || generatingSummaryFor !== null}
+                                  disabled={saving || generatingSummaryFor !== null || generatingAll}
                                   className="ms-2"
                                   title="AI summary үүсгэх"
                                 >
@@ -396,7 +453,7 @@ const QuizEditPage = () => {
                                   variant="outline-danger"
                                   size="sm"
                                   onClick={() => handleRemoveProblem(problem.id)}
-                                  disabled={saving || (!warningAcknowledged && isPublic)}
+                                  disabled={saving || (!warningAcknowledged && wasInitiallyPublic)}
                                   className="ms-2"
                                 >
                                   <i className="bi bi-trash"></i>
@@ -434,7 +491,7 @@ const QuizEditPage = () => {
                     type="text"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    disabled={saving || (!warningAcknowledged && isPublic)}
+                    disabled={saving || (!warningAcknowledged && wasInitiallyPublic)}
                     required
                   />
                 </Form.Group>
@@ -449,7 +506,7 @@ const QuizEditPage = () => {
                     rows={3}
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    disabled={saving || (!warningAcknowledged && isPublic)}
+                    disabled={saving || (!warningAcknowledged && wasInitiallyPublic)}
                     placeholder="Тестийн дэлгэрэнгүй тайлбар, заавар..."
                   />
                 </Form.Group>
@@ -465,7 +522,7 @@ const QuizEditPage = () => {
                     max="300"
                     value={defaultTimeLimit}
                     onChange={(e) => setDefaultTimeLimit(e.target.value)}
-                    disabled={saving || (!warningAcknowledged && isPublic)}
+                    disabled={saving || (!warningAcknowledged && wasInitiallyPublic)}
                     placeholder="Хоосон = хязгааргүй"
                   />
                 </Form.Group>
@@ -478,7 +535,7 @@ const QuizEditPage = () => {
                   <Form.Select
                     value={gradeId}
                     onChange={(e) => setGradeId(e.target.value)}
-                    disabled={saving || (!warningAcknowledged && isPublic)}
+                    disabled={saving || (!warningAcknowledged && wasInitiallyPublic)}
                   >
                     <option value="">— Ангигүй —</option>
                     {grades.map((g) => (
@@ -495,7 +552,7 @@ const QuizEditPage = () => {
                   label="Нийтэд харагдах"
                   checked={isPublic}
                   onChange={(e) => setIsPublic(e.target.checked)}
-                  disabled={saving || (!warningAcknowledged && isPublic)}
+                  disabled={saving || (!warningAcknowledged && wasInitiallyPublic)}
                 />
               </Card.Body>
             </Card>
@@ -506,7 +563,7 @@ const QuizEditPage = () => {
                   <Button
                     variant="primary"
                     type="submit"
-                    disabled={saving || (!warningAcknowledged && isPublic)}
+                    disabled={saving || (!warningAcknowledged && wasInitiallyPublic)}
                   >
                     {saving ? (
                       <>

@@ -43,6 +43,7 @@ import {
   PlusCircle,
   Home,
   BookOpen,
+  Wand2,
 } from 'lucide-react';
 
 // (!!!) MathJax тохиргоог Layout.jsx-с авдаг болсон тул эндээс хассан.
@@ -152,6 +153,8 @@ const ProblemEditPage = () => {
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [converting, setConverting] = useState(false);
+  const [showConvertModal, setShowConvertModal] = useState(false);
   const [viewMode, setViewMode] = useState('source'); // 'visual' or 'source' - default: source
   const [isCopied, setIsCopied] = useState(false);
   const [originalTitle, setOriginalTitle] = useState('');
@@ -437,6 +440,22 @@ const ProblemEditPage = () => {
       });
   };
 
+  const handleConvertToMC = async () => {
+    setShowConvertModal(false);
+    setConverting(true);
+    setError(null);
+    try {
+      const response = await apiClient.post(`/api/integral/problems/${id}/convert_to_mc/`);
+      const newUuid = response.data.new_uuid;
+      navigate(`/problem/${newUuid}/edit`);
+    } catch (err) {
+      console.error('Convert to MC error:', err);
+      setError(err.response?.data?.error || 'Сонгох тест үүсгэхэд алдаа гарлаа.');
+    } finally {
+      setConverting(false);
+    }
+  };
+
   // isCopied state-г удирдах useEffect
   useEffect(() => {
     if (isCopied) {
@@ -503,38 +522,56 @@ const ProblemEditPage = () => {
       {/* (!!!) MathJaxContext-г эндээс хассан. Layout.jsx-с өвлөгдөнө. */}
       <Form onSubmit={handleSave}>
         {/* Толгой хэсэг */}
-        <Stack direction="horizontal" gap={3} className="mb-3">
-          <h2 className="h4 fw-bold mb-0">
-            <Edit3 size={24} className="me-2" />
-            {problem.title || `Бодлого #${id} засах`}
-          </h2>
-          <div className="ms-auto">
+        <h2 className="h4 fw-bold mb-2">
+          <Edit3 size={24} className="me-2" />
+          {problem.title || `Бодлого #${id} засах`}
+        </h2>
+        <Stack direction="horizontal" gap={2} className="mb-3">
+          <Button
+            variant={isCopied ? 'success' : 'outline-primary'}
+            size="sm"
+            onClick={handleCopyStatement}
+            disabled={saving || isCopied || !problem.statement}
+            title="Өгүүлбэр хуулах"
+          >
+            {isCopied ? (
+              <Check size={16} className="me-1" />
+            ) : (
+              <Copy size={16} className="me-1" />
+            )}
+            {isCopied ? 'Хуулсан!' : 'Өгүүлбэр хуулах'}
+          </Button>
+          {problem.type === 0 && (
             <Button
-              variant={isCopied ? 'success' : 'outline-primary'}
+              variant="outline-warning"
               size="sm"
-              onClick={handleCopyStatement}
-              disabled={saving || isCopied || !problem.statement}
-              className="me-2"
-              title="Өгүүлбэр хуулах"
+              onClick={() => setShowConvertModal(true)}
+              disabled={saving || converting}
+              title="AI ашиглан сонгох тест болгох"
             >
-              {isCopied ? (
-                <Check size={16} className="me-1" />
+              {converting ? (
+                <>
+                  <Spinner as="span" animation="border" size="sm" className="me-1" />
+                  Үүсгэж байна...
+                </>
               ) : (
-                <Copy size={16} className="me-1" />
+                <>
+                  <Wand2 size={16} className="me-1" />
+                  Сонгох тест болгох
+                </>
               )}
-              {isCopied ? 'Хуулсан!' : 'Өгүүлбэр хуулах'}
             </Button>
-            <Button
-              variant="outline-danger"
-              size="sm"
-              onClick={() => setShowDeleteModal(true)}
-              disabled={saving}
-              title="Устгах"
-            >
-              <Trash2 size={16} className="me-1" />
-              Устгах
-            </Button>
-          </div>
+          )}
+          <Button
+            variant="outline-danger"
+            size="sm"
+            onClick={() => setShowDeleteModal(true)}
+            disabled={saving}
+            title="Устгах"
+          >
+            <Trash2 size={16} className="me-1" />
+            Устгах
+          </Button>
         </Stack>
 
         {/* Үндсэн Карт */}
@@ -853,6 +890,40 @@ const ProblemEditPage = () => {
         </Card>
       </Form>
       {/* (!!!) MathJaxContext-г эндээс хассан. */}
+
+      {/* Convert to MC Confirmation Modal */}
+      <Modal show={showConvertModal} onHide={() => setShowConvertModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title className="h5">
+            <Wand2 size={20} className="me-2 text-warning" />
+            Сонгох тест болгох
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>
+            AI ашиглан <b>{problem.title || `Бодлого #${id}`}</b> бодлогыг клон хийж,{' '}
+            <b>5 сонгох хариулттай (1 зөв = 2 оноо, 4 буруу = 0 оноо)</b> шинэ бодлого үүсгэнэ.
+          </p>
+          {!problem.statement && (
+            <Alert variant="warning" className="py-2">
+              Бодлогын өгүүлбэр хоосон байна. AI-д илүү мэдээлэл өгсөн тусам илүү сайн хариулт гарна.
+            </Alert>
+          )}
+          <p className="text-muted small mb-0">
+            Эх бодлого өөрчлөгдөхгүй. Шинэ бодлого үүсэн засварлах хуудас руу шилжинэ.
+          </p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowConvertModal(false)}>
+            <X size={16} className="me-2" />
+            Цуцлах
+          </Button>
+          <Button variant="warning" onClick={handleConvertToMC}>
+            <Wand2 size={16} className="me-2" />
+            Үүсгэх
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
       {/* Delete Confirmation Modal */}
       <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered>

@@ -28,14 +28,9 @@ import {
   Home,
   Users,
   BookMarked,
-  Award,
   ShoppingCart,
   User as UserIcon,
   List,
-  LogIn,
-  PlusCircle,
-
-  HelpCircle,
   Calculator,
   Info,
   MessageCircle,
@@ -103,6 +98,13 @@ const Layout = () => {
     }
   };
 
+  // Бүх навигацийг автоматаар бүртгэх (RecentlyVisitedWidget-д зориулсан)
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('pathnamechange', {
+      detail: { path: location.pathname }
+    }));
+  }, [location.pathname]);
+
   useEffect(() => {
     const path = location.pathname;
 
@@ -121,7 +123,7 @@ const Layout = () => {
   }, [location.pathname]);
 
   return (
-    <MathJaxContext config={mathJaxConfig}>
+    <MathJaxContext version={3} config={mathJaxConfig}>
       <div className="min-vh-100 d-flex flex-column">
         {/* Modern Top Navigation Bar */}
         <Navbar
@@ -153,79 +155,17 @@ const Layout = () => {
                   <span>Контентийн сан</span>
                 </Nav.Link>
 
-                {/* Clubs Dropdown */}
-                <Dropdown as={Nav.Item}>
-                  <Dropdown.Toggle as={Nav.Link} className="d-flex align-items-center">
-                    <Users size={18} className="me-1" />
-                    <span>Клубууд</span>
-                  </Dropdown.Toggle>
-                  <Dropdown.Menu>
-                    {user && (
-                      <>
-                        <Dropdown.Item as={Link} to={`/clubs/user/${user.username}`}>
-                          <Users size={16} className="me-2" />
-                          Миний клуб
-                        </Dropdown.Item>
-                      </>
-                    )}
-                    <Dropdown.Item as={Link} to="/clubs">
-                      <List size={16} className="me-2" />
-                      Бүх клуб
-                    </Dropdown.Item>
-                    {user && (
-                      <>
-                        <Dropdown.Item onClick={() => setShowJoinModal(true)}>
-                          <LogIn size={16} className="me-2" />
-                          Клуб элсэх
-                        </Dropdown.Item>
-                        <Dropdown.Item as={Link} to="/teacher-invitations">
-                          <i className="bi bi-envelope me-2"></i>
-                          Багшийн урилга
-                        </Dropdown.Item>
-                        {user.membership_tier !== 'FREE' && (
-                          <>
-                            <Dropdown.Divider />
-                            <Dropdown.Item as={Link} to="/clubs/create">
-                              <PlusCircle size={16} className="me-2" />
-                              Клуб үүсгэх
-                            </Dropdown.Item>
-                          </>
-                        )}
-                      </>
-                    )}
-                  </Dropdown.Menu>
-                </Dropdown>
+                {/* Clubs */}
+                <Nav.Link as={Link} to="/clubs/browse" className="d-flex align-items-center">
+                  <Users size={18} className="me-1" />
+                  <span>Клубууд</span>
+                </Nav.Link>
 
-                {/* Info Dropdown */}
-                <Dropdown as={Nav.Item}>
-                  <Dropdown.Toggle as={Nav.Link} className="d-flex align-items-center">
-                    <Info size={18} className="me-1" />
-                    <span>Мэдээлэл</span>
-                  </Dropdown.Toggle>
-                  <Dropdown.Menu>
-                    <Dropdown.Item as={Link} to="/about">
-                      <i className="bi bi-info-circle me-2"></i>
-                      Танилцуулга
-                    </Dropdown.Item>
-                    <Dropdown.Item as={Link} to="/membership-guide">
-                      <i className="bi bi-question-circle me-2"></i>
-                      Гишүүнчлэл, клубт элсэх
-                    </Dropdown.Item>
-                    <Dropdown.Item as={Link} to="/nomads360">
-                      <i className="bi bi-globe me-2"></i>
-                      Nomads 360°
-                    </Dropdown.Item>
-                    <Dropdown.Divider />
-                    <Dropdown.Item as={Link} to="/terms">
-                      <i className="bi bi-file-text me-2"></i>
-                      Үйлчилгээний нөхцөл
-                    </Dropdown.Item>
-                    <Dropdown.Item as={Link} to="/privacy">
-                      <i className="bi bi-shield-check me-2"></i>
-                      Нууцлалын бодлого
-                    </Dropdown.Item>
-                  </Dropdown.Menu>
-                </Dropdown>
+                {/* Танилцуулга */}
+                <Nav.Link as={Link} to="/info" className="d-flex align-items-center">
+                  <Info size={18} className="me-1" />
+                  <span>Танилцуулга</span>
+                </Nav.Link>
               </Nav>
 
               {/* Right side - User menu */}
@@ -335,7 +275,7 @@ const Layout = () => {
                 <>
                   <Nav.Link
                     as={Link}
-                    to={`/clubs/user/${user.username}`}
+                    to="/clubs/browse?view=mine"
                     onClick={() => setShowSidebar(false)}
                   >
                     <Users size={18} className="me-2" />
@@ -343,7 +283,7 @@ const Layout = () => {
                   </Nav.Link>
                 </>
               )}
-              <Nav.Link as={Link} to="/clubs" onClick={() => setShowSidebar(false)}>
+              <Nav.Link as={Link} to="/clubs/browse" onClick={() => setShowSidebar(false)}>
                 <List size={18} className="me-2" />
                 Бүх клуб
               </Nav.Link>
@@ -425,16 +365,20 @@ const Layout = () => {
                 </>
               )}
 
-              <div className="mt-3 mb-1 px-3 text-muted small">Мэдээлэл</div>
-              <Nav.Link as={Link} to="/about" onClick={() => setShowSidebar(false)}>
+              <div className="mt-3 mb-1 px-3 text-muted small">Танилцуулга</div>
+              <Nav.Link as={Link} to="/info/about" onClick={() => setShowSidebar(false)}>
                 <i className="bi bi-info-circle me-2"></i>
                 Танилцуулга
               </Nav.Link>
-              <Nav.Link as={Link} to="/membership-guide" onClick={() => setShowSidebar(false)}>
+              <Nav.Link as={Link} to="/info/teachers" onClick={() => setShowSidebar(false)}>
+                <Users size={18} className="me-2" />
+                Багш нар
+              </Nav.Link>
+              <Nav.Link as={Link} to="/info/membership-guide" onClick={() => setShowSidebar(false)}>
                 <i className="bi bi-question-circle me-2"></i>
                 Гишүүнчлэл, клубт элсэх
               </Nav.Link>
-              <Nav.Link as={Link} to="/nomads360" onClick={() => setShowSidebar(false)}>
+              <Nav.Link as={Link} to="/info/nomads360" onClick={() => setShowSidebar(false)}>
                 <i className="bi bi-globe me-2"></i>
                 Nomads 360°
               </Nav.Link>

@@ -2,8 +2,7 @@
 // Клубын route-уудын тохиргоо
 
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
-import ClubsList from '../pages/ClubsList';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import ClubsUser from '../pages/ClubsUser.jsx';
 import ClubDetail from '../pages/ClubDetail';
 import ClubInfoPage from '../pages/ClubInfoPage';
@@ -12,6 +11,7 @@ import ClubDiscussionPage from '../pages/ClubDiscussionPage';
 import ClubVideosPage from '../pages/ClubVideosPage';
 import ClubMediaPage from '../pages/ClubMediaPage';
 import ClubAssignmentsPage from '../pages/ClubAssignmentsPage';
+import ClubExercisesPage from '../pages/ClubExercisesPage';
 import ClubQuizzesPage from '../pages/ClubQuizzesPage';
 import ClubExamsPage from '../pages/ClubExamsPage';
 import ClubMembersPage from '../pages/ClubMembersPage';
@@ -20,8 +20,8 @@ import CreateClub from '../pages/CreateClub';
 const ClubsRoutes = () => {
   return (
     <Routes>
-      {/* Клубуудын жагсаалт */}
-      <Route path="/" element={<ClubsList />} />
+      {/* Клубуудын жагсаалт → fullscreen browse хуудас руу чиглүүлэх */}
+      <Route path="/" element={<Navigate to="/clubs/browse" replace />} />
 
       {/* Миний клубууд */}
       <Route path="user/:username" element={<ClubsUser />} />
@@ -36,6 +36,7 @@ const ClubsRoutes = () => {
         <Route path="curriculum" element={<ClubCurriculumPage />} />
         <Route path="videos" element={<ClubVideosPage />} />
         <Route path="media" element={<ClubMediaPage />} />
+        <Route path="exercises" element={<ClubExercisesPage />} />
         <Route path="assignments" element={<ClubAssignmentsPage />} />
         <Route path="quizzes" element={<ClubQuizzesPage />} />
         <Route path="exams" element={<ClubExamsPage />} />

@@ -6,6 +6,7 @@ import { Container, Row, Col, Card, Button } from 'react-bootstrap';
 import {
   Download,
   FileText,
+  FileUp,
   Users,
   TrendingUp,
   Settings,
@@ -80,6 +81,25 @@ function DashboardPage() {
               </Card.Text>
               <Link to="/admin/mmo-import" className="btn btn-primary">
                 <Download size={18} className="me-2" />
+                Импортлох
+              </Link>
+            </Card.Body>
+          </Card>
+        </Col>
+
+        {/* Баримт бичгээс импортлох */}
+        <Col md={6} lg={4}>
+          <Card className="h-100 shadow-sm border-purple" style={{ borderColor: '#6f42c1' }}>
+            <Card.Body className="d-flex flex-column">
+              <div className="mb-3">
+                <FileUp size={40} style={{ color: '#6f42c1' }} />
+              </div>
+              <Card.Title>Баримтаас Бодлого Импортлох</Card.Title>
+              <Card.Text className="text-muted flex-grow-1">
+                PDF, зураг, Word файлаас бодлогуудыг Gemini AI ашиглан таньж импортлох.
+              </Card.Text>
+              <Link to="/admin/doc-import" className="btn" style={{ backgroundColor: '#6f42c1', color: '#fff' }}>
+                <FileUp size={18} className="me-2" />
                 Импортлох
               </Link>
             </Card.Body>

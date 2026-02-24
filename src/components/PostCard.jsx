@@ -1,5 +1,7 @@
 // frontend/src/components/PostCard.jsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import Viewer from 'viewerjs';
+import 'viewerjs/dist/viewer.css';
 import { Link, useNavigate } from 'react-router-dom';
 import apiClient from '../api/axiosConfig';
 import { useAuth } from '../context/AuthContext';
@@ -27,67 +29,130 @@ import Modal from 'react-bootstrap/Modal';
 // ----------------- PostImageGallery (Туслах компонент) -----------------
 // -------------------------------------------------------------------
 const PostImageGallery = ({ images }) => {
+  const galleryRef = useRef(null);
+  const viewerRef = useRef(null);
+
+  useEffect(() => {
+    if (!galleryRef.current || !images || images.length === 0) return;
+
+    viewerRef.current = new Viewer(galleryRef.current, {
+      toolbar: {
+        zoomIn: 1,
+        zoomOut: 1,
+        oneToOne: 1,
+        reset: 1,
+        prev: images.length > 1 ? 1 : 0,
+        play: 0,
+        next: images.length > 1 ? 1 : 0,
+        rotateLeft: 1,
+        rotateRight: 1,
+        flipHorizontal: 0,
+        flipVertical: 0,
+      },
+      navbar: images.length > 1,
+      title: false,
+    });
+
+    return () => {
+      if (viewerRef.current) {
+        viewerRef.current.destroy();
+        viewerRef.current = null;
+      }
+    };
+  }, [images]);
+
   if (!images || images.length === 0) return null;
 
   // 1. Нэг зураг байвал: Бүтнээр нь харуулах
   if (images.length === 1) {
     return (
-      <img
-        src={images[0].image}
-        className="img-fluid rounded my-2 post-image"
-        alt="Post attachment"
-        style={{
-          maxWidth: '100%',
-          maxHeight: '600px',
-          height: 'auto',
-          objectFit: 'contain',
-          display: 'block',
-          margin: '0 auto'
-        }}
-      />
+      <div
+        ref={galleryRef}
+        className="my-2"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <img
+          src={images[0].image}
+          className="img-fluid rounded post-image"
+          alt="Post attachment"
+          style={{
+            maxWidth: '100%',
+            maxHeight: '600px',
+            height: 'auto',
+            objectFit: 'contain',
+            display: 'block',
+            margin: '0 auto',
+            cursor: 'zoom-in',
+          }}
+        />
+      </div>
     );
   }
 
-  // 2. 2-4 зураг байвал: Grid
-  const gridTemplateColumns = images.length === 2 || images.length === 4 ? '1fr 1fr' : '1fr 1fr';
-  const gap = '4px';
+  // 2. 2+ зураг байвал: Grid
+  const visibleImages = images.slice(0, 4);
+  const hiddenImages = images.slice(4);
 
   return (
     <div
-      className="my-2 post-image-gallery"
-      style={{
-        display: 'grid',
-        gridTemplateColumns: gridTemplateColumns,
-        gap: gap,
-        borderRadius: '8px',
-        overflow: 'hidden',
-      }}
+      ref={galleryRef}
+      className="my-2"
+      onClick={(e) => e.stopPropagation()}
     >
-      {images.slice(0, 4).map((img, index) => (
-        <div
-          key={img.id}
-          className="position-relative"
-          style={{
-            paddingTop: '100%',
-            background: `url(${img.image}) no-repeat center center`,
-            backgroundSize: 'cover',
-            cursor: 'pointer',
-          }}
-        >
-          {images.length > 4 && index === 3 && (
-            <div
-              className="position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center"
+      <div
+        className="post-image-gallery"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '4px',
+          borderRadius: '8px',
+          overflow: 'hidden',
+        }}
+      >
+        {visibleImages.map((img, index) => (
+          <div
+            key={img.id}
+            className="position-relative"
+            style={{ paddingTop: '100%', overflow: 'hidden' }}
+          >
+            <img
+              src={img.image}
+              alt={`Post image ${index + 1}`}
               style={{
-                backgroundColor: 'rgba(0,0,0,0.5)',
-                color: 'white',
-                fontSize: '1.5rem',
-                fontWeight: 'bold',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                cursor: 'zoom-in',
               }}
-            >
-              +{images.length - 4}
-            </div>
-          )}
-        </div>
+            />
+            {images.length > 4 && index === 3 && (
+              <div
+                className="position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center"
+                style={{
+                  backgroundColor: 'rgba(0,0,0,0.5)',
+                  color: 'white',
+                  fontSize: '1.5rem',
+                  fontWeight: 'bold',
+                  pointerEvents: 'none',
+                }}
+              >
+                +{images.length - 4}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      {/* Viewer-т зориулсан нуугдмал зургууд (5-с дээш зурагтай үед) */}
+      {hiddenImages.map((img) => (
+        <img
+          key={img.id}
+          src={img.image}
+          alt="Post attachment"
+          style={{ display: 'none' }}
+        />
       ))}
     </div>
   );
@@ -97,6 +162,9 @@ const PostImageGallery = ({ images }) => {
 // ----------------- PostContent (Туслах компонент) ------------------
 // -------------------------------------------------------------------
 const PostContent = ({ post }) => {
+  const navigate = useNavigate();
+  const [showNavChoice, setShowNavChoice] = useState(false);
+
   if (!post) return null;
 
   // Энэ хэсэг хэвээрээ (post, repost, reply-г алгасна)
@@ -113,6 +181,20 @@ const PostContent = ({ post }) => {
 
   if (!relatedItem)
     return <div className="text-muted fst-italic">[Холбоотой контент олдсонгүй]</div>;
+
+  const detailUrlMap = {
+    article: `/article/${relatedItem.uuid}`,
+    problem: `/problem/${relatedItem.uuid}`,
+    formula: `/formula/${relatedItem.uuid}`,
+    quiz:    `/quiz/${relatedItem.uuid}`,
+  };
+  const contentUrl = relatedItem.uuid ? detailUrlMap[post.content_type] : null;
+  const postUrl    = `/post/${post.uuid}`;
+
+  const handleContentClick = (e) => {
+    e.stopPropagation();
+    if (contentUrl) setShowNavChoice(true);
+  };
 
   let title = relatedItem.title || relatedItem.name || `Контент #${relatedItem.id}`;
 
@@ -160,8 +242,41 @@ const PostContent = ({ post }) => {
 
   return (
     <>
+      {/* Очих хуудас сонгох modal */}
+      <Modal
+        show={showNavChoice}
+        onHide={() => setShowNavChoice(false)}
+        centered
+        size="sm"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <Modal.Body className="text-center py-4">
+          <p className="fw-semibold mb-3">Хаашаа очих вэ?</p>
+          <div className="d-flex gap-2 justify-content-center">
+            <Button
+              variant="primary" size="sm"
+              onClick={() => { setShowNavChoice(false); navigate(contentUrl); }}
+            >
+              <i className="bi bi-file-text me-1" />
+              {typeLabel} харах
+            </Button>
+            <Button
+              variant="outline-secondary" size="sm"
+              onClick={() => { setShowNavChoice(false); navigate(postUrl); }}
+            >
+              <i className="bi bi-chat-square me-1" />
+              Пост харах
+            </Button>
+          </div>
+        </Modal.Body>
+      </Modal>
+
       <LivePreview content={post.content} />
-      <Card className="bg-light border shadow-sm mt-2">
+      <Card
+        className="bg-light border shadow-sm mt-2 post-content-card"
+        onClick={contentUrl ? handleContentClick : undefined}
+        style={contentUrl ? { cursor: 'pointer' } : undefined}
+      >
         <Card.Body>
           {/* (!!! ЗАСВАР: badgeVariant-г ашигласан !!!) */}
           <Badge bg={badgeVariant} className="mb-2">
@@ -222,6 +337,13 @@ const PostCard = ({ post, onPostDeleted, depth = 0, compact = false, onCardClick
   const [showEditModal, setShowEditModal] = useState(false);
   const [editContent, setEditContent] = useState('');
   const [isEditing, setIsEditing] = useState(false);
+
+  // AI тусламж Modal
+  const [showAIModal, setShowAIModal] = useState(false);
+  const [aiResponse, setAiResponse] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState('');
+  const [isSavingReply, setIsSavingReply] = useState(false);
   const [currentViewCount, setCurrentViewCount] = useState(
     (post.reposted_post ? post.reposted_post.view_count : post.view_count) || 0
   );
@@ -367,6 +489,23 @@ const PostCard = ({ post, onPostDeleted, depth = 0, compact = false, onCardClick
     }
   };
 
+  // AI тусламж
+  const handleAIHelp = async (e) => {
+    e.stopPropagation();
+    setShowAIModal(true);
+    setAiResponse('');
+    setAiError('');
+    setAiLoading(true);
+    try {
+      const res = await apiClient.post(`/api/minds/posts/${currentPost.uuid}/ai_help/`);
+      setAiResponse(res.data.response || '');
+    } catch (err) {
+      setAiError(err.response?.data?.error || 'AI тусламж авч чадсангүй.');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   // Report Post - Open Modal
   const handleReportClick = (e) => {
     e.stopPropagation();
@@ -445,7 +584,7 @@ const PostCard = ({ post, onPostDeleted, depth = 0, compact = false, onCardClick
 
   // Navigation
   const navigateToPost = (e) => {
-    if (e.target.closest('a, button, .dropdown-toggle, .dropdown-item, .post-actions')) {
+    if (e.target.closest('a, button, .dropdown-toggle, .dropdown-item, .post-content-card')) {
       e.stopPropagation();
       return;
     }
@@ -647,6 +786,80 @@ const PostCard = ({ post, onPostDeleted, depth = 0, compact = false, onCardClick
         </Modal.Footer>
       </Modal>
 
+      {/* AI тусламж Modal */}
+      <Modal
+        show={showAIModal}
+        onHide={() => !aiLoading && !isSavingReply && setShowAIModal(false)}
+        centered
+        size="lg"
+      >
+        <Modal.Header closeButton>
+          <Modal.Title className="h5">
+            <i className="bi bi-stars me-2 text-warning"></i>
+            AI тусламж
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {aiLoading && (
+            <div className="text-center py-4">
+              <Spinner animation="border" variant="warning" className="mb-3" />
+              <p className="text-muted small mb-0">AI дүгнэж байна...</p>
+            </div>
+          )}
+          {!aiLoading && aiError && (
+            <div className="alert alert-danger small mb-0">{aiError}</div>
+          )}
+          {!aiLoading && aiResponse && (
+            <LivePreview content={aiResponse} />
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowAIModal(false)}
+            disabled={isSavingReply}
+          >
+            Хаах
+          </Button>
+          {aiResponse && !aiLoading && (
+            <Button
+              variant="primary"
+              size="sm"
+              disabled={isSavingReply}
+              onClick={async () => {
+                try {
+                  setIsSavingReply(true);
+                  await apiClient.post(`/api/minds/posts/${currentPost.uuid}/save_ai_reply/`, {
+                    content: aiResponse,
+                  });
+                  setCommentCount((c) => c + 1);
+                  setShowAIModal(false);
+                  showNotification('AI хариулт амжилттай хадгалагдлаа.', 'success');
+                } catch (err) {
+                  console.error('AI reply save error:', err);
+                  showNotification('Хадгалахад алдаа гарлаа.', 'danger');
+                } finally {
+                  setIsSavingReply(false);
+                }
+              }}
+            >
+              {isSavingReply ? (
+                <>
+                  <Spinner as="span" size="sm" className="me-1" />
+                  Хадгалж байна...
+                </>
+              ) : (
+                <>
+                  <i className="bi bi-chat-left-text me-1"></i>
+                  Хариулт болгон хадгалах
+                </>
+              )}
+            </Button>
+          )}
+        </Modal.Footer>
+      </Modal>
+
       {/* Edit Post Modal */}
       <Modal show={showEditModal} onHide={() => !isEditing && setShowEditModal(false)} centered>
         <Modal.Header closeButton>
@@ -698,8 +911,8 @@ const PostCard = ({ post, onPostDeleted, depth = 0, compact = false, onCardClick
       <Card
         ref={cardRef}
         className={`shadow-sm post-card ${compact ? 'mx-1 my-2' : 'm-3'} ${depth > 0 ? 'post-reply-card' : ''}`}
-        onClick={depth > 0 ? undefined : navigateToPost}
-        style={{ cursor: depth > 0 ? 'default' : 'pointer' }}
+        onClick={navigateToPost}
+        style={{ cursor: 'pointer' }}
       >
         {/* Repost мэдээлэл */}
         {isRepost && reposterAuthor && (
@@ -732,13 +945,11 @@ const PostCard = ({ post, onPostDeleted, depth = 0, compact = false, onCardClick
           <div className={isRepost ? 'reposted-content-wrapper border rounded p-3' : ''}>
             {/* Зохиогчийн мэдээлэл */}
             <Stack direction="horizontal" gap={3} className="align-items-start mb-2">
-              <Link to={`/profile/${originalAuthor.username}`} onClick={(e) => e.stopPropagation()}>
+              <Link to={`/profile/${originalAuthor.username}`}>
                 <UserAvatar user={originalAuthor} size={40} />
               </Link>
               <div className="flex-grow-1">
-                <div onClick={(e) => e.stopPropagation()}>
-                  <UserName user={originalAuthor} className="fw-bold" />
-                </div>
+                <UserName user={originalAuthor} className="fw-bold" />
                 <PostTimestamp
                   date={originalPost.created_at}
                   className="text-muted small mb-0 d-block"
@@ -747,7 +958,7 @@ const PostCard = ({ post, onPostDeleted, depth = 0, compact = false, onCardClick
 
               {/* Post Menu */}
               {user && (
-                <Dropdown align="end" onClick={(e) => e.stopPropagation()}>
+                <Dropdown align="end">
                   <Dropdown.Toggle
                     variant="link"
                     size="sm"
@@ -786,12 +997,21 @@ const PostCard = ({ post, onPostDeleted, depth = 0, compact = false, onCardClick
                       </>
                     )}
 
+                    {/* AI тусламж — бүх хэрэглэгчид */}
+                    <Dropdown.Item onClick={handleAIHelp}>
+                      <i className="bi bi-stars me-2"></i>
+                      AI тусламж
+                    </Dropdown.Item>
+
                     {/* Бүгдэд харагдах */}
                     {user.id !== originalAuthor?.id && (
-                      <Dropdown.Item onClick={handleReportClick}>
-                        <i className="bi bi-flag me-2"></i>
-                        Report хийх
-                      </Dropdown.Item>
+                      <>
+                        <Dropdown.Divider />
+                        <Dropdown.Item onClick={handleReportClick}>
+                          <i className="bi bi-flag me-2"></i>
+                          Report хийх
+                        </Dropdown.Item>
+                      </>
                     )}
                   </Dropdown.Menu>
                 </Dropdown>
