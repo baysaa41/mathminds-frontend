@@ -312,6 +312,19 @@ const PostDetailPage = () => {
     fetchThread();
   }, [fetchThread]);
 
+  // AI reply хадгалагдсаны дараа reload хийлгүй thread-д шууд нэмэх
+  const handleAIReplyAdded = useCallback((newPost) => {
+    setThread(prev => [...prev, newPost]);
+    // Эцэг постыг expand хийж шинэ reply харагдуулах
+    if (newPost.parent_post?.uuid) {
+      setExpandedSet(prev => {
+        const next = new Set(prev);
+        next.add(newPost.parent_post.uuid);
+        return next;
+      });
+    }
+  }, []);
+
   // Пост устгагдсан үед
   const handlePostDeleted = useCallback((deletedId) => {
     setAncestors(prev => prev.filter(p => p.id !== deletedId));
@@ -403,6 +416,7 @@ const PostDetailPage = () => {
                     compact
                     onCardClick={handleCardClick}
                     onPostDeleted={handlePostDeleted}
+                    onAIReplyAdded={handleAIReplyAdded}
                   />
 
                   {/* Collapsed: "N хариулт харах" */}

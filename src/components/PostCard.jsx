@@ -306,7 +306,7 @@ const PostContent = ({ post }) => {
 // -------------------------------------------------------------------
 // ----------------- Үндсэн PostCard компонент -----------------
 // -------------------------------------------------------------------
-const PostCard = ({ post, onPostDeleted, depth = 0, compact = false, onCardClick }) => {
+const PostCard = ({ post, onPostDeleted, depth = 0, compact = false, onCardClick, onAIReplyAdded }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -830,11 +830,12 @@ const PostCard = ({ post, onPostDeleted, depth = 0, compact = false, onCardClick
               onClick={async () => {
                 try {
                   setIsSavingReply(true);
-                  await apiClient.post(`/api/minds/posts/${currentPost.uuid}/save_ai_reply/`, {
+                  const res = await apiClient.post(`/api/minds/posts/${currentPost.uuid}/save_ai_reply/`, {
                     content: aiResponse,
                   });
                   setCommentCount((c) => c + 1);
                   setShowAIModal(false);
+                  onAIReplyAdded?.(res.data);
                   showNotification('AI хариулт амжилттай хадгалагдлаа.', 'success');
                 } catch (err) {
                   console.error('AI reply save error:', err);

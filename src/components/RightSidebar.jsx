@@ -31,7 +31,6 @@ const RightSidebar = ({
       {/* Төлбөрийн мэдээлэл - зөвхөн STUDY клубт */}
       {clubData && clubData.club_type === 'STUDY' && <ClubPaymentInfoWidget club={clubData} />}
 
-
       {/* Trending Widget (клубын хуудас биш үед) */}
       {!clubData && !isClubsPage && <TrendingPostsWidget />}
 

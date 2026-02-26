@@ -32,6 +32,7 @@ const ProblemEditPage = lazy(() => import('./pages/ProblemEditPage.jsx'));
 const ProblemsPage = lazy(() => import('./pages/ProblemsPage.jsx'));
 const ProblemsBrowsePage = lazy(() => import('./pages/ProblemsBrowsePage.jsx'));
 const SolutionEditPage = lazy(() => import('./pages/SolutionEditPage.jsx'));
+const SolutionDrawPage = lazy(() => import('./pages/SolutionDrawPage.jsx'));
 
 // Formulas
 const FormulasPage = lazy(() => import('./pages/FormulasPage.jsx'));
@@ -199,6 +200,16 @@ function App() {
             }
           />
         </Route>
+
+        {/* Бодолт зурах - Fullscreen Excalidraw */}
+        <Route
+          path="/problem/:uuid/draw"
+          element={
+            <ProtectedRoute>
+              <SolutionDrawPage />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Бодлогын сан - Fullscreen browse */}
         <Route

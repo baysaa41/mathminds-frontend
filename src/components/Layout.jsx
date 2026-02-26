@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import RightSidebar from '../components/RightSidebar';
+import DrawingOverlay from '../components/DrawingOverlay';
 import NotificationBell from '../components/NotificationBell';
 import JoinClubModal from '../components/JoinClubModal';
 import ScrollRestoration from '../components/ScrollRestoration';
@@ -35,6 +36,7 @@ import {
   Info,
   MessageCircle,
   BotMessageSquare,
+  PenLine,
 } from 'lucide-react';
 
 const Layout = () => {
@@ -79,6 +81,14 @@ const Layout = () => {
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  const handleOpenDraw = () => {
+    window.dispatchEvent(
+      new CustomEvent('openDrawingOverlay', {
+        detail: { pageUrl: location.pathname },
+      })
+    );
   };
 
   const handleJoinSuccess = (joinedClub) => {
@@ -228,16 +238,16 @@ const Layout = () => {
                           <ShoppingCart size={16} className="me-2" />
                           Миний худалдан авалт
                         </Dropdown.Item>
+                        <Dropdown.Item onClick={handleOpenDraw}>
+                          <PenLine size={16} className="me-2" />
+                          Зурах
+                        </Dropdown.Item>
                         {user.is_staff && (
                           <>
                             <Dropdown.Divider />
                             <Dropdown.Item as={Link} to="/admin" className="text-primary fw-bold">
                               <i className="bi bi-speedometer2 me-2"></i>
                               Admin Dashboard
-                            </Dropdown.Item>
-                            <Dropdown.Item as={Link} to="/admin/mmo-import">
-                              <i className="bi bi-download me-2"></i>
-                              MMO Импорт
                             </Dropdown.Item>
                           </>
                         )}
@@ -352,14 +362,6 @@ const Layout = () => {
                         <i className="bi bi-speedometer2 me-2"></i>
                         Dashboard
                       </Nav.Link>
-                      <Nav.Link
-                        as={Link}
-                        to="/admin/mmo-import"
-                        onClick={() => setShowSidebar(false)}
-                      >
-                        <i className="bi bi-download me-2"></i>
-                        MMO Импорт
-                      </Nav.Link>
                     </>
                   )}
                 </>
@@ -443,6 +445,9 @@ const Layout = () => {
           onHide={() => setShowJoinModal(false)}
           onSuccess={handleJoinSuccess}
         />
+
+        {/* Global Drawing Overlay */}
+        <DrawingOverlay />
       </div>
     </MathJaxContext>
   );

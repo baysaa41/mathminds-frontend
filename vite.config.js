@@ -24,6 +24,7 @@ export default defineConfig({
           'bootstrap': ['bootstrap', 'react-bootstrap'],
           'math': ['better-react-mathjax'],
           'editor': ['@tiptap/react', '@tiptap/starter-kit'],
+          'excalidraw': ['@excalidraw/excalidraw'],
         }
       }
     },

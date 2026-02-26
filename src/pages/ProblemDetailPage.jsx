@@ -87,6 +87,9 @@ const ProblemDetailPage = () => {
   const [error, setError] = useState(null);
   const [generatingAI, setGeneratingAI] = useState(false);
   const [aiSuccess, setAiSuccess] = useState(false);
+  const fontSizes = [1, 1.2, 1.5];
+  const [fontSizeIndex, setFontSizeIndex] = useState(0);
+  const fontSize = fontSizes[fontSizeIndex];
   const { user } = useAuth();
   const navigate = useNavigate();
   const { setPrefillData } = usePrefill();
@@ -256,7 +259,7 @@ const ProblemDetailPage = () => {
         )}
       </div>
 
-      {/* Мэдээллийн badges */}
+      {/* Мэдээллийн badges + үсэг хэмжээ */}
       <Stack direction="horizontal" gap={2} className="mb-3 flex-wrap">
         {problem.level_name && <Badge bg="secondary">{problem.level_name}</Badge>}
         {problem.type !== undefined && <Badge bg="info">{getProblemTypeLabel(problem.type)}</Badge>}
@@ -265,6 +268,27 @@ const ProblemDetailPage = () => {
         ) : (
           <Badge bg="secondary">Хувийн</Badge>
         )}
+        {/* Үсэг томруулах/жижигрүүлэх */}
+        <div className="ms-auto d-flex align-items-center">
+          <Button
+            variant="link"
+            className="text-decoration-none p-1 text-muted"
+            onClick={() => setFontSizeIndex((p) => Math.max(p - 1, 0))}
+            disabled={fontSizeIndex === 0}
+            title="Үсэг жижигрүүлэх"
+          >
+            <small style={{ fontSize: '0.7rem', fontWeight: 'bold' }}>Aa</small>
+          </Button>
+          <Button
+            variant="link"
+            className="text-decoration-none p-1 text-muted"
+            onClick={() => setFontSizeIndex((p) => Math.min(p + 1, fontSizes.length - 1))}
+            disabled={fontSizeIndex === fontSizes.length - 1}
+            title="Үсэг томруулах"
+          >
+            <span style={{ fontSize: '1rem', fontWeight: 'bold' }}>Aa</span>
+          </Button>
+        </div>
       </Stack>
 
       {/* Зохиогч, огноо */}
@@ -281,6 +305,9 @@ const ProblemDetailPage = () => {
       </div>
 
       <hr className="mb-4" />
+
+      {/* Үсэг хэмжээ хэрэглэгдэх контент */}
+      <div style={{ fontSize: `${fontSize}rem` }}>
 
       {/* Бодлогын агуулга */}
       <div className="mb-4">
@@ -339,7 +366,7 @@ const ProblemDetailPage = () => {
               Заавар ба Бодолт
             </h5>
             {canEdit && (
-              <Stack direction="horizontal" gap={2}>
+              <Stack direction="horizontal" gap={2} className="flex-wrap">
                 <Button
                   as={Link}
                   to={`/problem/${id}/solution/new`}
@@ -470,7 +497,7 @@ const ProblemDetailPage = () => {
             <Card.Body className="text-center py-4">
               <BookOpen size={32} className="text-muted mb-3" />
               <p className="text-muted mb-3">Энэ бодлогод заавар ба бодолт байхгүй байна.</p>
-              <Stack direction="horizontal" gap={2} className="justify-content-center">
+              <Stack direction="horizontal" gap={2} className="justify-content-center flex-wrap">
                 <Button variant="primary" size="sm" as={Link} to={`/problem/${id}/solution/new`}>
                   Бодолт нэмэх
                 </Button>
@@ -509,10 +536,13 @@ const ProblemDetailPage = () => {
           </div>
         )}
 
+      </div>{/* /fontSize wrapper */}
+
       <hr className="mt-5" />
       <Link to="/content/browse?type=problems" className="btn btn-outline-secondary btn-sm mt-3">
         &laquo; Бодлогын сан руу буцах
       </Link>
+
     </Container>
   );
 };
