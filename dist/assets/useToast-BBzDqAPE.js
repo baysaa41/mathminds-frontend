@@ -1,0 +1,1 @@
+import{r as t}from"./react-vendor-ClTBtk_6.js";const u=()=>{const[a,o]=t.useState({show:!1,message:"",variant:"info"}),e=t.useCallback((s,n="info")=>{o({show:!0,message:s,variant:n})},[]),r=t.useCallback(()=>{o(s=>({...s,show:!1}))},[]);return{toast:a,showToast:e,hideToast:r}};export{u};
