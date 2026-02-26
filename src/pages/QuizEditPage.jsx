@@ -1,6 +1,4 @@
 // frontend/src/pages/QuizEditPage.jsx
-// (!!! ШИНЭЧИЛСЭН: react-beautiful-dnd ашиглан Drag-and-Drop эрэмбэлэлт нэмсэн)
-// ✅ ШИНЭЧИЛСЭН: Icons нэмсэн
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
@@ -8,17 +6,14 @@ import apiClient from '../api/axiosConfig.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import LivePreview from '../components/LivePreview.jsx';
 
-// (!!!) 1. Drag and Drop-д зориулсан импортууд
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
-// React Bootstrap components
 import Container from 'react-bootstrap/Container';
 import Form from 'react-bootstrap/Form';
 import Button from 'react-bootstrap/Button';
 import Spinner from 'react-bootstrap/Spinner';
 import Alert from 'react-bootstrap/Alert';
 import Breadcrumb from 'react-bootstrap/Breadcrumb';
-import Stack from 'react-bootstrap/Stack';
 import Card from 'react-bootstrap/Card';
 import ListGroup from 'react-bootstrap/ListGroup';
 import Modal from 'react-bootstrap/Modal';
@@ -26,14 +21,39 @@ import InputGroup from 'react-bootstrap/InputGroup';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 
-// Lucide React Icons
-import { Edit3, Save, X, FileText, AlignLeft, Clock, GraduationCap, PlusCircle, Sparkles, Trash2 } from 'lucide-react';
+import { Edit3, Save, X, FileText, AlignLeft, Clock, GraduationCap, PlusCircle, Sparkles, Trash2, ArrowLeftRight } from 'lucide-react';
+
+// ── Бодлогын мөр (selected list болон modal аль алинд) ──────────
+const ProblemMeta = ({ problem }) => (
+  <div className="d-flex flex-wrap gap-1 mt-1">
+    {problem.ai_summary ? (
+      <span className="text-muted small">
+        <Sparkles size={11} className="me-1 text-warning" />
+        {problem.ai_summary}
+      </span>
+    ) : (
+      <span className="text-secondary fst-italic small">
+        <Sparkles size={11} className="me-1 text-secondary" />
+        AI summary байхгүй
+      </span>
+    )}
+    {problem.math_category && (
+      <span
+        className="badge ms-1"
+        style={{ backgroundColor: problem.math_category.color || '#6c757d', fontSize: '0.68rem' }}
+      >
+        {problem.math_category.name_mn || problem.math_category.name}
+      </span>
+    )}
+  </div>
+);
 
 const QuizEditPage = () => {
   const { uuid: id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
 
+  // ── Тестийн үндсэн state ──────────────────────────────────────
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [isPublic, setIsPublic] = useState(false);
@@ -50,21 +70,50 @@ const QuizEditPage = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Нийтлэгдсэн тест засварлах анхааруулга
   const [showPublishedWarning, setShowPublishedWarning] = useState(false);
   const [warningAcknowledged, setWarningAcknowledged] = useState(false);
   const [wasInitiallyPublic, setWasInitiallyPublic] = useState(false);
 
-  const [showProblemModal, setShowProblemModal] = useState(false);
-  const [modalSearchQuery, setModalSearchQuery] = useState('');
-  // ... (Modal-н бусад state-үүд хэвээрээ) ...
-  const [modalProblems, setModalProblems] = useState([]);
-  const [modalLoading, setModalLoading] = useState(false);
-  const [modalNextPageUrl, setModalNextPageUrl] = useState(null);
-  const [modalLoadError, setModalLoadError] = useState(null);
-  const modalLoadMoreTriggerRef = useRef(null);
-  const isHandlingModalLoadMore = useRef(false);
+  // ── AI Summary state ──────────────────────────────────────────
+  const [expandedStatements, setExpandedStatements] = useState(new Set());
+  const toggleStatement = (id) =>
+    setExpandedStatements((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
 
+  const [generatingSummaryFor, setGeneratingSummaryFor] = useState(null);
+  const [generatingAll, setGeneratingAll] = useState(false);
+  const [generateAllProgress, setGenerateAllProgress] = useState({ current: 0, total: 0 });
+
+  // ── Math categories (нэг удаа fetch) ─────────────────────────
+  const [mathCategories, setMathCategories] = useState([]);
+
+  // ── "Бодлого нэмэх" Modal ─────────────────────────────────────
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addQuery, setAddQuery] = useState('');
+  const [addProblems, setAddProblems] = useState([]);
+  const [addLoading, setAddLoading] = useState(false);
+  const [addNextPageUrl, setAddNextPageUrl] = useState(null);
+  const [addLoadError, setAddLoadError] = useState(null);
+  const addLoadMoreRef = useRef(null);
+  const addLoadingMoreRef = useRef(false);
+
+  // ── "Солих" Modal ─────────────────────────────────────────────
+  const [replacingIndex, setReplacingIndex] = useState(null);   // солигдох бодлогын index
+  const [replaceQuery, setReplaceQuery] = useState('');
+  const [replaceCatId, setReplaceCatId] = useState('');
+  const [replaceProblems, setReplaceProblems] = useState([]);
+  const [replaceLoading, setReplaceLoading] = useState(false);
+  const [replaceNextPageUrl, setReplaceNextPageUrl] = useState(null);
+  const [replaceLoadError, setReplaceLoadError] = useState(null);
+  const replaceLoadMoreRef = useRef(null);
+  const replaceLoadingMoreRef = useRef(false);
+
+  const replacingProblem = replacingIndex !== null ? selectedProblems[replacingIndex] : null;
+
+  // ── Анхны мэдээлэл татах ─────────────────────────────────────
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -103,15 +152,56 @@ const QuizEditPage = () => {
       try {
         const res = await apiClient.get('/api/integral/grades/');
         setGrades(Array.isArray(res.data) ? res.data : (res.data?.results || []));
-      } catch {
-        // grades татахад алдаа гарвал хоосон жагсаалттайгаар үргэлжлүүлнэ
-      }
+      } catch { /* grades байхгүй ч үргэлжлүүлнэ */ }
+    };
+
+    const fetchMathCategories = async () => {
+      try {
+        const res = await apiClient.get('/api/integral/math-categories/');
+        setMathCategories(Array.isArray(res.data) ? res.data : []);
+      } catch { /* категори байхгүй ч үргэлжлүүлнэ */ }
     };
 
     fetchData();
     fetchGrades();
+    fetchMathCategories();
   }, [id, user]);
 
+  // ── Drag & Drop ───────────────────────────────────────────────
+  const handleDragEnd = (result) => {
+    if (!warningAcknowledged && wasInitiallyPublic) return;
+    const { destination, source } = result;
+    if (!destination) return;
+    if (destination.droppableId === source.droppableId && destination.index === source.index) return;
+    const arr = Array.from(selectedProblems);
+    const [item] = arr.splice(source.index, 1);
+    arr.splice(destination.index, 0, item);
+    setSelectedProblems(arr);
+  };
+
+  // ── Хадгалах ─────────────────────────────────────────────────
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    try {
+      await apiClient.patch(`/api/integral/quizzes/${id}/`, {
+        title,
+        description,
+        is_public: isPublic,
+        default_time_limit: defaultTimeLimit !== '' ? Number(defaultTimeLimit) : null,
+        grade: gradeId !== '' ? Number(gradeId) : null,
+        problems: selectedProblems.map((p) => p.uuid),
+      });
+      navigate(`/quiz/${id}`);
+    } catch (err) {
+      setError('Тестийг хадгалахад алдаа гарлаа.');
+      console.error(err);
+      setSaving(false);
+    }
+  };
+
+  // ── Устгах ───────────────────────────────────────────────────
   const handleConfirmDelete = async () => {
     setIsDeleting(true);
     try {
@@ -125,152 +215,26 @@ const QuizEditPage = () => {
     }
   };
 
-  // (!!!) 2. ШИНЭ ФУНКЦ: Drag дуусахад ажиллах
-  const handleDragEnd = (result) => {
-    // Анхааруулга уншаагүй бол drag-г зөвшөөрөхгүй
-    if (!warningAcknowledged && wasInitiallyPublic) {
-      return;
-    }
-
-    const { destination, source } = result;
-
-    // Хэрэв жагсаалтаас гадуур унагавал юу ч хийхгүй
-    if (!destination) {
-      return;
-    }
-
-    // Хэрэв байрандаа буцааж тавьсан бол юу ч хийхгүй
-    if (destination.droppableId === source.droppableId && destination.index === source.index) {
-      return;
-    }
-
-    // State-г өөрчлөхийн тулд шинэ хуулбар үүсгэх
-    const newSelectedProblems = Array.from(selectedProblems);
-
-    // Чирсэн элементийг салгаж авах
-    const [reorderedItem] = newSelectedProblems.splice(source.index, 1);
-
-    // Шинэ байрлалд нь нэмэх
-    newSelectedProblems.splice(destination.index, 0, reorderedItem);
-
-    // State-г шинэ дарааллаар шинэчлэх
-    setSelectedProblems(newSelectedProblems);
-  };
-
-  // (!!!) handleSave функц ЯМАР Ч ӨӨРЧЛӨЛТГҮЙ ажиллана.
-  // Учир нь 'selectedProblems' state-н дараалал өөрчлөгдсөн тул
-  // problemIds нь автоматаар зөв дарааллыг авах болно.
-  const handleSave = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-    setError(null);
-
-    const problemIds = selectedProblems.map((p) => p.uuid);
-
-    try {
-      await apiClient.patch(`/api/integral/quizzes/${id}/`, {
-        title: title,
-        description: description,
-        is_public: isPublic,
-        default_time_limit: defaultTimeLimit !== '' ? Number(defaultTimeLimit) : null,
-        grade: gradeId !== '' ? Number(gradeId) : null,
-        problems: problemIds,
-      });
-      navigate(`/quiz/${id}`);
-    } catch (err) {
-      setError('Тестийг хадгалахад алдаа гарлаа.');
-      console.error(err);
-      setSaving(false);
-    }
-  };
-
-  // ... (Modal-н бүх функцууд: handleShowProblemModal, fetchModalProblems г.м. хэвээрээ) ...
-  // --- Modal-н функцууд ---
-  const handleShowProblemModal = () => {
-    setShowProblemModal(true);
-    setModalProblems([]);
-    setModalSearchQuery('');
-    setModalNextPageUrl(null);
-    setModalLoadError(null);
-    fetchModalProblems('', true);
-  };
-  const handleCloseProblemModal = () => {
-    setShowProblemModal(false);
-  };
-  const fetchModalProblems = async (query, isNewSearch = false) => {
-    setModalLoading(true);
-    setModalLoadError(null);
-    isHandlingModalLoadMore.current = true;
-    const params = { search: query, page_size: 10 };
-    try {
-      const response = await apiClient.get('/api/integral/problems/', { params });
-      if (response.data && Array.isArray(response.data.results)) {
-        setModalProblems(
-          isNewSearch ? response.data.results : [...modalProblems, ...response.data.results]
-        );
-        setModalNextPageUrl(response.data.next);
-      }
-    } catch (err) {
-      setModalLoadError('Бодлого ачааллахад алдаа гарлаа.');
-    } finally {
-      setModalLoading(false);
-      setTimeout(() => {
-        isHandlingModalLoadMore.current = false;
-      }, 300);
-    }
-  };
-  const handleModalSearchSubmit = (e) => {
-    e.preventDefault();
-    fetchModalProblems(modalSearchQuery, true);
-  };
-  const handleModalLoadMore = useCallback(async () => {
-    if (!modalNextPageUrl || isHandlingModalLoadMore.current) return;
-    isHandlingModalLoadMore.current = true;
-    setModalLoading(true);
-    try {
-      const response = await apiClient.get(modalNextPageUrl);
-      if (response.data && Array.isArray(response.data.results)) {
-        setModalProblems((prev) => [...prev, ...response.data.results]);
-        setModalNextPageUrl(response.data.next);
-      }
-    } catch (err) {
-      setModalLoadError('Нэмэлт бодлого ачааллахад алдаа гарлаа.');
-    } finally {
-      setModalLoading(false);
-      setTimeout(() => {
-        isHandlingModalLoadMore.current = false;
-      }, 300);
-    }
-  }, [modalNextPageUrl]);
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && modalNextPageUrl && !isHandlingModalLoadMore.current) {
-          handleModalLoadMore();
-        }
-      },
-      { threshold: 1.0 }
+  // ── AI Summary ────────────────────────────────────────────────
+  const applyGeneratedSummary = (problemId, data) => {
+    setSelectedProblems((prev) =>
+      prev.map((p) => {
+        if (p.id !== problemId) return p;
+        const updates = {};
+        if (data.ai_summary) updates.ai_summary = data.ai_summary;
+        if (data.math_category) updates.math_category = data.math_category;
+        return { ...p, ...updates };
+      })
     );
-    const currentTrigger = modalLoadMoreTriggerRef.current;
-    if (currentTrigger) observer.observe(currentTrigger);
-    return () => {
-      if (currentTrigger) observer.unobserve(currentTrigger);
-    };
-  }, [modalNextPageUrl, handleModalLoadMore]);
-  const [generatingSummaryFor, setGeneratingSummaryFor] = useState(null);
-  const [generatingAll, setGeneratingAll] = useState(false);
-  const [generateAllProgress, setGenerateAllProgress] = useState({ current: 0, total: 0 });
+  };
 
   const handleGenerateSummary = async (problem) => {
     setGeneratingSummaryFor(problem.id);
     try {
-      const response = await apiClient.post(`/api/integral/problems/${problem.uuid}/generate_summary/`);
-      const newSummary = response.data.ai_summary;
-      setSelectedProblems((prev) =>
-        prev.map((p) => (p.id === problem.id ? { ...p, ai_summary: newSummary } : p))
-      );
+      const res = await apiClient.post(`/api/integral/problems/${problem.uuid}/generate_summary/`);
+      applyGeneratedSummary(problem.id, res.data);
     } catch (err) {
-      console.error('AI summary generation error:', err);
+      console.error('AI summary error:', err);
     } finally {
       setGeneratingSummaryFor(null);
     }
@@ -282,33 +246,175 @@ const QuizEditPage = () => {
     setGeneratingAll(true);
     setGenerateAllProgress({ current: 0, total: missing.length });
     for (let i = 0; i < missing.length; i++) {
-      const problem = missing[i];
       setGenerateAllProgress({ current: i + 1, total: missing.length });
       try {
-        const response = await apiClient.post(`/api/integral/problems/${problem.uuid}/generate_summary/`);
-        const newSummary = response.data.ai_summary;
-        setSelectedProblems((prev) =>
-          prev.map((p) => (p.id === problem.id ? { ...p, ai_summary: newSummary } : p))
-        );
+        const res = await apiClient.post(`/api/integral/problems/${missing[i].uuid}/generate_summary/`);
+        applyGeneratedSummary(missing[i].id, res.data);
       } catch (err) {
-        console.error(`AI summary error for problem ${problem.id}:`, err);
+        console.error(`AI summary error for ${missing[i].id}:`, err);
       }
     }
     setGeneratingAll(false);
     setGenerateAllProgress({ current: 0, total: 0 });
   };
 
-  // --- Сонгогдсон бодлогыг удирдах (хэвээрээ) ---
-  const handleAddProblem = (problem) => {
-    if (!selectedProblems.find((p) => p.id === problem.id)) {
-      setSelectedProblems((prev) => [...prev, problem]);
-    }
-  };
+  // ── Selected problems удирдах ─────────────────────────────────
   const handleRemoveProblem = (problemId) => {
     setSelectedProblems((prev) => prev.filter((p) => p.id !== problemId));
   };
 
-  // --- Үндсэн Render (loading, error хэсгүүд хэвээрээ) ---
+  // ════════════════════════════════════════════════════════════
+  // "БОДЛОГО НЭМЭХ" MODAL
+  // ════════════════════════════════════════════════════════════
+  const fetchAddProblems = useCallback(async (query, isNew = false) => {
+    addLoadingMoreRef.current = true;
+    setAddLoading(true);
+    setAddLoadError(null);
+    try {
+      const res = await apiClient.get('/api/integral/problems/', { params: { search: query, page_size: 10 } });
+      if (res.data && Array.isArray(res.data.results)) {
+        setAddProblems((prev) => isNew ? res.data.results : [...prev, ...res.data.results]);
+        setAddNextPageUrl(res.data.next);
+      }
+    } catch {
+      setAddLoadError('Бодлого ачааллахад алдаа гарлаа.');
+    } finally {
+      setAddLoading(false);
+      setTimeout(() => { addLoadingMoreRef.current = false; }, 300);
+    }
+  }, []);
+
+  const handleShowAddModal = () => {
+    setShowAddModal(true);
+    setAddQuery('');
+    setAddProblems([]);
+    setAddNextPageUrl(null);
+    setAddLoadError(null);
+    fetchAddProblems('', true);
+  };
+
+  const handleAddModalLoadMore = useCallback(async () => {
+    if (!addNextPageUrl || addLoadingMoreRef.current) return;
+    addLoadingMoreRef.current = true;
+    setAddLoading(true);
+    try {
+      const res = await apiClient.get(addNextPageUrl);
+      if (res.data && Array.isArray(res.data.results)) {
+        setAddProblems((prev) => [...prev, ...res.data.results]);
+        setAddNextPageUrl(res.data.next);
+      }
+    } catch {
+      setAddLoadError('Нэмэлт бодлого ачааллахад алдаа гарлаа.');
+    } finally {
+      setAddLoading(false);
+      setTimeout(() => { addLoadingMoreRef.current = false; }, 300);
+    }
+  }, [addNextPageUrl]);
+
+  useEffect(() => {
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && addNextPageUrl && !addLoadingMoreRef.current)
+          handleAddModalLoadMore();
+      },
+      { threshold: 1.0 }
+    );
+    const el = addLoadMoreRef.current;
+    if (el) obs.observe(el);
+    return () => { if (el) obs.unobserve(el); };
+  }, [addNextPageUrl, handleAddModalLoadMore]);
+
+  const handleAddProblem = (problem) => {
+    if (!selectedProblems.find((p) => p.id === problem.id))
+      setSelectedProblems((prev) => [...prev, problem]);
+  };
+
+  // ════════════════════════════════════════════════════════════
+  // "СОЛИХ" MODAL
+  // ════════════════════════════════════════════════════════════
+  const fetchReplaceProblems = useCallback(async (query, catId, isNew = false) => {
+    replaceLoadingMoreRef.current = true;
+    setReplaceLoading(true);
+    setReplaceLoadError(null);
+    try {
+      const params = { search: query, page_size: 10 };
+      if (catId) params.math_category = catId;
+      const res = await apiClient.get('/api/integral/problems/', { params });
+      if (res.data && Array.isArray(res.data.results)) {
+        setReplaceProblems((prev) => isNew ? res.data.results : [...prev, ...res.data.results]);
+        setReplaceNextPageUrl(res.data.next);
+      }
+    } catch {
+      setReplaceLoadError('Бодлого ачааллахад алдаа гарлаа.');
+    } finally {
+      setReplaceLoading(false);
+      setTimeout(() => { replaceLoadingMoreRef.current = false; }, 300);
+    }
+  }, []);
+
+  const handleOpenReplaceModal = (index) => {
+    const prob = selectedProblems[index];
+    const catId = prob?.math_category?.id ?? '';
+    setReplacingIndex(index);
+    setReplaceQuery('');
+    setReplaceCatId(String(catId));
+    setReplaceProblems([]);
+    setReplaceNextPageUrl(null);
+    setReplaceLoadError(null);
+    fetchReplaceProblems('', String(catId), true);
+  };
+
+  const handleCloseReplaceModal = () => {
+    setReplacingIndex(null);
+  };
+
+  const handleReplaceModalLoadMore = useCallback(async () => {
+    if (!replaceNextPageUrl || replaceLoadingMoreRef.current) return;
+    replaceLoadingMoreRef.current = true;
+    setReplaceLoading(true);
+    try {
+      const res = await apiClient.get(replaceNextPageUrl);
+      if (res.data && Array.isArray(res.data.results)) {
+        setReplaceProblems((prev) => [...prev, ...res.data.results]);
+        setReplaceNextPageUrl(res.data.next);
+      }
+    } catch {
+      setReplaceLoadError('Нэмэлт бодлого ачааллахад алдаа гарлаа.');
+    } finally {
+      setReplaceLoading(false);
+      setTimeout(() => { replaceLoadingMoreRef.current = false; }, 300);
+    }
+  }, [replaceNextPageUrl]);
+
+  useEffect(() => {
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && replaceNextPageUrl && !replaceLoadingMoreRef.current)
+          handleReplaceModalLoadMore();
+      },
+      { threshold: 1.0 }
+    );
+    const el = replaceLoadMoreRef.current;
+    if (el) obs.observe(el);
+    return () => { if (el) obs.unobserve(el); };
+  }, [replaceNextPageUrl, handleReplaceModalLoadMore]);
+
+  const handleReplaceProblem = (newProblem) => {
+    if (replacingIndex === null) return;
+    // аль хэдийн байгаа бол солихгүй (өөр индекс дээр)
+    const existsElsewhere = selectedProblems.some(
+      (p, i) => p.id === newProblem.id && i !== replacingIndex
+    );
+    if (existsElsewhere) return;
+    setSelectedProblems((prev) => {
+      const arr = [...prev];
+      arr[replacingIndex] = newProblem;
+      return arr;
+    });
+    handleCloseReplaceModal();
+  };
+
+  // ── Render ───────────────────────────────────────────────────
   if (loading) {
     return (
       <Container className="d-flex justify-content-center align-items-center py-5">
@@ -320,24 +426,17 @@ const QuizEditPage = () => {
     return (
       <Container className="mt-4">
         <Alert variant="danger">{error}</Alert>
-        <Link to={id ? `/quiz/${id}` : '/quizzes'}> &laquo; Буцах</Link>
+        <Link to={id ? `/quiz/${id}` : '/quizzes'}>&laquo; Буцах</Link>
       </Container>
     );
   }
 
   return (
     <Container className="py-4">
-      {/* Breadcrumb Navigation */}
       <Breadcrumb className="mb-3">
-        <Breadcrumb.Item linkAs={Link} linkProps={{ to: '/' }}>
-          Нүүр
-        </Breadcrumb.Item>
-        <Breadcrumb.Item linkAs={Link} linkProps={{ to: '/quizzes' }}>
-          Тестүүд
-        </Breadcrumb.Item>
-        <Breadcrumb.Item linkAs={Link} linkProps={{ to: `/quiz/${id}` }}>
-          {originalTitle || 'Тест'}
-        </Breadcrumb.Item>
+        <Breadcrumb.Item linkAs={Link} linkProps={{ to: '/' }}>Нүүр</Breadcrumb.Item>
+        <Breadcrumb.Item linkAs={Link} linkProps={{ to: '/quizzes' }}>Тестүүд</Breadcrumb.Item>
+        <Breadcrumb.Item linkAs={Link} linkProps={{ to: `/quiz/${id}` }}>{originalTitle || 'Тест'}</Breadcrumb.Item>
         <Breadcrumb.Item active>Засварлах</Breadcrumb.Item>
       </Breadcrumb>
 
@@ -348,7 +447,7 @@ const QuizEditPage = () => {
 
       <Form onSubmit={handleSave}>
         <Row>
-          {/* Зүүн тал: Бодлогуудын жагсаалт */}
+          {/* ── Зүүн тал: Бодлогуудын жагсаалт ── */}
           <Col lg={8}>
             <DragDropContext onDragEnd={handleDragEnd}>
               <Card className="mb-4">
@@ -379,7 +478,7 @@ const QuizEditPage = () => {
                     <Button
                       variant="primary"
                       size="sm"
-                      onClick={handleShowProblemModal}
+                      onClick={handleShowAddModal}
                       disabled={!warningAcknowledged && wasInitiallyPublic}
                     >
                       <PlusCircle size={16} className="me-1" />
@@ -393,70 +492,86 @@ const QuizEditPage = () => {
                     <ListGroup variant="flush" ref={provided.innerRef} {...provided.droppableProps}>
                       {selectedProblems.length > 0 ? (
                         selectedProblems.map((problem, index) => (
-                          <Draggable
-                            key={problem.id}
-                            draggableId={String(problem.id)}
-                            index={index}
-                          >
+                          <Draggable key={problem.id} draggableId={String(problem.id)} index={index}>
                             {(provided) => (
                               <ListGroup.Item
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
-                                className="d-flex align-items-center"
+                                className="d-flex align-items-center gap-2"
                               >
+                                {/* Drag handle */}
                                 <div
                                   {...provided.dragHandleProps}
-                                  className="me-3 px-2 text-muted"
+                                  className="px-1 text-muted flex-shrink-0"
                                   title="Чирч эрэмбийг солих"
                                   style={{ cursor: 'grab' }}
                                 >
-                                  <i className="bi bi-grip-vertical"></i>
+                                  <i className="bi bi-grip-vertical" />
                                 </div>
 
-                                <span className="fw-bold me-3">{index + 1}.</span>
+                                <span className="fw-bold flex-shrink-0">{index + 1}.</span>
 
-                                <div className="flex-grow-1">
-                                  <LivePreview
-                                    content={problem.title || `Бодлого #${problem.id}`}
-                                  />
-                                  <div className="small mt-1">
-                                    {problem.ai_summary ? (
-                                      <span className="text-muted">
-                                        <Sparkles size={12} className="me-1 text-warning" />
-                                        {problem.ai_summary}
-                                      </span>
-                                    ) : (
-                                      <span className="text-secondary fst-italic">
-                                        <Sparkles size={12} className="me-1 text-secondary" />
-                                        AI summary байхгүй
-                                      </span>
+                                {/* Бодлогын мэдээлэл */}
+                                <div className="flex-grow-1 min-width-0">
+                                  <div className="d-flex align-items-baseline gap-2">
+                                    <LivePreview content={problem.title || `Бодлого #${problem.id}`} />
+                                    {problem.statement && (
+                                      <button
+                                        type="button"
+                                        className="btn btn-link p-0 text-muted flex-shrink-0"
+                                        style={{ fontSize: '0.72rem' }}
+                                        onClick={() => toggleStatement(problem.id)}
+                                      >
+                                        {expandedStatements.has(problem.id) ? 'нуух' : 'өгүүлбэр'}
+                                      </button>
                                     )}
                                   </div>
+                                  {expandedStatements.has(problem.id) && problem.statement && (
+                                    <div
+                                      className="text-muted mt-1"
+                                      style={{ fontSize: '0.82rem', maxHeight: 120, overflowY: 'auto' }}
+                                    >
+                                      <LivePreview content={problem.statement} />
+                                    </div>
+                                  )}
+                                  <ProblemMeta problem={problem} />
                                 </div>
 
+                                {/* AI Summary товч */}
                                 <Button
                                   variant="outline-secondary"
                                   size="sm"
                                   onClick={() => handleGenerateSummary(problem)}
                                   disabled={saving || generatingSummaryFor !== null || generatingAll}
-                                  className="ms-2"
                                   title="AI summary үүсгэх"
+                                  className="flex-shrink-0"
                                 >
-                                  {generatingSummaryFor === problem.id ? (
-                                    <Spinner as="span" size="sm" />
-                                  ) : (
-                                    <Sparkles size={14} />
-                                  )}
+                                  {generatingSummaryFor === problem.id
+                                    ? <Spinner as="span" size="sm" />
+                                    : <Sparkles size={14} />}
                                 </Button>
 
+                                {/* Солих товч */}
+                                <Button
+                                  variant="outline-info"
+                                  size="sm"
+                                  onClick={() => handleOpenReplaceModal(index)}
+                                  disabled={saving || (!warningAcknowledged && wasInitiallyPublic)}
+                                  title="Өөр бодлогоор солих"
+                                  className="flex-shrink-0"
+                                >
+                                  <ArrowLeftRight size={14} />
+                                </Button>
+
+                                {/* Хасах товч */}
                                 <Button
                                   variant="outline-danger"
                                   size="sm"
                                   onClick={() => handleRemoveProblem(problem.id)}
                                   disabled={saving || (!warningAcknowledged && wasInitiallyPublic)}
-                                  className="ms-2"
+                                  className="flex-shrink-0"
                                 >
-                                  <i className="bi bi-trash"></i>
+                                  <i className="bi bi-trash" />
                                 </Button>
                               </ListGroup.Item>
                             )}
@@ -477,19 +592,17 @@ const QuizEditPage = () => {
             </DragDropContext>
           </Col>
 
-          {/* Баруун тал: Тестийн мэдээлэл + Хадгалах */}
+          {/* ── Баруун тал: Тестийн мэдээлэл ── */}
           <Col lg={4}>
             <Card className="mb-3">
               <Card.Header as="h6" className="fw-semibold">Тестийн мэдээлэл</Card.Header>
               <Card.Body>
                 <Form.Group className="mb-3" controlId="quizTitle">
                   <Form.Label className="fw-semibold small">
-                    <FileText size={14} className="me-1" />
-                    Гарчиг
+                    <FileText size={14} className="me-1" />Гарчиг
                   </Form.Label>
                   <Form.Control
-                    type="text"
-                    value={title}
+                    type="text" value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     disabled={saving || (!warningAcknowledged && wasInitiallyPublic)}
                     required
@@ -498,13 +611,10 @@ const QuizEditPage = () => {
 
                 <Form.Group className="mb-3" controlId="quizDescription">
                   <Form.Label className="fw-semibold small">
-                    <AlignLeft size={14} className="me-1" />
-                    Тайлбар
+                    <AlignLeft size={14} className="me-1" />Тайлбар
                   </Form.Label>
                   <Form.Control
-                    as="textarea"
-                    rows={3}
-                    value={description}
+                    as="textarea" rows={3} value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     disabled={saving || (!warningAcknowledged && wasInitiallyPublic)}
                     placeholder="Тестийн дэлгэрэнгүй тайлбар, заавар..."
@@ -513,14 +623,10 @@ const QuizEditPage = () => {
 
                 <Form.Group className="mb-3" controlId="quizTimeLimit">
                   <Form.Label className="fw-semibold small">
-                    <Clock size={14} className="me-1" />
-                    Хугацааны хязгаар (минут)
+                    <Clock size={14} className="me-1" />Хугацааны хязгаар (минут)
                   </Form.Label>
                   <Form.Control
-                    type="number"
-                    min="1"
-                    max="300"
-                    value={defaultTimeLimit}
+                    type="number" min="1" max="300" value={defaultTimeLimit}
                     onChange={(e) => setDefaultTimeLimit(e.target.value)}
                     disabled={saving || (!warningAcknowledged && wasInitiallyPublic)}
                     placeholder="Хоосон = хязгааргүй"
@@ -529,8 +635,7 @@ const QuizEditPage = () => {
 
                 <Form.Group className="mb-3" controlId="quizGrade">
                   <Form.Label className="fw-semibold small">
-                    <GraduationCap size={14} className="me-1" />
-                    Зорилтот анги
+                    <GraduationCap size={14} className="me-1" />Зорилтот анги
                   </Form.Label>
                   <Form.Select
                     value={gradeId}
@@ -539,19 +644,14 @@ const QuizEditPage = () => {
                   >
                     <option value="">— Ангигүй —</option>
                     {grades.map((g) => (
-                      <option key={g.id} value={g.id}>
-                        {g.name || `${g.grade}-р анги`}
-                      </option>
+                      <option key={g.id} value={g.id}>{g.name || `${g.grade}-р анги`}</option>
                     ))}
                   </Form.Select>
                 </Form.Group>
 
                 <Form.Check
-                  type="switch"
-                  id="is-public-switch"
-                  label="Нийтэд харагдах"
-                  checked={isPublic}
-                  onChange={(e) => setIsPublic(e.target.checked)}
+                  type="switch" id="is-public-switch" label="Нийтэд харагдах"
+                  checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)}
                   disabled={saving || (!warningAcknowledged && wasInitiallyPublic)}
                 />
               </Card.Body>
@@ -560,59 +660,28 @@ const QuizEditPage = () => {
             <Card>
               <Card.Body>
                 <div className="d-grid gap-2">
-                  <Button
-                    variant="primary"
-                    type="submit"
-                    disabled={saving || (!warningAcknowledged && wasInitiallyPublic)}
-                  >
+                  <Button variant="primary" type="submit" disabled={saving || (!warningAcknowledged && wasInitiallyPublic)}>
                     {saving ? (
-                      <>
-                        <Spinner
-                          as="span"
-                          animation="border"
-                          size="sm"
-                          role="status"
-                          aria-hidden="true"
-                          className="me-2"
-                        />
-                        Хадгалж байна...
-                      </>
+                      <><Spinner as="span" animation="border" size="sm" className="me-2" />Хадгалж байна...</>
                     ) : (
-                      <>
-                        <Save size={16} className="me-2" />
-                        Хадгалах
-                      </>
+                      <><Save size={16} className="me-2" />Хадгалах</>
                     )}
                   </Button>
-                  <Button
-                    variant="outline-secondary"
-                    onClick={() => navigate(`/quiz/${id}`)}
-                    disabled={saving}
-                  >
-                    <X size={16} className="me-2" />
-                    Цуцлах
+                  <Button variant="outline-secondary" onClick={() => navigate(`/quiz/${id}`)} disabled={saving}>
+                    <X size={16} className="me-2" />Цуцлах
                   </Button>
-                  <Button
-                    variant="outline-danger"
-                    onClick={() => setShowDeleteModal(true)}
-                    disabled={saving || isDeleting}
-                  >
-                    <Trash2 size={16} className="me-2" />
-                    Устгах
+                  <Button variant="outline-danger" onClick={() => setShowDeleteModal(true)} disabled={saving || isDeleting}>
+                    <Trash2 size={16} className="me-2" />Устгах
                   </Button>
                 </div>
-                {error && (
-                  <Alert variant="danger" className="mt-3">
-                    {error}
-                  </Alert>
-                )}
+                {error && <Alert variant="danger" className="mt-3">{error}</Alert>}
               </Card.Body>
             </Card>
           </Col>
         </Row>
       </Form>
 
-      {/* Устгах баталгаажуулах modal */}
+      {/* ══ Устгах modal ══════════════════════════════════════════ */}
       <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered>
         <Modal.Header closeButton>
           <Modal.Title>Тест устгах</Modal.Title>
@@ -625,9 +694,7 @@ const QuizEditPage = () => {
           </small>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowDeleteModal(false)} disabled={isDeleting}>
-            Цуцлах
-          </Button>
+          <Button variant="secondary" onClick={() => setShowDeleteModal(false)} disabled={isDeleting}>Цуцлах</Button>
           <Button variant="danger" onClick={handleConfirmDelete} disabled={isDeleting}>
             {isDeleting ? <Spinner as="span" size="sm" className="me-2" /> : <Trash2 size={14} className="me-2" />}
             Устгах
@@ -635,117 +702,79 @@ const QuizEditPage = () => {
         </Modal.Footer>
       </Modal>
 
-      {/* Нийтлэгдсэн тест засварлах анхааруулга */}
-      <Modal
-        show={showPublishedWarning}
-        onHide={() => {}}
-        backdrop="static"
-        keyboard={false}
-        centered
-      >
+      {/* ══ Нийтлэгдсэн тест засварлах анхааруулга ══════════════ */}
+      <Modal show={showPublishedWarning} onHide={() => {}} backdrop="static" keyboard={false} centered>
         <Modal.Header className="bg-warning">
           <Modal.Title>⚠️ Анхааруулга</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <p className="mb-3">
-            Энэ тест <strong>нийтлэгдсэн</strong> байна. Засварлах нь дараах нөлөөтэй:
-          </p>
+          <p className="mb-3">Энэ тест <strong>нийтлэгдсэн</strong> байна. Засварлах нь дараах нөлөөтэй:</p>
           <ul className="mb-3">
             <li>Тестийг өмнө нь бөглөсөн хэрэглэгчдийн хариулт өөрчлөгдөж болзошгүй</li>
             <li>Статистик, үр дүн буруу харагдаж болзошгүй</li>
             <li>Идэвхтэй тест бөглөж байгаа хүмүүст асуудал үүсгэж болзошгүй</li>
           </ul>
           <Alert variant="info" className="mb-0">
-            <small>
-              Хэрэв та зөвхөн алдаа засах гэж байгаа бол үргэлжлүүлж болно.
-              Томоохон өөрчлөлт хийх бол тестийг нийтлэхийг хураах эсвэл шинэ тест үүсгэхийг зөвлөж байна.
-            </small>
+            <small>Хэрэв та зөвхөн алдаа засах гэж байгаа бол үргэлжлүүлж болно.</small>
           </Alert>
         </Modal.Body>
         <Modal.Footer>
-          <Button
-            variant="secondary"
-            onClick={() => navigate(`/quiz/${id}`)}
-          >
-            Буцах
-          </Button>
-          <Button
-            variant="warning"
-            onClick={() => {
-              setShowPublishedWarning(false);
-              setWarningAcknowledged(true);
-            }}
-          >
+          <Button variant="secondary" onClick={() => navigate(`/quiz/${id}`)}>Буцах</Button>
+          <Button variant="warning" onClick={() => { setShowPublishedWarning(false); setWarningAcknowledged(true); }}>
             Ойлголоо, засварлах
           </Button>
         </Modal.Footer>
       </Modal>
 
-      {/* ... (Modal хэсэг хэвээрээ) ... */}
-      <Modal show={showProblemModal} onHide={handleCloseProblemModal} size="lg" scrollable>
+      {/* ══ Бодлого нэмэх modal ══════════════════════════════════ */}
+      <Modal show={showAddModal} onHide={() => setShowAddModal(false)} size="lg" scrollable>
         <Modal.Header closeButton>
           <Modal.Title>Бодлогын сангаас сонгох</Modal.Title>
         </Modal.Header>
         <Modal.Body style={{ minHeight: '60vh' }}>
-          {/* Modal доторх хайлт */}
-          <Form onSubmit={handleModalSearchSubmit}>
+          <Form onSubmit={(e) => { e.preventDefault(); fetchAddProblems(addQuery, true); }}>
             <InputGroup className="mb-3">
               <Form.Control
                 type="text"
-                placeholder="Бодлогын гарчиг, агуулгаар хайх..."
-                value={modalSearchQuery}
-                onChange={(e) => setModalSearchQuery(e.target.value)}
+                placeholder="Гарчиг, агуулгаар хайх..."
+                value={addQuery}
+                onChange={(e) => setAddQuery(e.target.value)}
               />
-              <Button type="submit" variant="primary" disabled={modalLoading}>
-                {modalLoading && isHandlingModalLoadMore.current ? (
-                  <Spinner as="span" size="sm" />
-                ) : (
-                  'Хайх'
-                )}
+              <Button type="submit" variant="primary" disabled={addLoading}>
+                {addLoading ? <Spinner as="span" size="sm" /> : 'Хайх'}
               </Button>
             </InputGroup>
           </Form>
 
-          {modalLoadError && <Alert variant="danger">{modalLoadError}</Alert>}
+          {addLoadError && <Alert variant="danger">{addLoadError}</Alert>}
 
-          {/* Modal доторх хайлтын үр дүн */}
           <ListGroup variant="flush">
-            {modalProblems.length > 0
-              ? modalProblems.map((problem) => {
+            {addProblems.length > 0
+              ? addProblems.map((problem) => {
                   const isAdded = selectedProblems.some((p) => p.id === problem.id);
                   return (
-                    <ListGroup.Item key={problem.id} className="d-flex align-items-center">
+                    <ListGroup.Item key={problem.id} className="d-flex align-items-center gap-2">
                       <div className="flex-grow-1">
                         <LivePreview content={problem.title || `Бодлого #${problem.id}`} />
-                        <div className="text-muted small">
-                          Төрөл: {problem.type_display || 'Тодорхойгүй'}
-                        </div>
+                        <ProblemMeta problem={problem} />
                       </div>
                       <Button
                         variant={isAdded ? 'success' : 'outline-primary'}
                         size="sm"
                         onClick={() => handleAddProblem(problem)}
                         disabled={isAdded}
+                        className="flex-shrink-0"
                       >
-                        {isAdded ? (
-                          <>
-                            <i className="bi bi-check-lg"></i> Нэмэгдсэн
-                          </>
-                        ) : (
-                          'Нэмэх'
-                        )}
+                        {isAdded ? <><i className="bi bi-check-lg" /> Нэмэгдсэн</> : 'Нэмэх'}
                       </Button>
                     </ListGroup.Item>
                   );
                 })
-              : !modalLoading && (
+              : !addLoading && (
                   <div className="text-center text-muted p-3">Хайлтын үр дүн олдсонгүй.</div>
                 )}
-
-            {/* Modal infinite scroll trigger */}
-            <div ref={modalLoadMoreTriggerRef} style={{ height: '20px' }} />
-
-            {modalLoading && (
+            <div ref={addLoadMoreRef} style={{ height: 20 }} />
+            {addLoading && (
               <div className="text-center py-3">
                 <Spinner as="span" animation="border" size="sm" />
                 <span className="ms-2">Ачааллаж байна...</span>
@@ -754,9 +783,127 @@ const QuizEditPage = () => {
           </ListGroup>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={handleCloseProblemModal}>
-            Хаах
-          </Button>
+          <Button variant="secondary" onClick={() => setShowAddModal(false)}>Хаах</Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* ══ Солих modal ══════════════════════════════════════════ */}
+      <Modal show={replacingIndex !== null} onHide={handleCloseReplaceModal} size="lg" scrollable>
+        <Modal.Header closeButton>
+          <Modal.Title className="h6">
+            <ArrowLeftRight size={16} className="me-2 text-info" />
+            {replacingProblem
+              ? <>
+                  <span className="text-muted fw-normal">{replacingIndex + 1}. бодлогыг солих: </span>
+                  <span className="fw-semibold" style={{ fontSize: '0.9rem' }}>
+                    {replacingProblem.title || `Бодлого #${replacingProblem.id}`}
+                  </span>
+                </>
+              : 'Бодлого солих'}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body style={{ minHeight: '60vh' }}>
+
+          {/* Одоогийн бодлогын мэдээлэл */}
+          {replacingProblem && (
+            <Alert variant="light" className="py-2 small mb-3 border">
+              <strong>Одоогийн бодлого:</strong>
+              <ProblemMeta problem={replacingProblem} />
+            </Alert>
+          )}
+
+          {/* Хайлт + Категори шүүлтүүр */}
+          <Form
+            onSubmit={(e) => {
+              e.preventDefault();
+              fetchReplaceProblems(replaceQuery, replaceCatId, true);
+            }}
+          >
+            <Row className="g-2 mb-3">
+              <Col>
+                <InputGroup>
+                  <Form.Control
+                    type="text"
+                    placeholder="Гарчиг, агуулгаар хайх..."
+                    value={replaceQuery}
+                    onChange={(e) => setReplaceQuery(e.target.value)}
+                  />
+                  <Button type="submit" variant="primary" disabled={replaceLoading}>
+                    {replaceLoading ? <Spinner as="span" size="sm" /> : 'Хайх'}
+                  </Button>
+                </InputGroup>
+              </Col>
+              <Col xs="auto">
+                <Form.Select
+                  value={replaceCatId}
+                  style={{ minWidth: 160 }}
+                  onChange={(e) => {
+                    setReplaceCatId(e.target.value);
+                    fetchReplaceProblems(replaceQuery, e.target.value, true);
+                  }}
+                >
+                  <option value="">Бүх категори</option>
+                  {mathCategories.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.name_mn || cat.name}
+                    </option>
+                  ))}
+                </Form.Select>
+              </Col>
+            </Row>
+          </Form>
+
+          {replaceLoadError && <Alert variant="danger">{replaceLoadError}</Alert>}
+
+          <ListGroup variant="flush">
+            {replaceProblems.length > 0
+              ? replaceProblems.map((problem) => {
+                  const isCurrent = replacingProblem?.id === problem.id;
+                  const isElsewhere = !isCurrent && selectedProblems.some((p) => p.id === problem.id);
+                  return (
+                    <ListGroup.Item
+                      key={problem.id}
+                      className="d-flex align-items-center gap-2"
+                      style={isCurrent ? { background: '#f0f7ff' } : undefined}
+                    >
+                      <div className="flex-grow-1">
+                        <LivePreview content={problem.title || `Бодлого #${problem.id}`} />
+                        <ProblemMeta problem={problem} />
+                      </div>
+                      <Button
+                        variant={isCurrent ? 'secondary' : isElsewhere ? 'outline-secondary' : 'outline-info'}
+                        size="sm"
+                        onClick={() => !isCurrent && !isElsewhere && handleReplaceProblem(problem)}
+                        disabled={isCurrent || isElsewhere}
+                        className="flex-shrink-0"
+                        title={
+                          isCurrent ? 'Одоогийн бодлого' :
+                          isElsewhere ? 'Аль хэдийн тестэд байна' : 'Энэ бодлогоор солих'
+                        }
+                      >
+                        {isCurrent
+                          ? 'Одоогийн'
+                          : isElsewhere
+                          ? 'Байна'
+                          : <><ArrowLeftRight size={13} className="me-1" />Солих</>}
+                      </Button>
+                    </ListGroup.Item>
+                  );
+                })
+              : !replaceLoading && (
+                  <div className="text-center text-muted p-3">Хайлтын үр дүн олдсонгүй.</div>
+                )}
+            <div ref={replaceLoadMoreRef} style={{ height: 20 }} />
+            {replaceLoading && (
+              <div className="text-center py-3">
+                <Spinner as="span" animation="border" size="sm" />
+                <span className="ms-2">Ачааллаж байна...</span>
+              </div>
+            )}
+          </ListGroup>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleCloseReplaceModal}>Хаах</Button>
         </Modal.Footer>
       </Modal>
     </Container>
