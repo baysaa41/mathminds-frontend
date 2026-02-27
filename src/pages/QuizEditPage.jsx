@@ -21,7 +21,7 @@ import InputGroup from 'react-bootstrap/InputGroup';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 
-import { Edit3, Save, X, FileText, AlignLeft, Clock, GraduationCap, PlusCircle, Sparkles, Trash2, ArrowLeftRight } from 'lucide-react';
+import { Edit3, Save, X, FileText, AlignLeft, Clock, GraduationCap, PlusCircle, Sparkles, Trash2, ArrowLeftRight, Download } from 'lucide-react';
 
 // ── Бодлогын мөр (selected list болон modal аль алинд) ──────────
 const ProblemMeta = ({ problem }) => (
@@ -261,6 +261,32 @@ const QuizEditPage = () => {
   // ── Selected problems удирдах ─────────────────────────────────
   const handleRemoveProblem = (problemId) => {
     setSelectedProblems((prev) => prev.filter((p) => p.id !== problemId));
+  };
+
+  // ── LaTeX экспорт ─────────────────────────────────────────────
+  const [exportingLatex, setExportingLatex] = useState(false);
+
+  const handleExportLatex = async () => {
+    setExportingLatex(true);
+    try {
+      const response = await apiClient.get(`/api/integral/quizzes/${id}/export_latex/`, {
+        responseType: 'blob',
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'text/plain' }));
+      const link = document.createElement('a');
+      link.href = url;
+      const disposition = response.headers['content-disposition'] || '';
+      const match = disposition.match(/filename="(.+?)"/);
+      link.setAttribute('download', match ? match[1] : 'quiz.tex');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('LaTeX export error:', err);
+    } finally {
+      setExportingLatex(false);
+    }
   };
 
   // ════════════════════════════════════════════════════════════
@@ -665,6 +691,18 @@ const QuizEditPage = () => {
                       <><Spinner as="span" animation="border" size="sm" className="me-2" />Хадгалж байна...</>
                     ) : (
                       <><Save size={16} className="me-2" />Хадгалах</>
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline-success"
+                    onClick={handleExportLatex}
+                    disabled={exportingLatex || selectedProblems.length === 0}
+                    title="Бодлогуудыг LaTeX файл болгон татах"
+                  >
+                    {exportingLatex ? (
+                      <><Spinner as="span" animation="border" size="sm" className="me-2" />Бэлтгэж байна...</>
+                    ) : (
+                      <><Download size={16} className="me-2" />LaTeX татах (.tex)</>
                     )}
                   </Button>
                   <Button variant="outline-secondary" onClick={() => navigate(`/quiz/${id}`)} disabled={saving}>
