@@ -26,6 +26,10 @@ const ArticlesBrowsePage = lazy(() => import('./pages/ArticlesBrowsePage.jsx'));
 // Posts
 const PostDetailPage = lazy(() => import('./pages/PostDetailPage.jsx'));
 
+// AI Solver
+const SolverPage = lazy(() => import('./pages/SolverPage.jsx'));
+const AISolverPage = lazy(() => import('./pages/AISolverPage.jsx'));
+
 // Problems
 const ProblemDetailPage = lazy(() => import('./pages/ProblemDetailPage.jsx'));
 const ProblemEditPage = lazy(() => import('./pages/ProblemEditPage.jsx'));
@@ -98,6 +102,7 @@ const EmailCampaignCreatePage = lazy(() => import('./pages/EmailCampaignCreatePa
 const EmailCampaignDetailPage = lazy(() => import('./pages/EmailCampaignDetailPage.jsx'));
 
 // Products
+const StoreLayout = lazy(() => import('./pages/StoreLayout.jsx'));
 const ProductListPage = lazy(() => import('./pages/ProductListPage.jsx'));
 const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage.jsx'));
 const CartPage = lazy(() => import('./pages/CartPage.jsx'));
@@ -144,6 +149,9 @@ function App() {
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="messages" element={<MessagesPage />} />
           <Route path="ai-chat" element={<MessagesPage aiOnly={true} />} />
+
+          {/* AI Ярилцлага Шийдэгч */}
+          <Route path="solver" element={<SolverPage />} />
 
           {/* Post дэлгэрэнгүй */}
           <Route path="post/:postId" element={<PostDetailPage />} />
@@ -200,6 +208,16 @@ function App() {
             }
           />
         </Route>
+
+        {/* AI хамтарсан бодолт - Fullscreen, staff only */}
+        <Route
+          path="/problem/:uuid/ai-solve"
+          element={
+            <ProtectedRoute>
+              <AISolverPage />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Бодолт зурах - Fullscreen Excalidraw */}
         <Route
@@ -280,55 +298,21 @@ function App() {
           <Route path="teachers" element={<TopTeachersPage />} />
         </Route>
 
-        {/* E-commerce хуудсууд - Layout-гүй, бие даасан */}
+        {/* E-commerce хуудсууд — StoreLayout sidebar-тай */}
         <Route
-          path="/products"
           element={
             <ProtectedRoute>
-              <ProductListPage />
+              <StoreLayout />
             </ProtectedRoute>
           }
-        />
-        <Route
-          path="/products/:id"
-          element={
-            <ProtectedRoute>
-              <ProductDetailPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/cart"
-          element={
-            <ProtectedRoute>
-              <CartPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/checkout"
-          element={
-            <ProtectedRoute>
-              <CheckoutPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/my-purchases"
-          element={
-            <ProtectedRoute>
-              <MyPurchasesPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/purchases/:userId"
-          element={
-            <ProtectedRoute>
-              <MyPurchasesPage />
-            </ProtectedRoute>
-          }
-        />
+        >
+          <Route path="/products"        element={<ProductListPage />} />
+          <Route path="/products/:id"    element={<ProductDetailPage />} />
+          <Route path="/cart"            element={<CartPage />} />
+          <Route path="/checkout"        element={<CheckoutPage />} />
+          <Route path="/my-purchases"    element={<MyPurchasesPage />} />
+          <Route path="/purchases/:userId" element={<MyPurchasesPage />} />
+        </Route>
         <Route
           path="/membership"
           element={

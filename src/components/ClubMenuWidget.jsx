@@ -22,7 +22,7 @@ const ClubMenuWidget = ({ club }) => {
     { path: `/clubs/${clubId}/assignments`, label: 'Даалгавар', icon: ClipboardList },
     { path: `/clubs/${clubId}/quizzes`, label: 'Сорил', icon: FileQuestion },
     { path: `/clubs/${clubId}/members`, label: 'Гишүүд', icon: Users },
-    { path: `/clubs/${clubId}`, label: 'Мэдээлэл', icon: Info, exact: true },
+    { path: `/clubs/${clubId}/info`, label: 'Мэдээлэл', icon: Info },
   ];
 
   const isActive = (item) => {

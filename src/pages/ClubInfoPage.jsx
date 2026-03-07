@@ -1,5 +1,5 @@
 // ClubInfoPage - Клубын мэдээлэл (үндсэн хуудас)
-import React, { useState, useEffect, useRef } from 'react';
+import React from 'react';
 import { useOutletContext, Link } from 'react-router-dom';
 import Card from 'react-bootstrap/Card';
 import Row from 'react-bootstrap/Row';
@@ -7,105 +7,30 @@ import Col from 'react-bootstrap/Col';
 import Badge from 'react-bootstrap/Badge';
 import Button from 'react-bootstrap/Button';
 import ListGroup from 'react-bootstrap/ListGroup';
-import Form from 'react-bootstrap/Form';
-import InputGroup from 'react-bootstrap/InputGroup';
-import Spinner from 'react-bootstrap/Spinner';
 import UserAvatar from '../components/UserAvatar';
-import { Calendar, Users, Award, ShieldCheck, DollarSign, Settings, Key, LogIn, LogOut, UserPlus, X, Search } from 'lucide-react';
-import apiClient from '../api/axiosConfig';
-import { inviteTeacher, formatErrorMessage } from '../services/clubsService';
+import { Calendar, Users, Award, ShieldCheck, DollarSign, Settings, Key, LogIn, LogOut, X } from 'lucide-react';
 import LivePreview from '../components/LivePreview';
+import ClubFeed from '../components/ClubFeed';
 
-const ClubInfoPage = () => {
+const ClubInfoPage = ({ forceInfo = false }) => {
   const {
     clubData: club,
     clubActions,
     isCreator,
-    newTeacherUsername,
-    setNewTeacherUsername,
-    addingTeacher,
-    showToast
   } = useOutletContext();
 
   if (!club) return null;
+
+  // Гишүүн эсвэл багш бол хэлэлцүүлэг харуулах (forceInfo үед үзүүлэхгүй)
+  if (!forceInfo && (club.role === 'member' || club.role === 'teacher')) {
+    return <ClubFeed clubId={club.id} clubName={club.name} />;
+  }
 
   const teachers = club.teachers || [];
   const admins = club.admins || [];
 
   // Удирдагч багшийг багш нарын жагсаалтаас хасах
   const otherAdmins = admins.filter(admin => admin.id !== club.creator);
-
-  // Teacher search state
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [searching, setSearching] = useState(false);
-  const [showResults, setShowResults] = useState(false);
-  const searchRef = useRef(null);
-  const searchTimeoutRef = useRef(null);
-
-  // Search users
-  useEffect(() => {
-    if (searchQuery.trim().length < 2) {
-      setSearchResults([]);
-      setShowResults(false);
-      return;
-    }
-
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-
-    searchTimeoutRef.current = setTimeout(async () => {
-      try {
-        setSearching(true);
-        const response = await apiClient.get(`/users/api/search/?q=${encodeURIComponent(searchQuery)}`);
-        setSearchResults(response.data || []);
-        setShowResults(true);
-      } catch (error) {
-        console.error('Search error:', error);
-        setSearchResults([]);
-      } finally {
-        setSearching(false);
-      }
-    }, 300);
-
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
-  }, [searchQuery]);
-
-  // Close results when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (searchRef.current && !searchRef.current.contains(event.target)) {
-        setShowResults(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const handleSelectUser = async (user) => {
-    // Хайлтын цонхыг хаах
-    setSearchQuery('');
-    setShowResults(false);
-    setSearchResults([]);
-
-    // Шууд урилга илгээх
-    if (!club?.id) return;
-
-    try {
-      const result = await inviteTeacher(club.id, user.username);
-      showToast?.(result.detail || 'Багшийн урилга илгээгдлээ!', 'success');
-      // Клубын мэдээллийг шинэчлэх
-      clubActions?.onUpdate?.();
-    } catch (err) {
-      showToast?.(formatErrorMessage(err), 'danger');
-    }
-  };
 
   return (
     <div className="container-fluid">
@@ -308,99 +233,6 @@ const ClubInfoPage = () => {
               </ListGroup.Item>
             ))}
           </ListGroup>
-        </Card>
-      )}
-
-      {/* Багш урих (зөвхөн багш бол) */}
-      {club.role === 'teacher' && clubActions?.onInviteTeacher && (
-        <Card className="shadow-sm mb-4">
-          <Card.Header>
-            <h6 className="mb-0">Багш урих</h6>
-          </Card.Header>
-          <Card.Body>
-            {/* Багш хайх */}
-            <div className="position-relative mb-3" ref={searchRef}>
-              <InputGroup size="sm">
-                <InputGroup.Text>
-                  <Search size={14} />
-                </InputGroup.Text>
-                <Form.Control
-                  type="text"
-                  placeholder="Багш хайх..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  disabled={addingTeacher}
-                />
-              </InputGroup>
-              <Form.Text className="text-muted small">
-                Нэр эсвэл username-ээр хайж, жагсаалтаас сонгоно
-              </Form.Text>
-
-              {/* Search results dropdown */}
-              {showResults && searchResults.length > 0 && (
-                <Card className="position-absolute w-100 mt-1" style={{ zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
-                  <ListGroup variant="flush">
-                    {searchResults.map((user) => (
-                      <ListGroup.Item
-                        key={user.id}
-                        action
-                        onClick={() => handleSelectUser(user)}
-                        className="py-2"
-                        style={{ cursor: 'pointer' }}
-                      >
-                        <div className="d-flex align-items-center gap-2">
-                          <UserAvatar user={user} size={32} />
-                          <div>
-                            <div className="fw-semibold small">
-                              {user.first_name || user.username}
-                            </div>
-                            <small className="text-muted">@{user.username}</small>
-                          </div>
-                        </div>
-                      </ListGroup.Item>
-                    ))}
-                  </ListGroup>
-                </Card>
-              )}
-
-              {searching && (
-                <div className="text-center text-muted small mt-1">
-                  <Spinner animation="border" size="sm" /> Хайж байна...
-                </div>
-              )}
-            </div>
-
-            {/* Selected username + invite button */}
-            <Form onSubmit={clubActions.onInviteTeacher}>
-              <Form.Label className="small mb-1">Эсвэл username шууд оруулах:</Form.Label>
-              <InputGroup size="sm">
-                <Form.Control
-                  type="text"
-                  placeholder="Username оруулах"
-                  value={newTeacherUsername || ''}
-                  onChange={(e) => setNewTeacherUsername && setNewTeacherUsername(e.target.value)}
-                  disabled={addingTeacher}
-                />
-                <Button
-                  type="submit"
-                  variant="primary"
-                  disabled={addingTeacher || !newTeacherUsername?.trim()}
-                >
-                  {addingTeacher ? (
-                    <Spinner animation="border" size="sm" />
-                  ) : (
-                    <>
-                      <UserPlus size={14} className="me-1" />
-                      Урих
-                    </>
-                  )}
-                </Button>
-              </InputGroup>
-              <Form.Text className="text-muted small">
-                Урилга зөвшөөрснөөр багш админ эрхтэй болж, +10 сурагчдын хязгаар нэмэгдэнэ
-              </Form.Text>
-            </Form>
-          </Card.Body>
         </Card>
       )}
 

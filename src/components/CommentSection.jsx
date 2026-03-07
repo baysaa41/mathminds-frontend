@@ -13,6 +13,7 @@ import Stack from 'react-bootstrap/Stack';
 import Image from 'react-bootstrap/Image';
 import CloseButton from 'react-bootstrap/CloseButton';
 import { MessageCircle } from 'lucide-react';
+import EmojiPickerButton from './EmojiPickerButton';
 
 // ----------------------
 // Reply form (Олон зураг дэмждэг болсон)
@@ -22,10 +23,10 @@ const ReplyForm = ({ parentId, onReplyAdded }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // (!!! Олон зураг хадгалах State !!!)
   const [imageFiles, setImageFiles] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
   const imageInputRef = useRef(null);
+  const textareaRef = useRef(null);
 
   /**
    * Олон зураг сонгох үед ажиллана
@@ -134,6 +135,7 @@ const ReplyForm = ({ parentId, onReplyAdded }) => {
         onChange={(e) => setContent(e.target.value)}
         disabled={loading}
         className="mb-2"
+        ref={textareaRef}
       />
 
       {/* Зургийн Preview Хэсэг */}
@@ -184,6 +186,19 @@ const ReplyForm = ({ parentId, onReplyAdded }) => {
           <i className="bi bi-images me-1"></i>
           Зураг {imageFiles.length > 0 && `(${imageFiles.length} / 10)`}
         </Button>
+        <EmojiPickerButton
+          textareaRef={textareaRef}
+          onInsert={(newValue, cursorPos) => {
+            setContent(newValue);
+            setTimeout(() => {
+              if (textareaRef.current) {
+                textareaRef.current.selectionStart = cursorPos;
+                textareaRef.current.selectionEnd = cursorPos;
+              }
+            }, 0);
+          }}
+          disabled={loading}
+        />
 
         <div className="ms-auto">
           <Button

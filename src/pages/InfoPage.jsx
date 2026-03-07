@@ -2,10 +2,10 @@
 // "Мэдээлэл" хуудас — зүүн sidebar цэстэй, Outlet-ээр дотоод хуудсуудыг харуулна
 
 import React from 'react';
-import { useNavigate, useLocation, Outlet, Link } from 'react-router-dom';
+import { useLocation, Outlet, Link } from 'react-router-dom';
 import { Info, HelpCircle, Globe, Users } from 'lucide-react';
+import AppHeader from '../components/AppHeader';
 
-import Navbar from 'react-bootstrap/Navbar';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 import Button from 'react-bootstrap/Button';
@@ -19,32 +19,12 @@ const MENU_ITEMS = [
 ];
 
 function InfoPage() {
-  const navigate = useNavigate();
   const location = useLocation();
 
   return (
     <div className="d-flex flex-column vh-100">
 
-      {/* Top Navbar */}
-      <Navbar bg="white" className="border-bottom shadow-sm px-3" style={{ zIndex: 10 }}>
-        <Navbar.Brand
-          className="d-flex align-items-center"
-          style={{ cursor: 'pointer' }}
-          onClick={() => navigate('/')}
-        >
-          <i className="bi bi-info-circle text-primary me-2 fs-4"></i>
-          <span className="fw-bold">Танилцуулга</span>
-        </Navbar.Brand>
-
-        <Button
-          variant="outline-secondary"
-          size="sm"
-          className="ms-auto"
-          onClick={() => navigate(-1)}
-        >
-          <i className="bi bi-arrow-left me-1"></i>Буцах
-        </Button>
-      </Navbar>
+      <AppHeader />
 
       {/* Main */}
       <div className="flex-grow-1 overflow-hidden">

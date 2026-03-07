@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Card from 'react-bootstrap/Card';
 import ListGroup from 'react-bootstrap/ListGroup';
+import { MathJax } from 'better-react-mathjax';
 import {
   History,
   FileText,
@@ -60,7 +61,7 @@ function getBasicTitle(path) {
   if (path.startsWith('/messages'))           return 'Захиа';
   if (path.startsWith('/ai-chat'))            return 'AI чат';
   if (path.startsWith('/shop'))               return 'Дэлгүүр';
-  if (path.startsWith('/post/'))              return 'Нийтлэл';
+  if (path.startsWith('/post/'))              return 'Пост';
   return null;
 }
 
@@ -75,6 +76,7 @@ function getPathIcon(path) {
   if (path.startsWith('/notifications')) return <Bell size={13} className="text-danger flex-shrink-0" />;
   if (path.startsWith('/messages') || path.startsWith('/private-messages'))
                                          return <Mail size={13} className="text-primary flex-shrink-0" />;
+  if (path.startsWith('/post/'))         return <FileText size={13} className="text-secondary flex-shrink-0" />;
   if (path.startsWith('/ai-chat'))       return <Bot size={13} className="text-success flex-shrink-0" />;
   if (path.startsWith('/shop'))          return <ShoppingBag size={13} className="text-warning flex-shrink-0" />;
   return <LinkIcon size={13} className="text-secondary flex-shrink-0" />;
@@ -126,14 +128,8 @@ const RecentlyVisitedWidget = () => {
       }
 
       setLinks((prev) => {
-        const idx = prev.findIndex((l) => l.path === path);
-        let updated;
-        if (idx >= 0) {
-          updated = prev.map((l) => (l.path === path ? { ...l, title: finalTitle } : l));
-        } else {
-          const filtered = prev.filter((l) => l.path !== path);
-          updated = [{ path, title: finalTitle }, ...filtered].slice(0, MAX_LINKS);
-        }
+        const filtered = prev.filter((l) => l.path !== path);
+        const updated = [{ path, title: finalTitle }, ...filtered].slice(0, MAX_LINKS);
         saveAndNotify(updated);
         return updated;
       });
@@ -147,11 +143,11 @@ const RecentlyVisitedWidget = () => {
 
   return (
     <Card className="border-0 shadow-sm">
-      <Card.Header className="bg-white border-bottom d-flex align-items-center gap-2 py-2">
-        <History size={15} className="text-primary" />
-        <strong className="text-primary" style={{ fontSize: '0.875rem' }}>
-          Сүүлд үзсэн
-        </strong>
+      <Card.Header className="bg-white border-bottom">
+        <div className="d-flex align-items-center">
+          <History size={20} className="text-danger me-2" />
+          <strong>Сүүлд үзсэн</strong>
+        </div>
       </Card.Header>
       <ListGroup variant="flush">
         {links.map((link, i) => (
@@ -164,7 +160,9 @@ const RecentlyVisitedWidget = () => {
             style={{ fontSize: '0.8rem' }}
           >
             {getPathIcon(link.path)}
-            <span className="text-truncate">{link.title}</span>
+            <span className="text-truncate" style={{ minWidth: 0 }}>
+              <MathJax inline dynamic>{link.title}</MathJax>
+            </span>
           </ListGroup.Item>
         ))}
       </ListGroup>

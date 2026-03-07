@@ -8,7 +8,6 @@ import ClubMenuWidget from './ClubMenuWidget';
 import ClubPaymentInfoWidget from './ClubPaymentInfoWidget';
 import TrendingPostsWidget from './TrendingPostsWidget';
 
-import LatexTutorialWidget from './LatexTutorialWidget';
 import RecentlyVisitedWidget from './RecentlyVisitedWidget';
 import SearchWidget from './SearchWidget';
 
@@ -31,14 +30,12 @@ const RightSidebar = ({
       {/* Төлбөрийн мэдээлэл - зөвхөн STUDY клубт */}
       {clubData && clubData.club_type === 'STUDY' && <ClubPaymentInfoWidget club={clubData} />}
 
-      {/* Trending Widget (клубын хуудас биш үед) */}
-      {!clubData && !isClubsPage && <TrendingPostsWidget />}
-
       {/* Сүүлд үзсэн холбоосууд */}
       <RecentlyVisitedWidget />
 
-      {/* LaTeX Tutorial Widget (клубын хуудас биш үед) */}
-      {!clubData && !isClubsPage && <LatexTutorialWidget />}
+      {/* Trending Widget (клубын хуудас биш үед) */}
+      {!clubData && !isClubsPage && <TrendingPostsWidget />}
+
     </Stack>
   );
 };

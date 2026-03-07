@@ -2,7 +2,7 @@
 // ✅ ШИНЭЧИЛСЭН: Tiptap Rich Text Editor + Split View
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useOutletContext } from 'react-router-dom';
 import apiClient from '../api/axiosConfig.js';
 import { useAuth } from '../context/AuthContext.jsx';
 
@@ -35,6 +35,7 @@ const ArticleEditPage = () => {
   const { uuid: id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { setPageTitle } = useOutletContext() || {};
 
   const [title, setTitle] = useState('');
   const [abstract, setAbstract] = useState('');
@@ -70,6 +71,8 @@ const ArticleEditPage = () => {
         setContent(articleData.content || '');
         setIsPublic(articleData.is_public ?? false);
         setInitialAuthorId(articleData.author.id);
+        const t = articleData.title || `Өгүүлэл #${id}`;
+        setPageTitle?.(`Өгүүлэл засах · ${t}`);
       } catch (err) {
         if (err.response && err.response.status === 404) {
           setError('Засварлах өгүүлэл олдсонгүй.');
@@ -159,7 +162,7 @@ const ArticleEditPage = () => {
           Өгүүллүүд
         </Breadcrumb.Item>
         <Breadcrumb.Item linkAs={Link} linkProps={{ to: `/article/${id}` }}>
-          {originalTitle || 'Өгүүлэл'}
+          <MathJax inline dynamic>{originalTitle || 'Өгүүлэл'}</MathJax>
         </Breadcrumb.Item>
         <Breadcrumb.Item active>Засварлах</Breadcrumb.Item>
       </Breadcrumb>

@@ -14,6 +14,7 @@ import {
 import apiClient from '../api/axiosConfig';
 import { usePrefill } from '../context/PrefillContext';
 import { getMyClubs } from '../services/clubsService';
+import EmojiPickerButton from './EmojiPickerButton';
 
 /**
  * Үндсэн "Universal" пост үүсгэх форм
@@ -317,6 +318,18 @@ const CreatePostForm = ({ onPostCreated, clubId = null, clubName = null }) => {
             <i className="bi bi-images me-1"></i>
             Зураг {imageFiles.length > 0 && `(${imageFiles.length} / 10)`}
           </Button>
+          <EmojiPickerButton
+            textareaRef={contentRef}
+            onInsert={(newValue, cursorPos) => {
+              setContent(newValue);
+              setTimeout(() => {
+                if (contentRef.current) {
+                  contentRef.current.selectionStart = cursorPos;
+                  contentRef.current.selectionEnd = cursorPos;
+                }
+              }, 0);
+            }}
+          />
         </Stack>
         <Form.Control
           type="file"

@@ -10,7 +10,6 @@ import Button from 'react-bootstrap/Button';
 import Badge from 'react-bootstrap/Badge';
 import Spinner from 'react-bootstrap/Spinner';
 import Alert from 'react-bootstrap/Alert';
-import Navbar from 'react-bootstrap/Navbar';
 import Nav from 'react-bootstrap/Nav';
 import { getProducts } from '../services/productsService';
 import PaymentModal from '../components/PaymentModal.jsx';
@@ -111,33 +110,8 @@ function ProductListPage() {
   }
 
   return (
-    <>
-      {/* Гарчиг навигаци */}
-      <Navbar bg="white" className="border-bottom shadow-sm mb-0">
-        <Container>
-          <Navbar.Brand href="/" className="fw-bold text-primary">
-            <i className="bi bi-calculator me-2"></i>
-            MathMinds
-          </Navbar.Brand>
-          <Nav className="ms-auto">
-            <Nav.Link href="/cart">
-              <i className="bi bi-cart me-1"></i>
-              Сагс
-            </Nav.Link>
-            <Nav.Link href="/my-purchases">
-              <i className="bi bi-bag-check me-1"></i>
-              Худалдан авалт
-            </Nav.Link>
-            <Nav.Link href="/" className="fw-bold">
-              <i className="bi bi-house me-1"></i>
-              Нүүр
-            </Nav.Link>
-          </Nav>
-        </Container>
-      </Navbar>
-
-      <div className="bg-light min-vh-100 py-5">
-        <Container>
+    <div className="py-4">
+      <Container>
           {/* Толгой хэсэг */}
           <div className="text-center mb-4">
             <h1 className="mb-3">Манай бүтээгдэхүүнүүд</h1>
@@ -330,22 +304,20 @@ function ProductListPage() {
             paymentData={modalData}
             localInvoiceId={localInvoiceId}
           />
-        </Container>
+      </Container>
 
-        {/* CSS */}
-        <style>
-          {`
-                    .product-card-hover {
-                        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-                    }
-                    .product-card-hover:hover {
-                        transform: translateY(-5px);
-                        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
-                    }
-                `}
-        </style>
-      </div>
-    </>
+      <style>
+        {`
+          .product-card-hover {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+          }
+          .product-card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+          }
+        `}
+      </style>
+    </div>
   );
 }
 

@@ -158,16 +158,36 @@ const PostImageGallery = ({ images }) => {
   );
 };
 
+// LaTeX expression-н дотор тасрахгүйгээр товчлох
+const safeTruncate = (text, maxLen) => {
+  if (!text || text.length <= maxLen) return text;
+  // maxLen-с өмнөх байрлалаас LaTeX-н хаалтад орсон эсэхийг шалгана
+  let inside = false;
+  let i = 0;
+  while (i < maxLen) {
+    if (text[i] === '$') { inside = !inside; }
+    else if (text.startsWith('\\(', i)) { inside = true; i++; }
+    else if (text.startsWith('\\)', i)) { inside = false; i++; }
+    i++;
+  }
+  // LaTeX дотор байвал хаах тэмдэг хүртэл буцна
+  if (inside) {
+    const closeIdx = text.indexOf('$', maxLen);
+    const closeIdx2 = text.indexOf('\\)', maxLen);
+    const end = [closeIdx, closeIdx2].filter(x => x >= 0).sort((a,b) => a-b)[0];
+    if (end !== undefined) return text.substring(0, end + (text[end] === '$' ? 1 : 2)) + '...';
+  }
+  return text.substring(0, maxLen) + '...';
+};
+
 // -------------------------------------------------------------------
 // ----------------- PostContent (Туслах компонент) ------------------
 // -------------------------------------------------------------------
 const PostContent = ({ post }) => {
   const navigate = useNavigate();
-  const [showNavChoice, setShowNavChoice] = useState(false);
 
   if (!post) return null;
 
-  // Энэ хэсэг хэвээрээ (post, repost, reply-г алгасна)
   if (
     post.content_type === 'post' ||
     post.content_type === 'repost' ||
@@ -189,105 +209,63 @@ const PostContent = ({ post }) => {
     quiz:    `/quiz/${relatedItem.uuid}`,
   };
   const contentUrl = relatedItem.uuid ? detailUrlMap[post.content_type] : null;
-  const postUrl    = `/post/${post.uuid}`;
-
-  const handleContentClick = (e) => {
-    e.stopPropagation();
-    if (contentUrl) setShowNavChoice(true);
-  };
 
   let title = relatedItem.title || relatedItem.name || `Контент #${relatedItem.id}`;
 
-  // (!!! ЗАСВАР: description-г энд тодорхойлно !!!)
   let description =
-    relatedItem.statement || // Бодлогын 'statement'
-    relatedItem.content || // Томьёо, Өгүүллийн 'content'
-    relatedItem.abstract || // Өгүүллийн 'abstract'
-    relatedItem.description || // Тестийн 'description'
+    relatedItem.statement ||
+    relatedItem.content ||
+    relatedItem.abstract ||
+    relatedItem.description ||
     '';
 
-  // (!!! ЗАСВАР: typeLabel БА badgeVariant-г хамт тодорхойлно !!!)
   let typeLabel;
-  let badgeVariant; // Badge өнгийг хадгалах хувьсагч
-  let content;
+  let badgeVariant;
 
   switch (post.content_type) {
     case 'problem':
       typeLabel = 'Бодлого';
-      badgeVariant = 'secondary'; // Цэнхэр
+      badgeVariant = 'secondary';
       break;
     case 'formula':
       typeLabel = 'Томьёо';
-      badgeVariant = 'info'; // Ногоон
-      content = post.content || '';
+      badgeVariant = 'info';
       break;
     case 'article':
       typeLabel = 'Өгүүлэл';
-      badgeVariant = 'danger'; // Цайвар цэнхэр
+      badgeVariant = 'danger';
       break;
     case 'quiz':
       typeLabel = 'Тест';
-      badgeVariant = 'success'; // Шар
+      badgeVariant = 'success';
       break;
     default:
       typeLabel = 'Контент';
-      badgeVariant = 'warning'; // Саарал
+      badgeVariant = 'warning';
   }
 
-  // (!!! ЗАСВAR: Бодлого, Томьёо бол бүтэн, бусад бол товч харуулна !!!)
   const contentToShow =
     post.content_type === 'problem' || post.content_type === 'formula'
-      ? description // <-- Бодлого, Томьёо бол бүтнээр нь харуулна
-      : description.substring(0, 100) + (description.length > 100 ? '...' : ''); // <-- Бусад үед (өгүүлэл, тест) товчилж харуулна
+      ? description
+      : safeTruncate(description, 100);
 
   return (
     <>
-      {/* Очих хуудас сонгох modal */}
-      <Modal
-        show={showNavChoice}
-        onHide={() => setShowNavChoice(false)}
-        centered
-        size="sm"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <Modal.Body className="text-center py-4">
-          <p className="fw-semibold mb-3">Хаашаа очих вэ?</p>
-          <div className="d-flex gap-2 justify-content-center">
-            <Button
-              variant="primary" size="sm"
-              onClick={() => { setShowNavChoice(false); navigate(contentUrl); }}
-            >
-              <i className="bi bi-file-text me-1" />
-              {typeLabel} харах
-            </Button>
-            <Button
-              variant="outline-secondary" size="sm"
-              onClick={() => { setShowNavChoice(false); navigate(postUrl); }}
-            >
-              <i className="bi bi-chat-square me-1" />
-              Пост харах
-            </Button>
-          </div>
-        </Modal.Body>
-      </Modal>
-
       <LivePreview content={post.content} />
       <Card
         className="bg-light border shadow-sm mt-2 post-content-card"
-        onClick={contentUrl ? handleContentClick : undefined}
-        style={contentUrl ? { cursor: 'pointer' } : undefined}
+        onClick={() => navigate(`/post/${post.uuid}`)}
+        style={{ cursor: 'pointer' }}
       >
         <Card.Body>
-          {/* (!!! ЗАСВАР: badgeVariant-г ашигласан !!!) */}
-          <Badge bg={badgeVariant} className="mb-2">
-            {typeLabel}
-          </Badge>
+          <div className="mb-2">
+            <Badge bg={badgeVariant}>{typeLabel}</Badge>
+          </div>
 
           <Card.Title className="h6 mathjax-content mb-1">
             <LivePreview content={title} />
           </Card.Title>
 
-          {/* (!!! ЗАСВАР: contentToShow-г ашигласан !!!) */}
           {description && (
             <Card.Text
               as="div"
@@ -296,6 +274,19 @@ const PostContent = ({ post }) => {
             >
               <LivePreview content={contentToShow} />
             </Card.Text>
+          )}
+
+          {contentUrl && (
+            <div className="text-end mt-2" onClick={(e) => e.stopPropagation()}>
+              <Button
+                variant={`outline-${badgeVariant}`}
+                size="sm"
+                onClick={() => navigate(contentUrl)}
+                style={{ fontSize: '0.7rem', padding: '1px 8px' }}
+              >
+                {typeLabel} харах
+              </Button>
+            </div>
           )}
         </Card.Body>
       </Card>
@@ -915,6 +906,20 @@ const PostCard = ({ post, onPostDeleted, depth = 0, compact = false, onCardClick
         onClick={navigateToPost}
         style={{ cursor: 'pointer' }}
       >
+        {/* Клубын пост мэдээлэл */}
+        {currentPost.club && (
+          <div className="small px-3 pt-2 pb-1 border-bottom" style={{ background: '#f0f4ff' }}>
+            <i className="bi bi-people-fill me-2 text-primary"></i>
+            <Link
+              to={`/clubs/${currentPost.club.id}`}
+              className="text-primary fw-semibold text-decoration-none"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {currentPost.club.name}
+            </Link>
+          </div>
+        )}
+
         {/* Repost мэдээлэл */}
         {isRepost && reposterAuthor && (
           <div className="text-muted small px-3 pt-2 pb-1 border-bottom bg-light">

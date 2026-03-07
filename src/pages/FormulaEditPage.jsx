@@ -115,7 +115,8 @@ const FormulaEditPage = () => {
       setFormula({ ...formulaData, is_public: formulaData.is_public ?? false });
       setKeywords(response.data.keywords || []);
       setOriginalTitle(response.data.title || '');
-      setPageTitle(response.data.title || `Томьёо #${formulaId} засах`);
+      const t = response.data.title || `Томьёо #${formulaId}`;
+      setPageTitle(`Томьёо засах · ${t}`);
     } catch (err) {
       console.error('Failed to fetch formula:', err);
       setError('Томьёо ачаалахад алдаа гарлаа.');
@@ -344,7 +345,7 @@ const FormulaEditPage = () => {
           Томьёонууд
         </Breadcrumb.Item>
         <Breadcrumb.Item linkAs={Link} linkProps={{ to: `/formula/${id}` }}>
-          {originalTitle || 'Томьёо'}
+          <MathJax inline dynamic>{originalTitle || 'Томьёо'}</MathJax>
         </Breadcrumb.Item>
         <Breadcrumb.Item active>Засварлах</Breadcrumb.Item>
       </Breadcrumb>
@@ -354,7 +355,7 @@ const FormulaEditPage = () => {
         <Stack direction="horizontal" gap={3} className="mb-3">
           <h2 className="h4 fw-bold mb-0">
             <Edit3 size={24} className="me-2" />
-            {formula.title || `Томьёо #${id} засах`}
+            <MathJax inline dynamic>{formula.title || `Томьёо #${id} засах`}</MathJax>
           </h2>
           <div className="ms-auto">
             <Button

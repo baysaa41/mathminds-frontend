@@ -22,8 +22,8 @@ import Badge from 'react-bootstrap/Badge'
 import Spinner from 'react-bootstrap/Spinner'
 import Form from 'react-bootstrap/Form'
 import InputGroup from 'react-bootstrap/InputGroup'
-import Navbar from 'react-bootstrap/Navbar'
 import ListGroup from 'react-bootstrap/ListGroup'
+import AppHeader from '../components/AppHeader'
 import Breadcrumb from 'react-bootstrap/Breadcrumb'
 
 const CONTENT_TYPES = {
@@ -286,32 +286,7 @@ function ContentBrowsePage() {
     <MathJaxContext config={mathJaxConfig}>
       <div className="d-flex flex-column vh-100">
 
-        {/* Top Navbar */}
-        <Navbar bg="white" className="border-bottom shadow-sm px-3" style={{ zIndex: 10 }}>
-          <Navbar.Brand className="d-flex align-items-center" style={{ cursor: 'pointer' }} onClick={() => navigate('/')}>
-            <i className={`bi ${config.icon} text-${config.color} me-2 fs-4`}></i>
-            <span className="fw-bold">Контентийн сан</span>
-          </Navbar.Brand>
-
-          <Form onSubmit={handleSearch} className="d-flex mx-auto" style={{ maxWidth: 500, flex: 1 }}>
-            <InputGroup>
-              <Form.Control
-                type="text"
-                placeholder={`${config.label} хайх...`}
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                size="sm"
-              />
-              <Button variant={`outline-${config.color}`} type="submit" size="sm">
-                <i className="bi bi-search"></i>
-              </Button>
-            </InputGroup>
-          </Form>
-
-          <Button variant="outline-secondary" size="sm" onClick={() => navigate(-1)}>
-            <i className="bi bi-arrow-left me-1"></i>Буцах
-          </Button>
-        </Navbar>
+        <AppHeader />
 
         {/* Main */}
         <div className="flex-grow-1 overflow-hidden">
@@ -320,6 +295,21 @@ function ContentBrowsePage() {
             {/* Left Sidebar */}
             <Col lg={3} md={4} className="border-end bg-light h-100 overflow-auto d-none d-md-block">
               <div className="p-3">
+
+                {/* Хайлт */}
+                <Form onSubmit={handleSearch} className="mb-3">
+                  <InputGroup size="sm">
+                    <Form.Control
+                      type="text"
+                      placeholder={`${config.label} хайх...`}
+                      value={searchInput}
+                      onChange={(e) => setSearchInput(e.target.value)}
+                    />
+                    <Button variant={`outline-${config.color}`} type="submit">
+                      <i className="bi bi-search"></i>
+                    </Button>
+                  </InputGroup>
+                </Form>
 
                 {/* Content type switcher */}
                 <h6 className="text-uppercase text-muted small fw-bold mb-2">
@@ -496,6 +486,21 @@ function ContentBrowsePage() {
 
                 {/* Mobile filters */}
                 <div className="d-md-none mb-3">
+                  {/* Mobile хайлт */}
+                  <Form onSubmit={handleSearch} className="mb-2">
+                    <InputGroup size="sm">
+                      <Form.Control
+                        type="text"
+                        placeholder={`${config.label} хайх...`}
+                        value={searchInput}
+                        onChange={(e) => setSearchInput(e.target.value)}
+                      />
+                      <Button variant={`outline-${config.color}`} type="submit">
+                        <i className="bi bi-search"></i>
+                      </Button>
+                    </InputGroup>
+                  </Form>
+
                   {/* Type switcher */}
                   <div className="d-flex gap-2 overflow-auto pb-2 mb-2">
                     {Object.entries(CONTENT_TYPES).map(([key, ct]) => (

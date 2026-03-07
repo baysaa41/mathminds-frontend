@@ -106,12 +106,49 @@ export const createReview = async (productId, rating, comment) => {
   try {
     const response = await apiClient.post('/api/v1/reviews/', {
       product: productId,
-      rating: rating,
-      comment: comment,
+      comment,
+      rating: rating ?? null,
     });
     return response.data;
   } catch (error) {
     console.error('Сэтгэгдэл үүсгэхэд алдаа:', error);
+    throw error;
+  }
+};
+
+/**
+ * Сэтгэгдэлд хариу нэмэх
+ */
+export const addReviewReply = async (reviewId, comment) => {
+  try {
+    const response = await apiClient.post('/api/v1/review-replies/', { review: reviewId, comment });
+    return response.data;
+  } catch (error) {
+    console.error('Хариу нэмэхэд алдаа:', error);
+    throw error;
+  }
+};
+
+/**
+ * Хариу устгах
+ */
+export const deleteReviewReply = async (replyId) => {
+  try {
+    await apiClient.delete(`/api/v1/review-replies/${replyId}/`);
+  } catch (error) {
+    console.error('Хариу устгахад алдаа:', error);
+    throw error;
+  }
+};
+
+/**
+ * Сэтгэгдэл устгах (staff only)
+ */
+export const deleteReview = async (reviewId) => {
+  try {
+    await apiClient.delete(`/api/v1/reviews/${reviewId}/`);
+  } catch (error) {
+    console.error('Сэтгэгдэл устгахад алдаа:', error);
     throw error;
   }
 };

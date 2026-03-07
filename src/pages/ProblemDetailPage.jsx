@@ -9,6 +9,7 @@ import apiClient from '../api/axiosConfig.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { usePrefill } from '../context/PrefillContext.jsx';
 import LivePreview from '../components/LivePreview.jsx';
+import { MathJax } from 'better-react-mathjax';
 import UserName from '../components/UserName.jsx';
 import { formatDate } from '../utils/dateFormatter';
 
@@ -24,7 +25,7 @@ import Accordion from 'react-bootstrap/Accordion';
 import Card from 'react-bootstrap/Card';
 
 // Icons
-import { Lightbulb, BookOpen, FileText, Sparkles, Pencil, Trash2, StickyNote } from 'lucide-react';
+import { Lightbulb, BookOpen, FileText, Sparkles, Pencil, Trash2, StickyNote, BrainCircuit } from 'lucide-react';
 
 // ─── Бодлогын зургийн gallery (viewerjs) ─────────────────────────────────
 const ProblemImageGallery = ({ images }) => {
@@ -102,12 +103,7 @@ const ProblemDetailPage = () => {
       const response = await apiClient.get(`/api/integral/problems/${problemId}/`);
       setProblem(response.data);
 
-      if (response.data?.title) {
-        const plainTitle = response.data.title.replace(/\$[^\$]*\$|\$\$[^\$]*\$\$/g, '').trim();
-        setPageTitle(plainTitle || `Бодлого #${problemId}`);
-      } else {
-        setPageTitle(`Бодлого #${problemId}`);
-      }
+      setPageTitle(`Бодлого · ${response.data?.title || `#${problemId}`}`);
     } catch (err) {
       if (err.response && err.response.status === 404) {
         setError('Бодлого олдсонгүй.');
@@ -228,9 +224,7 @@ const ProblemDetailPage = () => {
         </Breadcrumb.Item>
         {/* Гарчгийг Breadcrumb дотор LivePreview-гүйгээр харуулах нь дээр (урт байж болно) */}
         <Breadcrumb.Item active>
-          {problem.title
-            ? problem.title.substring(0, 50) + (problem.title.length > 50 ? '...' : '')
-            : `Бодлого #${id}`}
+          <MathJax inline dynamic>{problem.title || `Бодлого #${id}`}</MathJax>
         </Breadcrumb.Item>
       </Breadcrumb>
 
@@ -245,18 +239,6 @@ const ProblemDetailPage = () => {
         <h1 className="h3 fw-bold mb-2">
           <LivePreview content={problem.title || `Бодлого #${id}`} />
         </h1>
-        {canEdit && (
-          <Stack direction="horizontal" gap={2}>
-            <Button variant="outline-success" size="sm" onClick={handleCreatePost}>
-              <i className="bi bi-megaphone me-1"></i>
-              Постлох
-            </Button>
-            <Button variant="outline-primary" size="sm" onClick={handleEditClick}>
-              <i className="bi bi-pencil me-1"></i>
-              Засварлах
-            </Button>
-          </Stack>
-        )}
       </div>
 
       {/* Мэдээллийн badges + үсэг хэмжээ */}
@@ -323,6 +305,16 @@ const ProblemDetailPage = () => {
               ХАВСРАЛТ ЗУРАГНУУД ({problem.images.length})
             </small>
             <ProblemImageGallery images={problem.images} />
+          </div>
+        )}
+        {canEdit && (
+          <div className="d-flex justify-content-end gap-2 mt-2">
+            <Button variant="outline-primary" size="sm" onClick={handleEditClick} title="Засварлах">
+              <i className="bi bi-pencil"></i>
+            </Button>
+            <Button variant="outline-success" size="sm" onClick={handleCreatePost} title="Постлох">
+              <i className="bi bi-megaphone"></i>
+            </Button>
           </div>
         )}
       </div>
@@ -395,6 +387,17 @@ const ProblemDetailPage = () => {
                     </>
                   )}
                 </Button>
+                {user?.is_staff && (
+                  <Button
+                    as={Link}
+                    to={`/problem/${id}/ai-solve`}
+                    variant="outline-primary"
+                    size="sm"
+                  >
+                    <BrainCircuit size={16} className="me-1" />
+                    AI хамтарсан бодолт
+                  </Button>
+                )}
               </Stack>
             )}
           </div>
@@ -519,6 +522,17 @@ const ProblemDetailPage = () => {
                     </>
                   )}
                 </Button>
+                {user?.is_staff && (
+                  <Button
+                    as={Link}
+                    to={`/problem/${id}/ai-solve`}
+                    variant="outline-primary"
+                    size="sm"
+                  >
+                    <BrainCircuit size={16} className="me-1" />
+                    AI хамтарсан бодолт
+                  </Button>
+                )}
               </Stack>
             </Card.Body>
           </Card>
@@ -538,7 +552,18 @@ const ProblemDetailPage = () => {
 
       </div>{/* /fontSize wrapper */}
 
-      <hr className="mt-5" />
+      {canEdit && (
+        <div className="d-flex justify-content-end gap-2 mt-3">
+          <Button variant="outline-primary" size="sm" onClick={handleEditClick} title="Засварлах">
+            <i className="bi bi-pencil"></i>
+          </Button>
+          <Button variant="outline-success" size="sm" onClick={handleCreatePost} title="Постлох">
+            <i className="bi bi-megaphone"></i>
+          </Button>
+        </div>
+      )}
+
+      <hr className="mt-4" />
       <Link to="/content/browse?type=problems" className="btn btn-outline-secondary btn-sm mt-3">
         &laquo; Бодлогын сан руу буцах
       </Link>

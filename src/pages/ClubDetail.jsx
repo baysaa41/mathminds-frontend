@@ -12,7 +12,7 @@ import Modal from 'react-bootstrap/Modal';
 import Toast from 'react-bootstrap/Toast';
 import ToastContainer from 'react-bootstrap/ToastContainer';
 import Form from 'react-bootstrap/Form';
-import { getClubDetail, updateClub, leaveClub, inviteTeacher, removeTeacher, refreshRegCode, formatErrorMessage } from '../services/clubsService';
+import { getClubDetail, updateClub, leaveClub, inviteTeacher, removeTeacher, removeMember, refreshRegCode, formatErrorMessage } from '../services/clubsService';
 import useToast from '../hooks/useToast';
 import JoinClubModal from '../components/JoinClubModal';
 import { ArrowLeft, LogOut, Key, Clipboard, RefreshCw } from 'lucide-react';
@@ -169,7 +169,21 @@ const ClubDetail = () => {
     try {
       const result = await removeTeacher(club.id, username);
       showToast(result.detail || 'Багш амжилттай хасагдлаа', 'success');
-      fetchClubDetails(); // Refresh club data
+      fetchClubDetails();
+    } catch (err) {
+      showToast(formatErrorMessage(err), 'danger');
+    }
+  };
+
+  const handleRemoveMember = async (username) => {
+    if (!window.confirm(`"${username}" гишүүнийг хасахдаа итгэлтэй байна уу?`)) {
+      return;
+    }
+
+    try {
+      const result = await removeMember(club.id, username);
+      showToast(result.detail || 'Гишүүн амжилттай хасагдлаа', 'success');
+      fetchClubDetails();
     } catch (err) {
       showToast(formatErrorMessage(err), 'danger');
     }
@@ -290,7 +304,8 @@ const ClubDetail = () => {
           onLeaveClub: () => setShowLeaveModal(true),
           onUpdate: fetchClubDetails,
           onInviteTeacher: handleInviteTeacher,
-          onRemoveTeacher: handleRemoveTeacher
+          onRemoveTeacher: handleRemoveTeacher,
+          onRemoveMember: handleRemoveMember
         },
         isTeacherOrAdmin: club.role === 'teacher' || isClubCreator || club.admins?.some(admin => admin.id === user?.id),
         isCreator: isClubCreator,

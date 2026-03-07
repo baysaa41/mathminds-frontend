@@ -32,6 +32,7 @@ const ClubsRoutes = () => {
       {/* Клубын дэлгэрэнгүй with nested routes */}
       <Route path=":id" element={<ClubDetail />}>
         <Route index element={<ClubInfoPage />} />
+        <Route path="info" element={<ClubInfoPage forceInfo />} />
         <Route path="discussions" element={<ClubDiscussionPage />} />
         <Route path="curriculum" element={<ClubCurriculumPage />} />
         <Route path="videos" element={<ClubVideosPage />} />

@@ -12,8 +12,6 @@ import Table from 'react-bootstrap/Table';
 import Badge from 'react-bootstrap/Badge';
 import Spinner from 'react-bootstrap/Spinner';
 import Alert from 'react-bootstrap/Alert';
-import Navbar from 'react-bootstrap/Navbar';
-import Nav from 'react-bootstrap/Nav';
 import { getPurchases } from '../services/productsService';
 import { useAuth } from '../context/AuthContext';
 import { formatDate, formatTime } from '../utils/dateFormatter';
@@ -95,55 +93,8 @@ export default function MyPurchasesPage() {
   }
 
   return (
-    <>
-      {/* Гарчиг навигаци */}
-      <Navbar bg="white" className="border-bottom shadow-sm mb-0">
-        <Container>
-          <Navbar.Brand href="/" className="fw-bold text-primary">
-            <i className="bi bi-calculator me-2"></i>
-            MathMinds
-          </Navbar.Brand>
-          <Nav className="ms-auto align-items-center">
-            <Nav.Link href="/products">
-              <i className="bi bi-shop me-1"></i>
-              Бүтээгдэхүүн
-            </Nav.Link>
-            <Nav.Link href="/cart">
-              <i className="bi bi-cart me-1"></i>
-              Сагс
-            </Nav.Link>
-            <Nav.Link href="/" className="fw-bold">
-              <i className="bi bi-house me-1"></i>
-              Нүүр
-            </Nav.Link>
-            {user && (
-              <Nav.Link href="/profile" className="d-flex align-items-center">
-                <div className="d-flex align-items-center">
-                  {user.avatar ? (
-                    <img
-                      src={user.avatar}
-                      alt={user.username}
-                      className="rounded-circle me-2"
-                      style={{ width: '32px', height: '32px', objectFit: 'cover' }}
-                    />
-                  ) : (
-                    <div
-                      className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2"
-                      style={{ width: '32px', height: '32px', fontSize: '14px' }}
-                    >
-                      {user.first_name?.[0] || user.username?.[0] || 'U'}
-                    </div>
-                  )}
-                  <span className="text-dark">{user.first_name || user.username}</span>
-                </div>
-              </Nav.Link>
-            )}
-          </Nav>
-        </Container>
-      </Navbar>
-
-      <div className="bg-light min-vh-100 py-5">
-        <Container>
+    <div className="py-4">
+      <Container>
           {/* Толгой */}
           <div className="d-flex justify-content-between align-items-center mb-4">
             <div>
@@ -323,8 +274,7 @@ export default function MyPurchasesPage() {
               </Col>
             </Row>
           )}
-        </Container>
-      </div>
-    </>
+      </Container>
+    </div>
   );
 }

@@ -13,19 +13,16 @@ import { formatDate } from '../utils/dateFormatter';
 
 // React Bootstrap components
 import Container from 'react-bootstrap/Container';
-import Row from 'react-bootstrap/Row';
-import Col from 'react-bootstrap/Col';
 import Card from 'react-bootstrap/Card';
 import Button from 'react-bootstrap/Button';
 import Spinner from 'react-bootstrap/Spinner';
 import Alert from 'react-bootstrap/Alert';
 import Badge from 'react-bootstrap/Badge';
 import Stack from 'react-bootstrap/Stack';
-import Modal from 'react-bootstrap/Modal';
 import Breadcrumb from 'react-bootstrap/Breadcrumb';
 
 // Lucide Icons
-import { Copy, Check, Edit, Trash2 } from 'lucide-react';
+import { Edit } from 'lucide-react';
 
 const FormulaDetailPage = () => {
   const { uuid: id } = useParams();
@@ -37,13 +34,9 @@ const FormulaDetailPage = () => {
   const [formula, setFormula] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [actionInProgress, setActionInProgress] = useState(false); // Устгах үед
-
-  // Delete Modal state
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-
-  // Copy state
-  const [isCopied, setIsCopied] = useState(false);
+  const fontSizes = [1, 1.2, 1.5];
+  const [fontSizeIndex, setFontSizeIndex] = useState(0);
+  const fontSize = fontSizes[fontSizeIndex];
 
   useEffect(() => {
     fetchFormula(id);
@@ -52,7 +45,7 @@ const FormulaDetailPage = () => {
   useEffect(() => {
     // Томьёо ачаалагдсаны дараа хуудасны гарчгийг шинэчлэх
     if (formula) {
-      setPageTitle(formula.title || `Томьёо #${id}`);
+      setPageTitle(`Томьёо · ${formula.title || `#${id}`}`);
     } else {
       setPageTitle('Томьёо'); // Ачаалж байх үеийн гарчиг
     }
@@ -79,36 +72,6 @@ const FormulaDetailPage = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleDelete = async () => {
-    setShowDeleteModal(false);
-    setActionInProgress(true);
-    setError(null);
-    try {
-      await apiClient.delete(`/api/integral/formulas/${id}/`);
-      navigate('/content/browse?type=formulas');
-    } catch (err) {
-      console.error('Failed to delete formula:', err);
-      setError('Томьёог устгахад алдаа гарлаа.');
-      setActionInProgress(false);
-    }
-  };
-
-  const handleCopyContent = () => {
-    if (!formula?.content) return;
-
-    navigator.clipboard
-      .writeText(formula.content)
-      .then(() => {
-        setIsCopied(true);
-        setTimeout(() => {
-          setIsCopied(false);
-        }, 2000);
-      })
-      .catch((err) => {
-        console.error('Агуулга хуулахад алдаа гарлаа: ', err);
-      });
   };
 
   const handleCreatePost = () => {
@@ -160,7 +123,9 @@ const FormulaDetailPage = () => {
         <Breadcrumb.Item linkAs={Link} linkProps={{ to: '/formulas' }}>
           Томьёонууд
         </Breadcrumb.Item>
-        <Breadcrumb.Item active>{formula.title || `Томьёо #${id}`}</Breadcrumb.Item>
+        <Breadcrumb.Item active>
+          <MathJax inline dynamic>{formula.title || `Томьёо #${id}`}</MathJax>
+        </Breadcrumb.Item>
       </Breadcrumb>
 
       {/* Толгой хэсэг: Гарчиг, Товчнууд */}
@@ -194,69 +159,34 @@ const FormulaDetailPage = () => {
             )}
           </div>
         </div>
-        <div className="ms-auto d-flex gap-2">
-          {/* Агуулга хуулах товч - бүгдэд харагдана */}
+        <div className="ms-auto d-flex align-items-center gap-2">
+          {/* Үсэг томруулах/жижигрүүлэх */}
           <Button
-            variant={isCopied ? 'success' : 'outline-primary'}
-            size="sm"
-            onClick={handleCopyContent}
-            disabled={isCopied || !formula.content}
-            title="Агуулга хуулах"
+            variant="link"
+            className="text-decoration-none p-1 text-muted"
+            onClick={() => setFontSizeIndex((p) => Math.max(p - 1, 0))}
+            disabled={fontSizeIndex === 0}
+            title="Үсэг жижигрүүлэх"
           >
-            {isCopied ? (
-              <>
-                <Check size={16} className="me-1" />
-                Хуулсан!
-              </>
-            ) : (
-              <>
-                <Copy size={16} className="me-1" />
-                Агуулга хуулах
-              </>
-            )}
+            <small style={{ fontSize: '0.7rem', fontWeight: 'bold' }}>Aa</small>
           </Button>
-
-          {/* Засах/Устгах - зөвхөн зохиогч эсвэл админд */}
-          {(isAuthor || user?.is_staff) && (
-            <>
-              <Link to={`/formula/${id}/edit`}>
-                <Button
-                  variant="outline-primary"
-                  size="sm"
-                  disabled={actionInProgress}
-                  title="Засах"
-                >
-                  <Edit size={16} className="me-1" />
-                  Засах
-                </Button>
-              </Link>
-              <Button
-                variant="outline-danger"
-                size="sm"
-                onClick={() => setShowDeleteModal(true)}
-                disabled={actionInProgress}
-                title="Устгах"
-              >
-                <Trash2 size={16} className="me-1" />
-                Устгах
-              </Button>
-            </>
-          )}
+          <Button
+            variant="link"
+            className="text-decoration-none p-1 text-muted"
+            onClick={() => setFontSizeIndex((p) => Math.min(p + 1, fontSizes.length - 1))}
+            disabled={fontSizeIndex === fontSizes.length - 1}
+            title="Үсэг томруулах"
+          >
+            <span style={{ fontSize: '1rem', fontWeight: 'bold' }}>Aa</span>
+          </Button>
         </div>
       </Stack>
-
-      {/* Алдааны мсж (Устгах/Хувилах үед гарвал) */}
-      {error && actionInProgress && (
-        <Alert variant="danger" className="mt-3">
-          {error}
-        </Alert>
-      )}
 
       {/* Томьёоны агуулга */}
       <Card>
         <Card.Body>
           {/* (!!!) LivePreview ашиглан агуулга харуулах */}
-          <div className="formula-content">
+          <div className="formula-content" style={{ fontSize: `${fontSize}rem` }}>
             {formula.content ? (
               <LivePreview content={formula.content} />
             ) : (
@@ -265,6 +195,21 @@ const FormulaDetailPage = () => {
           </div>
         </Card.Body>
       </Card>
+
+      {(isAuthor || user?.is_staff) && (
+        <div className="d-flex justify-content-end gap-2 mt-2">
+          <Link to={`/formula/${id}/edit`}>
+            <Button variant="outline-primary" size="sm" title="Засварлах">
+              <Edit size={16} />
+            </Button>
+          </Link>
+          {isAuthor && (
+            <Button variant="outline-success" size="sm" onClick={handleCreatePost} title="Постлох">
+              <i className="bi bi-megaphone"></i>
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* Холбоотой түлхүүр үгс */}
       {formula.keywords && formula.keywords.length > 0 && (
@@ -280,54 +225,11 @@ const FormulaDetailPage = () => {
         </div>
       )}
 
-      {/* Постлох товч (зөвхөн зохиогчид) */}
-      {isAuthor && (
-        <div className="mt-4 d-flex gap-2">
-          <Button variant="outline-success" size="sm" onClick={handleCreatePost}>
-            <i className="bi bi-megaphone me-1"></i>
-            Постлох
-          </Button>
-        </div>
-      )}
+      <hr className="mt-4" />
+      <Link to="/content/browse?type=formulas" className="btn btn-outline-secondary btn-sm mt-3">
+        &laquo; Томьёоны сан руу буцах
+      </Link>
 
-      {/* Устгах Modal */}
-      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title className="h5">
-            <Trash2 size={20} className="me-2 text-danger" />
-            Устгахыг баталгаажуулах
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          Та "<b>{formula.title || `Томьёо #${id}`}</b>"-г устгахдаа итгэлтэй байна уу? Энэ үйлдлийг
-          буцаах боломжгүй.
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
-            Цуцлах
-          </Button>
-          <Button variant="danger" onClick={handleDelete} disabled={actionInProgress}>
-            {actionInProgress ? (
-              <>
-                <Spinner
-                  as="span"
-                  animation="border"
-                  size="sm"
-                  role="status"
-                  aria-hidden="true"
-                  className="me-2"
-                />
-                Устгаж байна...
-              </>
-            ) : (
-              <>
-                <Trash2 size={16} className="me-1" />
-                Устгах
-              </>
-            )}
-          </Button>
-        </Modal.Footer>
-      </Modal>
     </Container>
   );
 };

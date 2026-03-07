@@ -1,19 +1,82 @@
 // ClubMembersPage - Клубын гишүүдийн жагсаалт
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useOutletContext, Link } from 'react-router-dom';
 import Card from 'react-bootstrap/Card';
 import ListGroup from 'react-bootstrap/ListGroup';
 import Badge from 'react-bootstrap/Badge';
 import Button from 'react-bootstrap/Button';
+import Form from 'react-bootstrap/Form';
+import InputGroup from 'react-bootstrap/InputGroup';
+import Spinner from 'react-bootstrap/Spinner';
 import UserAvatar from '../components/UserAvatar';
-import { Users, Crown, GraduationCap, X } from 'lucide-react';
+import { Users, Crown, GraduationCap, X, Search, UserPlus } from 'lucide-react';
+import apiClient from '../api/axiosConfig';
+import { inviteTeacher, formatErrorMessage } from '../services/clubsService';
 
 const ClubMembersPage = () => {
   const {
     clubData: club,
     clubActions,
-    isCreator
+    isCreator,
+    newTeacherUsername,
+    setNewTeacherUsername,
+    addingTeacher,
+    showToast,
   } = useOutletContext();
+
+  // Teacher search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+  const searchRef = useRef(null);
+  const searchTimeoutRef = useRef(null);
+
+  // Search users
+  useEffect(() => {
+    if (searchQuery.trim().length < 2) {
+      setSearchResults([]);
+      setShowResults(false);
+      return;
+    }
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        setSearching(true);
+        const response = await apiClient.get(`/users/api/search/?q=${encodeURIComponent(searchQuery)}`);
+        setSearchResults(response.data || []);
+        setShowResults(true);
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
+    return () => { if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current); };
+  }, [searchQuery]);
+
+  // Click outside → хаах
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (searchRef.current && !searchRef.current.contains(e.target)) setShowResults(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSelectUser = async (user) => {
+    setSearchQuery('');
+    setShowResults(false);
+    setSearchResults([]);
+    if (!club?.id) return;
+    try {
+      const result = await inviteTeacher(club.id, user.username);
+      showToast?.(result.detail || 'Багшийн урилга илгээгдлээ!', 'success');
+      clubActions?.onUpdate?.();
+    } catch (err) {
+      showToast?.(formatErrorMessage(err), 'danger');
+    }
+  };
 
   if (!club) return null;
 
@@ -64,8 +127,8 @@ const ClubMembersPage = () => {
                 Багш
               </Badge>
             )}
-            {/* Зөвхөн удирдагч энгийн гишүүдийг хасах боломжтой */}
-            {isCreator && role === 'member' && clubActions?.onRemoveMember && (
+            {/* Удирдагч багшаас бусад гишүүдийг хасах боломжтой */}
+            {!isCreatorRole && club.role === 'teacher' && clubActions?.onRemoveMember && (
               <Button
                 variant="outline-danger"
                 size="sm"
@@ -83,26 +146,6 @@ const ClubMembersPage = () => {
 
   return (
     <div className="container-fluid">
-      {/* Нийт гишүүд */}
-      <Card className="shadow-sm mb-4">
-        <Card.Header className="bg-white">
-          <div className="d-flex justify-content-between align-items-center">
-            <div>
-              <h5 className="mb-1">
-                <Users size={20} className="me-2" />
-                Гишүүд
-              </h5>
-              <small className="text-muted">
-                Нийт {members.length} гишүүн
-                {club.total_max_members && club.total_max_members > 0 && (
-                  <> / {club.total_max_members} хязгаар</>
-                )}
-              </small>
-            </div>
-          </div>
-        </Card.Header>
-      </Card>
-
       {/* Удирдагч багш */}
       {creatorMember && (
         <Card className="shadow-sm mb-4">
@@ -112,51 +155,123 @@ const ClubMembersPage = () => {
               Удирдагч багш
             </h6>
           </Card.Header>
-          <ListGroup variant="flush">
-            {renderMember(creatorMember, 'creator')}
-          </ListGroup>
+          <ListGroup variant="flush">{renderMember(creatorMember, 'creator')}</ListGroup>
         </Card>
       )}
-
-      {/* Багш нар */}
-      {teacherMembers.length > 0 && (
+      {/* Багш урих (зөвхөн багш бол) */}
+      {club.role === 'teacher' && clubActions?.onInviteTeacher && (
         <Card className="shadow-sm mb-4">
           <Card.Header>
-            <h6 className="mb-0">
-              <GraduationCap size={16} className="me-2" />
-              Багш нар ({teacherMembers.length})
-            </h6>
+            <h6 className="mb-0">Багш урих</h6>
           </Card.Header>
-          <ListGroup variant="flush">
-            {teacherMembers.map(member => renderMember(member, 'teacher'))}
-          </ListGroup>
-        </Card>
-      )}
+          <Card.Body>
+            {/* Багш хайх */}
+            <div className="position-relative mb-3" ref={searchRef}>
+              <InputGroup size="sm">
+                <InputGroup.Text>
+                  <Search size={14} />
+                </InputGroup.Text>
+                <Form.Control
+                  type="text"
+                  placeholder="Багш хайх..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  disabled={addingTeacher}
+                />
+              </InputGroup>
+              <Form.Text className="text-muted small">
+                Нэр эсвэл username-ээр хайж, жагсаалтаас сонгоно
+              </Form.Text>
 
-      {/* Энгийн гишүүд */}
-      {regularMembers.length > 0 && (
-        <Card className="shadow-sm mb-4">
-          <Card.Header>
-            <h6 className="mb-0">
-              <Users size={16} className="me-2" />
-              Гишүүд ({regularMembers.length})
-            </h6>
-          </Card.Header>
-          <ListGroup variant="flush">
-            {regularMembers.map(member => renderMember(member, 'member'))}
-          </ListGroup>
-        </Card>
-      )}
+              {/* Search results dropdown */}
+              {showResults && searchResults.length > 0 && (
+                <Card
+                  className="position-absolute w-100 mt-1"
+                  style={{ zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}
+                >
+                  <ListGroup variant="flush">
+                    {searchResults.map((u) => (
+                      <ListGroup.Item
+                        key={u.id}
+                        action
+                        onClick={() => handleSelectUser(u)}
+                        className="py-2"
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <div className="d-flex align-items-center gap-2">
+                          <UserAvatar user={u} size={32} />
+                          <div>
+                            <div className="fw-semibold small">{u.first_name || u.username}</div>
+                            <small className="text-muted">@{u.username}</small>
+                          </div>
+                        </div>
+                      </ListGroup.Item>
+                    ))}
+                  </ListGroup>
+                </Card>
+              )}
 
-      {/* Гишүүдийн тоо 0 байвал */}
-      {members.length === 0 && (
-        <Card className="shadow-sm">
-          <Card.Body className="text-center text-muted py-5">
-            <Users size={48} className="mb-3 opacity-25" />
-            <p>Одоогоор гишүүд байхгүй байна.</p>
+              {searching && (
+                <div className="text-center text-muted small mt-1">
+                  <Spinner animation="border" size="sm" /> Хайж байна...
+                </div>
+              )}
+            </div>
+
+            {/* Username шууд оруулах */}
+            <Form onSubmit={clubActions.onInviteTeacher}>
+              <Form.Label className="small mb-1">Эсвэл username шууд оруулах:</Form.Label>
+              <InputGroup size="sm">
+                <Form.Control
+                  type="text"
+                  placeholder="Username оруулах"
+                  value={newTeacherUsername || ''}
+                  onChange={(e) => setNewTeacherUsername && setNewTeacherUsername(e.target.value)}
+                  disabled={addingTeacher}
+                />
+                <Button
+                  type="submit"
+                  variant="primary"
+                  disabled={addingTeacher || !newTeacherUsername?.trim()}
+                >
+                  {addingTeacher ? (
+                    <Spinner animation="border" size="sm" />
+                  ) : (
+                    <>
+                      <UserPlus size={14} className="me-1" />
+                      Урих
+                    </>
+                  )}
+                </Button>
+              </InputGroup>
+              <Form.Text className="text-muted small">
+                Урилга зөвшөөрснөөр багш админ эрхтэй болж, +10 сурагчдын хязгаар нэмэгдэнэ
+              </Form.Text>
+            </Form>
           </Card.Body>
         </Card>
       )}
+
+      {/* Гишүүд (багш + энгийн нэгтгэсэн) */}
+      <Card className="shadow-sm mb-4">
+        <Card.Header className="bg-white">
+          <h6 className="mb-0">
+            <Users size={16} className="me-2" />
+            Гишүүд ({members.filter((m) => m.id !== creator).length})
+          </h6>
+        </Card.Header>
+        {members.filter((m) => m.id !== creator).length > 0 ? (
+          <ListGroup variant="flush">
+            {teacherMembers.map((member) => renderMember(member, 'teacher'))}
+            {regularMembers.map((member) => renderMember(member, 'member'))}
+          </ListGroup>
+        ) : (
+          <Card.Body className="text-center text-muted py-4">
+            <Users size={36} className="mb-2 opacity-25" />
+            <p className="mb-0">Одоогоор гишүүд байхгүй байна.</p>
+          </Card.Body>
+        )}
+      </Card>
     </div>
   );
 };

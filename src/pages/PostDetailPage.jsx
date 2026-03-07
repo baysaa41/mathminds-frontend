@@ -1,7 +1,7 @@
 // frontend/src/pages/PostDetailPage.jsx
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import apiClient from '../api/axiosConfig';
 
@@ -187,11 +187,22 @@ const ReplyComposer = ({ postId, user, onReplyAdded }) => {
   );
 };
 
+const TYPE_LABELS = {
+  post:    'Mind',
+  reply:   'Хариулт',
+  repost:  'Дахин пост',
+  problem: 'Бодлого',
+  article: 'Өгүүлэл',
+  formula: 'Томьёо',
+  quiz:    'Тест',
+};
+
 // ── Үндсэн хуудас ────────────────────────────────────────────
 const PostDetailPage = () => {
   const { postId } = useParams();
   const { user }   = useAuth();
   const navigate   = useNavigate();
+  const { setPageTitle } = useOutletContext() || {};
 
   const [ancestors, setAncestors]         = useState([]);
   const [thread, setThread]               = useState([]);
@@ -248,7 +259,22 @@ const PostDetailPage = () => {
       setFocusedUuid(res.data.focused_uuid);
 
       const focused = posts.find(p => p.uuid === res.data.focused_uuid);
-      if (focused) setFocusedPostId(focused.id);
+      if (focused) {
+        setFocusedPostId(focused.id);
+        if (setPageTitle) {
+          const typeLabel = TYPE_LABELS[focused.content_type] || 'Пост';
+          const relatedItem =
+            focused.related_problem || focused.related_formula ||
+            focused.related_article || focused.related_quiz;
+          const relatedTitle = relatedItem?.title || relatedItem?.name;
+          const author = focused.author?.username || focused.author?.display_name || '';
+          const snippet = focused.content?.trim().split(/\s+/).slice(0, 3).join(' ');
+          const title = relatedTitle
+            ? `${typeLabel} · ${relatedTitle}`
+            : `${typeLabel}${snippet ? ' · ' + snippet : author ? ' · @' + author : ''}`;
+          setPageTitle(title);
+        }
+      }
 
       // Анхны expanded байдал:
       //   - Бүх ancestor expanded (дараагийнхаа хариулт харагдана)

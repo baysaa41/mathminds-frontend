@@ -25,8 +25,16 @@ const getPostTitle = (post) => {
     // PSTricks зургийг устгана
     let text = originalContent.replace(/\[pst\][\s\S]*?\[\/pst\]/g, '');
 
-    // LaTeX орчнуудыг (enumerate, itemize гэх мэт) устгана
+    // LaTeX block орчнуудыг (enumerate, itemize гэх мэт) устгана
     text = text.replace(/\\begin\{(enumerate|itemize|center|tabular)\}[\s\S]*?\\end\{\1\}/g, '');
+
+    // Display math устгана: $$...$$ болон \[...\]
+    text = text.replace(/\$\$[\s\S]*?\$\$/g, '');
+    text = text.replace(/\\\[[\s\S]*?\\\]/g, '');
+
+    // Inline math устгана: $...$ болон \(...\)
+    text = text.replace(/\$[^$\n]+\$/g, '');
+    text = text.replace(/\\\([\s\S]*?\\\)/g, '');
 
     // Шинэ мөр болон олон хоосон зайг цэвэрлэнэ
     text = text.replace(/\n/g, ' ');

@@ -44,6 +44,7 @@ import {
   Home,
   BookOpen,
   Wand2,
+  Sparkles,
 } from 'lucide-react';
 
 // (!!!) MathJax тохиргоог Layout.jsx-с авдаг болсон тул эндээс хассан.
@@ -188,7 +189,8 @@ const ProblemEditPage = () => {
       setChoices(response.data.choices?.map((c) => ({ ...c, DELETE: false })) || []);
       setKeywords(response.data.keywords || []);
       setOriginalTitle(response.data.title || '');
-      setPageTitle(response.data.title || `Бодлого #${problemId} засах`);
+      const t = response.data.title || `Бодлого #${problemId}`;
+      setPageTitle(`Бодлого засах · ${t}`);
     } catch (err) {
       console.error(err);
       setError('Бодлого ачаалахад алдаа гарлаа.');
@@ -374,6 +376,27 @@ const ProblemEditPage = () => {
     }
   };
 
+  // --- AI Summary ---
+  const [generatingSummary, setGeneratingSummary] = useState(false);
+  const [summaryError, setSummaryError] = useState(null);
+
+  const handleGenerateSummary = async () => {
+    setGeneratingSummary(true);
+    setSummaryError(null);
+    try {
+      const res = await apiClient.post(`/api/integral/problems/${id}/generate_summary/`);
+      setProblem((prev) => ({
+        ...prev,
+        ai_summary: res.data.ai_summary ?? prev.ai_summary,
+        title: res.data.title ?? prev.title,
+      }));
+    } catch {
+      setSummaryError('AI summary үүсгэхэд алдаа гарлаа.');
+    } finally {
+      setGeneratingSummary(false);
+    }
+  };
+
   // --- Save, Delete, Clone Handlers ---
   const handleSave = async (e) => {
     e.preventDefault();
@@ -511,7 +534,7 @@ const ProblemEditPage = () => {
         </Breadcrumb.Item>
         <Breadcrumb.Item linkAs={Link} linkProps={{ to: `/problem/${id}` }}>
           <FileText size={14} className="me-1" />
-          {originalTitle || 'Бодлого'}
+          <MathJax inline dynamic>{originalTitle || 'Бодлого'}</MathJax>
         </Breadcrumb.Item>
         <Breadcrumb.Item active>
           <Edit3 size={14} className="me-1" />
@@ -524,7 +547,7 @@ const ProblemEditPage = () => {
         {/* Толгой хэсэг */}
         <h2 className="h4 fw-bold mb-2">
           <Edit3 size={24} className="me-2" />
-          {problem.title || `Бодлого #${id} засах`}
+          <MathJax inline dynamic>{problem.title || `Бодлого #${id} засах`}</MathJax>
         </h2>
         <Stack direction="horizontal" gap={2} className="mb-3">
           <Button
@@ -563,6 +586,20 @@ const ProblemEditPage = () => {
             </Button>
           )}
           <Button
+            variant="outline-secondary"
+            size="sm"
+            onClick={handleGenerateSummary}
+            disabled={saving || generatingSummary}
+            title="AI summary үүсгэх"
+          >
+            {generatingSummary ? (
+              <Spinner as="span" animation="border" size="sm" className="me-1" />
+            ) : (
+              <Sparkles size={16} className="me-1" />
+            )}
+            {generatingSummary ? 'Бодож байна...' : 'AI summary'}
+          </Button>
+          <Button
             variant="outline-danger"
             size="sm"
             onClick={() => setShowDeleteModal(true)}
@@ -573,6 +610,7 @@ const ProblemEditPage = () => {
             Устгах
           </Button>
         </Stack>
+        {summaryError && <Alert variant="danger" className="py-2 small mb-2">{summaryError}</Alert>}
 
         {/* Үндсэн Карт */}
         <Card>

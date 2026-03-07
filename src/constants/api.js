@@ -13,6 +13,7 @@ export const API_ENDPOINTS = {
   // Minds (Social)
   MINDS: {
     POSTS: '/api/minds/posts/',
+    FEED: '/api/minds/posts/feed/',
     POST_DETAIL: (id) => `/api/minds/posts/${id}/`,
     POST_FAVORITE: (id) => `/api/minds/posts/${id}/favorite/`,
     POST_BOOKMARK: (id) => `/api/minds/posts/${id}/bookmark/`,

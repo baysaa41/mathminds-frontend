@@ -12,13 +12,15 @@ import Badge from 'react-bootstrap/Badge';
 import Spinner from 'react-bootstrap/Spinner';
 import Alert from 'react-bootstrap/Alert';
 import Form from 'react-bootstrap/Form';
-import Navbar from 'react-bootstrap/Navbar';
-import Nav from 'react-bootstrap/Nav';
 import {
   getProductDetail,
   getProductReviews,
   createReview,
   addToCart,
+  getPurchases,
+  deleteReview,
+  addReviewReply,
+  deleteReviewReply,
 } from '../services/productsService';
 import { useAuth } from '../context/AuthContext';
 import { formatDate } from '../utils/dateFormatter';
@@ -33,19 +35,38 @@ export default function ProductDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Сэтгэгдэл бичих
-  const [rating, setRating] = useState(5);
+  // Сэтгэгдэл
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [reviewStep, setReviewStep] = useState('form'); // 'form' | 'rating'
+  const [rating, setRating] = useState(null);
+  // Хариу
+  const [replyingTo, setReplyingTo] = useState(null); // review.id
+  const [replyText, setReplyText] = useState('');
+  const [submittingReply, setSubmittingReply] = useState(false);
 
   // Сагсанд нэмэх
   const [quantity, setQuantity] = useState(1);
   const [addingToCart, setAddingToCart] = useState(false);
+  const [alreadyPurchased, setAlreadyPurchased] = useState(false);
 
   useEffect(() => {
     fetchProductDetail();
     fetchReviews();
+    checkIfPurchased();
   }, [id]);
+
+  const checkIfPurchased = async () => {
+    try {
+      const purchases = await getPurchases();
+      const found = purchases.some(
+        (p) => String(p.product_details?.id) === String(id) && p.status === 'COMPLETED'
+      );
+      setAlreadyPurchased(found);
+    } catch {
+      // чимээгүй алддаг
+    }
+  };
 
   const fetchProductDetail = async () => {
     try {
@@ -68,21 +89,20 @@ export default function ProductDetailPage() {
     }
   };
 
-  const handleSubmitReview = async (e) => {
+  const handleCommentSubmit = (e) => {
     e.preventDefault();
+    if (!comment.trim()) return;
+    setReviewStep('rating');
+  };
 
-    if (!user) {
-      alert('Сэтгэгдэл үлдээхийн тулд нэвтэрнэ үү');
-      return;
-    }
-
+  const handleFinalSubmit = async (chosenRating) => {
     setSubmitting(true);
     try {
-      await createReview(id, rating, comment);
+      await createReview(id, chosenRating, comment);
       setComment('');
-      setRating(5);
-      fetchReviews(); // Сэтгэгдлүүдийг дахин татах
-      alert('Сэтгэгдэл амжилттай илгээгдлээ!');
+      setRating(null);
+      setReviewStep('form');
+      fetchReviews();
     } catch (err) {
       alert('Сэтгэгдэл илгээхэд алдаа гарлаа');
       console.error(err);
@@ -97,6 +117,13 @@ export default function ProductDetailPage() {
       return;
     }
 
+    if (quantity > 1) {
+      const ok = window.confirm(
+        `${quantity} ширхэг худалдан авах гэж байна. Үргэлжлүүлэх үү?`
+      );
+      if (!ok) return;
+    }
+
     setAddingToCart(true);
     try {
       await addToCart(id, quantity);
@@ -106,6 +133,44 @@ export default function ProductDetailPage() {
       console.error(err);
     } finally {
       setAddingToCart(false);
+    }
+  };
+
+  const handleDeleteReview = async (reviewId) => {
+    if (!window.confirm('Энэ сэтгэгдлийг устгах уу?')) return;
+    try {
+      await deleteReview(reviewId);
+      fetchReviews();
+    } catch (err) {
+      alert('Сэтгэгдэл устгахад алдаа гарлаа');
+      console.error(err);
+    }
+  };
+
+  const handleSubmitReply = async (reviewId) => {
+    if (!replyText.trim()) return;
+    setSubmittingReply(true);
+    try {
+      await addReviewReply(reviewId, replyText.trim());
+      setReplyText('');
+      setReplyingTo(null);
+      fetchReviews();
+    } catch (err) {
+      alert('Хариу илгээхэд алдаа гарлаа');
+      console.error(err);
+    } finally {
+      setSubmittingReply(false);
+    }
+  };
+
+  const handleDeleteReply = async (replyId) => {
+    if (!window.confirm('Энэ хариуг устгах уу?')) return;
+    try {
+      await deleteReviewReply(replyId);
+      fetchReviews();
+    } catch (err) {
+      alert('Хариу устгахад алдаа гарлаа');
+      console.error(err);
     }
   };
 
@@ -142,59 +207,8 @@ export default function ProductDetailPage() {
   }
 
   return (
-    <>
-      {/* Гарчиг навигаци */}
-      <Navbar bg="white" className="border-bottom shadow-sm mb-0">
-        <Container>
-          <Navbar.Brand href="/" className="fw-bold text-primary">
-            <i className="bi bi-calculator me-2"></i>
-            MathMinds
-          </Navbar.Brand>
-          <Nav className="ms-auto align-items-center">
-            <Nav.Link href="/products">
-              <i className="bi bi-shop me-1"></i>
-              Бүтээгдэхүүн
-            </Nav.Link>
-            <Nav.Link href="/cart">
-              <i className="bi bi-cart me-1"></i>
-              Сагс
-            </Nav.Link>
-            <Nav.Link href="/my-purchases">
-              <i className="bi bi-bag-check me-1"></i>
-              Худалдан авалт
-            </Nav.Link>
-            <Nav.Link href="/" className="fw-bold">
-              <i className="bi bi-house me-1"></i>
-              Нүүр
-            </Nav.Link>
-            {user && (
-              <Nav.Link href="/profile" className="d-flex align-items-center">
-                <div className="d-flex align-items-center">
-                  {user.avatar ? (
-                    <img
-                      src={user.avatar}
-                      alt={user.username}
-                      className="rounded-circle me-2"
-                      style={{ width: '32px', height: '32px', objectFit: 'cover' }}
-                    />
-                  ) : (
-                    <div
-                      className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2"
-                      style={{ width: '32px', height: '32px', fontSize: '14px' }}
-                    >
-                      {user.first_name?.[0] || user.username?.[0] || 'U'}
-                    </div>
-                  )}
-                  <span className="text-dark">{user.first_name || user.username}</span>
-                </div>
-              </Nav.Link>
-            )}
-          </Nav>
-        </Container>
-      </Navbar>
-
-      <div className="bg-light min-vh-100 py-5">
-        <Container>
+    <div className="py-4">
+      <Container>
           {/* Буцах товч */}
           <Button
             variant="outline-secondary"
@@ -323,6 +337,15 @@ export default function ProductDetailPage() {
                     <Alert variant="warning">Нөөц дууссан</Alert>
                   )}
 
+                  {/* Дижитал бүтээгдэхүүн аль хэдийн авсан бол анхааруулга */}
+                  {product.is_digital && alreadyPurchased && product.product_type !== 'MEMBERSHIP' && (
+                    <Alert variant="warning" className="mb-4">
+                      <i className="bi bi-exclamation-triangle-fill me-2" />
+                      Та энэ дижитал бүтээгдэхүүнийг <strong>аль хэдийн худалдан авсан</strong> байна.
+                      Дахин авах шаардлагагүй — <Alert.Link href="/my-purchases">худалдан авалтаас</Alert.Link> татаж авна уу.
+                    </Alert>
+                  )}
+
                   {/* Тоо ширхэг + Сагсанд нэмэх */}
                   {product.in_stock && (
                     <Row className="align-items-center">
@@ -344,7 +367,7 @@ export default function ProductDetailPage() {
                           size="lg"
                           className="w-100 mt-4"
                           onClick={handleAddToCart}
-                          disabled={addingToCart}
+                          disabled={addingToCart || (product.is_digital && alreadyPurchased && product.product_type !== 'MEMBERSHIP')}
                         >
                           {addingToCart ? (
                             <>
@@ -376,80 +399,193 @@ export default function ProductDetailPage() {
             </Card>
           )}
 
+          {/* Үнэлгээ */}
+          <Card className="shadow-sm border-0 mb-4">
+            <Card.Body className="p-4">
+              <h4 className="mb-4">Үнэлгээ</h4>
+
+              {/* Үнэлгээний тойм */}
+              {reviews.filter((r) => r.rating).length > 0 && (() => {
+                const rated = reviews.filter((r) => r.rating);
+                const avg = rated.reduce((s, r) => s + r.rating, 0) / rated.length;
+                return (
+                <Row className="mb-4 align-items-center">
+                  <Col xs="auto" className="text-center pe-4">
+                    <div style={{ fontSize: '3rem', fontWeight: 'bold', lineHeight: 1 }}>
+                      {avg.toFixed(1)}
+                    </div>
+                    <div>{renderStars(Math.round(avg))}</div>
+                    <small className="text-muted">{rated.length} үнэлгээ</small>
+                  </Col>
+                  <Col>
+                    {[5, 4, 3, 2, 1].map((star) => {
+                      const count = rated.filter((r) => r.rating === star).length;
+                      const pct = rated.length ? Math.round((count / rated.length) * 100) : 0;
+                      return (
+                        <div key={star} className="d-flex align-items-center gap-2 mb-1">
+                          <small className="text-muted" style={{ width: 12 }}>{star}</small>
+                          <i className="bi bi-star-fill text-warning" style={{ fontSize: '0.75rem' }} />
+                          <div className="flex-grow-1 bg-light rounded" style={{ height: 8 }}>
+                            <div className="bg-warning rounded" style={{ width: `${pct}%`, height: '100%' }} />
+                          </div>
+                          <small className="text-muted" style={{ width: 28 }}>{count}</small>
+                        </div>
+                      );
+                    })}
+                  </Col>
+                </Row>
+                );
+              })()}
+
+            </Card.Body>
+          </Card>
+
           {/* Сэтгэгдлүүд */}
           <Card className="shadow-sm border-0 mb-4">
             <Card.Body className="p-4">
-              <h4 className="mb-4">Сэтгэгдэл ({reviews.length})</h4>
+              <h4 className="mb-4">Сэтгэгдлүүд ({reviews.filter((r) => r.comment).length})</h4>
 
               {/* Сэтгэгдэл бичих форм */}
               {user && (
                 <Card className="mb-4 bg-light border-0">
                   <Card.Body>
-                    <h6 className="mb-3">Таны үнэлгээ</h6>
-                    <Form onSubmit={handleSubmitReview}>
-                      <Form.Group className="mb-3">
-                        <Form.Label>Үнэлгээ</Form.Label>
-                        <div>
+                    {reviewStep === 'form' ? (
+                      <>
+                        <h6 className="mb-3">Сэтгэгдэл үлдээх</h6>
+                        <Form onSubmit={handleCommentSubmit}>
+                          <Form.Group className="mb-2">
+                            <Form.Control
+                              as="textarea"
+                              rows={3}
+                              value={comment}
+                              onChange={(e) => setComment(e.target.value)}
+                              placeholder="Бүтээгдэхүүний талаархи санал бодлоо бичнэ үү..."
+                            />
+                          </Form.Group>
+                          <Button type="submit" variant="primary" size="sm" disabled={!comment.trim()}>
+                            Нийтлэх
+                          </Button>
+                        </Form>
+                      </>
+                    ) : (
+                      <>
+                        <h6 className="mb-3">Үнэлгээ өгөх <small className="text-muted fw-normal">(алгасаж болно)</small></h6>
+                        <div className="d-flex gap-1 mb-3">
                           {[1, 2, 3, 4, 5].map((star) => (
                             <span
                               key={star}
-                              style={{ cursor: 'pointer', fontSize: '1.5rem' }}
+                              style={{ cursor: 'pointer', fontSize: '2rem' }}
                               onClick={() => setRating(star)}
                             >
-                              {star <= rating ? (
-                                <i className="bi bi-star-fill text-warning" />
-                              ) : (
-                                <i className="bi bi-star text-muted" />
-                              )}
+                              {star <= (rating ?? 0)
+                                ? <i className="bi bi-star-fill text-warning" />
+                                : <i className="bi bi-star text-muted" />}
                             </span>
                           ))}
                         </div>
-                      </Form.Group>
-
-                      <Form.Group className="mb-3">
-                        <Form.Label>Сэтгэгдэл</Form.Label>
-                        <Form.Control
-                          as="textarea"
-                          rows={3}
-                          value={comment}
-                          onChange={(e) => setComment(e.target.value)}
-                          placeholder="Бүтээгдэхүүний талаархи санал бодлоо бичнэ үү..."
-                        />
-                      </Form.Group>
-
-                      <Button type="submit" variant="primary" disabled={submitting}>
-                        {submitting ? 'Илгээж байна...' : 'Сэтгэгдэл үлдээх'}
-                      </Button>
-                    </Form>
+                        <div className="d-flex gap-2">
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            disabled={submitting || !rating}
+                            onClick={() => handleFinalSubmit(rating)}
+                          >
+                            {submitting ? <Spinner size="sm" animation="border" /> : 'Илгээх'}
+                          </Button>
+                          <Button
+                            variant="outline-secondary"
+                            size="sm"
+                            disabled={submitting}
+                            onClick={() => handleFinalSubmit(null)}
+                          >
+                            Алгасах
+                          </Button>
+                        </div>
+                      </>
+                    )}
                   </Card.Body>
                 </Card>
               )}
 
               {/* Сэтгэгдлийн жагсаалт */}
-              {reviews.length === 0 ? (
+              {reviews.filter((r) => r.comment).length === 0 ? (
                 <p className="text-muted">Одоогоор сэтгэгдэл байхгүй байна.</p>
               ) : (
-                reviews.map((review) => (
+                reviews.filter((r) => r.comment).map((review) => (
                   <Card key={review.id} className="mb-3 border">
                     <Card.Body>
                       <div className="d-flex justify-content-between align-items-start mb-2">
                         <div>
                           <strong>{review.user_full_name || review.user_username}</strong>
-                          <div className="mt-1">{renderStars(review.rating)}</div>
+                          <span className="ms-2">{renderStars(review.rating)}</span>
                         </div>
-                        <small className="text-muted">
-                          {formatDate(review.created_at)}
-                        </small>
+                        <div className="d-flex align-items-center gap-2">
+                          <small className="text-muted">{formatDate(review.created_at)}</small>
+                          {user?.is_staff && (
+                            <Button variant="outline-danger" size="sm" onClick={() => handleDeleteReview(review.id)}>
+                              <i className="bi bi-trash" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                      {review.comment && <p className="mb-0 mt-2">{review.comment}</p>}
+                      <p className="mb-2">{review.comment}</p>
+
+                      {/* Хариунууд */}
+                      {review.replies?.length > 0 && (
+                        <div className="border-start ps-3 ms-2 mt-2">
+                          {review.replies.map((reply) => (
+                            <div key={reply.id} className="d-flex justify-content-between align-items-start mb-2">
+                              <div>
+                                <strong className="small">
+                                  {reply.user_full_name || reply.user_username}
+                                  {reply.is_staff && <Badge bg="primary" className="ms-1" style={{ fontSize: '0.65rem' }}>Staff</Badge>}
+                                </strong>
+                                <p className="mb-0 small">{reply.comment}</p>
+                              </div>
+                              <div className="d-flex align-items-center gap-1 ms-2">
+                                <small className="text-muted text-nowrap">{formatDate(reply.created_at)}</small>
+                                {(user?.is_staff || user?.id === reply.user) && (
+                                  <Button variant="outline-danger" size="sm" onClick={() => handleDeleteReply(reply.id)}>
+                                    <i className="bi bi-trash" style={{ fontSize: '0.7rem' }} />
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Хариу бичих */}
+                      {user && (
+                        replyingTo === review.id ? (
+                          <div className="mt-2 d-flex gap-2">
+                            <Form.Control
+                              size="sm"
+                              placeholder="Хариу бичих..."
+                              value={replyText}
+                              onChange={(e) => setReplyText(e.target.value)}
+                              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSubmitReply(review.id))}
+                            />
+                            <Button size="sm" variant="primary" onClick={() => handleSubmitReply(review.id)} disabled={submittingReply || !replyText.trim()}>
+                              {submittingReply ? <Spinner size="sm" animation="border" /> : 'Илгээх'}
+                            </Button>
+                            <Button size="sm" variant="outline-secondary" onClick={() => { setReplyingTo(null); setReplyText(''); }}>
+                              Болих
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button variant="link" size="sm" className="p-0 mt-1 text-muted" onClick={() => setReplyingTo(review.id)}>
+                            <i className="bi bi-reply me-1" />Хариулах
+                          </Button>
+                        )
+                      )}
                     </Card.Body>
                   </Card>
                 ))
               )}
             </Card.Body>
           </Card>
-        </Container>
-      </div>
-    </>
+      </Container>
+    </div>
   );
 }

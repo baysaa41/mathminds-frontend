@@ -1,10 +1,11 @@
 // frontend/src/pages/QuizEditPage.jsx
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useOutletContext } from 'react-router-dom';
 import apiClient from '../api/axiosConfig.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import LivePreview from '../components/LivePreview.jsx';
+import { MathJax } from 'better-react-mathjax';
 
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
@@ -52,6 +53,7 @@ const QuizEditPage = () => {
   const { uuid: id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { setPageTitle } = useOutletContext() || {};
 
   // ── Тестийн үндсэн state ──────────────────────────────────────
   const [title, setTitle] = useState('');
@@ -137,6 +139,8 @@ const QuizEditPage = () => {
         setDefaultTimeLimit(quizData.default_time_limit ?? '');
         setGradeId(quizData.grade?.id ?? '');
         setSelectedProblems(quizData.problems || []);
+        const t = quizData.title || `Тест #${id}`;
+        setPageTitle?.(`Тест засах · ${t}`);
       } catch (err) {
         setError(
           err.response?.status === 404
@@ -462,7 +466,9 @@ const QuizEditPage = () => {
       <Breadcrumb className="mb-3">
         <Breadcrumb.Item linkAs={Link} linkProps={{ to: '/' }}>Нүүр</Breadcrumb.Item>
         <Breadcrumb.Item linkAs={Link} linkProps={{ to: '/quizzes' }}>Тестүүд</Breadcrumb.Item>
-        <Breadcrumb.Item linkAs={Link} linkProps={{ to: `/quiz/${id}` }}>{originalTitle || 'Тест'}</Breadcrumb.Item>
+        <Breadcrumb.Item linkAs={Link} linkProps={{ to: `/quiz/${id}` }}>
+          <MathJax inline dynamic>{originalTitle || 'Тест'}</MathJax>
+        </Breadcrumb.Item>
         <Breadcrumb.Item active>Засварлах</Breadcrumb.Item>
       </Breadcrumb>
 
@@ -576,6 +582,19 @@ const QuizEditPage = () => {
                                     ? <Spinner as="span" size="sm" />
                                     : <Sparkles size={14} />}
                                 </Button>
+
+                                {/* Бодлого засах линк */}
+                                {(user?.is_staff) && problem.uuid && (
+                                  <Link
+                                    to={`/problem/${problem.uuid}/edit`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="btn btn-outline-warning btn-sm flex-shrink-0"
+                                    title="Бодлого засах"
+                                  >
+                                    <Edit3 size={14} />
+                                  </Link>
+                                )}
 
                                 {/* Солих товч */}
                                 <Button

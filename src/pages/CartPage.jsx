@@ -13,8 +13,6 @@ import Form from 'react-bootstrap/Form';
 import Spinner from 'react-bootstrap/Spinner';
 import Alert from 'react-bootstrap/Alert';
 import Badge from 'react-bootstrap/Badge';
-import Navbar from 'react-bootstrap/Navbar';
-import Nav from 'react-bootstrap/Nav';
 import { getCart, updateCartItem, removeCartItem } from '../services/productsService';
 import { useAuth } from '../context/AuthContext';
 
@@ -52,8 +50,23 @@ function CartPage() {
     }
   };
 
-  const handleQuantityChange = async (itemId, newQuantity) => {
+  const handleQuantityChange = async (itemId, newQuantity, currentQuantity, product) => {
     if (newQuantity < 1) return;
+
+    if (newQuantity > 1 && currentQuantity === 1) {
+      const label = product?.name || 'бүтээгдэхүүн';
+      const ok = window.confirm(
+        `"${label}"-г ${newQuantity} ширхэг болгох уу?`
+      );
+      if (!ok) return;
+    }
+
+    if (newQuantity > 1 && product?.is_digital) {
+      const ok = window.confirm(
+        'Дижитал бүтээгдэхүүнийг олон ширхэгээр авч байна. Үргэлжлүүлэх үү?'
+      );
+      if (!ok) return;
+    }
 
     setUpdating((prev) => ({ ...prev, [itemId]: true }));
     try {
@@ -119,55 +132,8 @@ function CartPage() {
   const hasItems = cart && cart.items && cart.items.length > 0;
 
   return (
-    <>
-      {/* Гарчиг навигаци */}
-      <Navbar bg="white" className="border-bottom shadow-sm mb-0">
-        <Container>
-          <Navbar.Brand href="/" className="fw-bold text-primary">
-            <i className="bi bi-calculator me-2"></i>
-            MathMinds
-          </Navbar.Brand>
-          <Nav className="ms-auto align-items-center">
-            <Nav.Link href="/products">
-              <i className="bi bi-shop me-1"></i>
-              Бүтээгдэхүүн
-            </Nav.Link>
-            <Nav.Link href="/my-purchases">
-              <i className="bi bi-bag-check me-1"></i>
-              Худалдан авалт
-            </Nav.Link>
-            <Nav.Link href="/" className="fw-bold">
-              <i className="bi bi-house me-1"></i>
-              Нүүр
-            </Nav.Link>
-            {user && (
-              <Nav.Link href="/profile" className="d-flex align-items-center">
-                <div className="d-flex align-items-center">
-                  {user.avatar ? (
-                    <img
-                      src={user.avatar}
-                      alt={user.username}
-                      className="rounded-circle me-2"
-                      style={{ width: '32px', height: '32px', objectFit: 'cover' }}
-                    />
-                  ) : (
-                    <div
-                      className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2"
-                      style={{ width: '32px', height: '32px', fontSize: '14px' }}
-                    >
-                      {user.first_name?.[0] || user.username?.[0] || 'U'}
-                    </div>
-                  )}
-                  <span className="text-dark">{user.first_name || user.username}</span>
-                </div>
-              </Nav.Link>
-            )}
-          </Nav>
-        </Container>
-      </Navbar>
-
-      <div className="bg-light min-vh-100 py-5">
-        <Container>
+    <div className="py-4">
+      <Container>
           {/* Толгой хэсэг */}
           <div className="d-flex justify-content-between align-items-center mb-4">
             <div>
@@ -264,7 +230,7 @@ function CartPage() {
                                   <Button
                                     variant="outline-secondary"
                                     size="sm"
-                                    onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
+                                    onClick={() => handleQuantityChange(item.id, item.quantity - 1, item.quantity, product)}
                                     disabled={item.quantity <= 1 || updating[item.id]}
                                   >
                                     -
@@ -280,7 +246,7 @@ function CartPage() {
                                   <Button
                                     variant="outline-secondary"
                                     size="sm"
-                                    onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
+                                    onClick={() => handleQuantityChange(item.id, item.quantity + 1, item.quantity, product)}
                                     disabled={
                                       (!product.unlimited_stock &&
                                         item.quantity >= product.stock_quantity) ||
@@ -448,9 +414,8 @@ function CartPage() {
               </Col>
             </Row>
           )}
-        </Container>
-      </div>
-    </>
+      </Container>
+    </div>
   );
 }
 

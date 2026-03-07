@@ -8,7 +8,7 @@ import usePaginatedFetch from '../hooks/usePagenatedFetch';
 import useInfiniteScroll from '../hooks/useInfiniteScroll';
 import JoinClubModal from '../components/JoinClubModal';
 
-import Navbar from 'react-bootstrap/Navbar';
+import AppHeader from '../components/AppHeader';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 import Card from 'react-bootstrap/Card';
@@ -117,36 +117,7 @@ function ClubsBrowsePage() {
   return (
     <div className="d-flex flex-column vh-100">
 
-      {/* Top Navbar */}
-      <Navbar bg="white" className="border-bottom shadow-sm px-3" style={{ zIndex: 10 }}>
-        <Navbar.Brand
-          className="d-flex align-items-center"
-          style={{ cursor: 'pointer' }}
-          onClick={() => navigate('/')}
-        >
-          <i className="bi bi-people-fill text-primary me-2 fs-4"></i>
-          <span className="fw-bold">Клубууд</span>
-        </Navbar.Brand>
-
-        <Form onSubmit={handleSearch} className="d-flex mx-auto" style={{ maxWidth: 500, flex: 1 }}>
-          <InputGroup>
-            <Form.Control
-              type="text"
-              placeholder="Клуб хайх..."
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              size="sm"
-            />
-            <Button variant="outline-primary" type="submit" size="sm">
-              <i className="bi bi-search"></i>
-            </Button>
-          </InputGroup>
-        </Form>
-
-        <Button variant="outline-secondary" size="sm" onClick={() => navigate(-1)}>
-          <i className="bi bi-arrow-left me-1"></i>Буцах
-        </Button>
-      </Navbar>
+      <AppHeader />
 
       {/* Main */}
       <div className="flex-grow-1 overflow-hidden">
@@ -155,6 +126,21 @@ function ClubsBrowsePage() {
           {/* Left Sidebar */}
           <Col lg={3} md={4} className="border-end bg-light h-100 overflow-auto d-none d-md-block">
             <div className="p-3">
+
+              {/* Хайлт */}
+              <Form onSubmit={handleSearch} className="mb-3">
+                <InputGroup size="sm">
+                  <Form.Control
+                    type="text"
+                    placeholder="Клуб хайх..."
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                  />
+                  <Button variant="outline-primary" type="submit">
+                    <i className="bi bi-search"></i>
+                  </Button>
+                </InputGroup>
+              </Form>
 
               {/* View switcher */}
               <h6 className="text-uppercase text-muted small fw-bold mb-2">
@@ -250,6 +236,19 @@ function ClubsBrowsePage() {
 
               {/* Mobile filters */}
               <div className="d-md-none mb-3">
+                <Form onSubmit={handleSearch} className="mb-2">
+                  <InputGroup size="sm">
+                    <Form.Control
+                      type="text"
+                      placeholder="Клуб хайх..."
+                      value={searchInput}
+                      onChange={(e) => setSearchInput(e.target.value)}
+                    />
+                    <Button variant="outline-primary" type="submit">
+                      <i className="bi bi-search"></i>
+                    </Button>
+                  </InputGroup>
+                </Form>
                 <div className="d-flex gap-2 overflow-auto pb-2 mb-2">
                   {Object.entries(VIEW_TYPES).map(([key, vt]) => (
                     <Button

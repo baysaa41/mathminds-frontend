@@ -7,6 +7,7 @@ import apiClient from '../api/axiosConfig.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { usePrefill } from '../context/PrefillContext.jsx';
 import LivePreview from '../components/LivePreview.jsx';
+import { MathJax } from 'better-react-mathjax';
 import UserName from '../components/UserName.jsx';
 
 // React Bootstrap components
@@ -59,7 +60,7 @@ const QuizDetailPage = () => {
         const response = await apiClient.get(`/api/integral/quizzes/${id}/`);
         setQuiz(response.data);
         if (response.data?.title) {
-          setPageTitle(response.data.title);
+          setPageTitle(`Тест · ${response.data.title}`);
         }
       } catch (err) {
         setError(
@@ -215,7 +216,9 @@ const QuizDetailPage = () => {
         <Breadcrumb.Item linkAs={Link} linkProps={{ to: '/quizzes' }}>
           Тестүүд
         </Breadcrumb.Item>
-        <Breadcrumb.Item active>{quiz.title || 'Тест'}</Breadcrumb.Item>
+        <Breadcrumb.Item active>
+          <MathJax inline dynamic>{quiz.title || 'Тест'}</MathJax>
+        </Breadcrumb.Item>
       </Breadcrumb>
 
       <Row className="g-4">
@@ -231,19 +234,6 @@ const QuizDetailPage = () => {
             </div>
           </div>
 
-          {/* Засварлах товчнууд */}
-          {canEdit && (
-            <Stack gap={2} className="mb-3">
-              <Button variant="outline-primary" size="sm" onClick={handleEditClick}>
-                <i className="bi bi-pencil me-1"></i>
-                Засварлах
-              </Button>
-              <Button variant="outline-success" size="sm" onClick={handleCreatePost}>
-                <i className="bi bi-megaphone me-1"></i>
-                Постлох
-              </Button>
-            </Stack>
-          )}
 
           {/* Клубт оруулах (багш нарт) */}
           {user && quiz.problems?.length > 0 && (
@@ -405,6 +395,17 @@ const QuizDetailPage = () => {
                 );
               })}
             </ListGroup>
+          )}
+
+          {canEdit && (
+            <div className="d-flex justify-content-end gap-2 mt-3">
+              <Button variant="outline-primary" size="sm" onClick={handleEditClick} title="Засварлах">
+                <i className="bi bi-pencil"></i>
+              </Button>
+              <Button variant="outline-success" size="sm" onClick={handleCreatePost} title="Постлох">
+                <i className="bi bi-megaphone"></i>
+              </Button>
+            </div>
           )}
 
           {/* Эхлүүлэх товч */}

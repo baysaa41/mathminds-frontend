@@ -30,6 +30,10 @@ const ArticleDetailPage = () => {
   // (!!!) useOutletContext-г ашиглан setPageTitle-г авна
   const { setPageTitle } = useOutletContext();
 
+  const fontSizes = [1, 1.2, 1.5];
+  const [fontSizeIndex, setFontSizeIndex] = useState(0);
+  const fontSize = fontSizes[fontSizeIndex];
+
   useEffect(() => {
     const fetchArticle = async () => {
       try {
@@ -42,7 +46,7 @@ const ArticleDetailPage = () => {
 
         // (!!!) Гарчгийг энд тохируулна
         if (response.data?.title) {
-          setPageTitle(response.data.title);
+          setPageTitle(`Өгүүлэл · ${response.data.title}`);
         }
       } catch (err) {
         if (err.response && err.response.status === 404) {
@@ -133,7 +137,9 @@ const ArticleDetailPage = () => {
         <Breadcrumb.Item linkAs={Link} linkProps={{ to: '/articles' }}>
           Өгүүллийн сан
         </Breadcrumb.Item>
-        <Breadcrumb.Item active>{article.title || 'Өгүүлэл'}</Breadcrumb.Item>
+        <Breadcrumb.Item active>
+          <MathJax inline dynamic>{article.title || 'Өгүүлэл'}</MathJax>
+        </Breadcrumb.Item>
       </Breadcrumb>
 
       {/* Гарчиг ба Засварлах товч */}
@@ -143,28 +149,26 @@ const ArticleDetailPage = () => {
             {article.title || 'Гарчиггүй өгүүлэл'}
           </h1>
         </MathJax>
-        {canEdit && (
-          <>
-            <Button
-              variant="outline-success"
-              size="sm"
-              onClick={handleCreatePost}
-              className="flex-shrink-0"
-            >
-              <i className="bi bi-megaphone me-1"></i>
-              Постлох
-            </Button>
-            <Button
-              variant="outline-primary"
-              size="sm"
-              onClick={handleEditClick}
-              className="flex-shrink-0"
-            >
-              <i className="bi bi-pencil me-1"></i>
-              Засварлах
-            </Button>
-          </>
-        )}
+        <div className="ms-auto d-flex align-items-center gap-1 flex-shrink-0">
+          <Button
+            variant="link"
+            className="text-decoration-none p-1 text-muted"
+            onClick={() => setFontSizeIndex((p) => Math.max(p - 1, 0))}
+            disabled={fontSizeIndex === 0}
+            title="Үсэг жижигрүүлэх"
+          >
+            <small style={{ fontSize: '0.7rem', fontWeight: 'bold' }}>Aa</small>
+          </Button>
+          <Button
+            variant="link"
+            className="text-decoration-none p-1 text-muted"
+            onClick={() => setFontSizeIndex((p) => Math.min(p + 1, fontSizes.length - 1))}
+            disabled={fontSizeIndex === fontSizes.length - 1}
+            title="Үсэг томруулах"
+          >
+            <span style={{ fontSize: '1rem', fontWeight: 'bold' }}>Aa</span>
+          </Button>
+        </div>
       </Stack>
 
       {/* ✅ Abstract харуулах */}
@@ -194,14 +198,27 @@ const ArticleDetailPage = () => {
 
       {/* Үндсэн агуулга */}
       <MathJax hideUntilTypeset={'first'}>
-        <div
-          className="article-content mathjax-content"
-          style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: '1.7' }}
-          dangerouslySetInnerHTML={{ __html: article.content || '' }}
-        />
+        <div style={{ fontSize: `${fontSize}rem` }}>
+          <div
+            className="article-content mathjax-content"
+            style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: '1.7' }}
+            dangerouslySetInnerHTML={{ __html: article.content || '' }}
+          />
+        </div>
       </MathJax>
 
-      <hr className="mt-5" />
+      {canEdit && (
+        <div className="d-flex justify-content-end gap-2 mt-3">
+          <Button variant="outline-primary" size="sm" onClick={handleEditClick} title="Засварлах">
+            <i className="bi bi-pencil"></i>
+          </Button>
+          <Button variant="outline-success" size="sm" onClick={handleCreatePost} title="Постлох">
+            <i className="bi bi-megaphone"></i>
+          </Button>
+        </div>
+      )}
+
+      <hr className="mt-4" />
       <Link to="/content/browse?type=articles" className="btn btn-outline-secondary btn-sm mt-3">
         &laquo; Өгүүллийн сан руу буцах
       </Link>
