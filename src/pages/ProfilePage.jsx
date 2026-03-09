@@ -1,11 +1,13 @@
-// frontend/src/pages/ProfilePage.jsx (ШИНЭЧИЛСЭН: UserAvatar компонент ашигласан)
+// frontend/src/pages/ProfilePage.jsx
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import apiService from '../services/apiService';
+import apiClient from '../api/axiosConfig.js';
 import { SITE_ROLE_CONFIG } from '../constants/membership';
 import { formatDate as formatDateUtil } from '../utils/dateFormatter';
+import { API_ENDPOINTS } from '../constants/api.js';
 
 // Bootstrap components
 import Container from 'react-bootstrap/Container';
@@ -15,30 +17,82 @@ import Card from 'react-bootstrap/Card';
 import Spinner from 'react-bootstrap/Spinner';
 import Alert from 'react-bootstrap/Alert';
 import Button from 'react-bootstrap/Button';
-import ListGroup from 'react-bootstrap/ListGroup';
 import Stack from 'react-bootstrap/Stack';
 import Dropdown from 'react-bootstrap/Dropdown';
 import DropdownButton from 'react-bootstrap/DropdownButton';
 import Badge from 'react-bootstrap/Badge';
+import Nav from 'react-bootstrap/Nav';
 import {
   User,
-  CheckCircle,
-  BarChart2,
   Coins,
   UserPlus,
   UserMinus,
   Users,
-  Crown,
-  Star,
-  Zap,
   Award,
+  FileText,
+  Heart,
+  MessageSquare,
 } from 'lucide-react';
-import { LinkContainer } from 'react-router-bootstrap';
 import UserAvatar from '../components/UserAvatar';
-import MembershipSummary from '../components/MembershipSummary';
 import PrivatePostModal from '../components/PrivatePostModal';
+import PostCard from '../components/PostCard';
 import { MessageCircle } from 'lucide-react';
+import usePaginatedFetch from '../hooks/usePagenatedFetch.js';
+import useInfiniteScroll from '../hooks/useInfiniteScroll.js';
 
+// ─── Пост жагсаалт компонент ──────────────────────────────────────────────────
+const PostList = ({ endpoint, params, emptyText }) => {
+  const { data: posts, loading, loadingMore, error, hasMore, fetchData, loadMore, setData } =
+    usePaginatedFetch(endpoint);
+
+  const { triggerRef } = useInfiniteScroll(loadMore, hasMore, loadingMore);
+
+  useEffect(() => {
+    fetchData(params);
+  }, [JSON.stringify(params)]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleDeleted = useCallback(
+    (id) => setData((prev) => prev.filter((p) => p.id !== id)),
+    [setData]
+  );
+
+  if (loading && posts.length === 0) {
+    return (
+      <div className="text-center py-5">
+        <Spinner animation="border" size="sm" />
+      </div>
+    );
+  }
+
+  if (error && posts.length === 0) {
+    return <Alert variant="danger" className="mt-3">{error}</Alert>;
+  }
+
+  if (!loading && posts.length === 0) {
+    return (
+      <div className="text-center text-muted py-5">
+        <FileText size={36} className="mb-2 opacity-25" />
+        <p className="mb-0 small">{emptyText}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {posts.map((post) => (
+        <PostCard key={post.id} post={post} onPostDeleted={handleDeleted} />
+      ))}
+      {loadingMore && (
+        <div className="text-center py-3">
+          <Spinner animation="border" size="sm" />
+        </div>
+      )}
+      <div ref={triggerRef} />
+    </div>
+  );
+};
+
+// ─── Үндсэн ProfilePage ───────────────────────────────────────────────────────
 function ProfilePage() {
   const { username } = useParams();
   const { user: currentUser } = useAuth();
@@ -48,85 +102,28 @@ function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Follow статус
   const [isFollowing, setIsFollowing] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [followLoading, setFollowLoading] = useState(false);
 
-  // Олимпиадын амжилт
   const [olympiadData, setOlympiadData] = useState(null);
   const [olympiadLoading, setOlympiadLoading] = useState(false);
 
-  // Хувийн пост modal
   const [showPrivatePostModal, setShowPrivatePostModal] = useState(false);
+  const [activeTab, setActiveTab] = useState('posts');
 
-  // Coin types configuration
   const coinTypes = [
     { value: 'gold', label: 'Алт', emoji: '🥇' },
     { value: 'silver', label: 'Мөнгө', emoji: '🥈' },
     { value: 'copper', label: 'Зэс', emoji: '🥉' },
   ];
 
-  // Membership tier configuration
-  const membershipTiers = {
-    FREE: {
-      name: 'Үнэгүй',
-      icon: User,
-      color: 'secondary',
-      features: ['Үндсэн контентод хандах', 'Энгийн бодлого бодох'],
-    },
-    MEMBER: {
-      name: 'Гишүүн',
-      icon: Star,
-      color: 'success',
-      features: [
-        'Үндсэн бүх агуулгад хандах',
-        'Бодлого шийдэх боломж',
-        'Клубт элсэх эрх',
-        'Имэйл дэмжлэг',
-      ],
-    },
-    PRO: {
-      name: 'Мэргэжлийн',
-      icon: Zap,
-      color: 'info',
-      features: [
-        'Гишүүн түвшний бүх боломж',
-        'Онцгой бодлогуудад хандах',
-        'Багшийн зөвлөгөө авах',
-        'Ахисан түвшний тестүүд',
-        'Эрэмбэлэлтэд оролцох',
-      ],
-    },
-    PREMIUM: {
-      name: 'Онцгой',
-      icon: Award,
-      color: 'danger',
-      features: [
-        'Мэргэжлийн түвшний бүх боломж',
-        'Олимпиадын бодлого, материал',
-        'Биечлэн зөвлөгөө авах',
-        'Тусгай вебинар, хичээл',
-        'Урамшуулалтай зоос',
-      ],
-    },
-    VIP: {
-      name: 'VIP',
-      icon: Crown,
-      color: 'warning',
-      features: [
-        'Онцгой түвшний бүх боломж',
-        'Хувийн багшийн туслалцаа',
-        'Ахисан бодлого, материалууд',
-        'Олон улсын олимпиадын бэлтгэл',
-        'Тусгай урамшуулал, шагнал',
-        'VIP badge, profile тэмдэг',
-      ],
-    },
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Тодорхойгүй';
+    return formatDateUtil(dateString);
   };
 
-  // Профайл мэдээлэл татах
   useEffect(() => {
     const fetchProfile = async () => {
       setLoading(true);
@@ -134,8 +131,6 @@ function ProfilePage() {
       try {
         const data = await apiService.getUserProfile(username);
         setProfile(data);
-
-        // Follow статус татах
         setIsFollowing(data.is_following || false);
         setFollowersCount(data.followers_count || 0);
         setFollowingCount(data.following_count || 0);
@@ -145,79 +140,43 @@ function ProfilePage() {
         setLoading(false);
       }
     };
-
     fetchProfile();
   }, [username]);
 
-  // Олимпиадын амжилт татах
   useEffect(() => {
-    const fetchOlympiadAchievements = async () => {
-      if (!username) return;
-
-      setOlympiadLoading(true);
-      try {
-        const response = await apiService.get(`/users/api/profile/${username}/olympiad-achievements/`);
-        if (response.data && response.data.has_mmo_id) {
-          setOlympiadData(response.data);
-        }
-      } catch (err) {
-        console.error('Олимпиадын мэдээлэл татахад алдаа:', err);
-      } finally {
-        setOlympiadLoading(false);
-      }
-    };
-
-    fetchOlympiadAchievements();
+    if (!username) return;
+    setOlympiadLoading(true);
+    apiClient
+      .get(`/users/api/profile/${username}/olympiad-achievements/`)
+      .then((response) => {
+        if (response.data?.has_mmo_id) setOlympiadData(response.data);
+      })
+      .catch(() => {})
+      .finally(() => setOlympiadLoading(false));
   }, [username]);
 
-  // Follow/Unfollow товчлуур дарах
   const handleFollowToggle = async () => {
-    if (!currentUser) {
-      navigate('/login');
-      return;
-    }
-
+    if (!currentUser) { navigate('/login'); return; }
     setFollowLoading(true);
     try {
       if (isFollowing) {
-        // Unfollow
         await apiService.unfollowUser(username);
         setIsFollowing(false);
         setFollowersCount((prev) => Math.max(0, prev - 1));
       } else {
-        // Follow
         await apiService.followUser(username);
         setIsFollowing(true);
         setFollowersCount((prev) => prev + 1);
       }
     } catch (err) {
-      console.error('Follow/Unfollow алдаа:', err);
-      alert(err.message || 'Алдаа гарлаа.');
+      console.error(err);
     } finally {
       setFollowLoading(false);
     }
   };
 
   const handleCoinTransfer = (coinType) => {
-    navigate('/coins/transfer', {
-      state: {
-        recipientUsername: profile.username,
-        coinType: coinType,
-      },
-    });
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return 'Тодорхойгүй';
-    return formatDateUtil(dateString);
-  };
-
-  const navigateToFollowers = () => {
-    navigate(`/profile/${username}/followers`);
-  };
-
-  const navigateToFollowing = () => {
-    navigate(`/profile/${username}/following`);
+    navigate('/coins/transfer', { state: { recipientUsername: profile.username, coinType } });
   };
 
   if (loading) {
@@ -236,15 +195,16 @@ function ProfilePage() {
     );
   }
 
-  if (profile) {
-    const isOwnProfile = currentUser && currentUser.id === profile.id;
-    const canEdit = isOwnProfile || currentUser?.is_staff;
-    const canViewCoins = isOwnProfile || currentUser?.is_staff;
+  if (!profile) return null;
 
-    return (
-      <>
-        <Container className="my-4" style={{ maxWidth: '900px' }}>
-        <Card className="shadow-sm border-0">
+  const isOwnProfile = currentUser && currentUser.id === profile.id;
+  const canEdit = isOwnProfile || currentUser?.is_staff;
+
+  return (
+    <>
+      <Container className="my-4" style={{ maxWidth: '900px' }}>
+        {/* ── Профайл карт ── */}
+        <Card className="shadow-sm border-0 mb-4">
           <Card.Header className="bg-light p-4 border-0">
             <Row className="align-items-center">
               <Col xs="auto">
@@ -256,7 +216,6 @@ function ProfilePage() {
                 </h2>
                 <p className="text-muted mb-1">@{profile.username}</p>
 
-                {/* Үүрэг (site_role) */}
                 {profile.site_role && SITE_ROLE_CONFIG[profile.site_role] && (
                   <span className="badge bg-primary bg-opacity-75 me-2">
                     <User size={12} className="me-1" />
@@ -264,23 +223,19 @@ function ProfilePage() {
                   </span>
                 )}
 
-                {/* Follow статус badge-ууд */}
                 <div className="mt-2">
                   <Badge
-                    bg="light"
-                    text="dark"
-                    className="me-2"
+                    bg="light" text="dark" className="me-2"
                     style={{ cursor: 'pointer' }}
-                    onClick={navigateToFollowers}
+                    onClick={() => navigate(`/profile/${username}/followers`)}
                   >
                     <Users size={14} className="me-1" />
                     {followersCount} дагагч
                   </Badge>
                   <Badge
-                    bg="light"
-                    text="dark"
+                    bg="light" text="dark"
                     style={{ cursor: 'pointer' }}
-                    onClick={navigateToFollowing}
+                    onClick={() => navigate(`/profile/${username}/following`)}
                   >
                     <Users size={14} className="me-1" />
                     {followingCount} дагаж байгаа
@@ -288,10 +243,8 @@ function ProfilePage() {
                 </div>
               </Col>
 
-              {/* Товчлуурууд */}
               <Col xs="auto">
                 <Stack direction="horizontal" gap={2}>
-                  {/* Өөрийнх биш бол: Дагах/Coin илгээх товч */}
                   {!isOwnProfile && (
                     <>
                       <Button
@@ -303,40 +256,23 @@ function ProfilePage() {
                         {followLoading ? (
                           <Spinner as="span" animation="border" size="sm" />
                         ) : isFollowing ? (
-                          <>
-                            <UserMinus size={16} />
-                            &nbsp;Дагахаа болих
-                          </>
+                          <><UserMinus size={16} /> Дагахаа болих</>
                         ) : (
-                          <>
-                            <UserPlus size={16} />
-                            &nbsp;Дагах
-                          </>
+                          <><UserPlus size={16} /> Дагах</>
                         )}
                       </Button>
                       <Button
-                        variant="outline-success"
-                        size="sm"
+                        variant="outline-success" size="sm"
                         onClick={() => setShowPrivatePostModal(true)}
                       >
-                        <MessageCircle size={16} />
-                        &nbsp;Мессеж
+                        <MessageCircle size={16} /> Мессеж
                       </Button>
                       <DropdownButton
-                        variant="outline-primary"
-                        size="sm"
-                        title={
-                          <>
-                            <Coins size={16} className="me-1" />
-                            Зоос илгээх
-                          </>
-                        }
+                        variant="outline-primary" size="sm"
+                        title={<><Coins size={16} className="me-1" />Зоос илгээх</>}
                       >
                         {coinTypes.map((coin) => (
-                          <Dropdown.Item
-                            key={coin.value}
-                            onClick={() => handleCoinTransfer(coin.value)}
-                          >
+                          <Dropdown.Item key={coin.value} onClick={() => handleCoinTransfer(coin.value)}>
                             <span style={{ fontSize: '18px' }}>{coin.emoji}</span> {coin.label}
                           </Dropdown.Item>
                         ))}
@@ -344,24 +280,15 @@ function ProfilePage() {
                     </>
                   )}
 
-                  {/* Өөрийнх бол: Coin илгээх + Засах товч */}
                   {isOwnProfile && (
                     <DropdownButton
-                      variant="primary"
-                      size="sm"
-                      title={
-                        <>
-                          <Coins size={16} className="me-1" />
-                          Зоос илгээх
-                        </>
-                      }
+                      variant="outline-primary" size="sm"
+                      title={<><Coins size={16} className="me-1" />Зоос илгээх</>}
                     >
                       {coinTypes.map((coin) => (
                         <Dropdown.Item
                           key={coin.value}
-                          onClick={() =>
-                            navigate('/coins/transfer', { state: { coinType: coin.value } })
-                          }
+                          onClick={() => navigate('/coins/transfer', { state: { coinType: coin.value } })}
                         >
                           <span style={{ fontSize: '18px' }}>{coin.emoji}</span> {coin.label}
                         </Dropdown.Item>
@@ -369,11 +296,9 @@ function ProfilePage() {
                     </DropdownButton>
                   )}
 
-                  {/* Засах товч: өөрийнх эсвэл staff */}
                   {canEdit && (
                     <Button
-                      variant="outline-secondary"
-                      size="sm"
+                      variant="outline-secondary" size="sm"
                       onClick={() =>
                         isOwnProfile
                           ? navigate('/profile/edit')
@@ -388,261 +313,129 @@ function ProfilePage() {
             </Row>
           </Card.Header>
 
-          <Card.Body className="p-4">
-            <Row>
-              {/* Зүүн тал: Үндсэн мэдээлэл */}
-              <Col md={6}>
-                <h5 className="fw-semibold mb-3">Үндсэн мэдээлэл</h5>
-                <ListGroup variant="flush">
-                  <ListGroup.Item className="d-flex justify-content-between px-0">
-                    <span className="text-muted">И-мэйл:</span>
-                    <b>{profile.email || 'Нууцлал'}</b>
-                  </ListGroup.Item>
-                  <ListGroup.Item className="d-flex justify-content-between px-0">
-                    <span className="text-muted">Бүртгүүлсэн:</span>
-                    <b>{formatDate(profile.date_joined)}</b>
-                  </ListGroup.Item>
-                </ListGroup>
+          {/* Үндсэн мэдээлэл */}
+          <Card.Body className="px-4 py-3">
+            <Row className="g-3">
+              <Col xs="auto">
+                <span className="text-muted small">И-мэйл:</span>{' '}
+                <span className="small fw-semibold">{profile.email || 'Нууцлал'}</span>
               </Col>
-
-              {/* Баруун тал: Coin балансууд - зөвхөн өөрөө эсвэл staff харна */}
-              {canViewCoins && (
-                <Col md={6} className="mt-4 mt-md-0">
-                  <h5 className="fw-semibold mb-3">Хэтэвчин дэх зоос 💰</h5>
-                  <ListGroup variant="flush">
-                    {coinTypes.map((coin) => (
-                      <ListGroup.Item
-                        key={coin.value}
-                        className="d-flex justify-content-between px-0"
-                      >
-                        <span className="text-muted">
-                          <span style={{ fontSize: '18px' }}>{coin.emoji}</span> {coin.label}:
-                        </span>
-                        <strong>{(profile[`${coin.value}_coins`] || 0).toLocaleString()}</strong>
-                      </ListGroup.Item>
-                    ))}
-                  </ListGroup>
-                </Col>
-              )}
-            </Row>
-
-            {/* Гишүүнчлэлийн мэдээлэл */}
-            {profile.membership_tier && profile.membership_tier !== 'FREE' && (
-              <Row className="mt-4">
-                <Col md={12}>
-                  {(() => {
-                    const tierConfig = membershipTiers[profile.membership_tier];
-                    const TierIcon = tierConfig?.icon || Star;
-                    const isExpired =
-                      profile.expiration && new Date(profile.expiration) < new Date();
-
-                    return (
-                      <Card className={`border-2 border-${tierConfig?.color || 'secondary'}`}>
-                        <Card.Header
-                          className={`bg-${tierConfig?.color || 'secondary'} bg-opacity-10 border-0`}
-                        >
-                          <div className="d-flex align-items-center justify-content-between">
-                            <h5 className="mb-0 fw-bold">
-                              <TierIcon
-                                size={20}
-                                className={`text-${tierConfig?.color || 'secondary'} me-2`}
-                              />
-                              {tierConfig?.name || profile.membership_tier} гишүүнчлэл
-                            </h5>
-                            <Badge bg={tierConfig?.color || 'secondary'} className="px-3 py-2">
-                              {tierConfig?.name || profile.membership_tier}
-                            </Badge>
-                          </div>
-                        </Card.Header>
-                        <Card.Body>
-                          <Row>
-                            <Col md={6}>
-                              <h6 className="fw-semibold mb-3">Боломжууд:</h6>
-                              <ul className="list-unstyled">
-                                {tierConfig?.features.map((feature, index) => (
-                                  <li key={index} className="mb-2">
-                                    <CheckCircle
-                                      size={16}
-                                      className={`text-${tierConfig?.color || 'secondary'} me-2`}
-                                    />
-                                    {feature}
-                                  </li>
-                                ))}
-                              </ul>
-                            </Col>
-                            <Col md={6}>
-                              <h6 className="fw-semibold mb-3">Эрхийн мэдээлэл:</h6>
-                              {profile.expiration && (
-                                <div className="mb-3">
-                                  <div className="d-flex align-items-center mb-2">
-                                    <i className="bi bi-calendar-check me-2"></i>
-                                    <span className="text-muted">Дуусах огноо:</span>
-                                  </div>
-                                  <div
-                                    className={`fs-5 fw-bold ${isExpired ? 'text-danger' : 'text-success'}`}
-                                  >
-                                    {formatDate(profile.expiration)}
-                                  </div>
-                                  {isExpired ? (
-                                    <small className="text-danger">
-                                      ⚠️ Гишүүнчлэлийн эрх дууссан байна
-                                    </small>
-                                  ) : (
-                                    <small className="text-success">✓ Идэвхтэй байна</small>
-                                  )}
-                                </div>
-                              )}
-                              {isOwnProfile && (
-                                <div className="mt-3">
-                                  <LinkContainer to="/products">
-                                    <Button variant={tierConfig?.color || 'secondary'} size="sm">
-                                      Гишүүнчлэл сунгах
-                                    </Button>
-                                  </LinkContainer>
-                                </div>
-                              )}
-                            </Col>
-                          </Row>
-                        </Card.Body>
-                      </Card>
-                    );
-                  })()}
-                </Col>
-              </Row>
-            )}
-
-            {/* Доод хэсэг: Үзүүлэлтүүд */}
-            <Row className="mt-4">
-              <Col md={12}>
-                <h5 className="fw-semibold mb-3">Үзүүлэлт</h5>
-                <ListGroup variant="flush">
-                  <ListGroup.Item className="d-flex justify-content-between px-0">
-                    <span className="text-muted">
-                      <CheckCircle size={16} className="text-success me-1" /> Бодсон:
-                    </span>
-                    <b>{profile.number_solved || 0}</b>
-                  </ListGroup.Item>
-                  <ListGroup.Item className="d-flex justify-content-between px-0">
-                    <span className="text-muted">
-                      <BarChart2 size={16} className="text-info me-1" /> Амжилт:
-                    </span>
-                    <b>{(profile.success_rate || 0).toFixed(1)}%</b>
-                  </ListGroup.Item>
-                </ListGroup>
+              <Col xs="auto">
+                <span className="text-muted small">Бүртгүүлсэн:</span>{' '}
+                <span className="small fw-semibold">{formatDate(profile.date_joined)}</span>
               </Col>
             </Row>
           </Card.Body>
         </Card>
 
-        {/* Олимпиадын амжилтууд */}
-        {olympiadLoading ? (
-          <Card className="shadow-sm border-0 mt-4">
-            <Card.Body className="text-center py-5">
-              <Spinner animation="border" variant="primary" />
-              <p className="mt-2 text-muted">Олимпиадын мэдээлэл уншиж байна...</p>
-            </Card.Body>
-          </Card>
-        ) : olympiadData && olympiadData.has_mmo_id && olympiadData.achievements && olympiadData.achievements.length > 0 ? (
-          <Card className="shadow-sm border-0 mt-4">
-            <Card.Header className="bg-warning bg-opacity-10 border-0 p-4">
+        {/* ── Олимпиадын амжилт ── */}
+        {!olympiadLoading && olympiadData?.has_mmo_id && olympiadData.achievements?.length > 0 && (
+          <Card className="shadow-sm border-0 mb-4">
+            <Card.Header className="bg-warning bg-opacity-10 border-0 p-3">
               <div className="d-flex align-items-center">
-                <Award size={24} className="text-warning me-2" />
-                <h5 className="mb-0 fw-bold">Олимпиадын амжилтууд 🏆</h5>
+                <Award size={20} className="text-warning me-2" />
+                <h6 className="mb-0 fw-bold">Олимпиадын амжилтууд 🏆</h6>
               </div>
             </Card.Header>
-            <Card.Body className="p-4">
-              {/* Статистик */}
-              <Row className="mb-4">
-                <Col md={4}>
-                  <div className="text-center p-3 bg-light rounded">
-                    <div className="fw-bold text-primary" style={{ fontSize: '2rem' }}>
-                      {olympiadData.statistics.total_count || 0}
+            <Card.Body className="p-3">
+              <Row className="g-2 mb-3">
+                {[
+                  { label: 'Нийт оролцсон', value: olympiadData.statistics.total_count || 0, color: 'primary' },
+                  { label: '1-р даваа', value: olympiadData.statistics.first_round_count || 0, color: 'success' },
+                  { label: 'Шагнал авсан', value: olympiadData.statistics.prize_count || 0, color: 'danger' },
+                ].map((s) => (
+                  <Col key={s.label} xs={4}>
+                    <div className="text-center p-2 bg-light rounded">
+                      <div className={`fw-bold text-${s.color}`} style={{ fontSize: '1.5rem' }}>{s.value}</div>
+                      <div className="text-muted" style={{ fontSize: '0.72rem' }}>{s.label}</div>
                     </div>
-                    <div className="text-muted small">Нийт оролцсон</div>
-                  </div>
-                </Col>
-                <Col md={4}>
-                  <div className="text-center p-3 bg-light rounded">
-                    <div className="fw-bold text-success" style={{ fontSize: '2rem' }}>
-                      {olympiadData.statistics.first_round_count || 0}
-                    </div>
-                    <div className="text-muted small">1-р даваа</div>
-                  </div>
-                </Col>
-                <Col md={4}>
-                  <div className="text-center p-3 bg-light rounded">
-                    <div className="fw-bold text-danger" style={{ fontSize: '2rem' }}>
-                      {olympiadData.statistics.prize_count || 0}
-                    </div>
-                    <div className="text-muted small">Шагнал авсан</div>
-                  </div>
-                </Col>
+                  </Col>
+                ))}
               </Row>
-
-              {/* Олимпиадын жагсаалт */}
-              <h6 className="fw-semibold mb-3">Оролцсон олимпиадууд:</h6>
-              <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                <ListGroup variant="flush">
-                  {olympiadData.achievements.map((achievement, index) => (
-                    <ListGroup.Item key={index} className="px-0 py-3 border-bottom">
-                      <div className="d-flex justify-content-between align-items-start">
-                        <div className="flex-grow-1">
-                          <div className="fw-bold mb-1">
-                            {achievement.olympiad_name || 'Олимпиад'}
-                            {achievement.prize && (
-                              <Badge bg="warning" text="dark" className="ms-2">
-                                🏆 {achievement.prize}
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="small text-muted">
-                            <span className="me-3">
-                              📅 {achievement.school_year || 'Тодорхойгүй'}
-                            </span>
-                            <span className="me-3">
-                              🎯 {achievement.round}-р даваа
-                            </span>
-                            <span className="me-3">
-                              📝 {achievement.problems_solved || 0} бодлого
-                            </span>
-                            <span>
-                              ⭐ {achievement.total_score || 0} оноо
-                            </span>
-                          </div>
-                          {achievement.school_name && (
-                            <div className="small text-muted mt-1">
-                              🏫 {achievement.school_name}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </ListGroup.Item>
-                  ))}
-                </ListGroup>
+              <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                {olympiadData.achievements.map((a, i) => (
+                  <div key={i} className="py-2 border-bottom small">
+                    <div className="fw-semibold">
+                      {a.olympiad_name || 'Олимпиад'}
+                      {a.prize && <Badge bg="warning" text="dark" className="ms-2">🏆 {a.prize}</Badge>}
+                    </div>
+                    <div className="text-muted">
+                      📅 {a.school_year} · 🎯 {a.round}-р даваа · 📝 {a.problems_solved || 0} бодлого · ⭐ {a.total_score || 0} оноо
+                    </div>
+                    {a.school_name && <div className="text-muted">🏫 {a.school_name}</div>}
+                  </div>
+                ))}
               </div>
             </Card.Body>
           </Card>
-        ) : null}
+        )}
 
-        {/* Гишүүнчлэлийн Дэлгэрэнгүй Мэдээлэл */}
-        {isOwnProfile && <MembershipSummary isOwnProfile={isOwnProfile} />}
-        </Container>
+        {/* ── Постын табууд ── */}
+        <Card className="shadow-sm border-0">
+          <Card.Header className="bg-white border-bottom p-0">
+            <Nav
+              variant="tabs"
+              className="border-0"
+              activeKey={activeTab}
+              onSelect={(k) => setActiveTab(k)}
+            >
+              <Nav.Item>
+                <Nav.Link eventKey="posts" className="px-4 py-3 d-flex align-items-center gap-2">
+                  <FileText size={15} />
+                  Постууд
+                </Nav.Link>
+              </Nav.Item>
+              <Nav.Item>
+                <Nav.Link eventKey="replies" className="px-4 py-3 d-flex align-items-center gap-2">
+                  <MessageSquare size={15} />
+                  Хариултууд
+                </Nav.Link>
+              </Nav.Item>
+              <Nav.Item>
+                <Nav.Link eventKey="favorites" className="px-4 py-3 d-flex align-items-center gap-2">
+                  <Heart size={15} />
+                  Таалагдсан
+                </Nav.Link>
+              </Nav.Item>
+            </Nav>
+          </Card.Header>
+          <Card.Body className="p-0">
+            {activeTab === 'posts' && (
+              <PostList
+                endpoint={API_ENDPOINTS.MINDS.POSTS}
+                params={{ author_username: username, content_type__in: 'post,article,problem,formula,quiz,repost' }}
+                emptyText="Пост байхгүй байна."
+              />
+            )}
+            {activeTab === 'replies' && (
+              <PostList
+                endpoint={API_ENDPOINTS.MINDS.POSTS}
+                params={{ author_username: username, content_type: 'reply' }}
+                emptyText="Хариулт байхгүй байна."
+              />
+            )}
+            {activeTab === 'favorites' && (
+              <PostList
+                endpoint={API_ENDPOINTS.MINDS.POSTS}
+                params={{ favored_by_username: username }}
+                emptyText="Таалагдсан пост байхгүй байна."
+              />
+            )}
+          </Card.Body>
+        </Card>
+      </Container>
 
-        {/* Хувийн пост илгээх Modal */}
-        <PrivatePostModal
-          show={showPrivatePostModal}
-          onHide={() => setShowPrivatePostModal(false)}
-          recipientUsername={profile.username}
-          onSuccess={(conversationUuid) => {
-            const dest = profile.is_ai_teacher ? '/ai-chat' : '/messages';
-            navigate(dest, { state: { conversationUuid } });
-          }}
-        />
-      </>
-    );
-  }
-
-  return null;
+      <PrivatePostModal
+        show={showPrivatePostModal}
+        onHide={() => setShowPrivatePostModal(false)}
+        recipientUsername={profile.username}
+        onSuccess={(conversationUuid) => {
+          const dest = profile.is_ai_teacher ? '/ai-chat' : '/messages';
+          navigate(dest, { state: { conversationUuid } });
+        }}
+      />
+    </>
+  );
 }
 
 export default ProfilePage;

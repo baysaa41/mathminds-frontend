@@ -52,7 +52,13 @@ function DashboardPage() {
     <Container className="py-4">
       <Row className="mb-4">
         <Col>
-          <h1 className="mb-3">Admin Dashboard</h1>
+          <div className="d-flex align-items-center justify-content-between mb-3">
+            <h1 className="mb-0">Admin Dashboard</h1>
+            <Link to="/" className="btn btn-outline-secondary btn-sm">
+              <i className="bi bi-house me-1"></i>
+              Үндсэн хуудас
+            </Link>
+          </div>
           <Card className="shadow-sm">
             <Card.Body>
               <h4>Сайн байна уу, {user.name}! 👋</h4>

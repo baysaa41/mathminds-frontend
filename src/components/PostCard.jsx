@@ -1129,6 +1129,23 @@ const PostCard = ({ post, onPostDeleted, depth = 0, compact = false, onCardClick
             >
               {isReposting ? <Spinner as="span" size="sm" /> : <i className="bi bi-repeat"></i>}
             </Button>
+
+            {/* Сурагчдын хариулт — зөвхөн тест постын эзэнд харагдана */}
+            {canEditOrDelete &&
+              originalPost.content_type === 'quiz' &&
+              originalPost.related_quiz?.uuid && (
+                <Button
+                  variant="link"
+                  className="text-decoration-none text-muted p-1"
+                  title="Сурагчдын хариулт харах"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/quiz/${originalPost.related_quiz.uuid}/student-answers`);
+                  }}
+                >
+                  <i className="bi bi-people-fill"></i>
+                </Button>
+              )}
           </Stack>
         </Card.Footer>
       </Card>

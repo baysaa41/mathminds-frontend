@@ -447,6 +447,24 @@ export const moveQuizDown = async (id) => {
   return apiClient.post(`/api/club-quizzes/${id}/move_down/`).then(r => r.data);
 };
 
+// ─── Club Files ───────────────────────────────────────────────────────────────
+
+export const createFileItem = async (formData) => {
+  return apiClient.post('/api/club-files/', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }).then(r => r.data);
+};
+
+export const updateFileItem = async (id, formData) => {
+  return apiClient.patch(`/api/club-files/${id}/`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }).then(r => r.data);
+};
+
+export const deleteFileItem = async (id) => {
+  return apiClient.delete(`/api/club-files/${id}/`).then(r => r.data);
+};
+
 /**
  * Алдааны мессежийг форматлах helper функц
  */
@@ -532,6 +550,9 @@ const clubsService = {
   deleteQuizItem,
   moveQuizUp,
   moveQuizDown,
+  createFileItem,
+  updateFileItem,
+  deleteFileItem,
   formatErrorMessage,
 };
 

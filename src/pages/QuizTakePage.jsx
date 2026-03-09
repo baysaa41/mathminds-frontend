@@ -48,6 +48,7 @@ const QuizTakePage = () => {
   // Modal states
   const [showPauseModal, setShowPauseModal] = useState(false);
   const [showFinishModal, setShowFinishModal] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Тест эхлүүлэх
   useEffect(() => {
@@ -168,51 +169,14 @@ const QuizTakePage = () => {
     };
   }, [isPaused, quizStartTime, quiz]);
 
-  // Хариулт хадгалах
+  // Хариулт хадгалах (problemId = integer pk)
   const submitAnswer = useCallback(
     async (problemId, answerData, imageFile) => {
       if (!answerSheet) return;
 
-      try {
-        console.log('[submitAnswer] problemId:', problemId);
-        console.log('[submitAnswer] answerData:', answerData);
-
-        // Fill-in-the-blank бодлого: тус тусдаа хадгалах
-        if (answerData.answers) {
-          console.log('[submitAnswer] Fill-in-blank: Submitting multiple answers');
-
-          // Бүх хариулт бүрийг тус тусад нь хадгалах
-          const submitPromises = Object.entries(answerData.answers).map(([label, value]) => {
-            const formData = new FormData();
-            formData.append('problem', problemId);
-            formData.append('label', label);
-            formData.append('value', value);
-            formData.append('time_spent', currentProblemTime);
-            formData.append('started_at', problemStartTime.toISOString());
-            formData.append('submitted_at', new Date().toISOString());
-
-            console.log(`[submitAnswer] Submitting: label="${label}", value="${value}"`);
-
-            return apiClient.post(
-              `/api/integral/answer-sheets/${answerSheet.id}/submit-answer/`,
-              formData,
-              {
-                headers: {
-                  'Content-Type': 'multipart/form-data',
-                },
-              }
-            );
-          });
-
-          // Бүх хариултыг зэрэг илгээх
-          await Promise.all(submitPromises);
-          console.log('[submitAnswer] All fill-in-blank answers submitted');
-        } else {
-          // Multiple choice эсвэл traditional - нэг хариулт
-          const label = answerData.label || '';
-          const value = answerData.value || '';
-          console.log('[submitAnswer] Single answer - label:', label, 'value:', value);
-
+      // Fill-in-the-blank бодлого: тус тусдаа хадгалах
+      if (answerData.answers) {
+        const submitPromises = Object.entries(answerData.answers).map(([label, value]) => {
           const formData = new FormData();
           formData.append('problem', problemId);
           formData.append('label', label);
@@ -220,24 +184,30 @@ const QuizTakePage = () => {
           formData.append('time_spent', currentProblemTime);
           formData.append('started_at', problemStartTime.toISOString());
           formData.append('submitted_at', new Date().toISOString());
-
-          // Зураг байвал нэмэх (уламжлалт бодлого)
-          if (imageFile) {
-            formData.append('image', imageFile);
-          }
-
-          await apiClient.post(
+          return apiClient.post(
             `/api/integral/answer-sheets/${answerSheet.id}/submit-answer/`,
             formData,
-            {
-              headers: {
-                'Content-Type': 'multipart/form-data',
-              },
-            }
+            { headers: { 'Content-Type': 'multipart/form-data' } }
           );
+        });
+        await Promise.all(submitPromises);
+      } else {
+        // Multiple choice эсвэл traditional - нэг хариулт
+        const formData = new FormData();
+        formData.append('problem', problemId);
+        formData.append('label', answerData.label || '');
+        formData.append('value', answerData.value || '');
+        formData.append('time_spent', currentProblemTime);
+        formData.append('started_at', problemStartTime.toISOString());
+        formData.append('submitted_at', new Date().toISOString());
+        if (imageFile) {
+          formData.append('image', imageFile);
         }
-      } catch (err) {
-        console.error('Хариулт хадгалахад алдаа:', err);
+        await apiClient.post(
+          `/api/integral/answer-sheets/${answerSheet.id}/submit-answer/`,
+          formData,
+          { headers: { 'Content-Type': 'multipart/form-data' } }
+        );
       }
     },
     [answerSheet, currentProblemTime, problemStartTime]
@@ -245,22 +215,27 @@ const QuizTakePage = () => {
 
   // Дараагийн бодлого
   const handleNext = async () => {
+    if (isSaving) return;
     const currentProblem = problems[currentIndex];
     const currentAnswer = answers[currentProblem.id];
     const imageFile = selectedImages[currentProblem.id];
 
-    // Хариултыг хадгалах
     if (currentAnswer) {
-      await submitAnswer(currentProblem.uuid, currentAnswer, imageFile);
+      setIsSaving(true);
+      try {
+        await submitAnswer(currentProblem.id, currentAnswer, imageFile);
+      } catch (err) {
+        console.error('Хариулт хадгалахад алдаа:', err);
+      } finally {
+        setIsSaving(false);
+      }
     }
 
-    // Дараагийн бодлого руу шилжих
     if (currentIndex < problems.length - 1) {
       setCurrentIndex(currentIndex + 1);
       setCurrentProblemTime(0);
       setProblemStartTime(new Date());
     } else {
-      // Сүүлчийн бодлого бол дуусгах
       setShowFinishModal(true);
     }
   };
@@ -277,6 +252,13 @@ const QuizTakePage = () => {
   // Түр зогсоох
   const handlePause = async () => {
     try {
+      // Одоогийн хариулт байвал хадгалах
+      const currentProblem = problems[currentIndex];
+      const currentAnswer = answers[currentProblem?.id];
+      const imageFile = selectedImages[currentProblem?.id];
+      if (currentAnswer && currentProblem) {
+        await submitAnswer(currentProblem.id, currentAnswer, imageFile).catch(console.error);
+      }
       await apiClient.post(`/api/integral/answer-sheets/${answerSheet.id}/pause/`);
       setIsPaused(true);
       setShowPauseModal(true);
@@ -307,7 +289,7 @@ const QuizTakePage = () => {
       const currentAnswer = answers[currentProblem?.id];
       const imageFile = selectedImages[currentProblem?.id];
       if (currentAnswer && currentProblem) {
-        await submitAnswer(currentProblem.uuid, currentAnswer, imageFile);
+        await submitAnswer(currentProblem.id, currentAnswer, imageFile);
       }
 
       // Тест дуусгах
@@ -582,9 +564,18 @@ const QuizTakePage = () => {
         </Button>
 
         {currentIndex < problems.length - 1 ? (
-          <Button variant="primary" onClick={handleNext}>
-            Дараагийнх
-            <i className="bi bi-arrow-right ms-1"></i>
+          <Button variant="primary" onClick={handleNext} disabled={isSaving}>
+            {isSaving ? (
+              <>
+                <Spinner as="span" size="sm" className="me-1" />
+                Хадгалж байна...
+              </>
+            ) : (
+              <>
+                Дараагийнх
+                <i className="bi bi-arrow-right ms-1"></i>
+              </>
+            )}
           </Button>
         ) : (
           <Button variant="success" onClick={() => setShowFinishModal(true)}>

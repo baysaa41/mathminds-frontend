@@ -159,6 +159,8 @@ const ProblemEditPage = () => {
   const [viewMode, setViewMode] = useState('source'); // 'visual' or 'source' - default: source
   const [isCopied, setIsCopied] = useState(false);
   const [originalTitle, setOriginalTitle] = useState('');
+  const [titleSuggestions, setTitleSuggestions] = useState([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
 
   // Debounce
   const debouncedStatement = useDebounce(problem?.statement || '', 500);
@@ -283,6 +285,20 @@ const ProblemEditPage = () => {
       ...prev,
       [name]: processedValue,
     }));
+  };
+
+  const handleSuggestTitles = async () => {
+    if (!id) return;
+    setLoadingSuggestions(true);
+    setTitleSuggestions([]);
+    try {
+      const res = await apiClient.get(`/api/integral/problems/${id}/suggest-titles/`);
+      setTitleSuggestions(res.data.suggestions || []);
+    } catch (err) {
+      console.error('Гарчиг санал болгоход алдаа:', err);
+    } finally {
+      setLoadingSuggestions(false);
+    }
   };
 
   // --- Choices Handlers (Formset logic) ---
@@ -618,19 +634,50 @@ const ProblemEditPage = () => {
             {/* Гарчиг, Түвшин */}
             <Row>
               <Col md={8}>
-                <Form.Group className="mb-3">
+                <Form.Group className="mb-1">
                   <Form.Label htmlFor="id_title" className="fw-semibold">
                     <FileText size={16} className="me-2" />
                     Гарчиг
                   </Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="title"
-                    id="id_title"
-                    value={problem.title || ''}
-                    onChange={handleProblemChange}
-                  />
+                  <InputGroup>
+                    <Form.Control
+                      type="text"
+                      name="title"
+                      id="id_title"
+                      value={problem.title || ''}
+                      onChange={handleProblemChange}
+                      placeholder="Гарчиг оруулах..."
+                    />
+                    <Button
+                      variant="outline-secondary"
+                      onClick={handleSuggestTitles}
+                      disabled={loadingSuggestions}
+                      title="Гарчиг санал болгох"
+                    >
+                      {loadingSuggestions
+                        ? <Spinner animation="border" size="sm" />
+                        : <Wand2 size={15} />}
+                    </Button>
+                  </InputGroup>
                 </Form.Group>
+                {titleSuggestions.length > 0 && (
+                  <div className="mb-3">
+                    {titleSuggestions.map((s, i) => (
+                      <Button
+                        key={i}
+                        variant="outline-primary"
+                        size="sm"
+                        className="me-1 mt-1"
+                        onClick={() => {
+                          setProblem((prev) => ({ ...prev, title: s.title }));
+                          setTitleSuggestions([]);
+                        }}
+                      >
+                        {s.title}
+                      </Button>
+                    ))}
+                  </div>
+                )}
               </Col>
               <Col md={4}>
                 <Form.Group className="mb-3">

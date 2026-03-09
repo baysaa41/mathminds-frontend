@@ -28,6 +28,9 @@ import Form from 'react-bootstrap/Form';
 const QuizDetailPage = () => {
   const { uuid: id } = useParams();
   const [quiz, setQuiz] = useState(null);
+  const [deletingAttemptId, setDeletingAttemptId] = useState(null);
+  const [showDeleteAttemptModal, setShowDeleteAttemptModal] = useState(false);
+  const [attemptToDelete, setAttemptToDelete] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [myAttempts, setMyAttempts] = useState([]);
@@ -175,6 +178,26 @@ const QuizDetailPage = () => {
       setAddError('Клубын жагсаалт ачааллахад алдаа гарлаа.');
     } finally {
       setClubsLoading(false);
+    }
+  };
+
+  const handleDeleteAttemptClick = (attempt) => {
+    setAttemptToDelete(attempt);
+    setShowDeleteAttemptModal(true);
+  };
+
+  const confirmDeleteAttempt = async () => {
+    if (!attemptToDelete) return;
+    setDeletingAttemptId(attemptToDelete.id);
+    try {
+      await apiClient.delete(`/api/integral/answer-sheets/${attemptToDelete.id}/delete/`);
+      setMyAttempts((prev) => prev.filter((a) => a.id !== attemptToDelete.id));
+    } catch (err) {
+      console.error('Оролдлого устгахад алдаа:', err);
+    } finally {
+      setDeletingAttemptId(null);
+      setShowDeleteAttemptModal(false);
+      setAttemptToDelete(null);
     }
   };
 
@@ -370,7 +393,7 @@ const QuizDetailPage = () => {
                         <span><i className="bi bi-check-circle me-1"></i>{attempt.answers_count || 0} хариулт</span>
                       </Stack>
                     </div>
-                    <div>
+                    <Stack direction="horizontal" gap={2}>
                       {attempt.status === 'completed' ? (
                         <Button
                           variant="outline-primary"
@@ -390,7 +413,20 @@ const QuizDetailPage = () => {
                           Үргэлжлүүлэх
                         </Button>
                       )}
-                    </div>
+                      <Button
+                        variant="outline-danger"
+                        size="sm"
+                        onClick={() => handleDeleteAttemptClick(attempt)}
+                        disabled={deletingAttemptId === attempt.id}
+                        title="Оролдлого устгах"
+                      >
+                        {deletingAttemptId === attempt.id ? (
+                          <Spinner as="span" size="sm" />
+                        ) : (
+                          <i className="bi bi-trash"></i>
+                        )}
+                      </Button>
+                    </Stack>
                   </ListGroup.Item>
                 );
               })}
@@ -577,6 +613,49 @@ const QuizDetailPage = () => {
               )}
             </Button>
           )}
+        </Modal.Footer>
+      </Modal>
+
+      {/* Оролдлого устгах confirm Modal */}
+      <Modal
+        show={showDeleteAttemptModal}
+        onHide={() => !deletingAttemptId && setShowDeleteAttemptModal(false)}
+        centered
+        size="sm"
+      >
+        <Modal.Header closeButton>
+          <Modal.Title className="h6">
+            <i className="bi bi-trash me-2 text-danger"></i>
+            Оролдлого устгах
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="mb-0">
+            Энэ оролдлогыг устгахдаа итгэлтэй байна уу? Бүх хариулт устана.
+          </p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowDeleteAttemptModal(false)}
+            disabled={!!deletingAttemptId}
+          >
+            Болих
+          </Button>
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={confirmDeleteAttempt}
+            disabled={!!deletingAttemptId}
+          >
+            {deletingAttemptId ? (
+              <Spinner as="span" size="sm" className="me-1" />
+            ) : (
+              <i className="bi bi-trash me-1"></i>
+            )}
+            Устгах
+          </Button>
         </Modal.Footer>
       </Modal>
     </Container>
