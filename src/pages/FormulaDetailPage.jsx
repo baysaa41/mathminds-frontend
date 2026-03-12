@@ -196,7 +196,7 @@ const FormulaDetailPage = () => {
         </Card.Body>
       </Card>
 
-      {(isAuthor || user?.is_staff) && (
+      {(isAuthor || user?.is_staff || user?.site_role === 'STAFF') && (
         <div className="d-flex justify-content-end gap-2 mt-2">
           <Link to={`/formula/${id}/edit`}>
             <Button variant="outline-primary" size="sm" title="Засварлах">

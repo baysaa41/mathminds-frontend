@@ -122,7 +122,8 @@ const QuizDetailPage = () => {
     return null;
   }
 
-  const canEdit = user && quiz && quiz.author && (user.id === quiz.author.id || user.is_staff);
+  const isStaff = user && (user.is_staff || user.site_role === 'STAFF');
+  const canEdit = user && quiz && (isStaff || (quiz.author && user.id === quiz.author.id));
 
   // Засварлах товч дарах
   const handleEditClick = () => {

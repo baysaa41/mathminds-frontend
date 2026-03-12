@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { usePrefill } from '../context/PrefillContext.jsx';
 import UserName from '../components/UserName.jsx';
 import { formatDate } from '../utils/dateFormatter';
+import { convertLatexStructure } from '../utils/latexStructure';
 
 // React Bootstrap components
 import Container from 'react-bootstrap/Container';
@@ -105,8 +106,9 @@ const ArticleDetailPage = () => {
   }
 
   // (!!!) user.user_id-г user.id болгож засварласан
+  const isStaff = user && (user.is_staff || user.site_role === 'STAFF');
   const canEdit =
-    user && article && article.author && (user.id === article.author.id || user.is_staff);
+    user && article && (isStaff || (article.author && user.id === article.author.id));
 
   const handleEditClick = () => {
     // (!!!) --- СЭРГЭЭСЭН ХЭСЭГ --- (!!!)
@@ -202,7 +204,7 @@ const ArticleDetailPage = () => {
           <div
             className="article-content mathjax-content"
             style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: '1.7' }}
-            dangerouslySetInnerHTML={{ __html: article.content || '' }}
+            dangerouslySetInnerHTML={{ __html: convertLatexStructure(article.content || '') }}
           />
         </div>
       </MathJax>

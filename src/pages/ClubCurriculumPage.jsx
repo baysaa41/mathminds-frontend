@@ -1,17 +1,29 @@
 // Club Curriculum Page
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import Card from 'react-bootstrap/Card';
 import Badge from 'react-bootstrap/Badge';
 import Button from 'react-bootstrap/Button';
 import Spinner from 'react-bootstrap/Spinner';
+import ListGroup from 'react-bootstrap/ListGroup';
 import { BookOpen, CalendarDays, GraduationCap, Sparkles } from 'lucide-react';
 import ClubCurriculumWidget from '../components/ClubCurriculumWidget';
-import { generateWeeklyArticle } from '../services/clubsService';
+import { generateWeeklyArticle, getWeeklyTopics } from '../services/clubsService';
 
 const ClubCurriculumPage = () => {
   const { clubData, clubActions, isTeacherOrAdmin, showToast } = useOutletContext();
   const [generating, setGenerating] = useState(false);
+  const [weeklyTopics, setWeeklyTopics] = useState([]);
+  const [topicsLoading, setTopicsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!clubData?.id || !clubData?.curriculum_program) return;
+    setTopicsLoading(true);
+    getWeeklyTopics(clubData.id)
+      .then(setWeeklyTopics)
+      .catch(() => {})
+      .finally(() => setTopicsLoading(false));
+  }, [clubData?.id, clubData?.curriculum_program]);
 
   const currentWeek = clubData?.current_week_topic;
   const programInfo = clubData?.curriculum_program_info;
@@ -100,6 +112,61 @@ const ClubCurriculumPage = () => {
                 )}
               </div>
             </div>
+          </Card.Body>
+        </Card>
+      )}
+
+      {/* Бүх долоо хоногийн сэдвүүд */}
+      {clubData?.curriculum_program && (
+        <Card className="shadow-sm mb-3">
+          <Card.Header className="bg-white border-bottom">
+            <h6 className="mb-0 fw-bold">
+              <CalendarDays size={16} className="me-2" />
+              Долоо хоногийн сэдвүүд
+            </h6>
+          </Card.Header>
+          <Card.Body className="p-0">
+            {topicsLoading ? (
+              <div className="text-center py-3">
+                <Spinner animation="border" size="sm" />
+              </div>
+            ) : weeklyTopics.length === 0 ? (
+              <div className="text-center py-3 text-muted small">
+                Сэдэв тохируулагдаагүй байна
+              </div>
+            ) : (
+              <ListGroup variant="flush">
+                {weeklyTopics.map((w) => (
+                  <ListGroup.Item
+                    key={w.week_num}
+                    className={`py-2 px-3 ${w.is_current ? 'bg-success bg-opacity-10' : ''}`}
+                  >
+                    <div className="d-flex align-items-start gap-2">
+                      <span className={`small fw-semibold flex-shrink-0 ${w.is_current ? 'text-success' : w.is_past ? 'text-muted' : ''}`}
+                        style={{ minWidth: '2.5rem' }}>
+                        {w.week_num}-р
+                      </span>
+                      <div className="flex-grow-1">
+                        <div className="d-flex align-items-center gap-2 flex-wrap">
+                          {w.topic ? (
+                            <span className={`small ${w.is_past ? 'text-muted' : ''}`}>{w.topic}</span>
+                          ) : (
+                            <span className="small text-muted fst-italic">Сэдэв байхгүй</span>
+                          )}
+                          {w.is_current && <Badge bg="success" className="small">Одоо</Badge>}
+                        </div>
+                        <div className="small text-muted" style={{ fontSize: '0.72rem' }}>
+                          <CalendarDays size={10} className="me-1" />
+                          {new Date(w.start_date).toLocaleDateString('mn-MN', { month: 'short', day: 'numeric' })}
+                          {' – '}
+                          {new Date(w.end_date).toLocaleDateString('mn-MN', { month: 'short', day: 'numeric' })}
+                        </div>
+                      </div>
+                    </div>
+                  </ListGroup.Item>
+                ))}
+              </ListGroup>
+            )}
           </Card.Body>
         </Card>
       )}

@@ -631,7 +631,8 @@ const PostCard = ({ post, onPostDeleted, depth = 0, compact = false, onCardClick
 
 
   // --- Render-д зориулсан хувьсагчид ---
-  const canEditOrDelete = user && currentPost.author && (user.id === currentPost.author.id || user.is_staff);
+  const isStaff = user && (user.is_staff || user.site_role === 'STAFF');
+  const canEditOrDelete = user && currentPost && (isStaff || (currentPost.author && user.id === currentPost.author.id));
   const isRepost = currentPost.content_type === 'repost' && currentPost.reposted_post;
   const originalPost = isRepost ? currentPost.reposted_post : currentPost;
   const originalAuthor = originalPost?.author;

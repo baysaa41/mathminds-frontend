@@ -17,18 +17,16 @@ import Stack from 'react-bootstrap/Stack';
 import Modal from 'react-bootstrap/Modal';
 
 import { MathJax } from 'better-react-mathjax';
-import RichTextEditor from '../components/RichTextEditor';
+import { convertLatexStructure } from '../utils/latexStructure';
 import {
   Eye,
-  Code2,
   Edit3,
   Save,
   X,
   Trash2,
   FileText,
   AlignLeft,
-  Home,
-  Library,
+  Sparkles,
 } from 'lucide-react';
 
 const ArticleEditPage = () => {
@@ -49,7 +47,9 @@ const ArticleEditPage = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [isPublic, setIsPublic] = useState(false);
-  const [viewMode, setViewMode] = useState('visual'); // 'visual' or 'source'
+  const [aiTopic, setAiTopic] = useState('');
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [showAIModal, setShowAIModal] = useState(false);
 
   useEffect(() => {
     const fetchArticle = async () => {
@@ -59,7 +59,7 @@ const ArticleEditPage = () => {
         const response = await apiClient.get(`/api/integral/articles/${id}/`);
         const articleData = response.data;
 
-        if (!user || !articleData.author || (user.id !== articleData.author.id && !user.is_staff)) {
+        if (!user || !articleData.author || (user.id !== articleData.author.id && !user.is_staff && user.site_role !== 'STAFF')) {
           setError('Энэ өгүүллийг засварлах эрх танд байхгүй байна.');
           setLoading(false);
           return;
@@ -91,6 +91,26 @@ const ArticleEditPage = () => {
       setError('Өгүүллийн дугаар олдсонгүй.');
     }
   }, [id, user?.id, user?.is_staff]);
+
+  const handleGenerateAI = async () => {
+    setIsGeneratingAI(true);
+    try {
+      const response = await apiClient.post(`/api/integral/articles/${id}/generate-ai-content/`, {
+        topic: aiTopic,
+        title: title,
+      });
+      if (response.data.title) setTitle(response.data.title);
+      if (response.data.abstract) setAbstract(response.data.abstract);
+      if (response.data.content) setContent(response.data.content);
+      setShowAIModal(false);
+      setAiTopic('');
+    } catch (err) {
+      setError('AI агуулга үүсгэхэд алдаа гарлаа.');
+      console.error(err);
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -143,7 +163,7 @@ const ArticleEditPage = () => {
     );
   }
 
-  if (error && (!initialAuthorId || !user || (user.id !== initialAuthorId && !user.is_staff))) {
+  if (error && (!initialAuthorId || !user || (user.id !== initialAuthorId && !user.is_staff && user.site_role !== 'STAFF'))) {
     return (
       <Container className="mt-4">
         <Alert variant="danger">{error}</Alert>
@@ -215,52 +235,24 @@ const ArticleEditPage = () => {
             <Form.Label className="fw-semibold mb-0">
               Агуулга (LaTeX ашиглаж болно: $...$ эсвэл $$...$$)
             </Form.Label>
-            <div className="ms-auto">
-              <Button
-                size="sm"
-                variant={viewMode === 'visual' ? 'primary' : 'outline-secondary'}
-                onClick={() => setViewMode('visual')}
-                className="me-1"
-              >
-                <Edit3 size={14} className="me-1" />
-                Visual
-              </Button>
-              <Button
-                size="sm"
-                variant={viewMode === 'source' ? 'primary' : 'outline-secondary'}
-                onClick={() => setViewMode('source')}
-                className="me-2"
-              >
-                <Code2 size={14} className="me-1" />
-                Source
-              </Button>
-              <Button size="sm" variant="outline-primary" onClick={() => setShowPreviewModal(true)}>
-                <Eye size={14} className="me-1" />
-                Preview
-              </Button>
-            </div>
+            <Button size="sm" variant="outline-primary" className="ms-auto" onClick={() => setShowPreviewModal(true)}>
+              <Eye size={14} className="me-1" />
+              Preview
+            </Button>
           </Stack>
-
-          {viewMode === 'visual' ? (
-            <RichTextEditor
-              content={content}
-              onChange={setContent}
-              placeholder="Өгүүллийн агуулга бичих..."
-            />
-          ) : (
-            <Form.Control
-              as="textarea"
-              rows={20}
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="HTML код шууд бичих..."
-              style={{
-                fontFamily: 'monospace',
-                fontSize: '0.9em',
-                lineHeight: '1.5',
-              }}
-            />
-          )}
+          <Form.Control
+            as="textarea"
+            rows={20}
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="Агуулга бичих..."
+            disabled={saving}
+            style={{
+              fontFamily: 'monospace',
+              fontSize: '0.9em',
+              lineHeight: '1.5',
+            }}
+          />
         </Form.Group>
 
         {/* Нийтэд харагдах */}
@@ -276,12 +268,22 @@ const ArticleEditPage = () => {
 
         {/* Товчууд */}
         <Stack direction="horizontal" gap={2} className="justify-content-end mt-4">
-          {/* Устгах товч (зүүн талд) */}
+          {/* AI үүсгэх товч (зүүн талд) */}
+          <Button
+            variant="outline-success"
+            onClick={() => setShowAIModal(true)}
+            disabled={saving || isDeleting}
+            className="me-auto"
+          >
+            <Sparkles size={16} className="me-2" />
+            AI-аар үүсгэх
+          </Button>
+
+          {/* Устгах товч */}
           <Button
             variant="outline-danger"
             onClick={handleShowDeleteModal}
             disabled={saving || isDeleting}
-            className="me-auto"
           >
             <Trash2 size={16} className="me-2" />
             Устгах
@@ -320,6 +322,60 @@ const ArticleEditPage = () => {
           </Button>
         </Stack>
       </Form>
+
+      {/* AI Generate Modal */}
+      <Modal show={showAIModal} onHide={() => !isGeneratingAI && setShowAIModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title className="h5">
+            <Sparkles size={20} className="me-2 text-success" />
+            AI-аар өгүүлэл үүсгэх
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="text-muted small mb-3">
+            DeepSeek AI өгүүллийн гарчиг болон агуулгыг автоматаар үүсгэнэ.
+            Одоогийн агуулга солигдоно.
+          </p>
+          <Form.Group>
+            <Form.Label className="fw-semibold">Сэдэв / Заавар</Form.Label>
+            <Form.Control
+              as="textarea"
+              rows={3}
+              value={aiTopic}
+              onChange={(e) => setAiTopic(e.target.value)}
+              placeholder={`Жишээ: "Арифметик прогрессийн нийлбэр" эсвэл хоосон орхивол гарчгийг ашиглана`}
+              disabled={isGeneratingAI}
+            />
+          </Form.Group>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="secondary"
+            onClick={() => setShowAIModal(false)}
+            disabled={isGeneratingAI}
+          >
+            <X size={16} className="me-2" />
+            Болих
+          </Button>
+          <Button
+            variant="success"
+            onClick={handleGenerateAI}
+            disabled={isGeneratingAI}
+          >
+            {isGeneratingAI ? (
+              <>
+                <Spinner as="span" size="sm" className="me-2" />
+                Үүсгэж байна...
+              </>
+            ) : (
+              <>
+                <Sparkles size={16} className="me-2" />
+                Үүсгэх
+              </>
+            )}
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
       {/* Delete Modal */}
       <Modal show={showDeleteModal} onHide={handleCloseDeleteModal} centered>
@@ -363,46 +419,34 @@ const ArticleEditPage = () => {
           </Modal.Title>
         </Modal.Header>
         <Modal.Body style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-          {/* Title Preview */}
-          {title && (
-            <div className="mb-4">
-              <h2 className="h3 fw-bold">
-                <FileText size={24} className="me-2 text-primary" />
-                {title}
-              </h2>
-            </div>
-          )}
+          {/* Гарчиг */}
+          <MathJax hideUntilTypeset={'first'}>
+            <h1 className="h3 fw-bold mathjax-content mb-3">
+              {title || 'Гарчиггүй өгүүлэл'}
+            </h1>
+          </MathJax>
 
-          {/* Abstract Preview */}
+          {/* Abstract */}
           {abstract && (
-            <div className="mb-4 pb-3 border-bottom">
-              <p className="fw-semibold small text-secondary mb-2">
-                <AlignLeft size={14} className="me-1" />
-                Хураангуй:
-              </p>
-              <MathJax hideUntilTypeset={'first'}>
-                <div
-                  className="mathjax-content text-muted"
-                  style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: '0.95em' }}
-                >
-                  {abstract}
-                </div>
-              </MathJax>
-            </div>
+            <MathJax hideUntilTypeset={'first'}>
+              <div
+                className="mathjax-content text-muted mb-4 p-3 bg-light rounded border-start border-primary border-4"
+                style={{ fontSize: '1.05em', lineHeight: '1.6', fontStyle: 'italic' }}
+              >
+                {abstract}
+              </div>
+            </MathJax>
           )}
 
-          {/* Content Preview */}
+          <hr className="mb-4" />
+
+          {/* Үндсэн агуулга */}
           <MathJax hideUntilTypeset={'first'}>
             <div
-              className="mathjax-content"
-              style={{
-                whiteSpace: 'normal',
-                wordBreak: 'break-word',
-                lineHeight: '1.6',
-              }}
+              className="article-content mathjax-content"
+              style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: '1.7' }}
               dangerouslySetInnerHTML={{
-                __html:
-                  content || "<span class='text-muted fst-italic'>Агуулга хоосон байна...</span>",
+                __html: convertLatexStructure(content) || "<span class='text-muted fst-italic'>Агуулга хоосон байна...</span>",
               }}
             />
           </MathJax>

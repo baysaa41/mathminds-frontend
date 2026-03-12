@@ -225,8 +225,9 @@ const ProblemDetailPage = () => {
     return null;
   }
 
+  const isStaff = user && (user.is_staff || user.site_role === 'STAFF');
   const canEdit =
-    user && problem && problem.author && (user.id === problem.author.id || user.is_staff);
+    user && problem && (isStaff || (problem.author && user.id === problem.author.id));
 
   const handleEditClick = () => {
     navigate(`/problem/${id}/edit`);

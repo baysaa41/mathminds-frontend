@@ -124,7 +124,7 @@ const QuizEditPage = () => {
         const quizRes = await apiClient.get(`/api/integral/quizzes/${id}/`);
         const quizData = quizRes.data;
 
-        if (!user || !quizData.author || (user.id !== quizData.author.id && !user.is_staff)) {
+        if (!user || !quizData.author || (user.id !== quizData.author.id && !user.is_staff && user.site_role !== 'STAFF')) {
           setError('Энэ тестийг засварлах эрх танд байхгүй байна.');
           setLoading(false);
           return;

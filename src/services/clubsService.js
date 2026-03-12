@@ -119,6 +119,15 @@ export const updateClub = async (clubId, clubData) => {
 };
 
 /**
+ * Клубын бүх долоо хоногийн сэдвийн жагсаалт
+ * GET /api/clubs/:id/weekly_topics/
+ */
+export const getWeeklyTopics = async (clubId) => {
+  const response = await apiClient.get(`/api/clubs/${clubId}/weekly_topics/`);
+  return response.data;
+};
+
+/**
  * AI долоо хоногийн өгүүлэл үүсгэж клубд нийтлэх
  * POST /api/clubs/:id/generate_weekly_article/
  */

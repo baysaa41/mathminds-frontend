@@ -149,3 +149,28 @@ body {
     background-position: 200% center;
   }
 }
+
+/* --- Article LaTeX Structure --- */
+.article-content .article-section {
+  font-size: 1.4em;
+  font-weight: 700;
+  border-bottom: 2px solid #dee2e6;
+  padding-bottom: 0.3rem;
+}
+
+.article-content .article-subsection {
+  font-size: 1.2em;
+  font-weight: 600;
+}
+
+.article-content .article-subsubsection {
+  font-size: 1.05em;
+  font-weight: 600;
+  color: #495057;
+}
+
+.article-content .article-paragraph {
+  font-size: 1em;
+  font-weight: 600;
+  color: #6c757d;
+}
