@@ -1,7 +1,35 @@
 // src/services/clubsService.js
-// ✅ ШИНЭЧИЛСЭН: getMyClubs функц нэмэгдсэн.
+// ✅ ШИНЭЧИЛСЭН: getMyClubs, getPrograms функцүүд нэмэгдсэн.
 
 import apiClient from '../api/axiosConfig';
+
+/**
+ * Хичээлийн жилүүдийн жагсаалт авах
+ * GET /api/curriculum/academic-years/
+ */
+export const getAcademicYears = async () => {
+  try {
+    const response = await apiClient.get('/api/curriculum/academic-years/');
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error fetching academic years:', error);
+    throw error;
+  }
+};
+
+/**
+ * Идэвхтэй сургалтын хөтөлбөрүүдийн жагсаалт авах
+ * GET /api/curriculum/programs/
+ */
+export const getPrograms = async () => {
+  try {
+    const response = await apiClient.get('/api/curriculum/programs/');
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error fetching programs:', error);
+    throw error;
+  }
+};
 
 /**
  * Бүх клубуудын жагсаалт авах (ClubsList.jsx-д зориулагдсан)
@@ -86,6 +114,20 @@ export const updateClub = async (clubId, clubData) => {
     return response.data;
   } catch (error) {
     console.error('❌ Error updating club:', error);
+    throw error;
+  }
+};
+
+/**
+ * AI долоо хоногийн өгүүлэл үүсгэж клубд нийтлэх
+ * POST /api/clubs/:id/generate_weekly_article/
+ */
+export const generateWeeklyArticle = async (clubId) => {
+  try {
+    const response = await apiClient.post(`/api/clubs/${clubId}/generate_weekly_article/`);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error generating weekly article:', error);
     throw error;
   }
 };

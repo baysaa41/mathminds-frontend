@@ -12,7 +12,7 @@ import Modal from 'react-bootstrap/Modal';
 import Toast from 'react-bootstrap/Toast';
 import ToastContainer from 'react-bootstrap/ToastContainer';
 import Form from 'react-bootstrap/Form';
-import { getClubDetail, updateClub, leaveClub, inviteTeacher, removeTeacher, removeMember, refreshRegCode, formatErrorMessage } from '../services/clubsService';
+import { getClubDetail, updateClub, leaveClub, inviteTeacher, removeTeacher, removeMember, refreshRegCode, getAcademicYears, getPrograms, formatErrorMessage } from '../services/clubsService';
 import useToast from '../hooks/useToast';
 import JoinClubModal from '../components/JoinClubModal';
 import { ArrowLeft, LogOut, Key, Clipboard, RefreshCw } from 'lucide-react';
@@ -46,11 +46,17 @@ const ClubDetail = () => {
   const [editForm, setEditForm] = useState({
     name: '',
     description: '',
-    monthly_price_silver: 0
+    monthly_price_silver: 0,
+    curriculum_academic_year: null,
+    curriculum_program: null
   });
+  const [academicYears, setAcademicYears] = useState([]);
+  const [programs, setPrograms] = useState([]);
 
   useEffect(() => {
     fetchClubDetails();
+    getAcademicYears().then(setAcademicYears).catch(() => {});
+    getPrograms().then(setPrograms).catch(() => {});
   }, [id]);
 
   // Дэд хуудас өөрчлөгдөх бүрт клубын нэрийг RecentlyVisitedWidget-д мэдэгдэх
@@ -84,7 +90,9 @@ const ClubDetail = () => {
           setEditForm({
             name: data.name,
             description: data.description || '',
-            monthly_price_silver: data.monthly_price_silver || 0
+            monthly_price_silver: data.monthly_price_silver || 0,
+            curriculum_academic_year: data.curriculum_academic_year || null,
+            curriculum_program: data.curriculum_program || null
           });
           setShowEditModal(true);
         },
@@ -206,7 +214,9 @@ const ClubDetail = () => {
       await updateClub(club.id, {
         name: editForm.name.trim(),
         description: editForm.description.trim(),
-        monthly_price_silver: club.club_type === 'STUDY' ? editForm.monthly_price_silver : 0
+        monthly_price_silver: club.club_type === 'STUDY' ? editForm.monthly_price_silver : 0,
+        curriculum_academic_year: editForm.curriculum_academic_year || null,
+        curriculum_program: editForm.curriculum_program || null
       });
       showToast('Клубын мэдээлэл амжилттай шинэчлэгдлээ', 'success');
       setShowEditModal(false);
@@ -295,7 +305,9 @@ const ClubDetail = () => {
             setEditForm({
               name: club.name,
               description: club.description || '',
-              monthly_price_silver: club.monthly_price_silver || 0
+              monthly_price_silver: club.monthly_price_silver || 0,
+              curriculum_academic_year: club.curriculum_academic_year || null,
+              curriculum_program: club.curriculum_program || null
             });
             setShowEditModal(true);
           },
@@ -403,6 +415,42 @@ const ClubDetail = () => {
                 </Form.Text>
               </Form.Group>
             )}
+
+            {/* Хичээлийн жил + Сургалтын хөтөлбөр */}
+            <Form.Group className="mb-3">
+              <Form.Label>Хичээлийн жил</Form.Label>
+              <Form.Select
+                value={editForm.curriculum_academic_year || ''}
+                onChange={(e) => setEditForm({ ...editForm, curriculum_academic_year: e.target.value ? parseInt(e.target.value) : null })}
+              >
+                <option value="">— Хичээлийн жил сонгохгүй —</option>
+                {academicYears.map(ay => (
+                  <option key={ay.id} value={ay.id}>
+                    {ay.name}{ay.is_active ? ' (идэвхтэй)' : ''}
+                  </option>
+                ))}
+              </Form.Select>
+              <Form.Text className="text-muted">
+                Долоо хоногийн тоолол хичээлийн жилд суурилна
+              </Form.Text>
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Сургалтын хөтөлбөр</Form.Label>
+              <Form.Select
+                value={editForm.curriculum_program || ''}
+                onChange={(e) => setEditForm({ ...editForm, curriculum_program: e.target.value ? parseInt(e.target.value) : null })}
+              >
+                <option value="">— Хөтөлбөр сонгохгүй —</option>
+                {programs.map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.grade}-р анги — {p.name}
+                  </option>
+                ))}
+              </Form.Select>
+              <Form.Text className="text-muted">
+                Хичээлийн жилийн хэд дэх долоо хоногт ямар сэдэв үзэж байгааг харуулна
+              </Form.Text>
+            </Form.Group>
 
             {/* Бүртгэлийн код шинэчлэх */}
             <div className="border-top pt-3">
