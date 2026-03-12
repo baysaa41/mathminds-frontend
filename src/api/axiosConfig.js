@@ -45,6 +45,21 @@ apiClient.interceptors.request.use(
       config.headers['Content-Type'] = 'application/json';
     }
 
+    // AI endpoint-уудад урт timeout (120 сек)
+    const AI_ENDPOINTS = [
+      'generate_ai_solution',
+      'generate-ai-solution',
+      'generate_solution_note',
+      'generate-ai-content',
+      'convert_to_mc',
+      'improve',
+    ];
+    if (AI_ENDPOINTS.some((ep) => config.url?.includes(ep))) {
+      config.timeout = 120_000;
+    } else if (!config.timeout) {
+      config.timeout = 30_000;
+    }
+
     // --- Console лог ---
     const method = (config.method || 'GET').toUpperCase()
     const url = (config.baseURL || '') + (config.url || '')
