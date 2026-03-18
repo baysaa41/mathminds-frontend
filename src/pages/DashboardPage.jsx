@@ -10,7 +10,8 @@ import {
   Users,
   TrendingUp,
   Settings,
-  LogOut
+  LogOut,
+  BookOpen,
 } from 'lucide-react';
 import authService from '../services/authService';
 
@@ -126,6 +127,25 @@ function DashboardPage() {
               <Link to="/reports" className="btn btn-success">
                 <FileText size={18} className="me-2" />
                 Тайлан үзэх
+              </Link>
+            </Card.Body>
+          </Card>
+        </Col>
+
+        {/* Хичээлийн хөтөлбөр */}
+        <Col md={6} lg={4}>
+          <Card className="h-100 shadow-sm" style={{ borderColor: '#0d6efd' }}>
+            <Card.Body className="d-flex flex-column">
+              <div className="mb-3">
+                <BookOpen size={40} className="text-primary" />
+              </div>
+              <Card.Title>Хичээлийн хөтөлбөр</Card.Title>
+              <Card.Text className="text-muted flex-grow-1">
+                Хөтөлбөр, хичээлийн жил, долоо хоногийн сэдэв болон суралцахуйн зорилтуудыг удирдах.
+              </Card.Text>
+              <Link to="/admin/curriculum" className="btn btn-primary">
+                <BookOpen size={18} className="me-2" />
+                Удирдах
               </Link>
             </Card.Body>
           </Card>

@@ -96,6 +96,7 @@ const MMOImportPage = lazy(() => import('./pages/MMOImportPage.jsx'));
 const DocImportPage = lazy(() => import('./pages/DocImportPage.jsx'));
 const AllUsersPage = lazy(() => import('./pages/AllUsersPage.jsx'));
 const SalesStatsPage = lazy(() => import('./pages/SalesStatsPage.jsx'));
+const CurriculumAdminPage = lazy(() => import('./pages/CurriculumAdminPage.jsx'));
 
 // Email Campaigns
 const EmailCampaignsPage = lazy(() => import('./pages/EmailCampaignsPage.jsx'));
@@ -370,6 +371,16 @@ function App() {
           element={
             <AdminRoute>
               <SalesStatsPage />
+            </AdminRoute>
+          }
+        />
+
+        {/* Curriculum Admin - Staff only */}
+        <Route
+          path="/admin/curriculum"
+          element={
+            <AdminRoute>
+              <CurriculumAdminPage />
             </AdminRoute>
           }
         />
