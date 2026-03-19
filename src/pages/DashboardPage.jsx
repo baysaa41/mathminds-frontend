@@ -12,6 +12,7 @@ import {
   Settings,
   LogOut,
   BookOpen,
+  ShoppingCart,
 } from 'lucide-react';
 import authService from '../services/authService';
 
@@ -151,18 +152,18 @@ function DashboardPage() {
           </Card>
         </Col>
 
-        {/* Багш нар */}
+        {/* Хэрэглэгчид */}
         <Col md={6} lg={4}>
           <Card className="h-100 shadow-sm border-info">
             <Card.Body className="d-flex flex-column">
               <div className="mb-3">
                 <Users size={40} className="text-info" />
               </div>
-              <Card.Title>Шилдэг Багш Нар</Card.Title>
+              <Card.Title>Хэрэглэгчид</Card.Title>
               <Card.Text className="text-muted flex-grow-1">
-                Багш нарын жагсаалт, шинэ багш нэмэх болон засварлах.
+                Бүртгэлтэй хэрэглэгчдийн жагсаалт, гишүүнчлэл болон үүргийн мэдээлэл.
               </Card.Text>
-              <Link to="/teachers" className="btn btn-info">
+              <Link to="/admin/all-users" className="btn btn-info text-white">
                 <Users size={18} className="me-2" />
                 Жагсаалт үзэх
               </Link>
@@ -170,21 +171,40 @@ function DashboardPage() {
           </Card>
         </Col>
 
-        {/* Платформын статистик */}
+        {/* Багш нар */}
+        <Col md={6} lg={4}>
+          <Card className="h-100 shadow-sm" style={{ borderColor: '#0dcaf0' }}>
+            <Card.Body className="d-flex flex-column">
+              <div className="mb-3">
+                <Users size={40} style={{ color: '#0dcaf0' }} />
+              </div>
+              <Card.Title>Шилдэг Багш Нар</Card.Title>
+              <Card.Text className="text-muted flex-grow-1">
+                Багш нарын жагсаалт, шинэ багш нэмэх болон засварлах.
+              </Card.Text>
+              <Link to="/teachers" className="btn btn-outline-info">
+                <Users size={18} className="me-2" />
+                Жагсаалт үзэх
+              </Link>
+            </Card.Body>
+          </Card>
+        </Col>
+
+        {/* Борлуулалтын статистик */}
         <Col md={6} lg={4}>
           <Card className="h-100 shadow-sm border-warning">
             <Card.Body className="d-flex flex-column">
               <div className="mb-3">
-                <TrendingUp size={40} className="text-warning" />
+                <ShoppingCart size={40} className="text-warning" />
               </div>
-              <Card.Title>Статистик</Card.Title>
+              <Card.Title>Борлуулалтын Статистик</Card.Title>
               <Card.Text className="text-muted flex-grow-1">
-                Системийн үйл ажиллагаа, хэрэглэгчдийн статистик харах.
+                Бүтээгдэхүүний зарагдсан тоо, QPay гүйлгээний статистик харах.
               </Card.Text>
-              <Button variant="warning" disabled>
-                <TrendingUp size={18} className="me-2" />
-                Удахгүй
-              </Button>
+              <Link to="/admin/sales-stats" className="btn btn-warning">
+                <ShoppingCart size={18} className="me-2" />
+                Статистик үзэх
+              </Link>
             </Card.Body>
           </Card>
         </Col>
