@@ -366,14 +366,22 @@ function QPayTab() {
                       <tr key={i}>
                         <td><small className="text-muted">{i + 1}</small></td>
                         <td>
-                          <Link to={`/profile/${inv.user__username}`} className="text-decoration-none">
-                            <div className="fw-medium">{[inv.user__first_name, inv.user__last_name].filter(Boolean).join(' ') || inv.user__username}</div>
-                            <small className="text-muted">@{inv.user__username}</small>
-                          </Link>
+                          {inv.user__username
+                            ? <Link to={`/profile/${inv.user__username}`} className="text-decoration-none">
+                                <div className="fw-medium">{[inv.user__first_name, inv.user__last_name].filter(Boolean).join(' ') || inv.user__username}</div>
+                                <small className="text-muted">@{inv.user__username}</small>
+                              </Link>
+                            : <span className="text-muted fst-italic">Тодорхойгүй</span>
+                          }
                         </td>
                         <td>
-                          <div>{inv.product__name}</div>
-                          <Badge bg="light" text="dark" className="border">{PRODUCT_TYPE_LABELS[inv.product__product_type] || inv.product__product_type}</Badge>
+                          {inv.product__name
+                            ? <>
+                                <div>{inv.product__name}</div>
+                                <Badge bg="light" text="dark" className="border">{PRODUCT_TYPE_LABELS[inv.product__product_type] || inv.product__product_type}</Badge>
+                              </>
+                            : <span className="text-muted fst-italic">Тодорхойгүй</span>
+                          }
                         </td>
                         <td className="text-end fw-semibold text-success">{formatMnt(inv.amount)}</td>
                         <td className="text-end"><small>{formatDate(inv.paid_at)}</small></td>
