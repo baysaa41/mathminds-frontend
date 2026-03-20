@@ -167,6 +167,12 @@ function applyLatexFilters(text) {
     }
     return `<ul>${items}</ul>`;
   });
+  // Heading командууд (\section, \subsection, ...)
+  html = html.replace(/\\section\{([^}]*)\}/g,        '<h2 class="article-section mt-4 mb-2">$1</h2>');
+  html = html.replace(/\\subsection\{([^}]*)\}/g,     '<h3 class="article-subsection mt-3 mb-2">$1</h3>');
+  html = html.replace(/\\subsubsection\{([^}]*)\}/g,  '<h4 class="article-subsubsection mt-3 mb-1">$1</h4>');
+  html = html.replace(/\\paragraph\{([^}]*)\}/g,      '<h5 class="article-paragraph mt-2 mb-1">$1</h5>');
+
   html = html.replace(/\\emph{(.*?)}/g, '<em>$1</em>');
   html = html.replace(/\\textbf{(.*?)}/g, '<strong>$1</strong>');
   html = html.replace(/``(.*?)\'\'/g, '<q>$1</q>');
