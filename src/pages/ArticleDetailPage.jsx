@@ -9,7 +9,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { usePrefill } from '../context/PrefillContext.jsx';
 import UserName from '../components/UserName.jsx';
 import { formatDate } from '../utils/dateFormatter';
-import { convertLatexStructure } from '../utils/latexStructure';
+import LivePreview from '../components/LivePreview.jsx';
 
 // React Bootstrap components
 import Container from 'react-bootstrap/Container';
@@ -199,15 +199,12 @@ const ArticleDetailPage = () => {
       <hr className="mb-4" />
 
       {/* Үндсэн агуулга */}
-      <MathJax hideUntilTypeset={'first'}>
-        <div style={{ fontSize: `${fontSize}rem` }}>
-          <div
-            className="article-content mathjax-content"
-            style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: '1.7' }}
-            dangerouslySetInnerHTML={{ __html: convertLatexStructure(article.content || '') }}
-          />
-        </div>
-      </MathJax>
+      <div
+        className="article-content mathjax-content"
+        style={{ fontSize: `${fontSize}rem`, whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: '1.7' }}
+      >
+        <LivePreview content={article.content || ''} />
+      </div>
 
       {canEdit && (
         <div className="d-flex justify-content-end gap-2 mt-3">

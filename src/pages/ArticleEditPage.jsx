@@ -17,7 +17,7 @@ import Stack from 'react-bootstrap/Stack';
 import Modal from 'react-bootstrap/Modal';
 
 import { MathJax } from 'better-react-mathjax';
-import { convertLatexStructure } from '../utils/latexStructure';
+import LivePreview from '../components/LivePreview.jsx';
 import {
   Eye,
   Edit3,
@@ -441,15 +441,15 @@ const ArticleEditPage = () => {
           <hr className="mb-4" />
 
           {/* Үндсэн агуулга */}
-          <MathJax hideUntilTypeset={'first'}>
-            <div
-              className="article-content mathjax-content"
-              style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: '1.7' }}
-              dangerouslySetInnerHTML={{
-                __html: convertLatexStructure(content) || "<span class='text-muted fst-italic'>Агуулга хоосон байна...</span>",
-              }}
-            />
-          </MathJax>
+          <div
+            className="article-content mathjax-content"
+            style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: '1.7' }}
+          >
+            {content
+              ? <LivePreview content={content} />
+              : <span className="text-muted fst-italic">Агуулга хоосон байна...</span>
+            }
+          </div>
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowPreviewModal(false)}>
