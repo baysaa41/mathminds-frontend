@@ -19,7 +19,6 @@ const ClubVideosWidget = ({ club, onUpdate, isTeacherOrAdmin }) => {
   if (!club) return null;
 
   const videos = club.videos || [];
-  const curriculumItems = club.curriculum_items || [];
 
   // Empty state for teachers/admins
   if (videos.length === 0 && !isTeacherOrAdmin) {
@@ -229,7 +228,6 @@ const ClubVideosWidget = ({ club, onUpdate, isTeacherOrAdmin }) => {
         }}
         clubId={club.id}
         videoItem={editingItem}
-        curriculumItems={curriculumItems}
         onSuccess={handleFormSuccess}
       />
     </>

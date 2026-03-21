@@ -9,12 +9,11 @@ import Alert from 'react-bootstrap/Alert';
 import Spinner from 'react-bootstrap/Spinner';
 import { createVideoItem, updateVideoItem } from '../services/clubsService';
 
-const VideoFormModal = ({ show, onHide, clubId, videoItem, curriculumItems, onSuccess }) => {
+const VideoFormModal = ({ show, onHide, clubId, videoItem, onSuccess }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
   const [duration, setDuration] = useState('');
-  const [curriculumId, setCurriculumId] = useState('');
   const [isPublished, setIsPublished] = useState(true);
   const [loading, setLoading] = useState(false);
   const [fetchingMetadata, setFetchingMetadata] = useState(false);
@@ -139,7 +138,6 @@ const VideoFormModal = ({ show, onHide, clubId, videoItem, curriculumItems, onSu
       setDescription(videoItem.description || '');
       setVideoUrl(videoItem.video_url || '');
       setDuration(videoItem.duration || '');
-      setCurriculumId(videoItem.curriculum || '');
       setIsPublished(videoItem.is_published ?? true);
     } else {
       // Reset form when creating new
@@ -147,7 +145,6 @@ const VideoFormModal = ({ show, onHide, clubId, videoItem, curriculumItems, onSu
       setDescription('');
       setVideoUrl('');
       setDuration('');
-      setCurriculumId('');
       setIsPublished(true);
     }
     setError(null);
@@ -192,11 +189,6 @@ const VideoFormModal = ({ show, onHide, clubId, videoItem, curriculumItems, onSu
         is_published: isPublished,
       };
 
-      // Only add curriculum if selected
-      if (curriculumId) {
-        data.curriculum = curriculumId;
-      }
-
       let response;
       if (isEditMode) {
         console.log('📤 Updating video item:', videoItem.id, data);
@@ -218,7 +210,6 @@ const VideoFormModal = ({ show, onHide, clubId, videoItem, curriculumItems, onSu
       setDescription('');
       setVideoUrl('');
       setDuration('');
-      setCurriculumId('');
       setIsPublished(true);
       setError(null);
     } catch (err) {
@@ -268,7 +259,6 @@ const VideoFormModal = ({ show, onHide, clubId, videoItem, curriculumItems, onSu
     setDescription('');
     setVideoUrl('');
     setDuration('');
-    setCurriculumId('');
     setIsPublished(true);
     setError(null);
     onHide();
@@ -390,28 +380,6 @@ const VideoFormModal = ({ show, onHide, clubId, videoItem, curriculumItems, onSu
               disabled={loading}
             />
           </Form.Group>
-
-          {/* Curriculum Selection */}
-          {curriculumItems && curriculumItems.length > 0 && (
-            <Form.Group className="mb-3">
-              <Form.Label>Хөтөлбөр</Form.Label>
-              <Form.Select
-                value={curriculumId}
-                onChange={(e) => setCurriculumId(e.target.value)}
-                disabled={loading}
-              >
-                <option value="">-- Хөтөлбөргүй --</option>
-                {curriculumItems.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.title}
-                  </option>
-                ))}
-              </Form.Select>
-              <Form.Text className="text-muted">
-                Хөтөлбөрт холбох (заавал биш)
-              </Form.Text>
-            </Form.Group>
-          )}
 
           {/* Published Checkbox */}
           <Form.Group className="mb-4">

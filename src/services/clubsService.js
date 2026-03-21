@@ -315,93 +315,6 @@ export const refreshRegCode = async (clubId) => {
 };
 
 // -----------------------------------------------------------------
-// Curriculum Management Functions
-// -----------------------------------------------------------------
-
-/**
- * Шинэ хөтөлбөр нэмэх
- * POST /api/club-curriculum/
- */
-export const createCurriculumItem = async (clubId, data) => {
-  try {
-    console.log(`📤 Creating curriculum item for club ${clubId}:`, data);
-    const response = await apiClient.post('/api/club-curriculum/', {
-      ...data,
-      club: clubId,
-    });
-    console.log('✅ Curriculum item created:', response.data);
-    return response.data;
-  } catch (error) {
-    console.error('❌ Error creating curriculum item:', error);
-    throw error;
-  }
-};
-
-/**
- * Хөтөлбөр засах
- * PATCH /api/club-curriculum/:id/
- */
-export const updateCurriculumItem = async (id, data) => {
-  try {
-    console.log(`📤 Updating curriculum item ${id}:`, data);
-    const response = await apiClient.patch(`/api/club-curriculum/${id}/`, data);
-    console.log('✅ Curriculum item updated:', response.data);
-    return response.data;
-  } catch (error) {
-    console.error('❌ Error updating curriculum item:', error);
-    throw error;
-  }
-};
-
-/**
- * Хөтөлбөр устгах
- * DELETE /api/club-curriculum/:id/
- */
-export const deleteCurriculumItem = async (id) => {
-  try {
-    console.log(`📤 Deleting curriculum item ${id}`);
-    const response = await apiClient.delete(`/api/club-curriculum/${id}/`);
-    console.log('✅ Curriculum item deleted:', response.data);
-    return response.data;
-  } catch (error) {
-    console.error('❌ Error deleting curriculum item:', error);
-    throw error;
-  }
-};
-
-/**
- * Хөтөлбөрийг дээш шилжүүлэх
- * POST /api/club-curriculum/:id/move_up/
- */
-export const moveCurriculumUp = async (id) => {
-  try {
-    console.log(`📤 Moving curriculum item ${id} up`);
-    const response = await apiClient.post(`/api/club-curriculum/${id}/move_up/`);
-    console.log('✅ Curriculum item moved up:', response.data);
-    return response.data;
-  } catch (error) {
-    console.error('❌ Error moving curriculum item up:', error);
-    throw error;
-  }
-};
-
-/**
- * Хөтөлбөрийг доош шилжүүлэх
- * POST /api/club-curriculum/:id/move_down/
- */
-export const moveCurriculumDown = async (id) => {
-  try {
-    console.log(`📤 Moving curriculum item ${id} down`);
-    const response = await apiClient.post(`/api/club-curriculum/${id}/move_down/`);
-    console.log('✅ Curriculum item moved down:', response.data);
-    return response.data;
-  } catch (error) {
-    console.error('❌ Error moving curriculum item down:', error);
-    throw error;
-  }
-};
-
-// -----------------------------------------------------------------
 // Video Management Functions
 // -----------------------------------------------------------------
 
@@ -613,11 +526,6 @@ const clubsService = {
   rejectInvitation,
   removeTeacher,
   refreshRegCode,
-  createCurriculumItem,
-  updateCurriculumItem,
-  deleteCurriculumItem,
-  moveCurriculumUp,
-  moveCurriculumDown,
   createVideoItem,
   updateVideoItem,
   deleteVideoItem,

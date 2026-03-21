@@ -3,13 +3,12 @@ import React, { useState, useEffect } from 'react';
 import { Modal, Form, Button, Alert, Spinner } from 'react-bootstrap';
 import { createQuizItem, updateQuizItem } from '../services/clubsService';
 
-const QuizFormModal = ({ show, onHide, clubId, quizItem, curriculumItems, onSuccess }) => {
+const QuizFormModal = ({ show, onHide, clubId, quizItem, onSuccess }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [questionCount, setQuestionCount] = useState(0);
   const [durationMinutes, setDurationMinutes] = useState(30);
   const [passingScore, setPassingScore] = useState(60);
-  const [curriculumId, setCurriculumId] = useState('');
   const [isPublished, setIsPublished] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -21,11 +20,10 @@ const QuizFormModal = ({ show, onHide, clubId, quizItem, curriculumItems, onSucc
       setQuestionCount(quizItem.question_count || 0);
       setDurationMinutes(quizItem.duration_minutes || 30);
       setPassingScore(quizItem.passing_score || 60);
-      setCurriculumId(quizItem.curriculum || '');
       setIsPublished(quizItem.is_published ?? true);
     } else {
-      setTitle(''); setDescription(''); setQuestionCount(0); 
-      setDurationMinutes(30); setPassingScore(60); setCurriculumId(''); setIsPublished(true);
+      setTitle(''); setDescription(''); setQuestionCount(0);
+      setDurationMinutes(30); setPassingScore(60); setIsPublished(true);
     }
     setError(null);
   }, [quizItem, show]);
@@ -38,8 +36,6 @@ const QuizFormModal = ({ show, onHide, clubId, quizItem, curriculumItems, onSucc
       const data = { title: title.trim(), description: description.trim(),
         question_count: questionCount, duration_minutes: durationMinutes,
         passing_score: passingScore, is_published: isPublished };
-      if (curriculumId) data.curriculum = curriculumId;
-      
       if (quizItem) await updateQuizItem(quizItem.id, data);
       else await createQuizItem(clubId, data);
       if (onSuccess) onSuccess();
@@ -80,15 +76,6 @@ const QuizFormModal = ({ show, onHide, clubId, quizItem, curriculumItems, onSucc
             <Form.Label>Тэнцсэн оноо (%)</Form.Label>
             <Form.Control type="number" value={passingScore} onChange={e => setPassingScore(parseInt(e.target.value))} />
           </Form.Group>
-          {curriculumItems?.length > 0 && (
-            <Form.Group className="mb-3">
-              <Form.Label>Хөтөлбөр</Form.Label>
-              <Form.Select value={curriculumId} onChange={e => setCurriculumId(e.target.value)}>
-                <option value="">-- Хөтөлбөргүй --</option>
-                {curriculumItems.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}
-              </Form.Select>
-            </Form.Group>
-          )}
           <Form.Group className="mb-4">
             <Form.Check type="checkbox" label="Нийтлэх" checked={isPublished} onChange={e => setIsPublished(e.target.checked)} />
           </Form.Group>

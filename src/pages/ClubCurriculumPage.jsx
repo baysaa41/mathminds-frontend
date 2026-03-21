@@ -8,7 +8,6 @@ import Spinner from 'react-bootstrap/Spinner';
 import ListGroup from 'react-bootstrap/ListGroup';
 import Form from 'react-bootstrap/Form';
 import { CalendarDays, GraduationCap, Sparkles, Plus, X, RotateCcw, FileText, ExternalLink } from 'lucide-react';
-import ClubCurriculumWidget from '../components/ClubCurriculumWidget';
 import { generateWeeklyArticle, getWeeklyTopics, getPrograms, addProgram, removeProgram, setWeek } from '../services/clubsService';
 
 const RESOURCE_TYPE_LABELS = {
@@ -360,11 +359,6 @@ const ClubCurriculumPage = () => {
         </Card>
       )}
 
-      <ClubCurriculumWidget
-        club={clubData}
-        onUpdate={clubActions?.onUpdate}
-        isTeacherOrAdmin={isTeacherOrAdmin}
-      />
     </div>
   );
 };

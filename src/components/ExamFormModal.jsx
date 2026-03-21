@@ -3,14 +3,13 @@ import React, { useState, useEffect } from 'react';
 import { Modal, Form, Button, Alert, Spinner } from 'react-bootstrap';
 import { createExamItem, updateExamItem } from '../services/clubsService';
 
-const ExamFormModal = ({ show, onHide, clubId, examItem, curriculumItems, onSuccess }) => {
+const ExamFormModal = ({ show, onHide, clubId, examItem, onSuccess }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [examDate, setExamDate] = useState('');
   const [durationMinutes, setDurationMinutes] = useState(60);
   const [maxScore, setMaxScore] = useState(100);
   const [passingScore, setPassingScore] = useState(60);
-  const [curriculumId, setCurriculumId] = useState('');
   const [isPublished, setIsPublished] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -23,11 +22,10 @@ const ExamFormModal = ({ show, onHide, clubId, examItem, curriculumItems, onSucc
       setDurationMinutes(examItem.duration_minutes || 60);
       setMaxScore(examItem.max_score || 100);
       setPassingScore(examItem.passing_score || 60);
-      setCurriculumId(examItem.curriculum || '');
       setIsPublished(examItem.is_published ?? true);
     } else {
       setTitle(''); setDescription(''); setExamDate(''); setDurationMinutes(60);
-      setMaxScore(100); setPassingScore(60); setCurriculumId(''); setIsPublished(true);
+      setMaxScore(100); setPassingScore(60); setIsPublished(true);
     }
     setError(null);
   }, [examItem, show]);
@@ -40,8 +38,6 @@ const ExamFormModal = ({ show, onHide, clubId, examItem, curriculumItems, onSucc
       const data = { title: title.trim(), description: description.trim(), 
         exam_date: examDate || null, duration_minutes: durationMinutes,
         max_score: maxScore, passing_score: passingScore, is_published: isPublished };
-      if (curriculumId) data.curriculum = curriculumId;
-      
       if (examItem) await updateExamItem(examItem.id, data);
       else await createExamItem(clubId, data);
       if (onSuccess) onSuccess();
@@ -86,15 +82,6 @@ const ExamFormModal = ({ show, onHide, clubId, examItem, curriculumItems, onSucc
             <Form.Label>Тэнцсэн оноо</Form.Label>
             <Form.Control type="number" value={passingScore} onChange={e => setPassingScore(parseInt(e.target.value))} />
           </Form.Group>
-          {curriculumItems?.length > 0 && (
-            <Form.Group className="mb-3">
-              <Form.Label>Хөтөлбөр</Form.Label>
-              <Form.Select value={curriculumId} onChange={e => setCurriculumId(e.target.value)}>
-                <option value="">-- Хөтөлбөргүй --</option>
-                {curriculumItems.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}
-              </Form.Select>
-            </Form.Group>
-          )}
           <Form.Group className="mb-4">
             <Form.Check type="checkbox" label="Нийтлэх" checked={isPublished} onChange={e => setIsPublished(e.target.checked)} />
           </Form.Group>

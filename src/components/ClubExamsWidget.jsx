@@ -12,7 +12,6 @@ const ClubExamsWidget = ({ club, onUpdate, isTeacherOrAdmin }) => {
 
   if (!club) return null;
   const exams = club.exams || [];
-  const curriculumItems = club.curriculum_items || [];
   if (exams.length === 0 && !isTeacherOrAdmin) return null;
 
   const formatDate = (ds) => ds ? new Date(ds).toLocaleDateString('mn-MN', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
@@ -83,7 +82,7 @@ const ClubExamsWidget = ({ club, onUpdate, isTeacherOrAdmin }) => {
       </Card.Body>
     </Card>
     <ExamFormModal show={showFormModal} onHide={() => { setShowFormModal(false); setEditingItem(null); }}
-      clubId={club.id} examItem={editingItem} curriculumItems={curriculumItems}
+      clubId={club.id} examItem={editingItem}
       onSuccess={() => { setShowFormModal(false); setEditingItem(null); if (onUpdate) onUpdate(); }} />
   </>);
 };

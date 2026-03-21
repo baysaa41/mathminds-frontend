@@ -12,7 +12,6 @@ const ClubQuizzesWidget = ({ club, onUpdate, isTeacherOrAdmin }) => {
 
   if (!club) return null;
   const quizzes = club.quizzes || [];
-  const curriculumItems = club.curriculum_items || [];
   if (quizzes.length === 0 && !isTeacherOrAdmin) return null;
 
   const handleEdit = (item) => { setEditingItem(item); setShowFormModal(true); };
@@ -104,7 +103,7 @@ const ClubQuizzesWidget = ({ club, onUpdate, isTeacherOrAdmin }) => {
       </Card.Body>
     </Card>
     <QuizFormModal show={showFormModal} onHide={() => { setShowFormModal(false); setEditingItem(null); }}
-      clubId={club.id} quizItem={editingItem} curriculumItems={curriculumItems}
+      clubId={club.id} quizItem={editingItem}
       onSuccess={() => { setShowFormModal(false); setEditingItem(null); if (onUpdate) onUpdate(); }} />
   </>);
 };
