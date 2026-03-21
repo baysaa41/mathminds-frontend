@@ -53,6 +53,7 @@ apiClient.interceptors.request.use(
       'generate-ai-content',
       'convert_to_mc',
       'improve',
+      'generate_weekly_article',
     ];
     if (AI_ENDPOINTS.some((ep) => config.url?.includes(ep))) {
       config.timeout = 120_000;

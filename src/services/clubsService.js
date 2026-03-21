@@ -131,14 +131,44 @@ export const getWeeklyTopics = async (clubId) => {
  * AI долоо хоногийн өгүүлэл үүсгэж клубд нийтлэх
  * POST /api/clubs/:id/generate_weekly_article/
  */
-export const generateWeeklyArticle = async (clubId) => {
+export const generateWeeklyArticle = async (clubId, { programId, weekNum } = {}) => {
   try {
-    const response = await apiClient.post(`/api/clubs/${clubId}/generate_weekly_article/`);
+    const body = {};
+    if (programId) body.program_id = programId;
+    if (weekNum) body.week_num = weekNum;
+    const response = await apiClient.post(`/api/clubs/${clubId}/generate_weekly_article/`, body);
     return response.data;
   } catch (error) {
     console.error('❌ Error generating weekly article:', error);
     throw error;
   }
+};
+
+/**
+ * Клубт хөтөлбөр нэмэх
+ * POST /api/clubs/:id/add_program/
+ */
+export const addProgram = async (clubId, programId) => {
+  const response = await apiClient.post(`/api/clubs/${clubId}/add_program/`, { program_id: programId });
+  return response.data;
+};
+
+/**
+ * Клубаас хөтөлбөр хасах
+ * POST /api/clubs/:id/remove_program/
+ */
+export const removeProgram = async (clubId, programId) => {
+  const response = await apiClient.post(`/api/clubs/${clubId}/remove_program/`, { program_id: programId });
+  return response.data;
+};
+
+/**
+ * Клубын хөтөлбөрийн долоо хоногийг өөрчлөх
+ * POST /api/clubs/:id/set_week/
+ */
+export const setWeek = async (clubId, data) => {
+  const response = await apiClient.post(`/api/clubs/${clubId}/set_week/`, data);
+  return response.data;
 };
 
 /**
@@ -601,6 +631,9 @@ const clubsService = {
   deleteQuizItem,
   moveQuizUp,
   moveQuizDown,
+  addProgram,
+  removeProgram,
+  setWeek,
   createFileItem,
   updateFileItem,
   deleteFileItem,

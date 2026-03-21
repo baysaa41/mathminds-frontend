@@ -8,7 +8,7 @@ import {
 } from 'react-bootstrap';
 import {
   Plus, Pencil, Trash2, ChevronLeft, BookOpen,
-  Calendar, CheckCircle, XCircle, ChevronDown, ChevronUp,
+  CheckCircle, XCircle, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import * as svc from '../services/curriculumAdminService';
 
@@ -48,7 +48,10 @@ function ProgramsTab() {
 
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ grade: '', name: '', code: '', description: '', is_active: true });
+  const [form, setForm] = useState({
+    grade: '', name: '', code: '', description: '', is_active: true,
+    academic_year: '', hours_per_week: 2, total_hours: 0,
+  });
   const [saving, setSaving] = useState(false);
 
   const [confirmId, setConfirmId] = useState(null);
@@ -70,13 +73,19 @@ function ProgramsTab() {
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ grade: '', name: '', code: '', description: '', is_active: true });
+    setForm({
+      grade: '', name: '', code: '', description: '', is_active: true,
+      academic_year: '', hours_per_week: 2, total_hours: 0,
+    });
     setShowModal(true);
   };
 
   const openEdit = (p) => {
     setEditing(p);
-    setForm({ grade: p.grade, name: p.name, code: p.code, description: p.description, is_active: p.is_active });
+    setForm({
+      grade: p.grade, name: p.name, code: p.code, description: p.description, is_active: p.is_active,
+      academic_year: p.academic_year || '', hours_per_week: p.hours_per_week || 2, total_hours: p.total_hours || 0,
+    });
     setShowModal(true);
   };
 
@@ -126,18 +135,21 @@ function ProgramsTab() {
       <Table responsive hover size="sm">
         <thead className="table-light">
           <tr>
-            <th>Анги</th><th>Нэр</th><th>Код</th><th>Идэвхтэй</th><th></th>
+            <th>Анги</th><th>Нэр</th><th>Код</th><th>Хичээлийн жил</th><th>Цаг/7 хоног</th><th>Нийт цаг</th><th>Идэвхтэй</th><th></th>
           </tr>
         </thead>
         <tbody>
           {programs.length === 0 && (
-            <tr><td colSpan={5} className="text-center text-muted py-3">Хөтөлбөр байхгүй байна</td></tr>
+            <tr><td colSpan={8} className="text-center text-muted py-3">Хөтөлбөр байхгүй байна</td></tr>
           )}
           {programs.map(p => (
             <tr key={p.id}>
               <td><Badge bg="secondary">{p.grade}-р анги</Badge></td>
               <td>{p.name}</td>
               <td><code>{p.code}</code></td>
+              <td>{p.academic_year || '—'}</td>
+              <td>{p.hours_per_week}</td>
+              <td>{p.total_hours || '—'}</td>
               <td>
                 {p.is_active
                   ? <CheckCircle size={16} className="text-success" />
@@ -194,6 +206,39 @@ function ProgramsTab() {
               />
               <Form.Text className="text-muted">Жишээ: 7-regular, 7-advanced</Form.Text>
             </Form.Group>
+            <Row>
+              <Col md={4}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Хичээлийн жил</Form.Label>
+                  <Form.Control
+                    value={form.academic_year}
+                    onChange={e => setForm(f => ({ ...f, academic_year: e.target.value }))}
+                    placeholder="2025-2026"
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Цаг/7 хоног</Form.Label>
+                  <Form.Control
+                    type="number" min="1" max="10"
+                    value={form.hours_per_week}
+                    onChange={e => setForm(f => ({ ...f, hours_per_week: parseInt(e.target.value) || 1 }))}
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Нийт цаг</Form.Label>
+                  <Form.Control
+                    type="number" min="0"
+                    value={form.total_hours}
+                    onChange={e => setForm(f => ({ ...f, total_hours: parseInt(e.target.value) || 0 }))}
+                  />
+                  <Form.Text className="text-muted">0 = автомат</Form.Text>
+                </Form.Group>
+              </Col>
+            </Row>
             <Form.Group className="mb-3">
               <Form.Label>Тайлбар</Form.Label>
               <Form.Control
@@ -225,351 +270,7 @@ function ProgramsTab() {
   );
 }
 
-// ─── 2. ХИЧЭЭЛИЙН ЖИЛ + ДОЛОО ХОНОГ TAB ────────────────────────────────────
-
-function AcademicYearsTab() {
-  const [years, setYears] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  const [showYearModal, setShowYearModal] = useState(false);
-  const [editYear, setEditYear] = useState(null);
-  const [yearForm, setYearForm] = useState({ name: '', start_date: '', end_date: '', is_active: false });
-  const [savingYear, setSavingYear] = useState(false);
-  const [confirmYearId, setConfirmYearId] = useState(null);
-  const [deletingYear, setDeletingYear] = useState(false);
-
-  // Weeks state
-  const [selectedYearId, setSelectedYearId] = useState(null);
-  const [weeks, setWeeks] = useState([]);
-  const [loadingWeeks, setLoadingWeeks] = useState(false);
-  const [showWeekModal, setShowWeekModal] = useState(false);
-  const [editWeek, setEditWeek] = useState(null);
-  const [weekForm, setWeekForm] = useState({ week_num: '', start_date: '', end_date: '' });
-  const [savingWeek, setSavingWeek] = useState(false);
-  const [confirmWeekId, setConfirmWeekId] = useState(null);
-  const [deletingWeek, setDeletingWeek] = useState(false);
-
-  const loadYears = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await svc.getAcademicYears();
-      setYears(res.data);
-    } catch {
-      setError('Ачааллахад алдаа гарлаа');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const loadWeeks = useCallback(async (yearId) => {
-    if (!yearId) return;
-    setLoadingWeeks(true);
-    try {
-      const res = await svc.getWeeks(yearId);
-      setWeeks(res.data);
-    } catch {
-      setError('Долоо хоног ачааллахад алдаа гарлаа');
-    } finally {
-      setLoadingWeeks(false);
-    }
-  }, []);
-
-  useEffect(() => { loadYears(); }, [loadYears]);
-  useEffect(() => { if (selectedYearId) loadWeeks(selectedYearId); }, [selectedYearId, loadWeeks]);
-
-  // Year CRUD
-  const openCreateYear = () => {
-    setEditYear(null);
-    setYearForm({ name: '', start_date: '', end_date: '', is_active: false });
-    setShowYearModal(true);
-  };
-  const openEditYear = (y) => {
-    setEditYear(y);
-    setYearForm({ name: y.name, start_date: y.start_date, end_date: y.end_date, is_active: y.is_active });
-    setShowYearModal(true);
-  };
-  const handleSaveYear = async (e) => {
-    e.preventDefault();
-    setSavingYear(true);
-    try {
-      if (editYear) await svc.updateAcademicYear(editYear.id, yearForm);
-      else await svc.createAcademicYear(yearForm);
-      setShowYearModal(false);
-      await loadYears();
-    } catch (err) {
-      setError(err.response?.data ? JSON.stringify(err.response.data) : 'Хадгалахад алдаа гарлаа');
-    } finally {
-      setSavingYear(false);
-    }
-  };
-  const handleDeleteYear = async () => {
-    setDeletingYear(true);
-    try {
-      await svc.deleteAcademicYear(confirmYearId);
-      if (selectedYearId === confirmYearId) setSelectedYearId(null);
-      setConfirmYearId(null);
-      await loadYears();
-    } catch {
-      setError('Устгахад алдаа гарлаа');
-    } finally {
-      setDeletingYear(false);
-    }
-  };
-
-  // Week CRUD
-  const openCreateWeek = () => {
-    setEditWeek(null);
-    setWeekForm({ week_num: '', start_date: '', end_date: '' });
-    setShowWeekModal(true);
-  };
-  const openEditWeek = (w) => {
-    setEditWeek(w);
-    setWeekForm({ week_num: w.week_num, start_date: w.start_date, end_date: w.end_date });
-    setShowWeekModal(true);
-  };
-  const handleSaveWeek = async (e) => {
-    e.preventDefault();
-    setSavingWeek(true);
-    try {
-      const data = { ...weekForm, academic_year: selectedYearId };
-      if (editWeek) await svc.updateWeek(editWeek.id, data);
-      else await svc.createWeek(data);
-      setShowWeekModal(false);
-      await loadWeeks(selectedYearId);
-    } catch (err) {
-      setError(err.response?.data ? JSON.stringify(err.response.data) : 'Хадгалахад алдаа гарлаа');
-    } finally {
-      setSavingWeek(false);
-    }
-  };
-  const handleDeleteWeek = async () => {
-    setDeletingWeek(true);
-    try {
-      await svc.deleteWeek(confirmWeekId);
-      setConfirmWeekId(null);
-      await loadWeeks(selectedYearId);
-    } catch {
-      setError('Устгахад алдаа гарлаа');
-    } finally {
-      setDeletingWeek(false);
-    }
-  };
-
-  if (loading) return <div className="text-center py-5"><Spinner /></div>;
-
-  return (
-    <>
-      {error && <Alert variant="danger" dismissible onClose={() => setError('')}>{error}</Alert>}
-      <Row>
-        {/* Left: Academic Years list */}
-        <Col md={4}>
-          <div className="d-flex justify-content-between align-items-center mb-2">
-            <h6 className="mb-0">Хичээлийн жилүүд</h6>
-            <Button size="sm" variant="primary" onClick={openCreateYear}>
-              <Plus size={14} />
-            </Button>
-          </div>
-          <div className="list-group">
-            {years.length === 0 && (
-              <div className="text-muted small p-2">Хичээлийн жил байхгүй</div>
-            )}
-            {years.map(y => (
-              <button
-                key={y.id}
-                className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center${selectedYearId === y.id ? ' active' : ''}`}
-                onClick={() => setSelectedYearId(y.id)}
-                type="button"
-              >
-                <span>
-                  {y.name}
-                  {y.is_active && <Badge bg="success" className="ms-2" pill>Идэвхтэй</Badge>}
-                </span>
-                <span onClick={e => e.stopPropagation()}>
-                  <Button
-                    size="sm"
-                    variant={selectedYearId === y.id ? 'light' : 'outline-secondary'}
-                    className="me-1 p-1"
-                    onClick={() => openEditYear(y)}
-                  >
-                    <Pencil size={12} />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={selectedYearId === y.id ? 'light' : 'outline-danger'}
-                    className="p-1"
-                    onClick={() => setConfirmYearId(y.id)}
-                  >
-                    <Trash2 size={12} />
-                  </Button>
-                </span>
-              </button>
-            ))}
-          </div>
-        </Col>
-
-        {/* Right: Weeks for selected year */}
-        <Col md={8}>
-          {!selectedYearId ? (
-            <div className="text-center text-muted py-5">
-              <Calendar size={40} className="mb-2 opacity-25" />
-              <p>Хичээлийн жилийг сонгоно уу</p>
-            </div>
-          ) : (
-            <>
-              <div className="d-flex justify-content-between align-items-center mb-2">
-                <h6 className="mb-0">
-                  Долоо хоногууд — {years.find(y => y.id === selectedYearId)?.name}
-                </h6>
-                <Button size="sm" variant="primary" onClick={openCreateWeek}>
-                  <Plus size={14} className="me-1" />Нэмэх
-                </Button>
-              </div>
-              {loadingWeeks ? (
-                <div className="text-center py-3"><Spinner size="sm" /></div>
-              ) : (
-                <Table responsive hover size="sm">
-                  <thead className="table-light">
-                    <tr>
-                      <th>#</th><th>Эхлэх өдөр</th><th>Дуусах өдөр</th><th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {weeks.length === 0 && (
-                      <tr><td colSpan={4} className="text-center text-muted">Долоо хоног байхгүй</td></tr>
-                    )}
-                    {weeks.map(w => (
-                      <tr key={w.id}>
-                        <td><Badge bg="secondary">{w.week_num}</Badge></td>
-                        <td>{w.start_date}</td>
-                        <td>{w.end_date}</td>
-                        <td className="text-end">
-                          <Button size="sm" variant="outline-secondary" className="me-1" onClick={() => openEditWeek(w)}>
-                            <Pencil size={12} />
-                          </Button>
-                          <Button size="sm" variant="outline-danger" onClick={() => setConfirmWeekId(w.id)}>
-                            <Trash2 size={12} />
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              )}
-            </>
-          )}
-        </Col>
-      </Row>
-
-      {/* Year Modal */}
-      <Modal show={showYearModal} onHide={() => setShowYearModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>{editYear ? 'Хичээлийн жил засах' : 'Шинэ хичээлийн жил'}</Modal.Title>
-        </Modal.Header>
-        <Form onSubmit={handleSaveYear}>
-          <Modal.Body>
-            <Form.Group className="mb-3">
-              <Form.Label>Нэр <span className="text-danger">*</span></Form.Label>
-              <Form.Control
-                required value={yearForm.name}
-                onChange={e => setYearForm(f => ({ ...f, name: e.target.value }))}
-                placeholder="2025-2026"
-              />
-            </Form.Group>
-            <Row>
-              <Col>
-                <Form.Group className="mb-3">
-                  <Form.Label>Эхлэх огноо <span className="text-danger">*</span></Form.Label>
-                  <Form.Control
-                    type="date" required value={yearForm.start_date}
-                    onChange={e => setYearForm(f => ({ ...f, start_date: e.target.value }))}
-                  />
-                </Form.Group>
-              </Col>
-              <Col>
-                <Form.Group className="mb-3">
-                  <Form.Label>Дуусах огноо <span className="text-danger">*</span></Form.Label>
-                  <Form.Control
-                    type="date" required value={yearForm.end_date}
-                    onChange={e => setYearForm(f => ({ ...f, end_date: e.target.value }))}
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
-            <Form.Check
-              type="switch" id="year-active" label="Идэвхтэй хичээлийн жил"
-              checked={yearForm.is_active}
-              onChange={e => setYearForm(f => ({ ...f, is_active: e.target.checked }))}
-            />
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowYearModal(false)}>Болих</Button>
-            <SaveButton loading={savingYear} />
-          </Modal.Footer>
-        </Form>
-      </Modal>
-
-      {/* Week Modal */}
-      <Modal show={showWeekModal} onHide={() => setShowWeekModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>{editWeek ? 'Долоо хоног засах' : 'Шинэ долоо хоног'}</Modal.Title>
-        </Modal.Header>
-        <Form onSubmit={handleSaveWeek}>
-          <Modal.Body>
-            <Form.Group className="mb-3">
-              <Form.Label>Дугаар <span className="text-danger">*</span></Form.Label>
-              <Form.Control
-                type="number" min="1" required value={weekForm.week_num}
-                onChange={e => setWeekForm(f => ({ ...f, week_num: e.target.value }))}
-              />
-            </Form.Group>
-            <Row>
-              <Col>
-                <Form.Group className="mb-3">
-                  <Form.Label>Эхлэх өдөр <span className="text-danger">*</span></Form.Label>
-                  <Form.Control
-                    type="date" required value={weekForm.start_date}
-                    onChange={e => setWeekForm(f => ({ ...f, start_date: e.target.value }))}
-                  />
-                </Form.Group>
-              </Col>
-              <Col>
-                <Form.Group className="mb-3">
-                  <Form.Label>Дуусах өдөр <span className="text-danger">*</span></Form.Label>
-                  <Form.Control
-                    type="date" required value={weekForm.end_date}
-                    onChange={e => setWeekForm(f => ({ ...f, end_date: e.target.value }))}
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowWeekModal(false)}>Болих</Button>
-            <SaveButton loading={savingWeek} />
-          </Modal.Footer>
-        </Form>
-      </Modal>
-
-      <ConfirmModal
-        show={!!confirmYearId}
-        message="Энэ хичээлийн жилийг бүх долоо хоногийн хамт устгах уу?"
-        onConfirm={handleDeleteYear}
-        onCancel={() => setConfirmYearId(null)}
-        loading={deletingYear}
-      />
-      <ConfirmModal
-        show={!!confirmWeekId}
-        message="Энэ долоо хоногийг устгах уу?"
-        onConfirm={handleDeleteWeek}
-        onCancel={() => setConfirmWeekId(null)}
-        loading={deletingWeek}
-      />
-    </>
-  );
-}
-
-// ─── 3. ДОЛОО ХОНОГИЙН СЭДВҮҮД TAB ──────────────────────────────────────────
+// ─── 2. ДОЛОО ХОНОГИЙН СЭДВҮҮД TAB ──────────────────────────────────────────
 
 function ObjectivesEditor({ topicId, objectives, onRefresh }) {
   const [text, setText] = useState('');
@@ -796,9 +497,8 @@ function ResourcesEditor({ topicId, resources, onRefresh }) {
   );
 }
 
-function WeeklyTopicsTab({ programs, academicYears }) {
+function WeeklyTopicsTab({ programs }) {
   const [filterProgram, setFilterProgram] = useState('');
-  const [filterYear, setFilterYear] = useState('');
   const [topics, setTopics] = useState([]);
   const [expandedTopics, setExpandedTopics] = useState({});
 
@@ -807,21 +507,18 @@ function WeeklyTopicsTab({ programs, academicYears }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const [weeks, setWeeks] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ week: '', program: '', topic: '', description: '', is_published: false });
+  const [form, setForm] = useState({ week_num: '', hours: 0, program: '', topic: '', description: '', is_published: false });
   const [saving, setSaving] = useState(false);
   const [confirmId, setConfirmId] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
-    if (!filterProgram && !filterYear) return;
+    if (!filterProgram) return;
     setLoading(true);
     try {
-      const params = {};
-      if (filterProgram) params.program = filterProgram;
-      if (filterYear) params.academic_year = filterYear;
+      const params = { program: filterProgram };
       const res = await svc.getWeeklyTopics(params);
       setTopics(res.data);
     } catch {
@@ -829,20 +526,17 @@ function WeeklyTopicsTab({ programs, academicYears }) {
     } finally {
       setLoading(false);
     }
-  }, [filterProgram, filterYear]);
+  }, [filterProgram]);
 
   useEffect(() => { load(); }, [load]);
 
-  // Load weeks when year changes (for modal)
-  useEffect(() => {
-    if (!filterYear) { setWeeks([]); return; }
-    svc.getWeeks(filterYear).then(r => setWeeks(r.data)).catch(() => {});
-  }, [filterYear]);
-
   const openCreate = () => {
     setEditing(null);
+    // Дараагийн долоо хоногийн дугаарыг автомат олох
+    const maxWeekNum = topics.reduce((max, t) => Math.max(max, t.week_num || 0), 0);
     setForm({
-      week: '',
+      week_num: maxWeekNum + 1,
+      hours: 0,
       program: filterProgram || '',
       topic: '',
       description: '',
@@ -854,7 +548,8 @@ function WeeklyTopicsTab({ programs, academicYears }) {
   const openEdit = (t) => {
     setEditing(t);
     setForm({
-      week: t.week,
+      week_num: t.week_num,
+      hours: t.hours || 0,
       program: t.program,
       topic: t.topic,
       description: t.description,
@@ -891,15 +586,15 @@ function WeeklyTopicsTab({ programs, academicYears }) {
     }
   };
 
-  const refreshTopic = useCallback(async (topicId) => {
+  const refreshTopic = useCallback(async () => {
     try {
-      const params = {};
-      if (filterProgram) params.program = filterProgram;
-      if (filterYear) params.academic_year = filterYear;
+      const params = { program: filterProgram };
       const res = await svc.getWeeklyTopics(params);
       setTopics(res.data);
     } catch {}
-  }, [filterProgram, filterYear]);
+  }, [filterProgram]);
+
+  const selectedProgram = programs.find(p => String(p.id) === String(filterProgram));
 
   return (
     <>
@@ -907,21 +602,16 @@ function WeeklyTopicsTab({ programs, academicYears }) {
 
       {/* Filters */}
       <Row className="mb-3 g-2 align-items-end">
-        <Col md={4}>
+        <Col md={6}>
           <Form.Label className="small mb-1">Хөтөлбөр</Form.Label>
           <Form.Select size="sm" value={filterProgram} onChange={e => setFilterProgram(e.target.value)}>
             <option value="">— сонгох —</option>
             {programs.map(p => (
-              <option key={p.id} value={p.id}>{p.grade}-р анги · {p.name}</option>
-            ))}
-          </Form.Select>
-        </Col>
-        <Col md={4}>
-          <Form.Label className="small mb-1">Хичээлийн жил</Form.Label>
-          <Form.Select size="sm" value={filterYear} onChange={e => setFilterYear(e.target.value)}>
-            <option value="">— сонгох —</option>
-            {academicYears.map(y => (
-              <option key={y.id} value={y.id}>{y.name}</option>
+              <option key={p.id} value={p.id}>
+                {p.grade}-р анги · {p.name}
+                {p.academic_year ? ` (${p.academic_year})` : ''}
+                {p.hours_per_week ? ` · ${p.hours_per_week} цаг/7хон` : ''}
+              </option>
             ))}
           </Form.Select>
         </Col>
@@ -929,38 +619,47 @@ function WeeklyTopicsTab({ programs, academicYears }) {
           <Button
             size="sm" variant="primary"
             onClick={openCreate}
-            disabled={!filterProgram || !filterYear}
-            title={!filterProgram || !filterYear ? 'Эхлээд хөтөлбөр болон хичээлийн жилийг сонгоно уу' : ''}
+            disabled={!filterProgram}
+            title={!filterProgram ? 'Эхлээд хөтөлбөрийг сонгоно уу' : ''}
           >
             <Plus size={14} className="me-1" />Сэдэв нэмэх
           </Button>
         </Col>
       </Row>
 
+      {/* Program info */}
+      {selectedProgram && (
+        <div className="small text-muted mb-2">
+          {selectedProgram.hours_per_week} цаг/долоо хоног
+          {selectedProgram.total_hours ? ` · Нийт ${selectedProgram.total_hours} цаг` : ''}
+          {selectedProgram.academic_year ? ` · ${selectedProgram.academic_year}` : ''}
+        </div>
+      )}
+
       {/* No filter selected */}
-      {!filterProgram && !filterYear && (
+      {!filterProgram && (
         <div className="text-center text-muted py-5">
           <BookOpen size={40} className="mb-2 opacity-25" />
-          <p>Хөтөлбөр болон хичээлийн жилийг сонгоно уу</p>
+          <p>Хөтөлбөрийг сонгоно уу</p>
         </div>
       )}
 
       {/* Topics list as Accordion */}
       {loading && <div className="text-center py-3"><Spinner /></div>}
-      {!loading && (filterProgram || filterYear) && (
+      {!loading && filterProgram && (
         <>
           <div className="d-flex justify-content-between mb-2">
             <small className="text-muted">{topics.length} сэдэв</small>
           </div>
           {topics.length === 0 && (
-            <Alert variant="info">Сонгосон шүүлтүүрт тохирох сэдэв байхгүй байна.</Alert>
+            <Alert variant="info">Сонгосон хөтөлбөрт сэдэв байхгүй байна.</Alert>
           )}
           <div className="d-flex flex-column gap-2">
             {topics.map(t => {
               const isOpen = !!expandedTopics[t.id];
               return (
                 <Card key={t.id} className="border">
-                  {/* Header — plain div, no nested button issue */}
+                  {/* Header */}
                   <div
                     className="d-flex align-items-center px-3 py-2 gap-2"
                     style={{ cursor: 'pointer', userSelect: 'none' }}
@@ -972,6 +671,11 @@ function WeeklyTopicsTab({ programs, academicYears }) {
                     <Badge bg="secondary" className="flex-shrink-0">
                       {t.week_num}-р 7 хоног
                     </Badge>
+                    {t.effective_hours > 0 && (
+                      <Badge bg="outline-secondary" className="flex-shrink-0 border text-muted">
+                        {t.effective_hours} цаг
+                      </Badge>
+                    )}
                     <span className="flex-grow-1 text-truncate small fw-medium">
                       {t.topic}
                     </span>
@@ -1059,23 +763,23 @@ function WeeklyTopicsTab({ programs, academicYears }) {
                   </Form.Select>
                 </Form.Group>
               </Col>
-              <Col md={6}>
+              <Col md={3}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Долоо хоног <span className="text-danger">*</span></Form.Label>
-                  <Form.Select required value={form.week}
-                    onChange={e => setForm(f => ({ ...f, week: e.target.value }))}>
-                    <option value="">— сонгох —</option>
-                    {weeks.map(w => (
-                      <option key={w.id} value={w.id}>
-                        {w.week_num}-р долоо хоног ({w.start_date})
-                      </option>
-                    ))}
-                  </Form.Select>
-                  {weeks.length === 0 && (
-                    <Form.Text className="text-warning">
-                      Хичээлийн жилийн шүүлтүүр сонгоогүй тул долоо хоног харагдахгүй байна
-                    </Form.Text>
-                  )}
+                  <Form.Label>7 хоног # <span className="text-danger">*</span></Form.Label>
+                  <Form.Control
+                    type="number" min="1" required value={form.week_num}
+                    onChange={e => setForm(f => ({ ...f, week_num: parseInt(e.target.value) || '' }))}
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={3}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Цаг</Form.Label>
+                  <Form.Control
+                    type="number" min="0" value={form.hours}
+                    onChange={e => setForm(f => ({ ...f, hours: parseInt(e.target.value) || 0 }))}
+                  />
+                  <Form.Text className="text-muted">0 = default</Form.Text>
                 </Form.Group>
               </Col>
             </Row>
@@ -1118,16 +822,11 @@ function WeeklyTopicsTab({ programs, academicYears }) {
 
 function CurriculumAdminPage() {
   const [programs, setPrograms] = useState([]);
-  const [academicYears, setAcademicYears] = useState([]);
   const [initLoading, setInitLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([
-      svc.getPrograms(),
-      svc.getAcademicYears(),
-    ]).then(([pRes, yRes]) => {
-      setPrograms(pRes.data);
-      setAcademicYears(yRes.data);
+    svc.getPrograms().then(res => {
+      setPrograms(res.data);
     }).finally(() => setInitLoading(false));
   }, []);
 
@@ -1155,13 +854,10 @@ function CurriculumAdminPage() {
         <Card.Body>
           <Tabs defaultActiveKey="topics" className="mb-3">
             <Tab eventKey="topics" title="Долоо хоногийн сэдвүүд">
-              <WeeklyTopicsTab programs={programs} academicYears={academicYears} />
+              <WeeklyTopicsTab programs={programs} />
             </Tab>
             <Tab eventKey="programs" title="Хөтөлбөрүүд">
               <ProgramsTab />
-            </Tab>
-            <Tab eventKey="years" title="Хичээлийн жил ба Долоо хоног">
-              <AcademicYearsTab />
             </Tab>
           </Tabs>
         </Card.Body>

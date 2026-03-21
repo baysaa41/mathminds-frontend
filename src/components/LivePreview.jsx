@@ -167,6 +167,44 @@ function applyLatexFilters(text) {
     }
     return `<ul>${items}</ul>`;
   });
+  // Тусгай блокууд (\begin{definition}{Нэр}...\end{definition})
+  const blockTypes = [
+    { env: 'definition', label: 'Тодорхойлолт', color: '#0d6efd', bg: '#e8f0fe', icon: '📘' },
+    { env: 'theorem',    label: 'Теорем',       color: '#6f42c1', bg: '#f3eefe', icon: '📐' },
+    { env: 'formula',    label: 'Томьёо',       color: '#d63384', bg: '#fce4f0', icon: '📝' },
+    { env: 'example',    label: 'Жишээ',        color: '#198754', bg: '#e8f5e9', icon: '💡' },
+    { env: 'note',       label: 'Тэмдэглэл',   color: '#fd7e14', bg: '#fff3e0', icon: '📌' },
+  ];
+  for (const bt of blockTypes) {
+    const re = new RegExp(
+      `\\\\begin\\{${bt.env}\\}\\{([^}]*)\\}([\\s\\S]*?)\\\\end\\{${bt.env}\\}`,
+      'g'
+    );
+    html = html.replace(re, (_, name, body) => {
+      const title = name ? `${bt.label}: ${name}` : bt.label;
+      return (
+        `<div class="article-block mb-3" style="border-left:4px solid ${bt.color};background:${bt.bg};border-radius:8px;padding:12px 16px;">` +
+        `<div style="font-weight:600;color:${bt.color};margin-bottom:4px;">${bt.icon} ${title}</div>` +
+        `<div>${body.trim()}</div>` +
+        `</div>`
+      );
+    });
+  }
+
+  // Энгийн текст дэх "Жишээ бодлого 1.", "Бодлого 2.", "Шийдэл:", "Хариу:" зэргийг ялгах
+  const inlineBlocks = [
+    { re: /^(Жишээ(?:\s+бодлого)?[\s.:]*(\d+)?[.:]?\s*)/gm,  color: '#198754', bg: '#e8f5e9', icon: '💡' },
+    { re: /^(Бодлого[\s.:]*(\d+)?[.:]?\s*)/gm,                color: '#198754', bg: '#e8f5e9', icon: '💡' },
+    { re: /^(Шийдэл[.:]?\s*)/gm,                              color: '#0d6efd', bg: '#e8f0fe', icon: '✏️' },
+    { re: /^(Бодолт[.:]?\s*)/gm,                              color: '#0d6efd', bg: '#e8f0fe', icon: '✏️' },
+    { re: /^(Хариу[.:]?\s*)/gm,                               color: '#6f42c1', bg: '#f3eefe', icon: '✅' },
+  ];
+  for (const ib of inlineBlocks) {
+    html = html.replace(ib.re, (match) =>
+      `<span style="display:inline-block;background:${ib.bg};color:${ib.color};font-weight:600;padding:2px 8px;border-radius:4px;margin-right:4px;">${ib.icon} ${match.trim()}</span>`
+    );
+  }
+
   // Heading командууд (\section, \subsection, ...)
   html = html.replace(/\\section\{([^}]*)\}/g,        '<h2 class="article-section mt-4 mb-2">$1</h2>');
   html = html.replace(/\\subsection\{([^}]*)\}/g,     '<h3 class="article-subsection mt-3 mb-2">$1</h3>');

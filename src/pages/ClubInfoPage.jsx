@@ -167,51 +167,37 @@ const ClubInfoPage = ({ forceInfo = false }) => {
         </Card.Body>
       </Card>
 
-      {/* Одоогийн долоо хоногийн сэдэв */}
-      {club.curriculum_program_info && (
+      {/* Одоогийн долоо хоногийн сэдвүүд (олон хөтөлбөр) */}
+      {club.current_week_topics && club.current_week_topics.length > 0 && (
         <Card className="shadow-sm mb-4 border-primary border-opacity-25">
           <Card.Header className="bg-white border-bottom">
             <div className="d-flex align-items-center gap-2 flex-wrap">
               <GraduationCap size={16} className="text-primary" />
-              <h6 className="mb-0 fw-bold">Долоо хоногийн сэдэв</h6>
-              <Badge bg="secondary">{club.curriculum_program_info.grade}-р анги</Badge>
-              <span className="small text-muted">· {club.curriculum_program_info.name}</span>
-              {club.curriculum_academic_year_info && (
-                <span className="small text-muted">· {club.curriculum_academic_year_info.name}</span>
-              )}
+              <h6 className="mb-0 fw-bold">Долоо хоногийн сэдвүүд</h6>
             </div>
           </Card.Header>
           <Card.Body>
-            {club.current_week_topic ? (() => {
-              const w = club.current_week_topic;
-              const fmt = (d) => new Date(d).toLocaleDateString('mn-MN', { month: 'short', day: 'numeric' });
-              return (
-                <div className="d-flex align-items-start gap-3">
-                  <div className="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                    style={{ width: 52, height: 52 }}>
-                    <span className="fw-bold text-primary lh-1 text-center" style={{ fontSize: '0.8rem' }}>
-                      {w.week_num}-р<br />7 хон
-                    </span>
-                  </div>
-                  <div>
-                    <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
-                      <Badge bg="success" pill>Одоо үзэж байна</Badge>
-                      <span className="small text-muted fw-medium">{w.week_num}-р долоо хоног</span>
-                      <span className="small text-muted">
-                        <CalendarDays size={12} className="me-1" />
-                        {fmt(w.start_date)} – {fmt(w.end_date)}
-                      </span>
-                    </div>
-                    <p className="mb-0 fw-semibold">{w.topic}</p>
-                    {w.description && (
-                      <p className="mb-0 small text-muted mt-1">{w.description}</p>
-                    )}
-                  </div>
+            {club.current_week_topics.map((w, idx) => (
+              <div key={idx} className={`d-flex align-items-start gap-3 ${idx > 0 ? 'border-top pt-3 mt-3' : ''}`}>
+                <div className="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                  style={{ width: 52, height: 52 }}>
+                  <span className="fw-bold text-primary lh-1 text-center" style={{ fontSize: '0.8rem' }}>
+                    {w.week_num}-р<br />7 хон
+                  </span>
                 </div>
-              );
-            })() : (
-              <p className="mb-0 text-muted small">Энэ долоо хоногийн сэдэв тохируулагдаагүй байна</p>
-            )}
+                <div>
+                  <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                    <Badge bg="success" pill>Одоо үзэж байна</Badge>
+                    <span className="small text-muted fw-medium">{w.program_name}</span>
+                    <span className="small text-muted">{w.week_num}-р долоо хоног</span>
+                  </div>
+                  <p className="mb-0 fw-semibold">{w.topic}</p>
+                  {w.description && (
+                    <p className="mb-0 small text-muted mt-1">{w.description}</p>
+                  )}
+                </div>
+              </div>
+            ))}
           </Card.Body>
         </Card>
       )}
