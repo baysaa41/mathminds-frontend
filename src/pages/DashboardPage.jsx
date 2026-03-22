@@ -13,6 +13,7 @@ import {
   LogOut,
   BookOpen,
   ShoppingCart,
+  Terminal,
 } from 'lucide-react';
 import authService from '../services/authService';
 
@@ -204,6 +205,25 @@ function DashboardPage() {
               <Link to="/admin/sales-stats" className="btn btn-warning">
                 <ShoppingCart size={18} className="me-2" />
                 Статистик үзэх
+              </Link>
+            </Card.Body>
+          </Card>
+        </Col>
+
+        {/* Django Commands */}
+        <Col md={6} lg={4}>
+          <Card className="h-100 shadow-sm" style={{ borderColor: '#20c997' }}>
+            <Card.Body className="d-flex flex-column">
+              <div className="mb-3">
+                <Terminal size={40} style={{ color: '#20c997' }} />
+              </div>
+              <Card.Title>Django Commands</Card.Title>
+              <Card.Text className="text-muted flex-grow-1">
+                23 management command-ын заавар: бодлого импорт, AI боловсруулалт, гишүүнчлэл, төлбөр.
+              </Card.Text>
+              <Link to="/admin/commands" className="btn" style={{ backgroundColor: '#20c997', color: '#fff' }}>
+                <Terminal size={18} className="me-2" />
+                Заавар үзэх
               </Link>
             </Card.Body>
           </Card>

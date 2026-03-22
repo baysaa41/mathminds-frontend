@@ -97,6 +97,7 @@ const DocImportPage = lazy(() => import('./pages/DocImportPage.jsx'));
 const AllUsersPage = lazy(() => import('./pages/AllUsersPage.jsx'));
 const SalesStatsPage = lazy(() => import('./pages/SalesStatsPage.jsx'));
 const CurriculumAdminPage = lazy(() => import('./pages/CurriculumAdminPage.jsx'));
+const DjangoCommandsPage = lazy(() => import('./pages/DjangoCommandsPage.jsx'));
 
 // Email Campaigns
 const EmailCampaignsPage = lazy(() => import('./pages/EmailCampaignsPage.jsx'));
@@ -381,6 +382,16 @@ function App() {
           element={
             <AdminRoute>
               <CurriculumAdminPage />
+            </AdminRoute>
+          }
+        />
+
+        {/* Django Commands - Staff only */}
+        <Route
+          path="/admin/commands"
+          element={
+            <AdminRoute>
+              <DjangoCommandsPage />
             </AdminRoute>
           }
         />
