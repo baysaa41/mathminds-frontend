@@ -51,7 +51,7 @@ export const getClubs = async (params = {}) => {
 // ✅ ШИНЭЭР НЭМСЭН ФУНКЦ
 // -----------------------------------------------------------------
 /**
- * Хэрэглэгчийн клубуудыг авах (ClubsUser.jsx-д зориулагдсан)
+ * Хэрэглэгчийн клубуудыг авах (MyClubsWidget.jsx-д зориулагдсан)
  * GET /api/clubs/my_clubs/
  * @param {string} username - Хэрэглэгчийн нэр (optional, if not provided returns current user's clubs)
  * @param {object} params - Нэмэлт параметрүүд

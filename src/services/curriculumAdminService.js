@@ -38,6 +38,16 @@ export const updateObjective = (id, data) =>
 export const deleteObjective = (id) =>
   axiosInstance.delete(`${BASE}/objectives/${id}/`);
 
+// ─── AI Article ──────────────────────────────────────────────────────────────
+export const generateArticle = (topicId) =>
+  axiosInstance.post(`${BASE}/weekly-topics/${topicId}/generate_article/`);
+
+export const improveArticle = (topicId, data) =>
+  axiosInstance.post(`${BASE}/weekly-topics/${topicId}/improve_article/`, data);
+
+export const applyArticleImprovement = (topicId, data) =>
+  axiosInstance.post(`${BASE}/weekly-topics/${topicId}/apply_article_improvement/`, data);
+
 // ─── Resources ────────────────────────────────────────────────────────────────
 export const createResource = (data) =>
   axiosInstance.post(`${BASE}/resources/`, data);

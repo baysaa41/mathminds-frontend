@@ -3,7 +3,6 @@
 
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import ClubsUser from '../pages/ClubsUser.jsx';
 import ClubDetail from '../pages/ClubDetail';
 import ClubInfoPage from '../pages/ClubInfoPage';
 import ClubCurriculumPage from '../pages/ClubCurriculumPage';
@@ -23,9 +22,6 @@ const ClubsRoutes = () => {
     <Routes>
       {/* Клубуудын жагсаалт → fullscreen browse хуудас руу чиглүүлэх */}
       <Route path="/" element={<Navigate to="/clubs/browse" replace />} />
-
-      {/* Миний клубууд */}
-      <Route path="user/:username" element={<ClubsUser />} />
 
       {/* Шинэ клуб үүсгэх */}
       <Route path="create" element={<CreateClub />} />

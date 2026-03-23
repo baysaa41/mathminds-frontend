@@ -120,7 +120,7 @@ const ClubDetail = () => {
       await leaveClub(id);
       showToast(`"${club.name}" клубээс амжилттай гарлаа`, 'success');
       setTimeout(() => {
-        navigate(user?.username ? `/clubs/user/${user.username}` : '/clubs');
+        navigate('/clubs');
       }, 1000);
     } catch (err) {
       console.error('Error leaving club:', err);
@@ -248,7 +248,7 @@ const ClubDetail = () => {
         <Alert variant="danger">{error || 'Клуб олдсонгүй'}</Alert>
         <Button
           variant="primary"
-          onClick={() => navigate(user?.username ? `/clubs/user/${user.username}` : '/clubs')}
+          onClick={() => navigate('/clubs')}
         >
           Буцах
         </Button>
@@ -278,7 +278,7 @@ const ClubDetail = () => {
         <Button
           variant="link"
           onClick={() =>
-            navigate(club.role && user?.username ? `/clubs/user/${user.username}` : '/clubs')
+            navigate('/clubs')
           }
           className="p-0 text-decoration-none"
         >

@@ -10,6 +10,7 @@ import TrendingPostsWidget from './TrendingPostsWidget';
 
 import RecentlyVisitedWidget from './RecentlyVisitedWidget';
 import SearchWidget from './SearchWidget';
+import MyClubsWidget from './MyClubsWidget';
 
 const RightSidebar = ({
   clubData = null
@@ -23,6 +24,9 @@ const RightSidebar = ({
     <Stack gap={3}>
       {/* Search Widget (бүх хуудсанд) */}
       {!clubData && <SearchWidget />}
+
+      {/* Миний клубууд (клубын дэлгэрэнгүй хуудас биш үед) */}
+      {!clubData && <MyClubsWidget />}
 
       {/* Клубын цэс (зөвхөн clubs/:id хуудас дээр) */}
       {clubData && <ClubMenuWidget club={clubData} />}

@@ -632,7 +632,8 @@ const PostCard = ({ post, onPostDeleted, depth = 0, compact = false, onCardClick
 
   // --- Render-д зориулсан хувьсагчид ---
   const isStaff = user && (user.is_staff || user.site_role === 'STAFF');
-  const canEditOrDelete = user && currentPost && (isStaff || (currentPost.author && user.id === currentPost.author.id));
+  const canEdit = user && currentPost && (isStaff || (currentPost.author && user.id === currentPost.author.id));
+  const canDelete = user && currentPost && (currentPost.can_delete || isStaff || (currentPost.author && user.id === currentPost.author.id));
   const isRepost = currentPost.content_type === 'repost' && currentPost.reposted_post;
   const originalPost = isRepost ? currentPost.reposted_post : currentPost;
   const originalAuthor = originalPost?.author;
@@ -975,23 +976,24 @@ const PostCard = ({ post, onPostDeleted, depth = 0, compact = false, onCardClick
                     <i className="bi bi-three-dots-vertical"></i>
                   </Dropdown.Toggle>
                   <Dropdown.Menu>
-                    {/* Зохиогчийн үйлдлүүд */}
-                    {canEditOrDelete && (
-                      <>
-                        <Dropdown.Item onClick={handleEditClick}>
-                          <i className="bi bi-pencil me-2"></i>
-                          Засах
-                        </Dropdown.Item>
-                        <Dropdown.Item onClick={handleDeleteClick}>
-                          <i className="bi bi-trash me-2"></i>
-                          Устгах
-                        </Dropdown.Item>
-                        <Dropdown.Divider />
-                      </>
+                    {/* Засах (эзэн/staff) */}
+                    {canEdit && (
+                      <Dropdown.Item onClick={handleEditClick}>
+                        <i className="bi bi-pencil me-2"></i>
+                        Засах
+                      </Dropdown.Item>
                     )}
+                    {/* Устгах (эзэн/staff/клубын багш) */}
+                    {canDelete && (
+                      <Dropdown.Item onClick={handleDeleteClick}>
+                        <i className="bi bi-trash me-2"></i>
+                        Устгах
+                      </Dropdown.Item>
+                    )}
+                    {(canEdit || canDelete) && <Dropdown.Divider />}
 
                     {/* Бусад хэрэглэгчийн үйлдлүүд */}
-                    {!canEditOrDelete && originalAuthor && user.id !== originalAuthor.id && (
+                    {!canEdit && originalAuthor && user.id !== originalAuthor.id && (
                       <>
                         <Dropdown.Item onClick={handleBlockUser}>
                           <i className="bi bi-ban me-2"></i>@{originalAuthor.username}-г block хийх
@@ -1132,7 +1134,7 @@ const PostCard = ({ post, onPostDeleted, depth = 0, compact = false, onCardClick
             </Button>
 
             {/* Сурагчдын хариулт — зөвхөн тест постын эзэнд харагдана */}
-            {canEditOrDelete &&
+            {canEdit &&
               originalPost.content_type === 'quiz' &&
               originalPost.related_quiz?.uuid && (
                 <Button

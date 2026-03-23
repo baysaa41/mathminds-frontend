@@ -480,11 +480,13 @@ function ProfileEditPage() {
                 onChange={handleChange}
                 required
               >
-                {Object.keys(SITE_ROLES).map((roleKey) => (
-                  <option key={roleKey} value={SITE_ROLES[roleKey]}>
-                    {SITE_ROLE_CONFIG[SITE_ROLES[roleKey]]?.label || roleKey}
-                  </option>
-                ))}
+                {Object.keys(SITE_ROLES)
+                  .filter((roleKey) => roleKey !== 'STAFF' || user?.is_staff || formData.site_role === 'STAFF')
+                  .map((roleKey) => (
+                    <option key={roleKey} value={SITE_ROLES[roleKey]}>
+                      {SITE_ROLE_CONFIG[SITE_ROLES[roleKey]]?.label || roleKey}
+                    </option>
+                  ))}
               </Form.Select>
               <Form.Text className="text-muted">
                 Та багш уу, сурагч уу, эсвэл бусад үүрэгтэй юу?

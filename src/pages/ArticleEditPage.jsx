@@ -27,6 +27,9 @@ import {
   FileText,
   AlignLeft,
   Sparkles,
+  MessageCircle,
+  Send,
+  Check,
 } from 'lucide-react';
 
 const ArticleEditPage = () => {
@@ -50,6 +53,13 @@ const ArticleEditPage = () => {
   const [aiTopic, setAiTopic] = useState('');
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [showAIModal, setShowAIModal] = useState(false);
+
+  // AI сайжруулах чат
+  const [showImproveChat, setShowImproveChat] = useState(false);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatPreview, setChatPreview] = useState(null);
 
   useEffect(() => {
     const fetchArticle = async () => {
@@ -110,6 +120,44 @@ const ArticleEditPage = () => {
     } finally {
       setIsGeneratingAI(false);
     }
+  };
+
+  const handleImproveSubmit = async () => {
+    const msg = chatInput.trim();
+    if (!msg || chatLoading) return;
+    setChatInput('');
+    setChatMessages(prev => [...prev, { role: 'user', text: msg }]);
+    setChatLoading(true);
+    try {
+      const response = await apiClient.post(`/api/integral/articles/${id}/improve/`, {
+        message: msg,
+        title,
+        abstract,
+        content,
+      });
+      const data = response.data;
+      setChatPreview(data);
+      setChatMessages(prev => [...prev, {
+        role: 'ai',
+        text: `Гарчиг: ${data.title}\n\nХураангуй: ${data.abstract}`,
+      }]);
+    } catch (err) {
+      setChatMessages(prev => [...prev, {
+        role: 'ai',
+        text: `Алдаа: ${err.response?.data?.detail || 'AI дуудахад алдаа гарлаа'}`,
+      }]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  const handleApplyImprovement = () => {
+    if (!chatPreview) return;
+    setTitle(chatPreview.title);
+    setAbstract(chatPreview.abstract);
+    setContent(chatPreview.content);
+    setChatPreview(null);
+    setChatMessages(prev => [...prev, { role: 'ai', text: 'Өөрчлөлт хэрэглэгдлээ. Хадгалахын тулд "Хадгалах" дарна уу.' }]);
   };
 
   const handleSave = async (e) => {
@@ -182,7 +230,9 @@ const ArticleEditPage = () => {
           Өгүүллүүд
         </Breadcrumb.Item>
         <Breadcrumb.Item linkAs={Link} linkProps={{ to: `/article/${id}` }}>
-          <MathJax inline dynamic>{originalTitle || 'Өгүүлэл'}</MathJax>
+          <MathJax inline dynamic>
+            {originalTitle || 'Өгүүлэл'}
+          </MathJax>
         </Breadcrumb.Item>
         <Breadcrumb.Item active>Засварлах</Breadcrumb.Item>
       </Breadcrumb>
@@ -235,7 +285,12 @@ const ArticleEditPage = () => {
             <Form.Label className="fw-semibold mb-0">
               Агуулга (LaTeX ашиглаж болно: $...$ эсвэл $$...$$)
             </Form.Label>
-            <Button size="sm" variant="outline-primary" className="ms-auto" onClick={() => setShowPreviewModal(true)}>
+            <Button
+              size="sm"
+              variant="outline-primary"
+              className="ms-auto"
+              onClick={() => setShowPreviewModal(true)}
+            >
               <Eye size={14} className="me-1" />
               Preview
             </Button>
@@ -268,15 +323,19 @@ const ArticleEditPage = () => {
 
         {/* Товчууд */}
         <Stack direction="horizontal" gap={2} className="justify-content-end mt-4">
-          {/* AI үүсгэх товч (зүүн талд) */}
+          {/* AI товчууд (зүүн талд) */}
           <Button
-            variant="outline-success"
-            onClick={() => setShowAIModal(true)}
+            variant="outline-info"
+            onClick={() => {
+              setShowImproveChat(true);
+              setChatMessages([]);
+              setChatPreview(null);
+            }}
             disabled={saving || isDeleting}
             className="me-auto"
           >
-            <Sparkles size={16} className="me-2" />
-            AI-аар үүсгэх
+            <MessageCircle size={16} className="me-2" />
+            AI сайжруулах
           </Button>
 
           {/* Устгах товч */}
@@ -333,8 +392,8 @@ const ArticleEditPage = () => {
         </Modal.Header>
         <Modal.Body>
           <p className="text-muted small mb-3">
-            DeepSeek AI өгүүллийн гарчиг болон агуулгыг автоматаар үүсгэнэ.
-            Одоогийн агуулга солигдоно.
+            DeepSeek AI өгүүллийн гарчиг болон агуулгыг автоматаар үүсгэнэ. Одоогийн агуулга
+            солигдоно.
           </p>
           <Form.Group>
             <Form.Label className="fw-semibold">Сэдэв / Заавар</Form.Label>
@@ -357,11 +416,7 @@ const ArticleEditPage = () => {
             <X size={16} className="me-2" />
             Болих
           </Button>
-          <Button
-            variant="success"
-            onClick={handleGenerateAI}
-            disabled={isGeneratingAI}
-          >
+          <Button variant="success" onClick={handleGenerateAI} disabled={isGeneratingAI}>
             {isGeneratingAI ? (
               <>
                 <Spinner as="span" size="sm" className="me-2" />
@@ -421,9 +476,7 @@ const ArticleEditPage = () => {
         <Modal.Body style={{ maxHeight: '70vh', overflowY: 'auto' }}>
           {/* Гарчиг */}
           <MathJax hideUntilTypeset={'first'}>
-            <h1 className="h3 fw-bold mathjax-content mb-3">
-              {title || 'Гарчиггүй өгүүлэл'}
-            </h1>
+            <h1 className="h3 fw-bold mathjax-content mb-3">{title || 'Гарчиггүй өгүүлэл'}</h1>
           </MathJax>
 
           {/* Abstract */}
@@ -445,10 +498,11 @@ const ArticleEditPage = () => {
             className="article-content mathjax-content"
             style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: '1.7' }}
           >
-            {content
-              ? <LivePreview content={content} />
-              : <span className="text-muted fst-italic">Агуулга хоосон байна...</span>
-            }
+            {content ? (
+              <LivePreview content={content} />
+            ) : (
+              <span className="text-muted fst-italic">Агуулга хоосон байна...</span>
+            )}
           </div>
         </Modal.Body>
         <Modal.Footer>
@@ -456,6 +510,100 @@ const ArticleEditPage = () => {
             <X size={16} className="me-2" />
             Хаах
           </Button>
+        </Modal.Footer>
+      </Modal>
+      {/* AI Improve Chat Modal */}
+      <Modal
+        show={showImproveChat}
+        onHide={() => !chatLoading && setShowImproveChat(false)}
+        size="lg"
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title className="h6">
+            <MessageCircle size={18} className="me-2" />
+            AI сайжруулалт
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+          {chatMessages.length === 0 && (
+            <div className="text-center text-muted py-4">
+              <MessageCircle size={32} className="mb-2 opacity-25" />
+              <p className="small mb-0">Өгүүллийг хэрхэн сайжруулахыг бичнэ үү.</p>
+              <p className="small text-muted">
+                Жишээ: "Нэр томьёог солих", "Илүү олон жишээ нэм", "Хялбаршуул"
+              </p>
+            </div>
+          )}
+          {chatMessages.map((m, i) => (
+            <div
+              key={i}
+              className={`d-flex mb-2 ${m.role === 'user' ? 'justify-content-end' : 'justify-content-start'}`}
+            >
+              <div
+                className={`rounded px-3 py-2 small ${
+                  m.role === 'user' ? 'bg-primary text-white' : 'bg-light border'
+                }`}
+                style={{ maxWidth: '80%', whiteSpace: 'pre-wrap' }}
+              >
+                {m.text}
+              </div>
+            </div>
+          ))}
+          {chatLoading && (
+            <div className="d-flex justify-content-start mb-2">
+              <div className="bg-light border rounded px-3 py-2">
+                <Spinner animation="border" size="sm" className="me-1" />
+                <span className="small text-muted">AI боловсруулж байна...</span>
+              </div>
+            </div>
+          )}
+          {chatPreview && !chatLoading && (
+            <Alert variant="info" className="mt-2 small">
+              <div className="d-flex justify-content-between align-items-center">
+                <span>Шинэ хувилбар бэлэн. Хэрэглэх үү?</span>
+                <div className="d-flex gap-1">
+                  <Button size="sm" variant="success" onClick={handleApplyImprovement}>
+                    <Check size={14} className="me-1" />
+                    Хэрэглэх
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline-secondary"
+                    onClick={() => setChatPreview(null)}
+                  >
+                    <X size={14} />
+                  </Button>
+                </div>
+              </div>
+            </Alert>
+          )}
+        </Modal.Body>
+        <Modal.Footer className="py-2">
+          <div className="d-flex w-100 gap-2">
+            <Form.Control
+              as="textarea"
+              rows={1}
+              placeholder="Зааварчилгаа бичих..."
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleImproveSubmit();
+                }
+              }}
+              disabled={chatLoading}
+              style={{ resize: 'none' }}
+            />
+            <Button
+              variant="primary"
+              onClick={handleImproveSubmit}
+              disabled={!chatInput.trim() || chatLoading}
+            >
+              <Send size={16} />
+            </Button>
+          </div>
         </Modal.Footer>
       </Modal>
     </Container>

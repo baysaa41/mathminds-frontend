@@ -4,7 +4,6 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
 import { Container, Form, Button, Card, Alert, Spinner } from 'react-bootstrap';
 import { ArrowLeft, PlusCircle } from 'lucide-react';
 
@@ -13,7 +12,6 @@ import clubsService, { formatErrorMessage } from '../services/clubsService'; //
 
 const CreateClub = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [clubType, setClubType] = useState('PUBLIC');
@@ -48,7 +46,7 @@ const CreateClub = () => {
       {/* Буцах товч */}
       <Button
         variant="link"
-        onClick={() => navigate(user?.username ? `/clubs/user/${user.username}` : '/clubs')} // "Миний клубууд" руу буцах
+        onClick={() => navigate('/clubs')}
         className="p-0 text-decoration-none mb-3"
       >
         <ArrowLeft size={16} className="me-2" />

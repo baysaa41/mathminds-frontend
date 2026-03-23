@@ -7,7 +7,7 @@ import Button from 'react-bootstrap/Button';
 import Spinner from 'react-bootstrap/Spinner';
 import ListGroup from 'react-bootstrap/ListGroup';
 import Form from 'react-bootstrap/Form';
-import { CalendarDays, GraduationCap, Sparkles, Plus, X, RotateCcw, FileText, ExternalLink } from 'lucide-react';
+import { CalendarDays, GraduationCap, Sparkles, Plus, X, RotateCcw, FileText, ExternalLink, Send } from 'lucide-react';
 import { generateWeeklyArticle, getWeeklyTopics, getPrograms, addProgram, removeProgram, setWeek } from '../services/clubsService';
 
 const RESOURCE_TYPE_LABELS = {
@@ -104,9 +104,11 @@ const ClubCurriculumPage = () => {
   };
 
   const handleGenerateArticle = async (w) => {
-    if (!window.confirm(
-      `${w.week_num}-р долоо хоногийн «${w.topic}» сэдвээр AI өгүүлэл бэлдэж клубд нийтлэх үү?\n\nЭнэ хэдэн секунд болно.`
-    )) return;
+    const hasArticle = w.resources?.some(r => r.resource_type === 'article');
+    const msg = hasArticle
+      ? `«${w.topic}» өгүүллийг клубд нийтлэх үү?`
+      : `${w.week_num}-р долоо хоногийн «${w.topic}» сэдвээр AI өгүүлэл бэлдэж клубд нийтлэх үү?\n\nЭнэ хэдэн секунд болно.`;
+    if (!window.confirm(msg)) return;
     const key = `${w.program_id}-${w.week_num}`;
     try {
       setGeneratingKey(key);
@@ -313,23 +315,28 @@ const ClubCurriculumPage = () => {
                                 <Badge bg="light" text="dark" className="small">{w.program_name}</Badge>
                               )}
                             </div>
-                            {/* AI өгүүлэл үүсгэх товч (багшид) */}
-                            {isTeacherOrAdmin && w.topic && (
-                              <Button
-                                variant="outline-primary"
-                                size="sm"
-                                className="py-0 px-2"
-                                onClick={() => handleGenerateArticle(w)}
-                                disabled={isGenerating || generatingKey !== null}
-                                title="AI өгүүлэл үүсгэх"
-                              >
-                                {isGenerating ? (
-                                  <Spinner animation="border" size="sm" />
-                                ) : (
-                                  <Sparkles size={12} />
-                                )}
-                              </Button>
-                            )}
+                            {/* AI өгүүлэл үүсгэх / нийтлэх товч (багшид) */}
+                            {isTeacherOrAdmin && w.topic && (() => {
+                              const hasArticle = w.resources?.some(r => r.resource_type === 'article');
+                              return (
+                                <Button
+                                  variant={hasArticle ? 'outline-success' : 'outline-primary'}
+                                  size="sm"
+                                  className="py-0 px-2"
+                                  onClick={() => handleGenerateArticle(w)}
+                                  disabled={isGenerating || generatingKey !== null}
+                                  title={hasArticle ? 'Клубд нийтлэх' : 'AI өгүүлэл үүсгэж нийтлэх'}
+                                >
+                                  {isGenerating ? (
+                                    <Spinner animation="border" size="sm" />
+                                  ) : hasArticle ? (
+                                    <Send size={12} />
+                                  ) : (
+                                    <Sparkles size={12} />
+                                  )}
+                                </Button>
+                              );
+                            })()}
                           </div>
                           {/* Resources */}
                           {w.resources && w.resources.length > 0 && (
