@@ -1,18 +1,59 @@
 // frontend/src/pages/SolverPage.jsx
-// Олимпиадын бодлогыг AI turn бүрчлэн ярилцаж шийдэх хуудас
+// AI чат — бодлого бодох хуудас
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { MathJax } from 'better-react-mathjax';
-import apiClient from '../api/axiosConfig.js';
+import authService from '../services/authService.js';
 import Spinner from 'react-bootstrap/Spinner';
-import Alert from 'react-bootstrap/Alert';
-import Form from 'react-bootstrap/Form';
 
-const MAX_TURNS = 9;
+// ─── Copy товч helper ───────────────────────────────────────────────────────
+function CopyBtn({ text, size = 16, style = {} }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch { /* fallback */ }
+  };
+  return (
+    <button
+      onClick={copy}
+      title="Хуулах"
+      style={{
+        border: 'none', background: 'transparent', cursor: 'pointer',
+        padding: 2, color: copied ? '#16a34a' : '#aaa',
+        transition: 'color .2s', fontSize: size, lineHeight: 1,
+        ...style,
+      }}
+    >
+      {copied ? '✓' : '📋'}
+    </button>
+  );
+}
 
-const AI_OPTIONS = [
-  { value: 'gemini',  label: 'Gemini',  icon: '✦', color: '#4285f4' },
-  { value: 'chatgpt', label: 'GPT-4o',  icon: '⬡', color: '#10a37f' },
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+
+// ─── Моделүүд ────────────────────────────────────────────────────────────────
+const MODELS = [
+  { value: 'deepseek-chat',     label: 'DeepSeek Chat',     color: '#4d6bfe' },
+  { value: 'deepseek-reasoner', label: 'DeepSeek Reasoner', color: '#4d6bfe' },
+  { value: 'gemini-2.5-flash',  label: 'Gemini 2.5 Flash',  color: '#4285f4' },
+  { value: 'gemini-2.5-pro',    label: 'Gemini 2.5 Pro',    color: '#4285f4' },
+  { value: 'gpt-4o',            label: 'GPT-4o',            color: '#10a37f' },
+];
+
+function modelInfo(id) {
+  return MODELS.find(m => m.value === id) || { label: id, color: '#888' };
+}
+
+// ─── Preset товчууд ──────────────────────────────────────────────────────────
+const PRESETS = [
+  { label: 'Бод',       prompt: 'Энэ бодлогыг алхам алхмаар дэлгэрэнгүй бод. Гол санаа, стратегиа тайлбарлаад бүрэн бодолт гарга. Эцэст "Хариу: ..." гэж бич.' },
+  { label: 'Санаа өг',  prompt: 'Энэ бодлогод ашиглаж болох гол арга, стратегийг санал болго. Бодолтыг шууд өгөхгүйгээр зөвхөн чиглэл, санааг хэлнэ үү.' },
+  { label: 'Шалга',     prompt: 'Өмнөх бодолтыг нарийвчлан шалгаж, алдаа, дутуу алхам, тодорхойгүй хэсэг байгаа эсэхийг тодорхойл.' },
+  { label: 'Өөр арга',  prompt: 'Өөр арга, өөр аргачлал ашиглан бодлогыг дахин бод.' },
+  { label: 'LaTeX бодолт', latex: true, prompt: 'Бодолтыг бүтэн LaTeX документ хэлбэрээр бич. Дараах толгойг яг ингэж эхлүүл:\n\\documentclass[12pt]{article}\n\\usepackage[utf8]{inputenc}\n\\usepackage[mongolian]{babel}\n\\usepackage{amsmath,amssymb}\n\\usepackage[margin=2cm]{geometry}\n\\setlength{\\parindent}{0pt}\n\\setlength{\\parskip}{\\bigskipamount}\n\\begin{document}\n...\n\\end{document}\n\n\\section{}, \\begin{align*}, \\textbf{} зэрэг LaTeX бүтэц чөлөөтэй ашигла. Зөвхөн LaTeX код буцаа — тайлбар, markdown хэрэглэхгүй.' },
 ];
 
 // ─── LaTeX хамгаалсан Markdown renderer ──────────────────────────────────────
@@ -44,614 +85,440 @@ function renderMarkdown(text) {
   return `<p class="mb-2">${restore(t)}</p>`;
 }
 
-// ─── AI-н мэдээлэл авах ──────────────────────────────────────────────────────
-function aiInfo(role) {
-  return AI_OPTIONS.find(o => o.value === role) || { label: role, icon: '?', color: '#999' };
-}
-
-// ─── Avatar ──────────────────────────────────────────────────────────────────
-function Avatar({ role }) {
-  if (role === 'user') {
-    return (
-      <div style={{
-        width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 16, color: '#fff',
-        background: 'linear-gradient(135deg,#f39c12,#e67e22)',
-        boxShadow: '0 2px 6px rgba(0,0,0,.20)',
-      }}>👤</div>
-    );
-  }
-  const ai = aiInfo(role);
-  const bg = role === 'gemini'
-    ? 'linear-gradient(135deg,#4285f4,#9b59b6)'
-    : 'linear-gradient(135deg,#10a37f,#1a7f64)';
-  return (
-    <div style={{
-      width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: 15, color: '#fff', background: bg,
-      boxShadow: '0 2px 6px rgba(0,0,0,.20)',
-    }}>
-      {ai.icon}
-    </div>
-  );
-}
-
-// ─── Нэг chat bubble ─────────────────────────────────────────────────────────
-function TurnBubble({ turn }) {
-  const isUser   = turn.role === 'user';
-  const isSolver = turn.isSolver;   // solver=зүүн, reviewer=баруун
-  const alignRight = isUser ? true : !isSolver;
-
-  const isGemini = turn.role === 'gemini';
-  const bubbleStyle = isUser ? {
-    background: 'linear-gradient(135deg,#fff8f0,#fdefd8)',
-    border: '1px solid #f5c97a',
-    borderRadius: '14px 4px 14px 14px',
-    padding: '11px 15px',
-    fontSize: 14, lineHeight: 1.7,
-    fontStyle: 'italic',
-  } : {
-    background: isSolver
-      ? 'linear-gradient(135deg,#f0f4ff,#e8eeff)'
-      : 'linear-gradient(135deg,#f0fff8,#dff8ef)',
-    border: isSolver ? '1px solid #c5d3ff' : '1px solid #a8e8d0',
-    borderRadius: isSolver ? '4px 14px 14px 14px' : '14px 4px 14px 14px',
-    padding: '13px 16px',
-    boxShadow: '0 1px 8px rgba(0,0,0,.05)',
-    fontSize: 14, lineHeight: 1.75,
-  };
-
-  const labelColor = isUser ? '#e67e22' : isGemini ? '#4285f4' : '#10a37f';
+// ─── Чат bubble ──────────────────────────────────────────────────────────────
+function ChatBubble({ msg }) {
+  const isUser = msg.role === 'user';
+  const isLatex = !isUser && msg.latex;
+  const mi = msg.model ? modelInfo(msg.model) : null;
 
   return (
-    <div className={`d-flex gap-2 mb-4 ${alignRight ? 'flex-row-reverse' : ''}`}
+    <div className={`d-flex gap-2 mb-4 ${isUser ? 'flex-row-reverse' : ''}`}
       style={{ alignItems: 'flex-start' }}>
-      <Avatar role={turn.role} />
-      <div style={{ maxWidth: '88%' }}>
-        {/* Label + badge */}
-        <div className="d-flex align-items-center gap-2 mb-1 flex-wrap"
-          style={{ flexDirection: alignRight ? 'row-reverse' : 'row' }}>
-          <span style={{
-            fontSize: 10, fontWeight: 700, letterSpacing: '.6px',
-            textTransform: 'uppercase', color: labelColor,
-          }}>
-            {turn.label}
-          </span>
-          {!isUser && turn.accepted === true && (
-            <span style={{ background:'#d4edda', color:'#155724', borderRadius:12, padding:'2px 10px', fontSize:11, fontWeight:600 }}>
-              ✅ Зөвшөөрлөө
-            </span>
-          )}
-          {!isUser && turn.accepted === false && (
-            <span style={{ background:'#fff3cd', color:'#856404', borderRadius:12, padding:'2px 10px', fontSize:11, fontWeight:600 }}>
-              ⚠ Засвар шаардлагатай
-            </span>
-          )}
+      {/* Avatar */}
+      <div style={{
+        width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 14, color: '#fff',
+        background: isUser
+          ? 'linear-gradient(135deg,#f39c12,#e67e22)'
+          : `linear-gradient(135deg,${mi?.color || '#888'},${mi?.color || '#888'}cc)`,
+      }}>
+        {isUser ? '👤' : '🤖'}
+      </div>
+
+      <div style={{ maxWidth: isLatex ? '100%' : '85%', minWidth: 0, flex: isLatex ? 1 : undefined }}>
+        {/* Label */}
+        <div style={{
+          fontSize: 10, fontWeight: 700, letterSpacing: '.5px',
+          textTransform: 'uppercase', marginBottom: 3,
+          color: isUser ? '#e67e22' : (mi?.color || '#888'),
+          textAlign: isUser ? 'right' : 'left',
+        }}>
+          {isUser ? 'Та' : mi?.label || 'AI'}
+          {isLatex && <span style={{ marginLeft: 6, color: '#888', fontWeight: 400, textTransform: 'none' }}>LaTeX код</span>}
         </div>
 
-        {/* Bubble */}
-        <div style={bubbleStyle}>
-          {isUser
-            ? <span>{turn.content}</span>
-            : <MathJax>
-                <div className="solver-content"
-                  dangerouslySetInnerHTML={{ __html: renderMarkdown(turn.content) }} />
-              </MathJax>
-          }
-        </div>
+        {/* Bubble — LaTeX бол textarea, бусад нь ердийн bubble */}
+        {isLatex ? (
+          <div style={{
+            background: '#1e1e2e', borderRadius: 10,
+            border: '1px solid #383850', overflow: 'hidden',
+          }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '6px 12px', background: '#2a2a40', borderBottom: '1px solid #383850',
+            }}>
+              <span style={{ fontSize: 11, color: '#8888aa', fontFamily: 'monospace' }}>LaTeX</span>
+              <CopyBtn text={msg.content} size={13} style={{ color: '#8888aa' }} />
+            </div>
+            <textarea
+              readOnly
+              value={msg.content}
+              style={{
+                width: '100%', minHeight: 300,
+                resize: 'vertical', border: 'none', outline: 'none',
+                padding: '12px 14px', fontSize: 13, lineHeight: 1.6,
+                fontFamily: "'Fira Code', 'Cascadia Code', 'Consolas', monospace",
+                background: '#1e1e2e', color: '#cdd6f4',
+                whiteSpace: 'pre', overflowX: 'auto',
+                boxSizing: 'border-box',
+              }}
+            />
+          </div>
+        ) : (
+          <div style={{
+            padding: isUser ? '10px 14px' : '12px 16px',
+            borderRadius: isUser ? '14px 4px 14px 14px' : '4px 14px 14px 14px',
+            fontSize: 14, lineHeight: 1.75,
+            ...(isUser
+              ? { background: '#f8f4ee', border: '1px solid #ecdcc0', fontStyle: 'italic' }
+              : { background: '#f7f8fc', border: '1px solid #e2e5f0', boxShadow: '0 1px 6px rgba(0,0,0,.04)' }),
+          }}>
+            {isUser
+              ? <span style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</span>
+              : <MathJax>
+                  <div className="solver-content"
+                    dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
+                </MathJax>
+            }
+          </div>
+        )}
+        {/* AI хариулт дээр copy товч (LaTeX биш үед) */}
+        {!isUser && !isLatex && msg.content && (
+          <CopyBtn text={msg.content} size={13}
+            style={{ alignSelf: 'flex-start', marginTop: 2 }} />
+        )}
       </div>
     </div>
   );
 }
 
-// ─── Ачааллаж байгаа indicator ────────────────────────────────────────────────
-function TypingDots({ role }) {
-  const isSolver = role === 'solver';
-  const ai = aiInfo(role);
-  const color = ai.color;
-  const label = `${ai.label} ${isSolver ? 'бодож' : 'шалгаж'} байна...`;
-  const isLeft = true; // solver үед зүүн, reviewer үед баруун — role-д тулгуурлаж тодорхойлно
-
+// ─── Loading indicator ───────────────────────────────────────────────────────
+function TypingDots({ model, onStop }) {
+  const mi = modelInfo(model);
   return (
-    <div className="d-flex gap-2 mb-4"
-      style={{ alignItems: 'flex-start' }}>
-      <Avatar role={role} />
+    <div className="d-flex gap-2 mb-4" style={{ alignItems: 'flex-start' }}>
       <div style={{
-        background: '#f0f4ff',
-        border: '1px solid #c5d3ff',
+        width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 14, color: '#fff',
+        background: `linear-gradient(135deg,${mi.color},${mi.color}cc)`,
+      }}>🤖</div>
+      <div style={{
+        background: '#f7f8fc', border: '1px solid #e2e5f0',
         borderRadius: '4px 14px 14px 14px',
         padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8,
       }}>
         {[0, 160, 320].map(d => (
-          <Spinner key={d} animation="grow" size="sm" style={{ color, animationDelay: `${d}ms` }} />
+          <Spinner key={d} animation="grow" size="sm"
+            style={{ color: mi.color, animationDelay: `${d}ms` }} />
         ))}
-        <span style={{ fontSize: 12, color, fontStyle: 'italic', marginLeft: 4 }}>{label}</span>
+        <span style={{ fontSize: 12, color: mi.color, fontStyle: 'italic', marginLeft: 4 }}>
+          {mi.label}...
+        </span>
+        <button onClick={onStop} style={{
+          marginLeft: 8, border: '1.5px solid #e0e4f0', borderRadius: 6,
+          background: '#fff', color: '#888', cursor: 'pointer',
+          padding: '3px 10px', fontSize: 11, fontWeight: 600,
+        }}>
+          ■ Зогсоох
+        </button>
       </div>
     </div>
   );
 }
 
-// ─── AI сонгогч ──────────────────────────────────────────────────────────────
-function AIPicker({ label, value, onChange, disabled }) {
+// ─── Үндсэн хуудас ──────────────────────────────────────────────────────────
+export default function SolverPage() {
+  const [problem,     setProblem]     = useState('');
+  const [messages,    setMessages]    = useState([]);
+  const [input,       setInput]       = useState('');
+  const [model,       setModel]       = useState('gemini-2.5-flash');
+  const [loading,     setLoading]     = useState(false);
+  const [error,       setError]       = useState('');
+  const [showProblem, setShowProblem] = useState(true);
+  const chatEndRef = useRef(null);
+  const abortRef   = useRef(null);
+  const inputRef   = useRef(null);
+
+  // auto scroll
+  useEffect(() => {
+    if (chatEndRef.current)
+      setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }), 80);
+  }, [messages, loading]);
+
+  // ─── Мессеж илгээх (streaming) ──────────────────────────────────────────────
+  const send = useCallback(async (text, opts = {}) => {
+    const msg = (text || '').trim();
+    if (!msg || !problem.trim() || loading) return;
+
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    const isLatex = !!opts.latex;
+    const userMsg = { role: 'user', content: msg };
+    const prev = [...messages, userMsg];
+    const assistantMsg = { role: 'assistant', model, content: '', ...(isLatex && { latex: true }) };
+    setMessages([...prev, assistantMsg]);
+    setInput('');
+    setLoading(true);
+    setError('');
+
+    if (showProblem && messages.length === 0) setShowProblem(false);
+
+    try {
+      const token = authService.getToken();
+      const resp = await fetch(`${API_BASE}/api/integral/solver/stream/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          problem:      problem.trim(),
+          messages:     messages.map(m => ({ role: m.role, content: m.content })),
+          model,
+          user_message: msg,
+        }),
+        signal: controller.signal,
+      });
+
+      if (!resp.ok) {
+        const errData = await resp.json().catch(() => ({}));
+        throw new Error(errData.error || `HTTP ${resp.status}`);
+      }
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let content = '';
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        // SSE events parse
+        const parts = buffer.split('\n\n');
+        buffer = parts.pop() || '';
+
+        for (const part of parts) {
+          for (const line of part.split('\n')) {
+            if (!line.startsWith('data: ')) continue;
+            const raw = line.slice(6);
+            try {
+              const ev = JSON.parse(raw);
+              if (ev.error) { setError(ev.error); break; }
+              if (ev.t) content += ev.t;
+              if (ev.done) break;
+            } catch { /* skip */ }
+          }
+        }
+        // Chunk бүрд message шинэчлэх
+        setMessages(ms => {
+          const updated = [...ms];
+          const last = ms[ms.length - 1];
+          updated[updated.length - 1] = { ...last, content };
+          return updated;
+        });
+      }
+
+      // Эцсийн шинэчлэл
+      setMessages(ms => {
+        const updated = [...ms];
+        const last = ms[ms.length - 1];
+        updated[updated.length - 1] = { ...last, content };
+        return updated;
+      });
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+      setError(err.message || 'Алдаа гарлаа');
+    } finally {
+      if (abortRef.current === controller) abortRef.current = null;
+      setLoading(false);
+    }
+  }, [problem, messages, model, loading, showProblem]);
+
+  // ─── Зогсоох ──────────────────────────────────────────────────────────────
+  const handleAbort = useCallback(() => {
+    if (abortRef.current) { abortRef.current.abort(); abortRef.current = null; }
+    setLoading(false);
+  }, []);
+
+  // ─── Keyboard ──────────────────────────────────────────────────────────────
+  const onInputKey = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input); }
+  };
+
+  const started = messages.length > 0;
+  const mi = modelInfo(model);
+
   return (
-    <div style={{ flex: 1 }}>
-      <div style={{ fontSize: 10, fontWeight: 700, color: '#aaa', letterSpacing: '.5px',
-        textTransform: 'uppercase', marginBottom: 5 }}>
-        {label}
-      </div>
-      <div className="d-flex gap-1">
-        {AI_OPTIONS.map(opt => {
-          const active = value === opt.value;
-          return (
-            <button
-              key={opt.value}
-              onClick={() => !disabled && onChange(opt.value)}
-              disabled={disabled}
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 56px)', background: '#f4f6fb' }}>
+
+      {/* ── Дээд хэсэг: Model + Problem ─────────────────────────────────── */}
+      <div style={{ background: '#fff', borderBottom: '1px solid #e8eaf0', flexShrink: 0 }}>
+
+        {/* Model dropdown + header */}
+        <div style={{
+          padding: '10px 20px',
+          display: 'flex', alignItems: 'center', gap: 12,
+        }}>
+          <span style={{ fontSize: 20 }}>🤖</span>
+          <span style={{ fontWeight: 700, fontSize: 15, color: '#222' }}>AI Бодогч</span>
+          {messages.length > 0 && (
+            <CopyBtn
+              text={messages.map(m =>
+                `${m.role === 'user' ? 'Та' : (modelInfo(m.model).label || 'AI')}:\n${m.content}`
+              ).join('\n\n---\n\n')}
+              size={14}
+              style={{ color: '#999' }}
+            />
+          )}
+          <select
+            value={model}
+            onChange={e => setModel(e.target.value)}
+            style={{
+              marginLeft: 'auto',
+              border: `1.5px solid ${mi.color}50`,
+              borderRadius: 8, padding: '5px 12px',
+              fontSize: 13, fontWeight: 600, color: mi.color,
+              background: `${mi.color}08`, cursor: 'pointer',
+              outline: 'none',
+            }}
+          >
+            {MODELS.map(m => (
+              <option key={m.value} value={m.value}>{m.label}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Problem textarea */}
+        {showProblem ? (
+          <div style={{ padding: '0 20px 12px' }}>
+            <textarea
+              value={problem}
+              onChange={e => setProblem(e.target.value)}
+              disabled={loading}
+              placeholder="Бодлогын өгүүлбэрийг энд бичнэ үү..."
+              rows={4}
               style={{
-                flex: 1, border: active ? `2px solid ${opt.color}` : '1.5px solid #e0e4f0',
-                borderRadius: 8, padding: '5px 0', cursor: disabled ? 'default' : 'pointer',
-                background: active ? `${opt.color}18` : '#fff',
-                color: active ? opt.color : '#888',
-                fontWeight: active ? 700 : 400, fontSize: 12,
+                width: '100%', resize: 'vertical',
+                border: '1.5px solid #e0e4f0', borderRadius: 10,
+                padding: '10px 14px', fontSize: 13, lineHeight: 1.6,
+                fontFamily: 'monospace', outline: 'none',
+              }}
+            />
+          </div>
+        ) : (
+          <div
+            onClick={() => setShowProblem(true)}
+            style={{
+              padding: '0 20px 10px', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}
+          >
+            <span style={{ fontSize: 12, color: '#888' }}>📝</span>
+            <span style={{
+              fontSize: 12, color: '#888',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              maxWidth: 500,
+            }}>
+              {problem.slice(0, 80)}{problem.length > 80 ? '...' : ''}
+            </span>
+            <span style={{ fontSize: 10, color: '#bbb', marginLeft: 4 }}>▼ засах</span>
+          </div>
+        )}
+      </div>
+
+      {/* ── Чат хэсэг ──────────────────────────────────────────────────── */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
+
+        {/* Empty state */}
+        {!started && !loading && !error && (
+          <div style={{
+            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            minHeight: 300,
+          }}>
+            <div style={{ textAlign: 'center', maxWidth: 400 }}>
+              <div style={{ fontSize: 52, marginBottom: 12 }}>🧮</div>
+              <h5 style={{ fontWeight: 700, color: '#333', marginBottom: 8 }}>AI Бодогч</h5>
+              <p style={{ color: '#888', fontSize: 14, marginBottom: 0 }}>
+                Бодлогоо дээр оруулаад доорх товчуудаар эсвэл өөрийн зааврыг бичиж илгээнэ үү.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Error */}
+        {error && (
+          <div style={{
+            padding: '10px 16px', marginBottom: 16,
+            background: '#fef2f2', border: '1px solid #fecaca',
+            borderRadius: 10, color: '#dc2626', fontSize: 13,
+          }}>
+            <strong>Алдаа:</strong> {error}
+          </div>
+        )}
+
+        {/* Messages */}
+        {messages.map((m, i) => <ChatBubble key={i} msg={m} />)}
+
+        {/* Loading */}
+        {loading && <TypingDots model={model} onStop={handleAbort} />}
+
+        <div ref={chatEndRef} style={{ height: 1 }} />
+      </div>
+
+      {/* ── Доод хэсэг: Presets + Input ─────────────────────────────────── */}
+      <div style={{
+        background: '#fff', borderTop: '1px solid #e8eaf0',
+        padding: '10px 20px 14px', flexShrink: 0,
+      }}>
+        {/* Presets */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+          {PRESETS.map((p, i) => (
+            <button
+              key={i}
+              onClick={() => send(p.prompt, { latex: !!p.latex })}
+              disabled={loading || !problem.trim()}
+              style={{
+                border: '1.5px solid #e0e4f0', borderRadius: 8,
+                padding: '4px 12px', fontSize: 12, fontWeight: 500,
+                background: '#fff', color: '#555', cursor: 'pointer',
+                opacity: (loading || !problem.trim()) ? .5 : 1,
                 transition: 'all .15s',
               }}
             >
-              {opt.icon} {opt.label}
+              {p.label}
             </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ─── Коммент + үргэлжлүүлэх хэсэг ───────────────────────────────────────────
-function CommentInput({ nextRole, onContinue }) {
-  const [comment, setComment] = useState('');
-  const ai = aiInfo(nextRole);
-  const nextLabel = `${ai.label} ${nextRole === 'solver' ? 'засварлана' : 'шалгана'}`;
-
-  const submit = () => { onContinue(comment.trim()); setComment(''); };
-
-  const onKey = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }
-  };
-
-  return (
-    <div style={{
-      margin: '0 0 28px',
-      background: '#fff',
-      border: '1.5px solid #e0e4f0',
-      borderRadius: 14,
-      overflow: 'hidden',
-      boxShadow: '0 2px 12px rgba(0,0,0,.06)',
-    }}>
-      <div style={{
-        padding: '10px 16px',
-        background: '#f8f9fc',
-        borderBottom: '1px solid #e8eaf0',
-        display: 'flex', alignItems: 'center', gap: 8,
-      }}>
-        <span style={{ fontSize: 14 }}>✏️</span>
-        <span style={{ fontSize: 12, color: '#555', fontWeight: 600 }}>Коммент нэмэх</span>
-        <span style={{
-          marginLeft: 'auto', fontSize: 11, color: '#999',
-          background: '#eef', borderRadius: 10, padding: '2px 8px',
-        }}>заавал биш</span>
-      </div>
-
-      <textarea
-        value={comment}
-        onChange={e => setComment(e.target.value)}
-        onKeyDown={onKey}
-        placeholder={`Бодолтын талаар коммент бичнэ үү... (хоосон үлдээж Enter дарж ${nextLabel})`}
-        rows={2}
-        style={{
-          width: '100%', border: 'none', outline: 'none', resize: 'none',
-          padding: '12px 16px', fontSize: 13, lineHeight: 1.6,
-          fontFamily: 'inherit', background: 'transparent',
-        }}
-      />
-
-      <div style={{
-        padding: '8px 12px',
-        borderTop: '1px solid #f0f0f5',
-        display: 'flex', alignItems: 'center', gap: 8,
-      }}>
-        <span style={{ fontSize: 11, color: '#aaa', flex: 1 }}>
-          Enter — илгээх · Shift+Enter — мөр дараах
-        </span>
-        <button
-          onClick={submit}
-          style={{
-            border: 'none', borderRadius: 8, cursor: 'pointer',
-            padding: '6px 16px', fontSize: 12, fontWeight: 600,
-            color: '#fff',
-            background: 'linear-gradient(135deg,#4285f4,#9b59b6)',
-          }}
-        >
-          ↵ {nextLabel}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ─── Sidebar ──────────────────────────────────────────────────────────────────
-function Sidebar({ problem, setProblem, loading, onSolve,
-                   turns, currentTurn, solverAI, setSolverAI, reviewerAI, setReviewerAI }) {
-  const started = turns.length > 0;
-  const solverInfo   = aiInfo(solverAI);
-  const reviewerInfo = aiInfo(reviewerAI);
-
-  const handleKey = (e) => {
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); onSolve(); }
-  };
-
-  return (
-    <div style={{
-      width: 300, flexShrink: 0,
-      background: '#fff', borderRight: '1px solid #e8eaf0',
-      display: 'flex', flexDirection: 'column', height: '100%',
-    }}>
-      {/* Header */}
-      <div style={{
-        padding: '18px 18px 14px',
-        background: 'linear-gradient(135deg,#1a1a2e,#16213e)',
-        color: '#fff',
-      }}>
-        <div className="d-flex align-items-center gap-2 mb-2">
-          <span style={{ fontSize: 22 }}>🤖</span>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 15 }}>AI Шийдэгч</div>
-            <div style={{ fontSize: 11, opacity: .6 }}>AI хоорондын ярилцлага</div>
-          </div>
+          ))}
         </div>
-        <div className="d-flex gap-1 flex-wrap">
-          <span style={{
-            background: solverInfo.color, color: '#fff',
-            borderRadius: 20, padding: '3px 10px', fontSize: 10, fontWeight: 600,
-          }}>
-            {solverInfo.icon} {solverInfo.label} — бодогч
-          </span>
-          <span style={{
-            background: reviewerInfo.color, color: '#fff',
-            borderRadius: 20, padding: '3px 10px', fontSize: 10, fontWeight: 600,
-          }}>
-            {reviewerInfo.icon} {reviewerInfo.label} — шүүгч
-          </span>
-        </div>
-      </div>
 
-      {/* AI сонгох */}
-      <div style={{
-        padding: '12px 14px',
-        borderBottom: '1px solid #f0f0f5',
-        background: started ? '#fafafa' : '#fff',
-      }}>
-        <div className="d-flex gap-2">
-          <AIPicker label="Бодогч AI" value={solverAI} onChange={setSolverAI} disabled={started} />
-          <AIPicker label="Шүүгч AI"  value={reviewerAI} onChange={setReviewerAI} disabled={started} />
-        </div>
-        {started && (
-          <div style={{ fontSize: 10, color: '#bbb', marginTop: 6, textAlign: 'center' }}>
-            Ярилцлага эхэлсэн — AI сонголт өөрчлөгдөхгүй
-          </div>
-        )}
-      </div>
-
-      {/* Input */}
-      <div style={{ padding: '14px 14px 8px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <label style={{ fontSize: 12, fontWeight: 600, color: '#555', marginBottom: 5 }}>
-          📝 Бодлогын өгүүлбэр
-        </label>
-        <Form.Control
-          as="textarea"
-          value={problem}
-          onChange={e => setProblem(e.target.value)}
-          onKeyDown={handleKey}
-          disabled={loading || started}
-          placeholder={'Олимпиадын бодлогыг энд бич...\n\nЖишээ:\n$x^2 + y^2 = 25$ ба $x+y=7$ бол $xy$-ийг ол.'}
-          style={{
-            flex: 1, resize: 'none', fontFamily: 'monospace',
-            fontSize: 13, lineHeight: 1.65,
-            border: '1.5px solid #e0e4f0', borderRadius: 10,
-            minHeight: 200,
-            opacity: started ? .6 : 1,
-          }}
-        />
-
-        <button
-          onClick={onSolve}
-          disabled={loading || !problem.trim() || started}
-          style={{
-            width: '100%', border: 'none', borderRadius: 10, marginTop: 10,
-            padding: '10px 0', fontWeight: 700, fontSize: 15, cursor: 'pointer',
-            color: '#fff',
-            background: (loading || !problem.trim() || started)
-              ? '#bbb'
-              : 'linear-gradient(135deg,#4285f4,#9b59b6)',
-          }}
-        >
-          {loading
-            ? <><Spinner animation="border" size="sm" className="me-2" />Ачааллаж байна...</>
-            : started ? '✓ Эхэлсэн' : '⚡ Шийдэх'}
-        </button>
-
-        {started && (
-          <button
-            onClick={onSolve}
-            disabled={loading}
+        {/* Input area */}
+        <div style={{
+          display: 'flex', gap: 8, alignItems: 'flex-end',
+        }}>
+          <textarea
+            ref={inputRef}
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={onInputKey}
+            disabled={loading || !problem.trim()}
+            placeholder={problem.trim() ? 'Заавар бичнэ үү... (Enter илгээх)' : 'Эхлээд бодлогын өгүүлбэр оруулна уу'}
+            rows={1}
             style={{
-              width: '100%', border: '1.5px solid #e0e4f0', borderRadius: 10,
-              marginTop: 8, padding: '7px 0', fontWeight: 600, fontSize: 13,
-              cursor: 'pointer', background: '#fff', color: '#555',
+              flex: 1, resize: 'none',
+              border: '1.5px solid #e0e4f0', borderRadius: 10,
+              padding: '9px 14px', fontSize: 13, lineHeight: 1.5,
+              fontFamily: 'inherit', outline: 'none',
+              minHeight: 38, maxHeight: 120,
+            }}
+            onInput={e => {
+              e.target.style.height = 'auto';
+              e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+            }}
+          />
+          <button
+            onClick={() => send(input)}
+            disabled={loading || !input.trim() || !problem.trim()}
+            style={{
+              border: 'none', borderRadius: 10,
+              padding: '9px 20px', fontSize: 13, fontWeight: 700,
+              color: '#fff', cursor: 'pointer',
+              background: (loading || !input.trim() || !problem.trim())
+                ? '#ccc'
+                : `linear-gradient(135deg,${mi.color},${mi.color}cc)`,
+              flexShrink: 0, height: 38,
             }}
           >
-            🔄 Дахин эхлэх
+            ↵
           </button>
-        )}
-
-        <p style={{ fontSize: 10, color: '#aaa', textAlign: 'center', marginTop: 6, marginBottom: 0 }}>
-          Ctrl+Enter дарж илгээх
-        </p>
-      </div>
-
-      {/* Progress */}
-      {turns.length > 0 && (
-        <div style={{ borderTop: '1px solid #f0f0f5', padding: '10px 14px' }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: '#888', marginBottom: 7,
-            textTransform: 'uppercase', letterSpacing: '.5px' }}>
-            Дэвшил
-          </div>
-          {turns.map((t, i) => {
-            const ai = aiInfo(t.role);
-            return (
-              <div key={i} className="d-flex align-items-center gap-2 mb-1" style={{ fontSize: 11 }}>
-                <div style={{
-                  width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
-                  background: t.role === 'user' ? '#e67e22' : ai.color,
-                }} />
-                <span style={{ color: '#444', flex: 1, fontStyle: t.role === 'user' ? 'italic' : 'normal' }}>
-                  {t.label}
-                </span>
-                {t.accepted === true  && <span style={{ color: '#28a745', fontSize: 10 }}>✅</span>}
-                {t.accepted === false && <span style={{ color: '#ffc107', fontSize: 10 }}>⚠</span>}
-              </div>
-            );
-          })}
-          {loading && (
-            <div className="d-flex align-items-center gap-2 mb-1" style={{ fontSize: 11, opacity: .5 }}>
-              <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#ddd' }} />
-              <span>{currentTurn % 2 === 1
-                ? `${aiInfo(solverAI).label} бодож байна...`
-                : `${aiInfo(reviewerAI).label} шалгаж байна...`}
-              </span>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Үндсэн хуудас ────────────────────────────────────────────────────────────
-export default function SolverPage() {
-  const [problem,      setProblem]     = useState('');
-  const [turns,        setTurns]       = useState([]);
-  const [loading,      setLoading]     = useState(false);
-  const [currentTurn,  setCurrentTurn] = useState(0);
-  const [waitEnter,    setWaitEnter]   = useState(false);
-  const [done,         setDone]        = useState(false);
-  const [error,        setError]       = useState('');
-  const [solverAI,     setSolverAI]    = useState('gemini');
-  const [reviewerAI,   setReviewerAI]  = useState('chatgpt');
-  const chatEndRef = useRef(null);
-
-  useEffect(() => {
-    if (chatEndRef.current) {
-      setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }), 80);
-    }
-  }, [turns, loading, waitEnter, done]);
-
-  // ─── Turn fetch ────────────────────────────────────────────────────────────
-  const fetchTurn = useCallback(async (turnNo, prevTurns, userComment = '') => {
-    setLoading(true);
-    setWaitEnter(false);
-    setCurrentTurn(turnNo);
-    setError('');
-
-    let displayTurns = prevTurns;
-    if (userComment && turnNo % 2 === 0) {
-      const userTurn = { role: 'user', label: 'Та', content: userComment, accepted: null, isSolver: false };
-      displayTurns = [...prevTurns, userTurn];
-      setTurns(displayTurns);
-    }
-
-    try {
-      const resp = await apiClient.post('/api/integral/solver/turn/', {
-        problem:      problem.trim(),
-        turn:         turnNo,
-        history:      prevTurns.map(t => ({ role: t.role, content: t.content })),
-        solver_ai:    solverAI,
-        reviewer_ai:  reviewerAI,
-        user_comment: userComment,
-      });
-      const newTurn = { ...resp.data, isSolver: turnNo % 2 === 1 };
-      const next    = [...displayTurns, newTurn];
-      setTurns(next);
-
-      const isEnd = newTurn.accepted === true;
-      const isMax = turnNo >= MAX_TURNS;
-
-      if (isEnd || isMax) {
-        setDone(true);
-        setWaitEnter(false);
-      } else {
-        setWaitEnter(true);
-      }
-    } catch (err) {
-      setError(
-        err.response?.data?.error ||
-        err.response?.data?.detail ||
-        err.message || 'Алдаа гарлаа',
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [problem, solverAI, reviewerAI]);
-
-  // ─── Шийдэх товч ──────────────────────────────────────────────────────────
-  const handleSolve = useCallback(() => {
-    if (!problem.trim() || loading) return;
-    setTurns([]);
-    setDone(false);
-    setWaitEnter(false);
-    setError('');
-    fetchTurn(1, []);
-  }, [problem, loading, fetchTurn]);
-
-  // ─── Дараагийн turn ────────────────────────────────────────────────────────
-  const handleContinue = useCallback((comment = '') => {
-    if (!waitEnter || loading || done) return;
-    const aiTurnsDone = turns.filter(t => t.role !== 'user').length;
-    const nextTurn    = aiTurnsDone + 1;
-    const aiHistory   = turns.filter(t => t.role !== 'user');
-    fetchTurn(nextTurn, aiHistory, comment);
-  }, [waitEnter, loading, done, turns, fetchTurn]);
-
-  useEffect(() => {
-    if (!waitEnter) return;
-    const onKey = (e) => {
-      if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
-        if (e.target.tagName === 'TEXTAREA') return;
-        e.preventDefault();
-        handleContinue('');
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [waitEnter, handleContinue]);
-
-  // Next role: after solver→reviewer, after reviewer→solver
-  const aiTurnsDone = turns.filter(t => t.role !== 'user').length;
-  const nextIsReviewer = aiTurnsDone % 2 === 1;
-  const nextRole = nextIsReviewer ? reviewerAI : solverAI;
-
-  const solverInfo   = aiInfo(solverAI);
-  const reviewerInfo = aiInfo(reviewerAI);
-
-  return (
-    <div style={{ display: 'flex', height: 'calc(100vh - 56px)', overflow: 'hidden', background: '#f4f6fb' }}>
-
-      <Sidebar
-        problem={problem}
-        setProblem={setProblem}
-        loading={loading}
-        onSolve={handleSolve}
-        turns={turns}
-        currentTurn={currentTurn}
-        solverAI={solverAI}
-        setSolverAI={setSolverAI}
-        reviewerAI={reviewerAI}
-        setReviewerAI={setReviewerAI}
-      />
-
-      {/* Chat area */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
-
-        {/* Header strip */}
-        <div style={{
-          padding: '11px 24px',
-          background: '#fff', borderBottom: '1px solid #e8eaf0',
-          display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0,
-        }}>
-          <span style={{ fontSize: 20 }}>💬</span>
-          <div>
-            <div style={{ fontWeight: 600, fontSize: 14, color: '#222' }}>Ярилцлага</div>
-            <div style={{ fontSize: 11, color: '#888' }}>
-              {turns.length === 0 && !loading
-                ? 'Бодлогоо зүүн талд оруулж шийдэх товч дарна уу'
-                : done
-                  ? `✅ Дууслаа — ${turns.length} эргэлт`
-                  : loading
-                    ? `Turn ${currentTurn} ачааллаж байна...`
-                    : `Turn ${turns.length} дууссан · Enter дарж үргэлжлүүлнэ`}
-            </div>
-          </div>
         </div>
 
-        {/* Messages */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px', display: 'flex', flexDirection: 'column' }}>
-
-          {/* Empty state */}
-          {!turns.length && !loading && !error && (
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ textAlign: 'center', maxWidth: 420 }}>
-                <div style={{ fontSize: 58, marginBottom: 14 }}>🧮</div>
-                <h5 style={{ fontWeight: 700, color: '#333' }}>Ярилцлага эхлээгүй</h5>
-                <p style={{ color: '#888', marginBottom: 22 }}>
-                  Зүүн талд AI сонгоод бодлогоо оруулаад <strong>Шийдэх</strong> товч дарна уу.
-                  Turn бүрийн дараа{' '}
-                  <kbd style={{ background:'#eee', padding:'2px 7px', borderRadius:5, fontSize:12 }}>Enter</kbd>{' '}
-                  дарж үргэлжлүүлнэ.
-                </p>
-                <div className="d-flex justify-content-center gap-4">
-                  {[
-                    { ai: solverInfo,   sub: 'бодолт' },
-                    { ai: reviewerInfo, sub: 'шалгалт' },
-                    { ai: solverInfo,   sub: 'засвар' },
-                    { ai: reviewerInfo, sub: 'зөвшөөрөл' },
-                  ].map((s, i) => (
-                    <div key={i} style={{ textAlign:'center' }}>
-                      <div style={{
-                        width:40, height:40, borderRadius:'50%', background:s.ai.color, color:'#fff',
-                        fontSize:16, display:'flex', alignItems:'center', justifyContent:'center',
-                        margin:'0 auto 5px', boxShadow:'0 2px 8px rgba(0,0,0,.15)',
-                      }}>{s.ai.icon}</div>
-                      <div style={{ fontSize:11, fontWeight:700, color:s.ai.color }}>{s.ai.label}</div>
-                      <div style={{ fontSize:10, color:'#aaa' }}>{s.sub}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Error */}
-          {error && (
-            <Alert variant="danger" style={{ borderRadius: 12 }}>
-              <strong>Алдаа:</strong> {error}
-            </Alert>
-          )}
-
-          {/* Turns */}
-          {turns.map((turn, i) => <TurnBubble key={i} turn={turn} />)}
-
-          {/* Loading indicator */}
-          {loading && (
-            <TypingDots role={currentTurn % 2 === 1 ? solverAI : reviewerAI} />
-          )}
-
-          {/* Коммент + үргэлжлүүлэх */}
-          {waitEnter && !loading && !done && (
-            <CommentInput nextRole={nextRole} onContinue={handleContinue} />
-          )}
-
-          {/* Done message */}
-          {done && !loading && (
-            <div style={{
-              textAlign:'center', padding:'14px 20px', marginBottom:8,
-              background:'#f0fff8', border:'1px solid #a8e8d0',
-              borderRadius:12, color:'#10a37f', fontSize:14, fontWeight:600,
-            }}>
-              🎉 {reviewerInfo.label} бодолтыг бүрэн зөвшөөрлөө! Нийт {turns.length} эргэлт.
-            </div>
-          )}
-
-          <div ref={chatEndRef} style={{ height: 1 }} />
+        <div style={{ fontSize: 10, color: '#bbb', marginTop: 5, textAlign: 'center' }}>
+          Enter — илгээх · Shift+Enter — мөр дараах · Модел хүсэлт бүрийн өмнө солих боломжтой
         </div>
       </div>
 

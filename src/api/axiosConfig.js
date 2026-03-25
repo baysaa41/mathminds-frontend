@@ -55,7 +55,13 @@ apiClient.interceptors.request.use(
       'improve',
       'generate_weekly_article',
     ];
-    if (AI_ENDPOINTS.some((ep) => config.url?.includes(ep))) {
+    const LONG_AI_ENDPOINTS = [
+      'solver/turn',
+      'solver/collab',
+    ];
+    if (LONG_AI_ENDPOINTS.some((ep) => config.url?.includes(ep))) {
+      config.timeout = 180_000;
+    } else if (AI_ENDPOINTS.some((ep) => config.url?.includes(ep))) {
       config.timeout = 120_000;
     } else if (!config.timeout) {
       config.timeout = 30_000;
