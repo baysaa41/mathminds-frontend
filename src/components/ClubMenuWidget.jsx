@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card, ListGroup } from 'react-bootstrap';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { BookOpen, MessageSquare, Video, FileText, File, ClipboardList, FileQuestion, Menu, Info, Users, Dumbbell } from 'lucide-react';
+import { BookOpen, BookOpenText, MessageSquare, Video, FileText, File, ClipboardList, FileQuestion, Menu, Info, Users, Dumbbell } from 'lucide-react';
 import LivePreview from './LivePreview';
 
 const ClubMenuWidget = ({ club }) => {
@@ -19,6 +19,7 @@ const ClubMenuWidget = ({ club }) => {
     { path: `/clubs/${clubId}/videos`, label: 'Видео хичээл', icon: Video },
     { path: `/clubs/${clubId}/files`, label: 'Файлууд', icon: File },
     { path: `/clubs/${clubId}/media`, label: 'Медиа', icon: FileText },
+    { path: `/clubs/${clubId}/lessons`, label: 'Хичээл', icon: BookOpenText },
     { path: `/clubs/${clubId}/exercises`, label: 'Дасгал', icon: Dumbbell },
     { path: `/clubs/${clubId}/assignments`, label: 'Даалгавар', icon: ClipboardList },
     { path: `/clubs/${clubId}/quizzes`, label: 'Сорил', icon: FileQuestion },

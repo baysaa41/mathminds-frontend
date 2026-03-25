@@ -88,6 +88,7 @@ const Nomads360Page = lazy(() => import('./pages/Nomads360Page.jsx'));
 const TermsPage = lazy(() => import('./pages/TermsPage.jsx'));
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage.jsx'));
 const MembershipGuidePage = lazy(() => import('./pages/MembershipGuidePage.jsx'));
+const AIGuidePage = lazy(() => import('./pages/AIGuidePage.jsx'));
 
 // Admin
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
@@ -298,6 +299,7 @@ function App() {
           <Route index element={<Navigate to="/info/about" replace />} />
           <Route path="about" element={<AboutPage />} />
           <Route path="membership-guide" element={<MembershipGuidePage />} />
+          <Route path="ai-guide" element={<AIGuidePage />} />
           <Route path="nomads360" element={<Nomads360Page />} />
           <Route path="teachers" element={<TopTeachersPage />} />
         </Route>

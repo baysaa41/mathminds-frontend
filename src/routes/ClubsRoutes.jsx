@@ -10,6 +10,7 @@ import ClubDiscussionPage from '../pages/ClubDiscussionPage';
 import ClubVideosPage from '../pages/ClubVideosPage';
 import ClubMediaPage from '../pages/ClubMediaPage';
 import ClubAssignmentsPage from '../pages/ClubAssignmentsPage';
+import ClubLessonsPage from '../pages/ClubLessonsPage';
 import ClubExercisesPage from '../pages/ClubExercisesPage';
 import ClubQuizzesPage from '../pages/ClubQuizzesPage';
 import ClubExamsPage from '../pages/ClubExamsPage';
@@ -35,6 +36,7 @@ const ClubsRoutes = () => {
         <Route path="videos" element={<ClubVideosPage />} />
         <Route path="media" element={<ClubMediaPage />} />
         <Route path="files" element={<ClubFilesPage />} />
+        <Route path="lessons" element={<ClubLessonsPage />} />
         <Route path="exercises" element={<ClubExercisesPage />} />
         <Route path="assignments" element={<ClubAssignmentsPage />} />
         <Route path="quizzes" element={<ClubQuizzesPage />} />
