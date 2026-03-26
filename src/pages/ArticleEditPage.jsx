@@ -69,7 +69,7 @@ const ArticleEditPage = () => {
         const response = await apiClient.get(`/api/integral/articles/${id}/`);
         const articleData = response.data;
 
-        if (!user || !articleData.author || (user.id !== articleData.author.id && !user.is_staff && user.site_role !== 'STAFF')) {
+        if (!user || !articleData.author || (user.id !== articleData.author.id && !user.is_staff )) {
           setError('Энэ өгүүллийг засварлах эрх танд байхгүй байна.');
           setLoading(false);
           return;
@@ -211,7 +211,7 @@ const ArticleEditPage = () => {
     );
   }
 
-  if (error && (!initialAuthorId || !user || (user.id !== initialAuthorId && !user.is_staff && user.site_role !== 'STAFF'))) {
+  if (error && (!initialAuthorId || !user || (user.id !== initialAuthorId && !user.is_staff ))) {
     return (
       <Container className="mt-4">
         <Alert variant="danger">{error}</Alert>

@@ -4,6 +4,9 @@ import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import 'bootstrap-icons/font/bootstrap-icons.css';
 
+import { MathJaxContext } from 'better-react-mathjax';
+import { mathJaxConfig } from './mathjax.config.js';
+
 // Critical components - loaded immediately
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -29,6 +32,9 @@ const PostDetailPage = lazy(() => import('./pages/PostDetailPage.jsx'));
 // AI Solver
 const SolverPage = lazy(() => import('./pages/SolverPage.jsx'));
 const AISolverPage = lazy(() => import('./pages/AISolverPage.jsx'));
+
+// AI Chat
+const AIChatPage = lazy(() => import('./pages/AIChatPage.jsx'));
 
 // Problems
 const ProblemDetailPage = lazy(() => import('./pages/ProblemDetailPage.jsx'));
@@ -152,7 +158,6 @@ function App() {
           <Route path="bookmarks" element={<BookmarksPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="messages" element={<MessagesPage />} />
-          <Route path="ai-chat" element={<MessagesPage aiOnly={true} />} />
 
           {/* AI Ярилцлага Шийдэгч */}
           <Route path="solver" element={<SolverPage />} />
@@ -213,6 +218,28 @@ function App() {
             }
           />
         </Route>
+
+        {/* AI Багш нар - Танилцуулга хуудас */}
+        <Route
+          path="/ai-chat"
+          element={
+            <ProtectedRoute>
+              <AIChatPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* AI Багш нартай чат - Fullscreen */}
+        <Route
+          path="/ai-chat/messages"
+          element={
+            <ProtectedRoute>
+              <MathJaxContext version={3} config={mathJaxConfig}>
+                <MessagesPage aiOnly={true} />
+              </MathJaxContext>
+            </ProtectedRoute>
+          }
+        />
 
         {/* AI хамтарсан бодолт - Fullscreen, staff only */}
         <Route

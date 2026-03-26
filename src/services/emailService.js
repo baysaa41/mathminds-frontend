@@ -82,3 +82,12 @@ export const previewRecipients = async (id) => {
   const response = await apiClient.get(`/api/emails/campaigns/${id}/preview_recipients/`);
   return response.data;
 };
+
+/**
+ * Имэйл шүүлтүүрт ашиглах клубуудын жагсаалт
+ * GET /api/emails/clubs/
+ */
+export const getClubsForEmail = async () => {
+  const response = await apiClient.get('/api/emails/clubs/');
+  return response.data;
+};

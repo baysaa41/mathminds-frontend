@@ -430,7 +430,7 @@ function ProfilePage() {
         onHide={() => setShowPrivatePostModal(false)}
         recipientUsername={profile.username}
         onSuccess={(conversationUuid) => {
-          const dest = profile.is_ai_teacher ? '/ai-chat' : '/messages';
+          const dest = profile.is_ai_teacher ? '/ai-chat/messages' : '/messages';
           navigate(dest, { state: { conversationUuid } });
         }}
       />

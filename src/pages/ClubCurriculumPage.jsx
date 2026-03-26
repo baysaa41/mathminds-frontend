@@ -19,6 +19,16 @@ const RESOURCE_TYPE_LABELS = {
   quiz: 'Quiz',
 };
 
+const RESOURCE_TYPE_COLORS = {
+  problem: 'secondary',
+  formula: 'info',
+  article: 'danger',
+  quiz: 'success',
+  pdf: 'dark',
+  video: 'primary',
+  link: 'warning',
+};
+
 const ClubCurriculumPage = () => {
   const { clubData, clubActions, isTeacherOrAdmin, showToast } = useOutletContext();
   const [generatingKey, setGeneratingKey] = useState(null); // "programId-weekNum"
@@ -341,18 +351,23 @@ const ClubCurriculumPage = () => {
                           {/* Resources */}
                           {w.resources && w.resources.length > 0 && (
                             <div className="mt-1 d-flex flex-wrap gap-1">
-                              {w.resources.map(r => (
-                                <Link
-                                  key={r.id}
-                                  to={r.url}
-                                  className="text-decoration-none"
-                                >
-                                  <Badge bg="info" className="small fw-normal d-inline-flex align-items-center gap-1">
-                                    <FileText size={10} />
-                                    {r.title.length > 40 ? r.title.slice(0, 40) + '...' : r.title}
-                                  </Badge>
-                                </Link>
-                              ))}
+                              {w.resources.map(r => {
+                                const bgColor = RESOURCE_TYPE_COLORS[r.resource_type] || 'info';
+                                const typeLabel = RESOURCE_TYPE_LABELS[r.resource_type] || r.resource_type;
+                                return (
+                                  <Link
+                                    key={r.id}
+                                    to={r.url}
+                                    className="text-decoration-none"
+                                  >
+                                    <Badge bg={bgColor} className="small fw-normal d-inline-flex align-items-center gap-1">
+                                      <FileText size={10} />
+                                      <span className="fw-semibold">{typeLabel}:</span>
+                                      {r.title.length > 40 ? r.title.slice(0, 40) + '...' : r.title}
+                                    </Badge>
+                                  </Link>
+                                );
+                              })}
                             </div>
                           )}
                         </div>

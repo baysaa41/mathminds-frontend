@@ -1,8 +1,8 @@
 // frontend/src/pages/MessagesPage.jsx
 // Шинэ Message API ашигласан мессежийн хуудас
 
-import { useState, useEffect, useRef, memo } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useState, useEffect, useRef, memo, useCallback } from 'react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import UserAvatar from '../components/UserAvatar';
 import UserName from '../components/UserName';
@@ -29,6 +29,9 @@ import {
   Plus,
   User,
   Trash2,
+  Zap,
+  Copy,
+  CornerUpLeft,
 } from 'lucide-react';
 
 // Services
@@ -62,8 +65,18 @@ const formatTime = (dateString) => {
 
 // React.memo: message prop өөрчлөгдөөгүй бол re-render хийхгүй
 // → MathJax/LivePreview зөвхөн шинэ мессеж дээр л ажиллана
-const MessageBubble = memo(function MessageBubble({ message, currentUserId }) {
+const MessageBubble = memo(function MessageBubble({ message, currentUserId, onReuse }) {
   const isSent = message.author?.id === currentUserId;
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    if (!message.content) return;
+    navigator.clipboard.writeText(message.content).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+
   return (
     <div className={`message ${isSent ? 'sent' : 'received'}`}>
       <div className="message-bubble">
@@ -84,9 +97,31 @@ const MessageBubble = memo(function MessageBubble({ message, currentUserId }) {
             ))}
           </div>
         )}
-        <div className="message-time">
-          {formatTime(message.created_at)}
-          {message.is_edited && <span className="ms-1">(засварласан)</span>}
+        <div className="message-time d-flex align-items-center gap-1">
+          <span>
+            {formatTime(message.created_at)}
+            {message.is_edited && <span className="ms-1">(засварласан)</span>}
+          </span>
+          {message.content && (
+            <span className="message-actions">
+              <button
+                className="btn btn-link btn-sm p-0 text-muted"
+                onClick={handleCopy}
+                title="Хуулах"
+              >
+                {copied ? <Check size={12} /> : <Copy size={12} />}
+              </button>
+              {isSent && (
+                <button
+                  className="btn btn-link btn-sm p-0 text-muted"
+                  onClick={() => onReuse?.(message.content)}
+                  title="Дахин бичих"
+                >
+                  <CornerUpLeft size={12} />
+                </button>
+              )}
+            </span>
+          )}
         </div>
       </div>
     </div>
@@ -107,7 +142,6 @@ const MessagesPage = ({ aiOnly = false }) => {
   const [loading, setLoading] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [error, setError] = useState(null);
-  const [messageInput, setMessageInput] = useState('');
   const [sending, setSending] = useState(false);
   const [aiTyping, setAiTyping] = useState(false);
   const [uploadedImages, setUploadedImages] = useState([]);
@@ -125,6 +159,12 @@ const MessagesPage = ({ aiOnly = false }) => {
   const imageGalleryRef = useRef(null);
   const viewerInstance = useRef(null);
   const lastMessageIdRef = useRef(0);
+  const textareaRef = useRef(null);
+
+  // Stable callback — memo'd MessageBubble re-render хийгдэхгүй
+  const handleReuse = useCallback((text) => {
+    if (textareaRef.current) textareaRef.current.value = text;
+  }, []);
 
   // Fetch conversations
   useEffect(() => {
@@ -174,11 +214,14 @@ const MessagesPage = ({ aiOnly = false }) => {
               const newConv = await createConversation(startWith);
               // Refresh conversations
               const refreshedData = await getConversations();
-              const refreshedList = refreshedData.results || refreshedData;
-              setConversations(refreshedList);
+              const refreshedAll = refreshedData.results || refreshedData;
+              const refreshedFiltered = aiOnly
+                ? refreshedAll.filter(isAiConv)
+                : refreshedAll.filter((c) => !isAiConv(c));
+              setConversations(refreshedFiltered);
 
-              // Select the new conversation
-              const createdConv = refreshedList.find((c) => c.uuid === newConv.uuid);
+              // Select the new conversation (unfiltered-аас хайна, шинэ conv filter-д ороогүй байж болно)
+              const createdConv = refreshedAll.find((c) => c.uuid === newConv.uuid);
               if (createdConv) {
                 setSelectedConversation(createdConv);
               }
@@ -207,6 +250,9 @@ const MessagesPage = ({ aiOnly = false }) => {
       setMessages([]);
       return;
     }
+
+    // Conversation солигдохыг textarea цэвэрлэх
+    if (textareaRef.current) textareaRef.current.value = '';
 
     const fetchMessages = async () => {
       try {
@@ -387,7 +433,7 @@ const MessagesPage = ({ aiOnly = false }) => {
 
   // Add emoji to message
   const addEmoji = (emoji) => {
-    setMessageInput((prev) => prev + emoji);
+    if (textareaRef.current) textareaRef.current.value += emoji;
     setShowEmojiPicker(false);
   };
 
@@ -467,7 +513,7 @@ const MessagesPage = ({ aiOnly = false }) => {
   const handleSendMessage = async (e) => {
     e.preventDefault()
 
-    const inputText = messageInput.trim()
+    const inputText = (textareaRef.current?.value || '').trim()
     if (!inputText && uploadedImages.length === 0) return
     if (!selectedConversation) return
 
@@ -484,7 +530,7 @@ const MessagesPage = ({ aiOnly = false }) => {
         _isOptimistic: true,
       },
     ])
-    setMessageInput('')
+    if (textareaRef.current) textareaRef.current.value = ''
     setUploadedImages([])
     if (fileInputRef.current) fileInputRef.current.value = ''
 
@@ -503,11 +549,12 @@ const MessagesPage = ({ aiOnly = false }) => {
 
       // Conversation жагсаалт шинэчлэх
       const convData = await getConversations()
-      setConversations(convData.results || convData)
+      const allConvs = convData.results || convData
+      setConversations(aiOnly ? allConvs.filter(isAiConv) : allConvs.filter((c) => !isAiConv(c)))
       if (showArchived) setShowArchived(false)
     } catch (err) {
       setMessages((prev) => prev.filter((m) => m.uuid !== tempId))
-      setMessageInput(inputText)
+      if (textareaRef.current) textareaRef.current.value = inputText
       console.error('Error sending message:', err)
       const errorData = err.response?.data
       const errorMsg = typeof errorData === 'string' ? errorData : JSON.stringify(errorData)
@@ -570,7 +617,11 @@ const MessagesPage = ({ aiOnly = false }) => {
 
   // Delete conversation
   const handleDelete = async (conv) => {
-    if (!window.confirm('Харилцан ярианы устгах уу? Нөгөө тал дахин мессеж илгээх хүртэл харилцан яриа таны жагсаалтаас нуугдана.')) return;
+    const isAi = isAiConv(conv);
+    const msg = isAi
+      ? 'Энэ яриаг бүрэн устгах уу? Бүх мессеж устана. Дахин багшаа сонгоход шинэ яриа эхэлнэ.'
+      : 'Харилцан ярианы устгах уу? Нөгөө тал дахин мессеж илгээх хүртэл харилцан яриа таны жагсаалтаас нуугдана.';
+    if (!window.confirm(msg)) return;
     try {
       setDeletingConv(conv.uuid);
       await deleteConversation(conv.uuid);
@@ -609,12 +660,17 @@ const MessagesPage = ({ aiOnly = false }) => {
 
   // Empty state — selectedConversation байгаа бол хоосон state харуулахгүй
   if (conversations.length === 0 && !selectedConversation) {
+    // AI чат хуудаснаас ирсэн бол багш сонгох хуудас руу буцаана
+    if (aiOnly) {
+      navigate('/ai-chat', { replace: true });
+      return null;
+    }
     return (
       <>
         <div className="text-center p-5">
           <MessageCircle size={64} className="text-muted mb-3" />
           <h4 className="text-muted">Харилцан яриа байхгүй байна</h4>
-          <p className="text-muted">{aiOnly ? 'AI багштай харилцан яриа эхлүүлнэ үү.' : '"+" товч дарж шинэ харилцан яриа эхлүүлнэ үү.'}</p>
+          <p className="text-muted">"+" товч дарж шинэ харилцан яриа эхлүүлнэ үү.</p>
           <button className="btn btn-primary" onClick={() => setShowNewConversationModal(true)}>
             <Plus size={18} className="me-2" />
             Шинэ харилцан яриа
@@ -643,16 +699,31 @@ const MessagesPage = ({ aiOnly = false }) => {
             <h5 className="mb-0 fw-bold">{aiOnly ? 'AI Багш нар' : 'Мессежүүд'}</h5>
           </div>
           <div className="d-flex align-items-center gap-2">
+            {aiOnly && (
+              <Link to="/solver" className="btn btn-sm btn-outline-primary" title="AI Шийдэгч">
+                <Zap size={16} />
+              </Link>
+            )}
             <Badge bg="primary" pill>
               {conversations.filter((c) => showArchived ? c.is_archived_by_user : !c.is_archived_by_user).length}
             </Badge>
-            <button
-              className="btn btn-sm btn-primary"
-              onClick={() => setShowNewConversationModal(true)}
-              title="Шинэ харилцан яриа үүсгэх"
-            >
-              <Plus size={16} />
-            </button>
+            {aiOnly ? (
+              <Link
+                to="/ai-chat"
+                className="btn btn-sm btn-primary"
+                title="Шинэ AI багш сонгох"
+              >
+                <Plus size={16} />
+              </Link>
+            ) : (
+              <button
+                className="btn btn-sm btn-primary"
+                onClick={() => setShowNewConversationModal(true)}
+                title="Шинэ харилцан яриа үүсгэх"
+              >
+                <Plus size={16} />
+              </button>
+            )}
           </div>
         </div>
 
@@ -830,6 +901,7 @@ const MessagesPage = ({ aiOnly = false }) => {
                     key={message.uuid}
                     message={message}
                     currentUserId={user?.id}
+                    onReuse={handleReuse}
                   />
                 ))
               )}
@@ -921,10 +993,9 @@ const MessagesPage = ({ aiOnly = false }) => {
                 </div>
 
                 <textarea
+                  ref={textareaRef}
                   className="form-control message-textarea"
                   placeholder="Мессеж бичих..."
-                  value={messageInput}
-                  onChange={(e) => setMessageInput(e.target.value)}
                   onKeyPress={handleKeyPress}
                   disabled={sending}
                   rows={1}
@@ -933,7 +1004,7 @@ const MessagesPage = ({ aiOnly = false }) => {
                 <button
                   type="submit"
                   className="btn btn-primary send-btn"
-                  disabled={sending || (!messageInput.trim() && uploadedImages.length === 0)}
+                  disabled={sending}
                 >
                   {sending ? <Spinner animation="border" size="sm" /> : <Send size={20} />}
                 </button>

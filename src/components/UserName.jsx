@@ -15,7 +15,7 @@ import { MEMBERSHIP_CONFIG } from '../constants/membership';
 function UserName({ user, showLink = true, className = '', showMembershipBadge = true }) {
   if (!user) return null;
 
-  const displayName = user.first_name || user.email || user.username;
+  const displayName = user.ai_name_mn || user.first_name || user.email || user.username;
   const tier = user.membership_tier || 'FREE';
   const config = MEMBERSHIP_CONFIG[tier] || MEMBERSHIP_CONFIG.FREE;
 

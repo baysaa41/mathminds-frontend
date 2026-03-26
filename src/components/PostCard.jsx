@@ -631,7 +631,7 @@ const PostCard = ({ post, onPostDeleted, depth = 0, compact = false, onCardClick
 
 
   // --- Render-д зориулсан хувьсагчид ---
-  const isStaff = user && (user.is_staff || user.site_role === 'STAFF');
+  const isStaff = user && user.is_staff;
   const canEdit = user && currentPost && (isStaff || (currentPost.author && user.id === currentPost.author.id));
   const canDelete = user && currentPost && (currentPost.can_delete || isStaff || (currentPost.author && user.id === currentPost.author.id));
   const isRepost = currentPost.content_type === 'repost' && currentPost.reposted_post;

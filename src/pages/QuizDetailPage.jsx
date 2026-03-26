@@ -122,7 +122,7 @@ const QuizDetailPage = () => {
     return null;
   }
 
-  const isStaff = user && (user.is_staff || user.site_role === 'STAFF');
+  const isStaff = user && user.is_staff;
   const canEdit = user && quiz && (isStaff || (quiz.author && user.id === quiz.author.id));
 
   // Засварлах товч дарах

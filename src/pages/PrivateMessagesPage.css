@@ -227,6 +227,27 @@
   color: #6c757d;
 }
 
+.message-actions {
+  display: inline-flex;
+  gap: 0.25rem;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.message-bubble:hover .message-actions {
+  opacity: 1;
+}
+
+.message-actions .btn-link {
+  line-height: 1;
+  color: inherit !important;
+  opacity: 0.6;
+}
+
+.message-actions .btn-link:hover {
+  opacity: 1;
+}
+
 /* Chat Input Area */
 .chat-input-area {
   border-top: 1px solid #e9ecef;

@@ -5,7 +5,6 @@
 export const SITE_ROLES = {
   TEACHER: 'TEACHER',
   STUDENT: 'STUDENT',
-  STAFF: 'STAFF',
   OTHER: 'OTHER',
 };
 
@@ -27,10 +26,6 @@ export const SITE_ROLE_CONFIG = {
   STUDENT: {
     label: 'Сурагч',
     description: 'Клубт элсэх, пост бичих эрхтэй',
-  },
-  STAFF: {
-    label: 'Ажилтан',
-    description: 'Бүх эрхтэй',
   },
   OTHER: {
     label: 'Бусад',
@@ -171,50 +166,6 @@ export const MEMBERSHIP_PERMISSIONS = {
   },
   // PRO түвшин сурагчид байхгүй
 
-  // АЖИЛТАН
-  'STAFF:FREE': {
-    maxClubs: 5,
-    maxClubMembers: 50,
-    boostedPostsPerMonth: Infinity,
-    showAds: false,
-    maxImagesPerPost: 20,
-    maxVideoSize: 1024 * 1024 * 1024, // 1GB
-    canCreateContent: true,
-    canJoinClubs: true,
-    canCreateClubs: true,
-    roleType: 'staff',
-    label: 'Ажилтан',
-    description: 'Бүх эрхтэй',
-  },
-  'STAFF:MEMBER': {
-    maxClubs: Infinity,
-    maxClubMembers: Infinity,
-    boostedPostsPerMonth: Infinity,
-    showAds: false,
-    maxImagesPerPost: 20,
-    maxVideoSize: 1024 * 1024 * 1024, // 1GB
-    canCreateContent: true,
-    canJoinClubs: true,
-    canCreateClubs: true,
-    roleType: 'staff',
-    label: 'Ажилтан',
-    description: 'Бүх эрхтэй',
-  },
-  'STAFF:PRO': {
-    maxClubs: Infinity,
-    maxClubMembers: Infinity,
-    boostedPostsPerMonth: Infinity,
-    showAds: false,
-    maxImagesPerPost: 20,
-    maxVideoSize: 1024 * 1024 * 1024, // 1GB
-    canCreateContent: true,
-    canJoinClubs: true,
-    canCreateClubs: true,
-    roleType: 'staff',
-    label: 'Ажилтан',
-    description: 'Бүх эрхтэй',
-  },
-
   // БУСАД/ЗОЧИН
   'OTHER:FREE': {
     maxClubs: 0,
@@ -262,7 +213,7 @@ export const MEMBERSHIP_PERMISSIONS = {
 
 /**
  * Хэрэглэгчийн эрхүүдийг авах
- * @param {string} siteRole - Сайт дахь үүрэг (TEACHER, STUDENT, STAFF, OTHER)
+ * @param {string} siteRole - Сайт дахь үүрэг (TEACHER, STUDENT, OTHER)
  * @param {string} membershipTier - Гишүүнчлэлийн түвшин (FREE, MEMBER, PRO)
  * @returns {Object} Эрхүүдийн объект
  */

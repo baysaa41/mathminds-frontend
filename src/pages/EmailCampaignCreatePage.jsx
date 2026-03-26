@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useOutletContext } from 'react-router-dom';
-import { createCampaign } from '../services/emailService';
+import { createCampaign, getClubsForEmail } from '../services/emailService';
 
 // React Bootstrap
 import Container from 'react-bootstrap/Container';
@@ -31,15 +31,28 @@ const EmailCampaignCreatePage = () => {
     filter_staff: false,
     filter_all_users: false,
     filter_members: false,
+    filter_clubs: [],
     filter_last_login_days: 0,
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [clubs, setClubs] = useState([]);
+  const [clubSearch, setClubSearch] = useState('');
 
   useEffect(() => {
     setPageTitle('Шинэ Email Campaign');
+    fetchClubs();
     return () => setPageTitle('Нүүр');
   }, [setPageTitle]);
+
+  const fetchClubs = async () => {
+    try {
+      const data = await getClubsForEmail();
+      setClubs(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to fetch clubs:', err);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -54,6 +67,7 @@ const EmailCampaignCreatePage = () => {
           filter_students: false,
           filter_staff: false,
           filter_members: false,
+          filter_clubs: [],
         }));
       } else if (name !== 'filter_all_users' && checked) {
         // Бусад шүүлтүүр сонговол "Бүх хэрэглэгчид"-г унтраах
@@ -98,6 +112,7 @@ const EmailCampaignCreatePage = () => {
       !formData.filter_students &&
       !formData.filter_staff &&
       !formData.filter_members &&
+      formData.filter_clubs.length === 0 &&
       formData.filter_last_login_days === 0
     ) {
       setError('Хүлээн авагчийн шүүлтүүр сонгоно уу.');
@@ -278,7 +293,73 @@ const EmailCampaignCreatePage = () => {
                   </Col>
                 </Row>
 
-                <Row className="align-items-center">
+                {/* Клуб сонгох */}
+                <Row className="mt-3">
+                  <Col>
+                    <Form.Label className="mb-1">
+                      <i className="bi bi-people me-1"></i>
+                      Клубын гишүүд рүү илгээх
+                    </Form.Label>
+                    <Form.Control
+                      type="text"
+                      size="sm"
+                      placeholder="Клуб хайх..."
+                      value={clubSearch}
+                      onChange={(e) => setClubSearch(e.target.value)}
+                      className="mb-2"
+                      disabled={formData.filter_all_users}
+                    />
+                    <div
+                      style={{ maxHeight: '180px', overflowY: 'auto' }}
+                      className="border rounded p-2"
+                    >
+                      {clubs
+                        .filter((c) =>
+                          c.name.toLowerCase().includes(clubSearch.toLowerCase())
+                        )
+                        .map((club) => (
+                          <Form.Check
+                            key={club.id}
+                            type="checkbox"
+                            id={`club_${club.id}`}
+                            label={`${club.name} (${club.member_count} гишүүн)`}
+                            checked={formData.filter_clubs.includes(club.id)}
+                            disabled={formData.filter_all_users}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  filter_clubs: [...prev.filter_clubs, club.id],
+                                  filter_all_users: false,
+                                }));
+                              } else {
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  filter_clubs: prev.filter_clubs.filter(
+                                    (id) => id !== club.id
+                                  ),
+                                }));
+                              }
+                            }}
+                          />
+                        ))}
+                      {clubs.filter((c) =>
+                        c.name.toLowerCase().includes(clubSearch.toLowerCase())
+                      ).length === 0 && (
+                        <div className="text-muted small text-center py-2">
+                          Клуб олдсонгүй
+                        </div>
+                      )}
+                    </div>
+                    {formData.filter_clubs.length > 0 && (
+                      <Form.Text className="text-success">
+                        {formData.filter_clubs.length} клуб сонгогдсон
+                      </Form.Text>
+                    )}
+                  </Col>
+                </Row>
+
+                <Row className="align-items-center mt-3">
                   <Col md={4}>
                     <Form.Group>
                       <Form.Label className="mb-0">
@@ -312,7 +393,9 @@ const EmailCampaignCreatePage = () => {
                     <br />
                     Жишээ: "Багш нар" + "Сүүлийн 30 хоногт" = Сүүлийн 30 хоногт нэвтэрсэн багш нар.
                     <br />
-                    "Багш нар" + "Сурагчид" сонговол хоёулангийнх нь OR логикоор (учир нь нэг хүн хоёуланг нь хангаж чадахгүй).
+                    "Багш нар" + "Сурагчид" сонговол хоёулангийнх нь OR логикоор.
+                    <br />
+                    Клуб сонговол тухайн клубын гишүүд + админ нарыг шүүнэ.
                   </small>
                 </Alert>
               </Card.Body>

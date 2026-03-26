@@ -106,7 +106,7 @@ const ArticleDetailPage = () => {
   }
 
   // (!!!) user.user_id-г user.id болгож засварласан
-  const isStaff = user && (user.is_staff || user.site_role === 'STAFF');
+  const isStaff = user && user.is_staff;
   const canEdit =
     user && article && (isStaff || (article.author && user.id === article.author.id));
 

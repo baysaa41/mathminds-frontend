@@ -14,6 +14,7 @@ import {
   BookOpen,
   ShoppingCart,
   Terminal,
+  Mail,
 } from 'lucide-react';
 import authService from '../services/authService';
 
@@ -224,6 +225,25 @@ function DashboardPage() {
               <Link to="/admin/commands" className="btn" style={{ backgroundColor: '#20c997', color: '#fff' }}>
                 <Terminal size={18} className="me-2" />
                 Заавар үзэх
+              </Link>
+            </Card.Body>
+          </Card>
+        </Col>
+
+        {/* Email Campaigns */}
+        <Col md={6} lg={4}>
+          <Card className="h-100 shadow-sm" style={{ borderColor: '#6610f2' }}>
+            <Card.Body className="d-flex flex-column">
+              <div className="mb-3">
+                <Mail size={40} style={{ color: '#6610f2' }} />
+              </div>
+              <Card.Title>Email Campaigns</Card.Title>
+              <Card.Text className="text-muted flex-grow-1">
+                Бүртгэлтэй хэрэглэгчид, гишүүд, клубын гишүүд рүү имэйл илгээх.
+              </Card.Text>
+              <Link to="/admin/emails" className="btn" style={{ backgroundColor: '#6610f2', color: '#fff' }}>
+                <Mail size={18} className="me-2" />
+                Имэйл илгээх
               </Link>
             </Card.Body>
           </Card>

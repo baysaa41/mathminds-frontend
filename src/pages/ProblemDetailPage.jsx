@@ -225,7 +225,7 @@ const ProblemDetailPage = () => {
     return null;
   }
 
-  const isStaff = user && (user.is_staff || user.site_role === 'STAFF');
+  const isStaff = user && user.is_staff;
   const canEdit =
     user && problem && (isStaff || (problem.author && user.id === problem.author.id));
 
@@ -449,8 +449,10 @@ const ProblemDetailPage = () => {
                 </Button>
                 {user?.is_staff && (
                   <Button
-                    as={Link}
-                    to={`/problem/${id}/ai-solve`}
+                    as="a"
+                    href={`/problem/${id}/ai-solve`}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     variant="outline-primary"
                     size="sm"
                   >
@@ -584,8 +586,10 @@ const ProblemDetailPage = () => {
                 </Button>
                 {user?.is_staff && (
                   <Button
-                    as={Link}
-                    to={`/problem/${id}/ai-solve`}
+                    as="a"
+                    href={`/problem/${id}/ai-solve`}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     variant="outline-primary"
                     size="sm"
                   >

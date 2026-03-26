@@ -63,7 +63,7 @@ const ConversationViewPage = () => {
     const isParticipant =
       conversation.user1?.id === user.id || conversation.user2?.id === user.id;
     if (isParticipant) {
-      const dest = isAiConv(conversation) ? '/ai-chat' : '/messages';
+      const dest = isAiConv(conversation) ? '/ai-chat/messages' : '/messages';
       navigate(dest, { replace: true, state: { conversationUuid } });
     }
   }, [conversation, user, navigate, conversationUuid]);

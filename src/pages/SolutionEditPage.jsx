@@ -283,7 +283,7 @@ const SolutionEditPage = () => {
   };
 
   // Permission check
-  const isStaff = user && (user.is_staff || user.site_role === 'STAFF');
+  const isStaff = user && user.is_staff;
   const canEdit =
     user && problem && (isStaff || (problem.author && user.id === problem.author.id));
 
