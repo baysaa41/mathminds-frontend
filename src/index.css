@@ -174,3 +174,21 @@ body {
   font-weight: 600;
   color: #6c757d;
 }
+
+/* --- Objectives accordion (compact) --- */
+.objectives-accordion .accordion-button {
+  padding: 0;
+  background: none !important;
+  box-shadow: none !important;
+  font-size: inherit;
+  color: inherit;
+}
+.objectives-accordion .accordion-button::after {
+  width: 0.75rem;
+  height: 0.75rem;
+  background-size: 0.75rem;
+  margin-left: 0.35rem;
+}
+.objectives-accordion .accordion-button:focus {
+  box-shadow: none;
+}

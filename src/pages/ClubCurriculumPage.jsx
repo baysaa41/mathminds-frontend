@@ -7,7 +7,8 @@ import Button from 'react-bootstrap/Button';
 import Spinner from 'react-bootstrap/Spinner';
 import ListGroup from 'react-bootstrap/ListGroup';
 import Form from 'react-bootstrap/Form';
-import { CalendarDays, GraduationCap, Sparkles, Plus, X, RotateCcw, FileText, ExternalLink, Send } from 'lucide-react';
+import Accordion from 'react-bootstrap/Accordion';
+import { CalendarDays, GraduationCap, Sparkles, Plus, X, RotateCcw, FileText, ExternalLink, Send, Target } from 'lucide-react';
 import { generateWeeklyArticle, getWeeklyTopics, getPrograms, addProgram, removeProgram, setWeek } from '../services/clubsService';
 
 const RESOURCE_TYPE_LABELS = {
@@ -348,6 +349,29 @@ const ClubCurriculumPage = () => {
                               );
                             })()}
                           </div>
+                          {/* Суралцахуйн зорилтууд */}
+                          {w.objectives && w.objectives.length > 0 && (
+                            <Accordion flush className="mt-1 objectives-accordion">
+                              <Accordion.Item eventKey={key} className="border-0 bg-transparent">
+                                <Accordion.Header className="p-0">
+                                  <span className="text-muted d-flex align-items-center gap-1" style={{ fontSize: '0.75rem' }}>
+                                    <Target size={10} />
+                                    Зорилт ({w.objectives.length})
+                                  </span>
+                                </Accordion.Header>
+                                <Accordion.Body className="p-0 pt-1 ps-2">
+                                  <ul className="list-unstyled mb-0">
+                                    {w.objectives.map((obj, i) => (
+                                      <li key={i} className="small text-muted mb-1 d-flex align-items-start gap-1">
+                                        <span className="text-success flex-shrink-0">•</span>
+                                        <span>{obj}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </Accordion.Body>
+                              </Accordion.Item>
+                            </Accordion>
+                          )}
                           {/* Resources */}
                           {w.resources && w.resources.length > 0 && (
                             <div className="mt-1 d-flex flex-wrap gap-1">
