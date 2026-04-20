@@ -99,9 +99,21 @@ const PROBLEM_TYPES = [
   { value: '4', label: 'Нөхөх тест' },
 ]
 
+const SUBJECTS = [
+  { value: 'math', label: 'Математик', icon: 'bi-calculator', color: '#0d6efd' },
+  { value: 'physics', label: 'Физик', icon: 'bi-lightning', color: '#fd7e14' },
+  { value: 'chemistry', label: 'Хими', icon: 'bi-droplet-half', color: '#20c997' },
+  { value: 'biology', label: 'Биологи', icon: 'bi-tree', color: '#198754' },
+]
+
 const getProblemTypeLabel = (type) => {
   const map = { 0: 'Уламжлалт', 1: 'Сонгох тест', 4: 'Нөхөх тест' }
   return map[type] || ''
+}
+
+const getSubjectLabel = (value) => {
+  const found = SUBJECTS.find((s) => s.value === value)
+  return found ? found.label : ''
 }
 
 function ContentBrowsePage() {
@@ -127,6 +139,9 @@ function ContentBrowsePage() {
   const [searchInput, setSearchInput] = useState(searchParams.get('search') || '')
   const [myOnly, setMyOnly] = useState(false)
   const [selectedProblemTypes, setSelectedProblemTypes] = useState([])
+  const [selectedSubject, setSelectedSubject] = useState(null)
+  const [mathCategories, setMathCategories] = useState([])
+  const [selectedMathCategory, setSelectedMathCategory] = useState(null)
   const [isCreating, setIsCreating] = useState(false)
 
   const {
@@ -142,14 +157,18 @@ function ContentBrowsePage() {
     if (selectedTopic) params.topic = selectedTopic.id
     else if (selectedCategory) params.category = selectedCategory.id
     if (searchInput) params.search = searchInput
-    if (contentType === 'problems' && selectedProblemTypes.length > 0)
-      params.type = selectedProblemTypes.join(',')
+    if (selectedSubject) params.subject = selectedSubject
+    if (contentType === 'problems') {
+      if (selectedProblemTypes.length > 0) params.type = selectedProblemTypes.join(',')
+      if (selectedMathCategory) params.math_category = selectedMathCategory.id
+    }
     return params
-  }, [myOnly, user?.id, selectedTopic, selectedCategory, searchInput, contentType, selectedProblemTypes])
+  }, [myOnly, user?.id, selectedTopic, selectedCategory, searchInput, contentType, selectedProblemTypes, selectedSubject, selectedMathCategory])
 
   // Initialize categories on mount
   useEffect(() => {
     fetchCategories()
+    fetchMathCategories()
     fetchData({})
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -160,6 +179,8 @@ function ContentBrowsePage() {
     setSelectedTopic(null)
     setTopics([])
     setSelectedProblemTypes([])
+    setSelectedSubject(null)
+    setSelectedMathCategory(null)
     setSearchInput('')
     setMyOnly(false)
     setSearchParams({ type: contentType }, { replace: true })
@@ -175,10 +196,12 @@ function ContentBrowsePage() {
     if (selectedTopic) urlParams.topic = selectedTopic.id
     if (searchInput) urlParams.search = searchInput
     if (selectedProblemTypes.length > 0) urlParams.problemType = selectedProblemTypes.join(',')
+    if (selectedSubject) urlParams.subject = selectedSubject
+    if (selectedMathCategory) urlParams.mathCategory = selectedMathCategory.id
     setSearchParams(urlParams, { replace: true })
     fetchData(params)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCategory, selectedTopic, myOnly, selectedProblemTypes])
+  }, [selectedCategory, selectedTopic, myOnly, selectedProblemTypes, selectedSubject, selectedMathCategory])
 
   const fetchCategories = async () => {
     setCategoriesLoading(true)
@@ -203,6 +226,15 @@ function ContentBrowsePage() {
       /* ignore */
     } finally {
       setTopicsLoading(false)
+    }
+  }
+
+  const fetchMathCategories = async () => {
+    try {
+      const res = await apiClient.get(API_ENDPOINTS.INTEGRAL.MATH_CATEGORIES)
+      setMathCategories(res.data)
+    } catch {
+      /* ignore */
     }
   }
 
@@ -244,6 +276,8 @@ function ContentBrowsePage() {
     setSelectedTopic(null)
     setTopics([])
     setSelectedProblemTypes([])
+    setSelectedSubject(null)
+    setSelectedMathCategory(null)
     setSearchInput('')
     setMyOnly(false)
     setSearchParams({ type: contentType }, { replace: true })
@@ -262,12 +296,27 @@ function ContentBrowsePage() {
     }
   }
 
-  const hasActiveFilters = selectedCategory || searchInput || myOnly || selectedProblemTypes.length > 0
+  const hasActiveFilters = selectedCategory || searchInput || myOnly || selectedProblemTypes.length > 0 || selectedSubject || selectedMathCategory
 
   const renderItemBadges = (item) => {
+    const subjectBadge = item.subject && item.subject !== 'math' ? (
+      <Badge
+        className="small"
+        style={{ backgroundColor: SUBJECTS.find((s) => s.value === item.subject)?.color || '#6c757d' }}
+      >
+        {getSubjectLabel(item.subject)}
+      </Badge>
+    ) : null
+
     if (contentType === 'problems') {
       return (
         <>
+          {subjectBadge}
+          {item.math_category && (
+            <Badge className="small" style={{ backgroundColor: item.math_category.color || '#6c757d' }}>
+              {item.math_category.name_mn}
+            </Badge>
+          )}
           {item.level_name && <Badge bg="secondary" className="small">{item.level_name}</Badge>}
           {item.type !== undefined && <Badge bg="info" text="dark" className="small">{getProblemTypeLabel(item.type)}</Badge>}
         </>
@@ -276,9 +325,15 @@ function ContentBrowsePage() {
     if (contentType === 'quizzes' && item.problems_count != null) {
       return <Badge bg="info" text="dark" className="small">{item.problems_count} бодлого</Badge>
     }
-    if (contentType === 'formulas' && item.topic_name) {
-      return <Badge bg="secondary" className="small">{item.topic_name}</Badge>
+    if (contentType === 'formulas') {
+      return (
+        <>
+          {subjectBadge}
+          {item.topic_name && <Badge bg="secondary" className="small">{item.topic_name}</Badge>}
+        </>
+      )
     }
+    if (contentType === 'articles') return subjectBadge
     return null
   }
 
@@ -349,57 +404,128 @@ function ContentBrowsePage() {
                   </>
                 )}
 
-                {/* Categories */}
+                {/* Subject filter */}
                 <h6 className="text-uppercase text-muted small fw-bold mb-2">
-                  <i className="bi bi-folder me-1"></i>Ангилал
+                  <i className="bi bi-book me-1"></i>Хичээл
                 </h6>
-                {categoriesLoading ? (
-                  <div className="text-center py-3"><Spinner animation="border" size="sm" /></div>
-                ) : (
-                  <ListGroup variant="flush" className="mb-3">
-                    <ListGroup.Item
-                      action active={!selectedCategory}
-                      onClick={() => handleCategoryClick(null)}
-                      className="py-2 px-3 small"
+                <div className="d-flex flex-wrap gap-1 mb-3">
+                  <Button
+                    variant={!selectedSubject ? 'primary' : 'outline-secondary'}
+                    size="sm"
+                    onClick={() => { setSelectedSubject(null); setSelectedMathCategory(null) }}
+                    className="px-2 py-1"
+                    style={{ fontSize: '0.78rem' }}
+                  >
+                    Бүгд
+                  </Button>
+                  {SUBJECTS.map((s) => (
+                    <Button
+                      key={s.value}
+                      variant={selectedSubject === s.value ? 'primary' : 'outline-secondary'}
+                      size="sm"
+                      onClick={() => {
+                        setSelectedSubject(selectedSubject === s.value ? null : s.value)
+                        if (selectedSubject !== s.value && s.value !== 'math') setSelectedMathCategory(null)
+                      }}
+                      className="px-2 py-1"
+                      style={{
+                        fontSize: '0.78rem',
+                        ...(selectedSubject === s.value ? { backgroundColor: s.color, borderColor: s.color } : {}),
+                      }}
                     >
-                      <i className="bi bi-grid-3x3-gap me-2"></i>Бүгд
-                    </ListGroup.Item>
-                    {categories.map((cat) => (
-                      <ListGroup.Item
-                        key={cat.id} action
-                        active={selectedCategory?.id === cat.id}
-                        onClick={() => handleCategoryClick(cat)}
-                        className="py-2 px-3 small"
-                      >
-                        <i className="bi bi-folder2 me-2"></i>{cat.name}
-                      </ListGroup.Item>
-                    ))}
-                  </ListGroup>
-                )}
+                      <i className={`bi ${s.icon} me-1`}></i>{s.label}
+                    </Button>
+                  ))}
+                </div>
 
-                {/* Topics */}
-                {selectedCategory && (
+                {/* Math category filter (зөвхөн math сонгосон эсвэл бүгд үед) */}
+                {contentType === 'problems' && (!selectedSubject || selectedSubject === 'math') && mathCategories.length > 0 && (
                   <>
                     <h6 className="text-uppercase text-muted small fw-bold mb-2">
-                      <i className="bi bi-tag me-1"></i>Сэдэв
+                      <i className="bi bi-grid-3x3 me-1"></i>Математик ангилал
                     </h6>
-                    {topicsLoading ? (
+                    <ListGroup variant="flush" className="mb-3">
+                      <ListGroup.Item
+                        action active={!selectedMathCategory}
+                        onClick={() => setSelectedMathCategory(null)}
+                        className="py-2 px-3 small"
+                      >
+                        Бүгд
+                      </ListGroup.Item>
+                      {mathCategories.map((mc) => (
+                        <ListGroup.Item
+                          key={mc.id} action
+                          active={selectedMathCategory?.id === mc.id}
+                          onClick={() => setSelectedMathCategory(selectedMathCategory?.id === mc.id ? null : mc)}
+                          className="py-2 px-3 small d-flex align-items-center gap-2"
+                        >
+                          <span
+                            className="rounded-circle d-inline-block"
+                            style={{ width: 10, height: 10, backgroundColor: mc.color, flexShrink: 0 }}
+                          />
+                          {mc.name_mn || mc.name}
+                        </ListGroup.Item>
+                      ))}
+                    </ListGroup>
+                  </>
+                )}
+                <hr className="my-2" />
+
+                {/* Categories & Topics (articles, formulas зэрэгт) */}
+                {contentType !== 'problems' && (
+                  <>
+                    <h6 className="text-uppercase text-muted small fw-bold mb-2">
+                      <i className="bi bi-folder me-1"></i>Ангилал
+                    </h6>
+                    {categoriesLoading ? (
                       <div className="text-center py-3"><Spinner animation="border" size="sm" /></div>
-                    ) : topics.length === 0 ? (
-                      <p className="text-muted small px-3">Сэдэв байхгүй</p>
                     ) : (
                       <ListGroup variant="flush" className="mb-3">
-                        {topics.map((topic) => (
+                        <ListGroup.Item
+                          action active={!selectedCategory}
+                          onClick={() => handleCategoryClick(null)}
+                          className="py-2 px-3 small"
+                        >
+                          <i className="bi bi-grid-3x3-gap me-2"></i>Бүгд
+                        </ListGroup.Item>
+                        {categories.map((cat) => (
                           <ListGroup.Item
-                            key={topic.id} action
-                            active={selectedTopic?.id === topic.id}
-                            onClick={() => handleTopicClick(topic)}
+                            key={cat.id} action
+                            active={selectedCategory?.id === cat.id}
+                            onClick={() => handleCategoryClick(cat)}
                             className="py-2 px-3 small"
                           >
-                            <i className="bi bi-hash me-1"></i>{topic.name}
+                            <i className="bi bi-folder2 me-2"></i>{cat.name}
                           </ListGroup.Item>
                         ))}
                       </ListGroup>
+                    )}
+
+                    {/* Topics */}
+                    {selectedCategory && (
+                      <>
+                        <h6 className="text-uppercase text-muted small fw-bold mb-2">
+                          <i className="bi bi-tag me-1"></i>Сэдэв
+                        </h6>
+                        {topicsLoading ? (
+                          <div className="text-center py-3"><Spinner animation="border" size="sm" /></div>
+                        ) : topics.length === 0 ? (
+                          <p className="text-muted small px-3">Сэдэв байхгүй</p>
+                        ) : (
+                          <ListGroup variant="flush" className="mb-3">
+                            {topics.map((topic) => (
+                              <ListGroup.Item
+                                key={topic.id} action
+                                active={selectedTopic?.id === topic.id}
+                                onClick={() => handleTopicClick(topic)}
+                                className="py-2 px-3 small"
+                              >
+                                <i className="bi bi-hash me-1"></i>{topic.name}
+                              </ListGroup.Item>
+                            ))}
+                          </ListGroup>
+                        )}
+                      </>
                     )}
                   </>
                 )}
@@ -526,37 +652,78 @@ function ContentBrowsePage() {
                     />
                   )}
 
-                  {/* Category chips */}
-                  <div className="d-flex gap-2 overflow-auto pb-2">
-                    <Button
-                      variant={!selectedCategory ? 'primary' : 'outline-primary'}
-                      size="sm" onClick={() => handleCategoryClick(null)} className="text-nowrap"
-                    >
-                      Бүгд
-                    </Button>
-                    {categories.map((cat) => (
+                  {/* Subject chips */}
+                  <div className="d-flex gap-1 overflow-auto pb-2 mb-2">
+                    {SUBJECTS.map((s) => (
                       <Button
-                        key={cat.id}
-                        variant={selectedCategory?.id === cat.id ? 'primary' : 'outline-primary'}
-                        size="sm" onClick={() => handleCategoryClick(cat)} className="text-nowrap"
+                        key={s.value}
+                        variant={selectedSubject === s.value ? 'primary' : 'outline-secondary'}
+                        size="sm"
+                        onClick={() => {
+                          setSelectedSubject(selectedSubject === s.value ? null : s.value)
+                          if (selectedSubject !== s.value && s.value !== 'math') setSelectedMathCategory(null)
+                        }}
+                        className="text-nowrap"
+                        style={selectedSubject === s.value ? { backgroundColor: s.color, borderColor: s.color } : {}}
                       >
-                        {cat.name}
+                        <i className={`bi ${s.icon} me-1`}></i>{s.label}
                       </Button>
                     ))}
                   </div>
 
-                  {selectedCategory && topics.length > 0 && (
-                    <div className="d-flex gap-2 overflow-auto pb-2 mt-2">
-                      {topics.map((topic) => (
+                  {/* Math category chips (mobile) */}
+                  {contentType === 'problems' && (!selectedSubject || selectedSubject === 'math') && mathCategories.length > 0 && (
+                    <div className="d-flex gap-1 overflow-auto pb-2 mb-2">
+                      {mathCategories.map((mc) => (
                         <Button
-                          key={topic.id}
-                          variant={selectedTopic?.id === topic.id ? 'info' : 'outline-info'}
-                          size="sm" onClick={() => handleTopicClick(topic)} className="text-nowrap"
+                          key={mc.id}
+                          variant={selectedMathCategory?.id === mc.id ? 'primary' : 'outline-secondary'}
+                          size="sm"
+                          onClick={() => setSelectedMathCategory(selectedMathCategory?.id === mc.id ? null : mc)}
+                          className="text-nowrap"
+                          style={selectedMathCategory?.id === mc.id ? { backgroundColor: mc.color, borderColor: mc.color } : {}}
                         >
-                          {topic.name}
+                          {mc.name_mn || mc.name}
                         </Button>
                       ))}
                     </div>
+                  )}
+
+                  {/* Category chips (articles, formulas зэрэгт) */}
+                  {contentType !== 'problems' && (
+                    <>
+                      <div className="d-flex gap-2 overflow-auto pb-2">
+                        <Button
+                          variant={!selectedCategory ? 'primary' : 'outline-primary'}
+                          size="sm" onClick={() => handleCategoryClick(null)} className="text-nowrap"
+                        >
+                          Бүгд
+                        </Button>
+                        {categories.map((cat) => (
+                          <Button
+                            key={cat.id}
+                            variant={selectedCategory?.id === cat.id ? 'primary' : 'outline-primary'}
+                            size="sm" onClick={() => handleCategoryClick(cat)} className="text-nowrap"
+                          >
+                            {cat.name}
+                          </Button>
+                        ))}
+                      </div>
+
+                      {selectedCategory && topics.length > 0 && (
+                        <div className="d-flex gap-2 overflow-auto pb-2 mt-2">
+                          {topics.map((topic) => (
+                            <Button
+                              key={topic.id}
+                              variant={selectedTopic?.id === topic.id ? 'info' : 'outline-info'}
+                              size="sm" onClick={() => handleTopicClick(topic)} className="text-nowrap"
+                            >
+                              {topic.name}
+                            </Button>
+                          ))}
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
 

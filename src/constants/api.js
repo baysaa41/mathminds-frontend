@@ -61,6 +61,7 @@ export const API_ENDPOINTS = {
     CATEGORIES: '/api/integral/categories/',
     TOPICS: '/api/integral/topics/',
     TOPIC_DETAIL: (id) => `/api/integral/topics/${id}/`,
+    MATH_CATEGORIES: '/api/integral/math-categories/',
   },
 };
 

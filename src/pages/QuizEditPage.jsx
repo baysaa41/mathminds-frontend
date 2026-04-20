@@ -22,7 +22,7 @@ import InputGroup from 'react-bootstrap/InputGroup';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 
-import { Edit3, Save, X, FileText, AlignLeft, Clock, GraduationCap, PlusCircle, Sparkles, Trash2, ArrowLeftRight, Download } from 'lucide-react';
+import { Edit3, Save, X, FileText, AlignLeft, Clock, GraduationCap, PlusCircle, Sparkles, Trash2, ArrowLeftRight, Download, Wand2 } from 'lucide-react';
 
 // ── Бодлогын мөр (selected list болон modal аль алинд) ──────────
 const ProblemMeta = ({ problem }) => (
@@ -265,6 +265,59 @@ const QuizEditPage = () => {
   // ── Selected problems удирдах ─────────────────────────────────
   const handleRemoveProblem = (problemId) => {
     setSelectedProblems((prev) => prev.filter((p) => p.id !== problemId));
+  };
+
+  // ── AI төстэй тест үүсгэх ─────────────────────────────────────
+  const [showGenerateSimilarModal, setShowGenerateSimilarModal] = useState(false);
+  const [generatingSimilar, setGeneratingSimilar] = useState(false);
+  const [generateSimilarError, setGenerateSimilarError] = useState(null);
+  const [similarProgress, setSimilarProgress] = useState({ current: 0, total: 0, title: '' });
+  const pollRef = useRef(null);
+
+  const handleGenerateSimilar = async () => {
+    setGeneratingSimilar(true);
+    setGenerateSimilarError(null);
+    setSimilarProgress({ current: 0, total: 0, title: '' });
+    try {
+      const res = await apiClient.post(`/api/integral/quizzes/${id}/generate_similar/`);
+      const { task_id, total } = res.data;
+      setSimilarProgress((p) => ({ ...p, total }));
+
+      // Poll task status
+      pollRef.current = setInterval(async () => {
+        try {
+          const statusRes = await apiClient.get(
+            `/api/integral/quizzes/task-status/${task_id}/`
+          );
+          const { state, current, total: t, problem_title, new_uuid, error } = statusRes.data;
+
+          if (state === 'PROGRESS') {
+            setSimilarProgress({ current: current + 1, total: t, title: problem_title || '' });
+          } else if (state === 'SUCCESS') {
+            clearInterval(pollRef.current);
+            setShowGenerateSimilarModal(false);
+            navigate(`/quiz/${new_uuid}/edit`);
+          } else if (state === 'FAILURE') {
+            clearInterval(pollRef.current);
+            setGenerateSimilarError(error || 'AI тест үүсгэхэд алдаа гарлаа.');
+            setGeneratingSimilar(false);
+          }
+        } catch {
+          // poll алдаа — үргэлжлүүлнэ
+        }
+      }, 3000);
+    } catch (err) {
+      const msg = err.response?.data?.error || 'AI тест үүсгэхэд алдаа гарлаа.';
+      setGenerateSimilarError(msg);
+      setGeneratingSimilar(false);
+    }
+  };
+
+  // Modal хаахад poll зогсоох (task background-д үргэлжилнэ)
+  const handleCloseSimilarModal = () => {
+    clearInterval(pollRef.current);
+    setGeneratingSimilar(false);
+    setShowGenerateSimilarModal(false);
   };
 
   // ── LaTeX экспорт ─────────────────────────────────────────────
@@ -713,6 +766,15 @@ const QuizEditPage = () => {
                     )}
                   </Button>
                   <Button
+                    variant="outline-primary"
+                    onClick={() => { setGenerateSimilarError(null); setShowGenerateSimilarModal(true); }}
+                    disabled={saving || selectedProblems.length === 0}
+                    title="AI ашиглан энэ тесттэй төстэй шинэ тест үүсгэх"
+                  >
+                    <Wand2 size={16} className="me-2" />
+                    AI төстэй тест үүсгэх
+                  </Button>
+                  <Button
                     variant="outline-success"
                     onClick={handleExportLatex}
                     disabled={exportingLatex || selectedProblems.length === 0}
@@ -841,6 +903,82 @@ const QuizEditPage = () => {
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowAddModal(false)}>Хаах</Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* ══ AI төстэй тест үүсгэх modal ══════════════════════════ */}
+      <Modal
+        show={showGenerateSimilarModal}
+        onHide={handleCloseSimilarModal}
+        centered
+      >
+        <Modal.Header closeButton className="bg-primary text-white">
+          <Modal.Title className="h6">
+            <Wand2 size={16} className="me-2" />
+            AI төстэй тест үүсгэх
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {!generatingSimilar ? (
+            <>
+              <p className="mb-2">
+                AI ашиглан энэ тестийн{' '}
+                <strong>{selectedProblems.length} бодлого</strong> тус бүртэй{' '}
+                <strong>төстэй, гэхдээ өөр</strong> бодлогуудаар шинэ ноорог тест үүсгэнэ.
+              </p>
+              <ul className="text-muted small mb-3">
+                <li>Ижил математикийн ухагдахуун, арга ашиглана</li>
+                <li>Тоо, нөхцөл нь өөр байна</li>
+                <li>Бодлого тус бүрд бодолт үүсгэнэ</li>
+                <li>Шинэ тест ноорог байдлаар нэн даруй нээгдэнэ</li>
+              </ul>
+            </>
+          ) : (
+            <div className="py-2">
+              <div className="d-flex align-items-center mb-3">
+                <Spinner animation="border" size="sm" className="me-2 text-primary" />
+                <span className="text-primary fw-semibold">AI бодлого үүсгэж байна...</span>
+              </div>
+              {similarProgress.total > 0 && (
+                <>
+                  <div className="progress mb-2" style={{ height: 8 }}>
+                    <div
+                      className="progress-bar progress-bar-striped progress-bar-animated"
+                      style={{
+                        width: `${Math.round((similarProgress.current / similarProgress.total) * 100)}%`,
+                      }}
+                    />
+                  </div>
+                  <div className="text-muted small text-center">
+                    {similarProgress.current}/{similarProgress.total} бодлого
+                    {similarProgress.title && (
+                      <span className="ms-2 fst-italic">— {similarProgress.title}</span>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+          {generateSimilarError && (
+            <Alert variant="danger" className="mb-0 small mt-2">{generateSimilarError}</Alert>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="secondary"
+            onClick={handleCloseSimilarModal}
+          >
+            Цуцлах
+          </Button>
+          {!generatingSimilar && (
+            <Button
+              variant="primary"
+              onClick={handleGenerateSimilar}
+            >
+              <Wand2 size={14} className="me-2" />
+              Үүсгэх
+            </Button>
+          )}
         </Modal.Footer>
       </Modal>
 
