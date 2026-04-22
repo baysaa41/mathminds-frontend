@@ -45,6 +45,8 @@ import {
   BookOpen,
   Wand2,
   Sparkles,
+  ImagePlus,
+  Image as ImageIcon,
 } from 'lucide-react';
 
 // (!!!) MathJax тохиргоог Layout.jsx-с авдаг болсон тул эндээс хассан.
@@ -190,6 +192,7 @@ const ProblemEditPage = () => {
       setProblem({ ...response.data, is_public: response.data.is_public ?? false });
       setChoices(response.data.choices?.map((c) => ({ ...c, DELETE: false })) || []);
       setKeywords(response.data.keywords || []);
+      setImages(response.data.images || []);
       setOriginalTitle(response.data.title || '');
       const t = response.data.title || `Бодлого #${problemId}`;
       setPageTitle(`Бодлого засах · ${t}`);
@@ -389,6 +392,43 @@ const ProblemEditPage = () => {
       console.error('Failed to remove keyword:', err);
       setError('Түлхүүр үг устгахад алдаа гарлаа.');
       setKeywords((prev) => [...prev, keywordToRemove]);
+    }
+  };
+
+  // --- Images ---
+  const [images, setImages] = useState([]);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageError, setImageError] = useState(null);
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadingImage(true);
+    setImageError(null);
+    const formData = new FormData();
+    formData.append('image', file);
+    try {
+      const res = await apiClient.post(`/api/integral/problems/${id}/upload-image/`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setImages((prev) => [...prev, res.data]);
+    } catch (err) {
+      setImageError('Зураг оруулахад алдаа гарлаа.');
+      console.error(err);
+    } finally {
+      setUploadingImage(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleImageDelete = async (imageId) => {
+    setImageError(null);
+    try {
+      await apiClient.delete(`/api/integral/problems/${id}/delete-image/${imageId}/`);
+      setImages((prev) => prev.filter((img) => img.id !== imageId));
+    } catch (err) {
+      setImageError('Зураг устгахад алдаа гарлаа.');
+      console.error(err);
     }
   };
 
@@ -934,6 +974,64 @@ const ProblemEditPage = () => {
                   ))}
                 </ListGroup>
               )}
+            </div>
+            <hr />
+
+            {/* --- Зурагнууд --- */}
+            <div id="images-section">
+              <h4>
+                <ImageIcon size={20} className="me-2" />
+                Зурагнууд
+              </h4>
+              {imageError && (
+                <Alert variant="danger" className="py-2 small mb-2">{imageError}</Alert>
+              )}
+              {images.length > 0 && (
+                <Row className="g-2 mb-3">
+                  {images.map((img) => (
+                    <Col key={img.id} xs={6} sm={4} md={3}>
+                      <div className="position-relative border rounded overflow-hidden" style={{ aspectRatio: '4/3' }}>
+                        <img
+                          src={img.image}
+                          alt=""
+                          className="w-100 h-100"
+                          style={{ objectFit: 'cover' }}
+                        />
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          className="position-absolute top-0 end-0 m-1 p-1 lh-1"
+                          onClick={() => handleImageDelete(img.id)}
+                          title="Зураг устгах"
+                        >
+                          <X size={14} />
+                        </Button>
+                      </div>
+                    </Col>
+                  ))}
+                </Row>
+              )}
+              <Form.Group>
+                <Form.Label
+                  htmlFor="image-upload-input"
+                  className="btn btn-outline-secondary btn-sm mb-0"
+                  style={{ cursor: 'pointer' }}
+                >
+                  {uploadingImage ? (
+                    <><Spinner as="span" animation="border" size="sm" className="me-1" />Оруулж байна...</>
+                  ) : (
+                    <><ImagePlus size={16} className="me-1" />Зураг нэмэх</>
+                  )}
+                </Form.Label>
+                <Form.Control
+                  id="image-upload-input"
+                  type="file"
+                  accept="image/*"
+                  className="d-none"
+                  onChange={handleImageUpload}
+                  disabled={uploadingImage}
+                />
+              </Form.Group>
             </div>
           </Card.Body>
           <Card.Footer className="d-flex justify-content-end">
