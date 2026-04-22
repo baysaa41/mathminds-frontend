@@ -64,6 +64,24 @@ const formatTime = (dateString) => {
   }
 };
 
+// Зураг дарахад ViewerJS-ээр нээх
+const openImageViewer = (e) => {
+  const img = e.currentTarget;
+  const container = img.closest('.message-images');
+  if (!container) return;
+  const viewer = new Viewer(container, {
+    inline: false,
+    navbar: container.querySelectorAll('img').length > 1,
+    title: false,
+    toolbar: { zoomIn: 1, zoomOut: 1, oneToOne: 1, reset: 1, rotateLeft: 1, rotateRight: 1 },
+    hidden() { viewer.destroy(); },
+  });
+  viewer.show();
+  const imgs = [...container.querySelectorAll('img')];
+  const idx = imgs.indexOf(img);
+  if (idx > 0) viewer.view(idx);
+};
+
 // React.memo: message prop өөрчлөгдөөгүй бол re-render хийхгүй
 // → MathJax/LivePreview зөвхөн шинэ мессеж дээр л ажиллана
 const MessageBubble = memo(function MessageBubble({ message, currentUserId, onReuse }) {
@@ -92,6 +110,7 @@ const MessageBubble = memo(function MessageBubble({ message, currentUserId, onRe
                 src={attachment.file}
                 alt=""
                 className="message-image"
+                onClick={openImageViewer}
                 style={{ cursor: 'pointer' }}
                 title="Томруулж харах"
               />
@@ -157,8 +176,6 @@ const MessagesPage = ({ aiOnly = false }) => {
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const emojiPickerRef = useRef(null);
-  const imageGalleryRef = useRef(null);
-  const viewerInstance = useRef(null);
   const lastMessageIdRef = useRef(0);
   const textareaRef = useRef(null);
 
@@ -343,63 +360,6 @@ const MessagesPage = ({ aiOnly = false }) => {
     }
   }, [messages, loadingMessages]);
 
-  // Initialize ViewerJS for image viewing
-  useEffect(() => {
-    const hasAttachments = messages.some(
-      (msg) => msg.attachments && msg.attachments.length > 0
-    );
-
-    if (hasAttachments && imageGalleryRef.current) {
-      const timer = setTimeout(() => {
-        if (viewerInstance.current) {
-          viewerInstance.current.destroy();
-          viewerInstance.current = null;
-        }
-
-        const images = imageGalleryRef.current.querySelectorAll('.message-image');
-        if (images.length === 0) return;
-
-        viewerInstance.current = new Viewer(imageGalleryRef.current, {
-          inline: false,
-          button: true,
-          navbar: images.length > 1,
-          title: false,
-          toolbar: {
-            zoomIn: 1,
-            zoomOut: 1,
-            oneToOne: 1,
-            reset: 1,
-            prev: images.length > 1 ? 1 : 0,
-            next: images.length > 1 ? 1 : 0,
-            rotateLeft: 1,
-            rotateRight: 1,
-            flipHorizontal: 1,
-            flipVertical: 1,
-          },
-          tooltip: true,
-          movable: true,
-          zoomable: true,
-          rotatable: true,
-          scalable: true,
-          transition: true,
-          fullscreen: true,
-          keyboard: true,
-          zoomRatio: 0.1,
-          minZoomRatio: 0.1,
-          maxZoomRatio: 3,
-          filter: (image) => image.classList.contains('message-image'),
-        });
-      }, 200);
-
-      return () => {
-        clearTimeout(timer);
-        if (viewerInstance.current) {
-          viewerInstance.current.destroy();
-          viewerInstance.current = null;
-        }
-      };
-    }
-  }, [messages]);
 
   // Close emoji picker when clicking outside
   useEffect(() => {
@@ -891,7 +851,7 @@ const MessagesPage = ({ aiOnly = false }) => {
             </div>
 
             {/* Messages */}
-            <div className="chat-messages" ref={imageGalleryRef}>
+            <div className="chat-messages">
               {loadingMessages ? (
                 <div className="d-flex justify-content-center p-4">
                   <Spinner animation="border" size="sm" />
