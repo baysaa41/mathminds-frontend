@@ -11,6 +11,7 @@ import NewConversationModal from '../components/NewConversationModal';
 
 // ViewerJS for image viewing
 import Viewer from 'viewerjs';
+import 'viewerjs/dist/viewer.css';
 
 // React Bootstrap компонентууд
 import Spinner from 'react-bootstrap/Spinner';

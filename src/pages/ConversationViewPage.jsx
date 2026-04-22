@@ -3,7 +3,7 @@
 // - Нэвтрэлтгүй хэрэглэгч: read-only
 // - Нэвтэрсэн гишүүн: /messages эсвэл /ai-chat руу redirect
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getConversation, getConversationMessages } from '../services/conversationService';
@@ -14,6 +14,8 @@ import Container from 'react-bootstrap/Container';
 import Card from 'react-bootstrap/Card';
 import Badge from 'react-bootstrap/Badge';
 import Alert from 'react-bootstrap/Alert';
+import Viewer from 'viewerjs';
+import 'viewerjs/dist/viewer.css';
 
 const formatTime = (dateString) => {
   const date = new Date(dateString);
@@ -38,6 +40,8 @@ const ConversationViewPage = () => {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const galleryRef = useRef(null);
+  const viewerRef = useRef(null);
 
   useEffect(() => {
     const load = async () => {
@@ -56,6 +60,29 @@ const ConversationViewPage = () => {
     };
     load();
   }, [conversationUuid]);
+
+  // Viewer initialize
+  useEffect(() => {
+    const hasImages = messages.some((m) => m.attachments?.length > 0);
+    if (!hasImages || !galleryRef.current) return;
+    const timer = setTimeout(() => {
+      viewerRef.current?.destroy();
+      const imgs = galleryRef.current.querySelectorAll('.conv-img');
+      if (!imgs.length) return;
+      viewerRef.current = new Viewer(galleryRef.current, {
+        inline: false,
+        navbar: imgs.length > 1,
+        title: false,
+        toolbar: { zoomIn: 1, zoomOut: 1, oneToOne: 1, reset: 1, rotateLeft: 1, rotateRight: 1 },
+        filter: (img) => img.classList.contains('conv-img'),
+      });
+    }, 200);
+    return () => {
+      clearTimeout(timer);
+      viewerRef.current?.destroy();
+      viewerRef.current = null;
+    };
+  }, [messages]);
 
   // Нэвтэрсэн гишүүн бол /messages эсвэл /ai-chat руу redirect
   useEffect(() => {
@@ -118,7 +145,7 @@ const ConversationViewPage = () => {
       {/* Messages */}
       <Card className="shadow-sm border-0">
         <Card.Body className="p-0">
-          <div style={{ maxHeight: '70vh', overflowY: 'auto', padding: '16px' }}>
+          <div ref={galleryRef} style={{ maxHeight: '70vh', overflowY: 'auto', padding: '16px' }}>
             {messages.length === 0 ? (
               <div className="text-center text-muted py-5">Мессеж байхгүй байна.</div>
             ) : (
@@ -145,8 +172,9 @@ const ConversationViewPage = () => {
                             key={att.id}
                             src={att.file}
                             alt=""
-                            className="mt-2 rounded"
-                            style={{ maxWidth: '100%', maxHeight: '300px', objectFit: 'contain' }}
+                            className="conv-img mt-2 rounded"
+                            style={{ maxWidth: '100%', maxHeight: '300px', objectFit: 'contain', cursor: 'pointer' }}
+                            title="Томруулж харах"
                           />
                         ))}
                       </div>
