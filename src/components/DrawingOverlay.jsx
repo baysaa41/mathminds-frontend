@@ -7,23 +7,22 @@ import { Excalidraw } from '@excalidraw/excalidraw';
 import '@excalidraw/excalidraw/index.css';
 import Button from 'react-bootstrap/Button';
 import Spinner from 'react-bootstrap/Spinner';
-import { Save, X, PenLine, Sun, SunDim } from 'lucide-react';
+import { Save, X, PenLine, Sun, SunDim, Trash2 } from 'lucide-react';
 import apiClient from '../api/axiosConfig.js';
 
-const TRANSPARENT_CSS = `
+const ISLAND_VISIBILITY_CSS = `
+  .drawing-overlay-excalidraw .excalidraw .Island {
+    box-shadow: 0 2px 10px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.08) !important;
+  }
+`;
+
+const TRANSPARENT_CSS = ISLAND_VISIBILITY_CSS + `
   .drawing-overlay-excalidraw .excalidraw {
     background: transparent !important;
   }
-  .drawing-overlay-excalidraw .excalidraw .layer-ui__wrapper {
-    background: transparent;
-  }
 `;
 
-const WHITE_CSS = `
-  .drawing-overlay-excalidraw .excalidraw .layer-ui__wrapper {
-    background: transparent;
-  }
-`;
+const TOOLBAR_HEIGHT = 48;
 
 export default function DrawingOverlay() {
   const [show, setShow] = useState(false);
@@ -36,7 +35,7 @@ export default function DrawingOverlay() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState(null);
   const [loadKey, setLoadKey] = useState(0);
-  const [bgWhite, setBgWhite] = useState(false);
+  const [bgWhite, setBgWhite] = useState(true);
 
   // Listen for open event
   useEffect(() => {
@@ -81,6 +80,10 @@ export default function DrawingOverlay() {
               appState: {
                 ...(existing.drawing_data.appState || {}),
                 viewBackgroundColor: isWhite ? '#ffffff' : 'transparent',
+                zenModeEnabled: false,
+                viewModeEnabled: false,
+                openMenu: null,
+                openDialog: null,
               },
               files: existing.drawing_data.files || null,
             });
@@ -172,35 +175,32 @@ export default function DrawingOverlay() {
 
   return (
     <>
-      <style>{bgWhite ? WHITE_CSS : TRANSPARENT_CSS}</style>
+      <style>{bgWhite ? ISLAND_VISIBILITY_CSS : TRANSPARENT_CSS}</style>
 
-      {/* Fullscreen overlay */}
       <div
         style={{
           position: 'fixed',
           inset: 0,
           zIndex: 2000,
+          display: 'flex',
+          flexDirection: 'column',
           pointerEvents: 'auto',
         }}
       >
-        {/* Floating toolbar — top right */}
+        {/* Toolbar мөр — canvas-ийн ДЭЭР, Excalidraw UI-тай огт давхцахгүй */}
         <div
           style={{
-            position: 'absolute',
-            top: 12,
-            right: 12,
-            zIndex: 100,
+            height: TOOLBAR_HEIGHT,
+            flexShrink: 0,
             display: 'flex',
             alignItems: 'center',
             gap: 8,
-            background: 'rgba(255, 255, 255, 0.88)',
+            padding: '0 12px',
+            background: 'rgba(255, 255, 255, 0.95)',
             backdropFilter: 'blur(10px)',
             WebkitBackdropFilter: 'blur(10px)',
-            padding: '6px 12px',
-            borderRadius: 10,
-            boxShadow: '0 2px 16px rgba(0,0,0,0.18)',
-            border: '1px solid rgba(110,66,193,0.25)',
-            maxWidth: 420,
+            borderBottom: '1px solid rgba(110,66,193,0.2)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
           }}
         >
           <PenLine size={16} style={{ color: '#6f42c1', flexShrink: 0 }} />
@@ -211,7 +211,8 @@ export default function DrawingOverlay() {
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
-              maxWidth: 180,
+              flex: 1,
+              minWidth: 0,
             }}
           >
             {problemTitle || 'Зургийн тэмдэглэл'}
@@ -230,10 +231,25 @@ export default function DrawingOverlay() {
 
           <Button
             size="sm"
-            variant={bgWhite ? 'outline-secondary' : 'outline-secondary'}
+            variant="outline-danger"
+            onClick={() => {
+              if (excalidrawAPI && window.confirm('Бүх зургийг устгах уу?')) {
+                excalidrawAPI.resetScene();
+              }
+            }}
+            title="Бүгдийг устгах"
+            style={{ flexShrink: 0 }}
+            disabled={!excalidrawAPI}
+          >
+            <Trash2 size={15} />
+          </Button>
+
+          <Button
+            size="sm"
+            variant="outline-secondary"
             onClick={handleToggleBg}
             title={bgWhite ? 'Тунгалаг болгох' : 'Цагаан дэвсгэр'}
-            style={{ flexShrink: 0, padding: '4px 8px' }}
+            style={{ flexShrink: 0 }}
           >
             {bgWhite ? <SunDim size={15} /> : <Sun size={15} />}
           </Button>
@@ -257,17 +273,17 @@ export default function DrawingOverlay() {
             size="sm"
             variant="outline-secondary"
             onClick={handleClose}
-            style={{ flexShrink: 0, padding: '4px 8px' }}
+            style={{ flexShrink: 0 }}
             title="Хаах (Esc)"
           >
             <X size={15} />
           </Button>
         </div>
 
-        {/* Excalidraw — transparent background */}
+        {/* Excalidraw — toolbar-ийн доор, бүтэн өргөнөөр */}
         <div
           className="drawing-overlay-excalidraw"
-          style={{ width: '100%', height: '100%' }}
+          style={{ flex: 1, minHeight: 0 }}
         >
           <Excalidraw
             key={`overlay-${loadKey}`}

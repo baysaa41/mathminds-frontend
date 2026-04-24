@@ -43,6 +43,7 @@ const ProblemsPage = lazy(() => import('./pages/ProblemsPage.jsx'));
 const ProblemsBrowsePage = lazy(() => import('./pages/ProblemsBrowsePage.jsx'));
 const SolutionEditPage = lazy(() => import('./pages/SolutionEditPage.jsx'));
 const SolutionDrawPage = lazy(() => import('./pages/SolutionDrawPage.jsx'));
+const DrawPage = lazy(() => import('./pages/DrawPage.jsx'));
 
 // Formulas
 const FormulasPage = lazy(() => import('./pages/FormulasPage.jsx'));
@@ -257,6 +258,16 @@ function App() {
           element={
             <ProtectedRoute>
               <SolutionDrawPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Ерөнхий зурах хуудас — аль ч хуудаснаас дуудагдах боломжтой */}
+        <Route
+          path="/draw"
+          element={
+            <ProtectedRoute>
+              <DrawPage />
             </ProtectedRoute>
           }
         />

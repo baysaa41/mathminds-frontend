@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react';
 import RightSidebar from '../components/RightSidebar';
-import DrawingOverlay from '../components/DrawingOverlay';
 import JoinClubModal from '../components/JoinClubModal';
 import ScrollRestoration from '../components/ScrollRestoration';
 import AppHeader from './AppHeader';
@@ -124,7 +123,6 @@ const Layout = () => {
           onSuccess={handleJoinSuccess}
         />
 
-        <DrawingOverlay />
       </div>
     </MathJaxContext>
   );

@@ -7,7 +7,7 @@ import '@excalidraw/excalidraw/index.css';
 import Offcanvas from 'react-bootstrap/Offcanvas';
 import Button from 'react-bootstrap/Button';
 import Spinner from 'react-bootstrap/Spinner';
-import { Save, X, PenLine } from 'lucide-react';
+import { Save, X, PenLine, Trash2 } from 'lucide-react';
 import apiClient from '../api/axiosConfig.js';
 
 export default function DrawingPanel({ show, onHide, pageUrl, problemTitle, onSaved }) {
@@ -45,7 +45,13 @@ export default function DrawingPanel({ show, onHide, pageUrl, problemTitle, onSa
         if (existing.drawing_data) {
           setInitialData({
             elements: existing.drawing_data.elements || [],
-            appState: existing.drawing_data.appState || {},
+            appState: {
+              ...(existing.drawing_data.appState || {}),
+              zenModeEnabled: false,
+              viewModeEnabled: false,
+              openMenu: null,
+              openDialog: null,
+            },
             files: existing.drawing_data.files || null,
           });
         }
@@ -129,6 +135,22 @@ export default function DrawingPanel({ show, onHide, pageUrl, problemTitle, onSa
         )}
 
         <Button
+          variant="outline-danger"
+          size="sm"
+          onClick={() => {
+            if (excalidrawAPI && window.confirm('Бүх зургийг устгах уу?')) {
+              excalidrawAPI.resetScene();
+            }
+          }}
+          title="Бүгдийг устгах"
+          disabled={!excalidrawAPI}
+          className="flex-shrink-0"
+          style={{ padding: '4px 8px' }}
+        >
+          <Trash2 size={15} />
+        </Button>
+
+        <Button
           variant="primary"
           size="sm"
           onClick={handleSave}
@@ -153,13 +175,13 @@ export default function DrawingPanel({ show, onHide, pageUrl, problemTitle, onSa
         </Button>
       </Offcanvas.Header>
 
-      <Offcanvas.Body style={{ padding: 0, overflow: 'hidden' }}>
+      <Offcanvas.Body style={{ padding: 0, display: 'flex', flexDirection: 'column' }}>
         {loading ? (
           <div className="d-flex justify-content-center align-items-center h-100">
             <Spinner animation="border" />
           </div>
         ) : (
-          <div style={{ width: '100%', height: '100%' }}>
+          <div style={{ flex: 1, minHeight: 0 }}>
             <Excalidraw
               key={`draw-${loadKey}`}
               excalidrawAPI={(api) => setExcalidrawAPI(api)}

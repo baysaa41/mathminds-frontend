@@ -8,6 +8,8 @@ import '@excalidraw/excalidraw/index.css';
 import apiClient from '../api/axiosConfig.js';
 import { Save, ArrowLeft, PenLine } from 'lucide-react';
 
+const TOOLBAR_H = 52;
+
 export default function SolutionDrawPage() {
   const { uuid: problemUuid } = useParams();
   const navigate = useNavigate();
@@ -16,8 +18,8 @@ export default function SolutionDrawPage() {
 
   const [excalidrawAPI, setExcalidrawAPI] = useState(null);
   const [problem, setProblem] = useState(null);
-  const [drawing, setDrawing] = useState(null); // PageDrawing object
-  const [initialData, setInitialData] = useState(null);
+  const [drawing, setDrawing] = useState(null);
+  const [initialData, setInitialData] = useState(undefined);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -41,17 +43,19 @@ export default function SolutionDrawPage() {
 
       const list = drawRes.data.results ?? drawRes.data ?? [];
       const existing = list[0];
-      if (existing) {
+      if (existing?.drawing_data) {
         setDrawing(existing);
-        if (existing.drawing_data) {
-          setInitialData({
-            elements: existing.drawing_data.elements || [],
-            appState: existing.drawing_data.appState || {},
-            files: existing.drawing_data.files || null,
-          });
-        }
+        setInitialData({
+          elements: existing.drawing_data.elements || [],
+          appState: {
+            zenModeEnabled: false,
+            viewModeEnabled: false,
+            viewBackgroundColor: existing.drawing_data.appState?.viewBackgroundColor || '#ffffff',
+          },
+          files: existing.drawing_data.files || null,
+        });
       }
-    } catch (err) {
+    } catch {
       setError('Мэдээлэл татахад алдаа гарлаа.');
     } finally {
       setLoading(false);
@@ -98,52 +102,40 @@ export default function SolutionDrawPage() {
     }
   };
 
-  const handleBack = () => {
-    navigate(`/problem/${problemUuid}`);
-  };
-
-  if (loading) {
-    return (
-      <div
-        className="d-flex justify-content-center align-items-center"
-        style={{ height: '100vh' }}
-      >
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Ачааллаж байна...</span>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+    // position:fixed + inset:0 → Bootstrap CSS-аас үл хамаарч viewport дүүрэн
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: '#fff' }}>
       {/* Toolbar */}
       <div
         style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: TOOLBAR_H,
           display: 'flex',
           alignItems: 'center',
-          gap: '10px',
-          padding: '8px 14px',
+          gap: 10,
+          padding: '0 14px',
           backgroundColor: '#fff',
           borderBottom: '1px solid #dee2e6',
-          flexShrink: 0,
           zIndex: 10,
-          minHeight: '52px',
+          boxSizing: 'border-box',
         }}
       >
         <button
           className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
-          onClick={handleBack}
+          onClick={() => navigate(`/problem/${problemUuid}`)}
           disabled={saving}
         >
           <ArrowLeft size={15} />
           Буцах
         </button>
 
-        <PenLine size={18} className="text-primary" />
+        <PenLine size={18} className="text-primary" style={{ flexShrink: 0 }} />
         <span
           className="fw-semibold text-truncate"
-          style={{ flex: 1, minWidth: 0, maxWidth: '600px' }}
+          style={{ flex: 1, minWidth: 0 }}
         >
           {problem?.title || 'Зурах'}
         </span>
@@ -153,7 +145,6 @@ export default function SolutionDrawPage() {
             {error}
           </span>
         )}
-
         {saved && (
           <span className="text-success small fw-semibold" style={{ flexShrink: 0 }}>
             Хадгалагдлаа!
@@ -181,12 +172,28 @@ export default function SolutionDrawPage() {
       </div>
 
       {/* Excalidraw canvas */}
-      <div style={{ flex: 1, overflow: 'hidden' }}>
-        <Excalidraw
-          excalidrawAPI={(api) => setExcalidrawAPI(api)}
-          initialData={initialData}
-          langCode="en"
-        />
+      <div
+        style={{
+          position: 'absolute',
+          top: TOOLBAR_H,
+          left: 0,
+          right: 0,
+          bottom: 0,
+        }}
+      >
+        {loading ? (
+          <div className="d-flex justify-content-center align-items-center h-100">
+            <div className="spinner-border text-primary" role="status">
+              <span className="visually-hidden">Ачааллаж байна...</span>
+            </div>
+          </div>
+        ) : (
+          <Excalidraw
+            excalidrawAPI={(api) => setExcalidrawAPI(api)}
+            initialData={initialData}
+            langCode="en"
+          />
+        )}
       </div>
     </div>
   );

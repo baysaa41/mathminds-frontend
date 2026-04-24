@@ -52,9 +52,9 @@ export default function AppHeader() {
   const handleLogout = () => { logout(); navigate('/login'); };
 
   const handleOpenDraw = () => {
-    window.dispatchEvent(new CustomEvent('openDrawingOverlay', {
-      detail: { pageUrl: location.pathname },
-    }));
+    navigate('/draw', {
+      state: { pageUrl: location.pathname },
+    });
   };
 
   const close = () => setShowSidebar(false);
