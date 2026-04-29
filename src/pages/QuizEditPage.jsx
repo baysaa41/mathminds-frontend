@@ -22,7 +22,7 @@ import InputGroup from 'react-bootstrap/InputGroup';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 
-import { Edit3, Save, X, FileText, AlignLeft, Clock, GraduationCap, PlusCircle, Sparkles, Trash2, ArrowLeftRight, Download, Wand2 } from 'lucide-react';
+import { Edit3, Save, X, FileText, AlignLeft, Clock, GraduationCap, PlusCircle, Sparkles, Trash2, ArrowLeftRight, Download, Wand2, Copy } from 'lucide-react';
 
 // ── Бодлогын мөр (selected list болон modal аль алинд) ──────────
 const ProblemMeta = ({ problem }) => (
@@ -343,6 +343,20 @@ const QuizEditPage = () => {
       console.error('LaTeX export error:', err);
     } finally {
       setExportingLatex(false);
+    }
+  };
+
+  // ── Хуулбар тест үүсгэх ──────────────────────────────────────
+  const [cloning, setCloning] = useState(false);
+
+  const handleClone = async () => {
+    setCloning(true);
+    try {
+      const res = await apiClient.post(`/api/integral/quizzes/${id}/clone/`);
+      navigate(`/quiz/${res.data.new_uuid}/edit`);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Тест хуулахад алдаа гарлаа.');
+      setCloning(false);
     }
   };
 
@@ -784,6 +798,18 @@ const QuizEditPage = () => {
                       <><Spinner as="span" animation="border" size="sm" className="me-2" />Бэлтгэж байна...</>
                     ) : (
                       <><Download size={16} className="me-2" />LaTeX татах (.tex)</>
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline-secondary"
+                    onClick={handleClone}
+                    disabled={cloning || saving}
+                    title="Яг ижил бодлогуудтай хуулбар тест үүсгэх"
+                  >
+                    {cloning ? (
+                      <><Spinner as="span" animation="border" size="sm" className="me-2" />Хуулж байна...</>
+                    ) : (
+                      <><Copy size={16} className="me-2" />Хуулбар үүсгэх</>
                     )}
                   </Button>
                   <Button variant="outline-secondary" onClick={() => navigate(`/quiz/${id}`)} disabled={saving}>
