@@ -26,6 +26,8 @@ import {
   MessageCircle,
   BotMessageSquare,
   PenLine,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 export default function AppHeader() {
@@ -77,6 +79,26 @@ export default function AppHeader() {
             <i className="bi bi-house me-2"></i>
             <span className="d-none d-sm-inline">MathMinds.Club</span>
           </Navbar.Brand>
+
+          {/* Back / Forward */}
+          <div className="d-flex gap-1 me-2">
+            <Button
+              variant="outline-secondary" size="sm"
+              className="py-0 px-1"
+              onClick={() => window.history.back()}
+              title="Буцах"
+            >
+              <ChevronLeft size={16} />
+            </Button>
+            <Button
+              variant="outline-secondary" size="sm"
+              className="py-0 px-1"
+              onClick={() => window.history.forward()}
+              title="Урагш"
+            >
+              <ChevronRight size={16} />
+            </Button>
+          </div>
 
           {/* Mobile toggle */}
           <Navbar.Toggle aria-controls="main-navbar" onClick={() => setShowSidebar(true)} />

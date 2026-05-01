@@ -23,6 +23,98 @@ import Form from 'react-bootstrap/Form';
 import InputGroup from 'react-bootstrap/InputGroup';
 
 // -------------------------------------------------------------------
+// Сул тал + санал болгосон quiz хэсэг
+// -------------------------------------------------------------------
+const WeaknessPanel = ({ sheetId }) => {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiClient.get(`/api/integral/answer-sheets/${sheetId}/recommend/`)
+      .then(r => setData(r.data))
+      .catch(() => setData(null))
+      .finally(() => setLoading(false));
+  }, [sheetId]);
+
+  if (loading) return (
+    <Card className="mb-4">
+      <Card.Body className="py-3 text-center">
+        <Spinner animation="border" size="sm" className="me-2" />
+        <span className="small text-muted">Зөвлөмж боловсруулж байна...</span>
+      </Card.Body>
+    </Card>
+  );
+
+  if (!data || (!data.weak_categories?.length && !data.recommended_quizzes?.length)) return null;
+
+  const pct = data.correct_rate != null ? Math.round(data.correct_rate * 100) : null;
+
+  return (
+    <Card className="mb-4 border-warning">
+      <Card.Header className="bg-warning bg-opacity-10 border-warning">
+        <h5 className="mb-0 text-warning-emphasis">
+          <i className="bi bi-lightbulb me-2"></i>
+          Давтан үзэх сэдэв
+        </h5>
+      </Card.Header>
+      <Card.Body>
+        {/* Ерөнхий гүйцэтгэл */}
+        {pct != null && (
+          <div className="small text-muted mb-3">
+            Нийт зөв хариулт: <strong>{pct}%</strong>
+            {pct >= 80 && <span className="text-success ms-2">— Маш сайн!</span>}
+            {pct >= 60 && pct < 80 && <span className="text-warning ms-2">— Дундаас дээш</span>}
+            {pct < 60 && <span className="text-danger ms-2">— Нэмж дасгал хэрэгтэй</span>}
+          </div>
+        )}
+
+        {/* Сул сэдвүүд */}
+        {data.weak_categories?.length > 0 && (
+          <div className="mb-3">
+            <div className="small fw-semibold mb-2 text-secondary">Сул сэдвүүд:</div>
+            <div className="d-flex flex-wrap gap-2">
+              {data.weak_categories.map(cat => (
+                <div key={cat.id}
+                  className="d-flex align-items-center gap-1 rounded px-2 py-1 border"
+                  style={{ fontSize: '0.82rem' }}>
+                  <span className={`badge bg-${cat.color || 'secondary'} me-1`}
+                    style={{ width: 8, height: 8, borderRadius: '50%', padding: 0 }}>&nbsp;</span>
+                  <span className="fw-medium">{cat.name_mn || cat.name}</span>
+                  <span className="text-danger ms-1">
+                    {Math.round(cat.fail_rate * 100)}% буруу ({cat.correct}/{cat.total})
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Санал болгосон quiz-ууд */}
+        {data.recommended_quizzes?.length > 0 && (
+          <div>
+            <div className="small fw-semibold mb-2 text-secondary">Санал болгосон дасгал:</div>
+            <div className="d-flex flex-column gap-2">
+              {data.recommended_quizzes.map(q => (
+                <Link
+                  key={q.quiz_id}
+                  to={`/quiz/${q.quiz_uuid}`}
+                  className="d-flex align-items-center justify-content-between text-decoration-none border rounded px-3 py-2 bg-light"
+                >
+                  <span className="small fw-medium text-dark text-truncate me-2">{q.title}</span>
+                  <Badge bg="info" text="dark" className="flex-shrink-0" style={{ fontSize: '0.7rem' }}>
+                    {Math.round(q.coverage * 100)}% хамрах
+                  </Badge>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+      </Card.Body>
+    </Card>
+  );
+};
+
+// -------------------------------------------------------------------
 // Уламжлалт бодлогын оноо өгөх компонент (багшид)
 // -------------------------------------------------------------------
 const GradeInput = ({ answer, sheetId, onGraded }) => {
@@ -336,6 +428,9 @@ const QuizResultPage = () => {
           </Stack>
         </Card.Body>
       </Card>
+
+      {/* === Сул тал + санал болгосон дасгал (зөвхөн сурагчид) === */}
+      {!isTeacher && <WeaknessPanel sheetId={sheetId} />}
 
       {/* === Дэлгэрэнгүй хариултууд === */}
       <Card className="mb-4">

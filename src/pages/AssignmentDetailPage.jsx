@@ -10,7 +10,7 @@ import Form from 'react-bootstrap/Form';
 import Modal from 'react-bootstrap/Modal';
 import {
   ArrowLeft, PlayCircle, CheckCircle, Clock, Award,
-  Users, BarChart3,
+  Users, BarChart3, Trophy,
 } from 'lucide-react';
 import {
   getMySubmission, getSubmissions, getAssignmentProgress,
@@ -150,15 +150,26 @@ const AssignmentDetailPage = () => {
 
   return (
     <div className="container-fluid">
-      {/* Back button */}
-      <Button
-        variant="link"
-        size="sm"
-        className="text-muted mb-2 p-0"
-        onClick={() => navigate(`/clubs/${clubData?.id}/assignments`)}
-      >
-        <ArrowLeft size={14} className="me-1" />Даалгаврууд
-      </Button>
+      {/* Header: back + leaderboard */}
+      <div className="d-flex align-items-center justify-content-between mb-2">
+        <Button
+          variant="link"
+          size="sm"
+          className="text-muted p-0"
+          onClick={() => navigate(`/clubs/${clubData?.id}/assignments`)}
+        >
+          <ArrowLeft size={14} className="me-1" />Даалгаврууд
+        </Button>
+        {isTeacherOrAdmin && (
+          <Button
+            variant="outline-warning"
+            size="sm"
+            onClick={() => navigate(`/clubs/${clubData?.id}/assignments/${assignmentId}/leaderboard`)}
+          >
+            <Trophy size={14} className="me-1" />Дүнгийн жагсаалт
+          </Button>
+        )}
+      </div>
 
       {/* Assignment info */}
       <Card className="shadow-sm mb-3">

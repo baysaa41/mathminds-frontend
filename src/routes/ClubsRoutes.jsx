@@ -11,12 +11,14 @@ import ClubVideosPage from '../pages/ClubVideosPage';
 import ClubMediaPage from '../pages/ClubMediaPage';
 import ClubAssignmentsPage from '../pages/ClubAssignmentsPage';
 import AssignmentDetailPage from '../pages/AssignmentDetailPage';
+import AssignmentLeaderboardPage from '../pages/AssignmentLeaderboardPage';
 import ClubLessonsPage from '../pages/ClubLessonsPage';
 import ClubExercisesPage from '../pages/ClubExercisesPage';
-import ClubQuizzesPage from '../pages/ClubQuizzesPage';
 import ClubExamsPage from '../pages/ClubExamsPage';
 import ClubMembersPage from '../pages/ClubMembersPage';
 import ClubFilesPage from '../pages/ClubFilesPage';
+import ClubSubGroupsPage from '../pages/ClubSubGroupsPage';
+import ClubScoresPage from '../pages/ClubScoresPage';
 import CreateClub from '../pages/CreateClub';
 
 const ClubsRoutes = () => {
@@ -41,8 +43,10 @@ const ClubsRoutes = () => {
         <Route path="exercises" element={<ClubExercisesPage />} />
         <Route path="assignments" element={<ClubAssignmentsPage />} />
         <Route path="assignments/:assignmentId" element={<AssignmentDetailPage />} />
-        <Route path="quizzes" element={<ClubQuizzesPage />} />
+        <Route path="assignments/:assignmentId/leaderboard" element={<AssignmentLeaderboardPage />} />
         <Route path="exams" element={<ClubExamsPage />} />
+        <Route path="subgroups" element={<ClubSubGroupsPage />} />
+        <Route path="scores" element={<ClubScoresPage />} />
         <Route path="members" element={<ClubMembersPage />} />
       </Route>
     </Routes>

@@ -435,13 +435,23 @@ const QuizDetailPage = () => {
           )}
 
           {canEdit && (
-            <div className="d-flex justify-content-end gap-2 mt-3">
-              <Button variant="outline-primary" size="sm" onClick={handleEditClick} title="Засварлах">
-                <i className="bi bi-pencil"></i>
-              </Button>
-              <Button variant="outline-success" size="sm" onClick={handleCreatePost} title="Постлох">
-                <i className="bi bi-megaphone"></i>
-              </Button>
+            <div className="d-flex justify-content-between align-items-center gap-2 mt-3">
+              <Link
+                to={`/quiz/${id}/leaderboard`}
+                className="btn btn-outline-warning btn-sm"
+                title="Дүнгийн жагсаалт"
+              >
+                <i className="bi bi-trophy me-1"></i>
+                Дүнгийн жагсаалт
+              </Link>
+              <div className="d-flex gap-2">
+                <Button variant="outline-primary" size="sm" onClick={handleEditClick} title="Засварлах">
+                  <i className="bi bi-pencil"></i>
+                </Button>
+                <Button variant="outline-success" size="sm" onClick={handleCreatePost} title="Постлох">
+                  <i className="bi bi-megaphone"></i>
+                </Button>
+              </div>
             </div>
           )}
 

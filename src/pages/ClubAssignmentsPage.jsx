@@ -12,7 +12,7 @@ import ListGroup from 'react-bootstrap/ListGroup';
 import InputGroup from 'react-bootstrap/InputGroup';
 import {
   ClipboardList, Plus, Clock, CheckCircle, PlayCircle,
-  Trash2, Award, Search, ClipboardPlus,
+  Trash2, Award, Search, ClipboardPlus, Trophy,
 } from 'lucide-react';
 import EmptyState from '../components/common/EmptyState';
 import {
@@ -156,7 +156,12 @@ const ClubAssignmentsPage = () => {
   };
 
   const handleViewResult = (assignment) => {
-    if (assignment.quiz_uuid) navigate(`/quiz/${assignment.quiz_uuid}/result`);
+    const sheetId = assignment.my_submission?.answer_sheet_id;
+    if (assignment.quiz_uuid && sheetId) {
+      navigate(`/quiz/${assignment.quiz_uuid}/result/${sheetId}`);
+    } else if (assignment.quiz_uuid) {
+      navigate(`/quiz/${assignment.quiz_uuid}`);
+    }
   };
 
   const now = new Date();
@@ -267,12 +272,21 @@ const ClubAssignmentsPage = () => {
                         </>
                       )}
                       {isTeacherOrAdmin && (
-                        <Button
-                          variant="outline-danger" size="sm" className="py-0 px-1"
-                          onClick={() => handleDelete(a.id, a.title)} title="Устгах"
-                        >
-                          <Trash2 size={14} />
-                        </Button>
+                        <>
+                          <Button
+                            variant="outline-warning" size="sm" className="py-0 px-1"
+                            onClick={() => navigate(`/clubs/${clubId}/assignments/${a.id}/leaderboard`)}
+                            title="Дүнгийн жагсаалт"
+                          >
+                            <Trophy size={14} />
+                          </Button>
+                          <Button
+                            variant="outline-danger" size="sm" className="py-0 px-1"
+                            onClick={() => handleDelete(a.id, a.title)} title="Устгах"
+                          >
+                            <Trash2 size={14} />
+                          </Button>
+                        </>
                       )}
                     </div>
                   </div>
