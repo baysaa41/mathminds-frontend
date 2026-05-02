@@ -910,8 +910,8 @@ const PostCard = ({ post, onPostDeleted, depth = 0, compact = false, onCardClick
       >
         {/* Клубын пост мэдээлэл */}
         {currentPost.club && (
-          <div className="small px-3 pt-2 pb-1 border-bottom" style={{ background: '#f0f4ff' }}>
-            <i className="bi bi-people-fill me-2 text-primary"></i>
+          <div className="small px-3 pt-2 pb-1 border-bottom d-flex align-items-center gap-2" style={{ background: '#f0f4ff' }}>
+            <i className="bi bi-people-fill text-primary"></i>
             <Link
               to={`/clubs/${currentPost.club.id}`}
               className="text-primary fw-semibold text-decoration-none"
@@ -919,6 +919,11 @@ const PostCard = ({ post, onPostDeleted, depth = 0, compact = false, onCardClick
             >
               {currentPost.club.name}
             </Link>
+            {currentPost.subgroup && (
+              <Badge bg={currentPost.subgroup.color || 'secondary'} className="small">
+                {currentPost.subgroup.name}
+              </Badge>
+            )}
           </div>
         )}
 

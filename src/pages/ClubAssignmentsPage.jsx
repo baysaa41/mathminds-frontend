@@ -12,7 +12,7 @@ import ListGroup from 'react-bootstrap/ListGroup';
 import InputGroup from 'react-bootstrap/InputGroup';
 import {
   ClipboardList, Plus, Clock, CheckCircle, PlayCircle,
-  Trash2, Award, Search, ClipboardPlus, Trophy,
+  Trash2, Award, Search, ClipboardPlus, Trophy, Users,
 } from 'lucide-react';
 import EmptyState from '../components/common/EmptyState';
 import {
@@ -35,6 +35,7 @@ const ClubAssignmentsPage = () => {
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [startingId, setStartingId] = useState(null);
+  const [clubSubgroups, setClubSubgroups] = useState([]);
 
   // Quiz search + assign modal
   const [showQuizSearch, setShowQuizSearch] = useState(false);
@@ -43,9 +44,9 @@ const ClubAssignmentsPage = () => {
   const [quizLoading, setQuizLoading] = useState(false);
   const [assigningQuizId, setAssigningQuizId] = useState(null);
 
-  // Assign confirm modal (deadline, title)
+  // Assign confirm modal (deadline, title, subgroups)
   const [assignModal, setAssignModal] = useState(null); // quiz object
-  const [assignForm, setAssignForm] = useState({ title: '', deadline: '', allow_late: false });
+  const [assignForm, setAssignForm] = useState({ title: '', deadline: '', allow_late: false, subgroups: [] });
   const [creating, setCreating] = useState(false);
 
   const fetchAssignments = useCallback(async () => {
@@ -62,6 +63,13 @@ const ClubAssignmentsPage = () => {
   }, [clubId]);
 
   useEffect(() => { fetchAssignments(); }, [fetchAssignments]);
+
+  useEffect(() => {
+    if (!clubId || !isTeacherOrAdmin) return;
+    apiClient.get('/api/club-subgroups/', { params: { club: clubId } })
+      .then(r => setClubSubgroups(r.data.results || r.data || []))
+      .catch(() => {});
+  }, [clubId, isTeacherOrAdmin]);
 
   // ----- Quiz search -----
   const searchQuizzes = async (query) => {
@@ -91,7 +99,7 @@ const ClubAssignmentsPage = () => {
   const handleSelectQuiz = (quiz) => {
     setShowQuizSearch(false);
     setAssignModal(quiz);
-    setAssignForm({ title: quiz.title, deadline: '', allow_late: false });
+    setAssignForm({ title: quiz.title, deadline: '', allow_late: false, subgroups: [] });
   };
 
   // Даалгавар үүсгэх
@@ -103,6 +111,7 @@ const ClubAssignmentsPage = () => {
         title: assignForm.title,
         quiz: assignModal.id,
         allow_late: assignForm.allow_late,
+        subgroups: assignForm.subgroups,
       };
       if (assignForm.deadline) data.deadline = new Date(assignForm.deadline).toISOString();
       await createAssignment(clubId, data);
@@ -211,6 +220,11 @@ const ClubAssignmentsPage = () => {
                         {isExpired && !a.allow_late && (
                           <Badge bg="danger" className="small">Хугацаа дууссан</Badge>
                         )}
+                        {a.subgroup_info?.map(sg => (
+                          <Badge key={sg.id} bg={sg.color || 'secondary'} className="small d-flex align-items-center gap-1">
+                            <Users size={9} />{sg.name}
+                          </Badge>
+                        ))}
                       </div>
                       <div className="d-flex align-items-center gap-2 flex-wrap">
                         {a.deadline && (
@@ -388,6 +402,36 @@ const ClubAssignmentsPage = () => {
             checked={assignForm.allow_late}
             onChange={e => setAssignForm(f => ({ ...f, allow_late: e.target.checked }))}
           />
+          {clubSubgroups.length > 0 && (
+            <Form.Group className="mt-3">
+              <Form.Label className="small fw-medium d-flex align-items-center gap-1">
+                <Users size={13} />Дэд бүлэг (хоосон = бүх гишүүд)
+              </Form.Label>
+              <div className="d-flex flex-wrap gap-2">
+                {clubSubgroups.map(sg => (
+                  <Form.Check
+                    key={sg.id}
+                    type="checkbox"
+                    id={`sg-${sg.id}`}
+                    label={<Badge bg={sg.color || 'secondary'}>{sg.name}</Badge>}
+                    className="small"
+                    checked={assignForm.subgroups.includes(sg.id)}
+                    onChange={e => setAssignForm(f => ({
+                      ...f,
+                      subgroups: e.target.checked
+                        ? [...f.subgroups, sg.id]
+                        : f.subgroups.filter(id => id !== sg.id),
+                    }))}
+                  />
+                ))}
+              </div>
+              {assignForm.subgroups.length === 0 && (
+                <div className="text-muted" style={{ fontSize: '0.7rem' }}>
+                  Сонгоогүй бол бүх клубын гишүүдэд харагдана
+                </div>
+              )}
+            </Form.Group>
+          )}
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" size="sm" onClick={() => setAssignModal(null)}>Болих</Button>

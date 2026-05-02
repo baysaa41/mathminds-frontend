@@ -367,7 +367,7 @@ const AssignmentLeaderboardPage = () => {
     : null;
 
   return (
-    <div className="p-3" style={{ maxWidth: '100%' }}>
+    <div className="container-fluid py-3 px-2 px-md-3">
       {/* ── Толгой ── */}
       <div className="d-flex align-items-center gap-2 mb-3 flex-wrap">
         <Button variant="outline-secondary" size="sm"
@@ -454,12 +454,13 @@ const AssignmentLeaderboardPage = () => {
               <tr>
                 {/* Зэрэг */}
                 <th className="text-center" style={{
-                  width: 44, position: 'sticky', left: 0, zIndex: 3, background: '#f8f9fa',
+                  width: 44, minWidth: 44, maxWidth: 44, position: 'sticky', left: 0, zIndex: 3, background: '#f8f9fa',
                 }}>#</th>
 
                 {/* Сурагч */}
                 <th style={{
                   minWidth: 170, position: 'sticky', left: 44, zIndex: 3, background: '#f8f9fa',
+                  boxShadow: '2px 0 4px rgba(0,0,0,0.07)',
                 }}>
                   Сурагч ({filtered.length})
                 </th>
@@ -502,10 +503,12 @@ const AssignmentLeaderboardPage = () => {
                 <tr className="table-secondary" style={{ fontSize: '0.72rem' }}>
                   <td className="text-center text-muted" style={{
                     position: 'sticky', left: 0, zIndex: 2, background: '#e9ecef',
+                    width: 44, minWidth: 44, maxWidth: 44,
                   }}>∅</td>
                   <td style={{
                     position: 'sticky', left: 44, zIndex: 2, background: '#e9ecef',
                     fontWeight: 600, color: '#495057',
+                    boxShadow: '2px 0 4px rgba(0,0,0,0.07)',
                   }}>Дундаж</td>
                   {problemAvgs.map((avg, ci) => (
                     <td key={ci} className="text-center fw-semibold"
@@ -560,6 +563,7 @@ const AssignmentLeaderboardPage = () => {
                     {/* Зэрэг */}
                     <td className="text-center fw-bold" style={{
                       position: 'sticky', left: 0, zIndex: 1,
+                      width: 44, minWidth: 44, maxWidth: 44,
                       background: r.rank === 1 ? '#fff3cd' : r.rank <= 3 ? '#f8f9fa' : '#fff',
                     }}>
                       {r.rank != null
@@ -571,6 +575,7 @@ const AssignmentLeaderboardPage = () => {
                     <td style={{
                       position: 'sticky', left: 44, zIndex: 1,
                       background: r.rank === 1 ? '#fff3cd' : r.rank <= 3 ? '#f8f9fa' : '#fff',
+                      boxShadow: '2px 0 4px rgba(0,0,0,0.07)',
                     }}>
                       <div className="d-flex align-items-center gap-2">
                         <Avatar student={r.student} size={24} />

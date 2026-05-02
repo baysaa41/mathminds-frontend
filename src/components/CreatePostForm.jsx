@@ -50,6 +50,10 @@ const CreatePostForm = ({ onPostCreated, clubId = null, clubName = null }) => {
   const [myClubs, setMyClubs] = useState([]);
   const [loadingClubs, setLoadingClubs] = useState(false);
 
+  // Дэд бүлэг сонгох (зөвхөн clubId prop байвал)
+  const [clubSubgroups, setClubSubgroups] = useState([]);
+  const [selectedSubgroupId, setSelectedSubgroupId] = useState('');
+
   // UI State
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -70,6 +74,14 @@ const CreatePostForm = ({ onPostCreated, clubId = null, clubName = null }) => {
     if (!clubId) {
       fetchMyClubs();
     }
+  }, [clubId]);
+
+  // Клубын дэд бүлгүүдийг татаж авах
+  useEffect(() => {
+    if (!clubId) return;
+    apiClient.get('/api/club-subgroups/', { params: { club: clubId } })
+      .then(r => setClubSubgroups(r.data.results || r.data || []))
+      .catch(() => {});
   }, [clubId]);
 
   const fetchMyClubs = async () => {
@@ -145,6 +157,9 @@ const CreatePostForm = ({ onPostCreated, clubId = null, clubName = null }) => {
     if (targetClubId) {
       formData.append('club', targetClubId);
     }
+    if (selectedSubgroupId) {
+      formData.append('subgroup', selectedSubgroupId);
+    }
 
     if (relatedItem) {
       formData.append(`related_${contentType}_id`, relatedItem.uuid || relatedItem.id);
@@ -164,9 +179,10 @@ const CreatePostForm = ({ onPostCreated, clubId = null, clubName = null }) => {
       setContent('');
       setContentType('post');
       setRelatedItem(null);
-      setSelectedClubId(''); // Клуб сонголтыг цэвэрлэх
+      setSelectedClubId('');
+      setSelectedSubgroupId('');
       clearAllImages();
-      setPrefillData(null); // Context-г цэвэрлэх (Зөв)
+      setPrefillData(null);
     } catch (err) {
       const errorData = err.response?.data;
       if (typeof errorData === 'object' && errorData !== null) {
@@ -181,20 +197,38 @@ const CreatePostForm = ({ onPostCreated, clubId = null, clubName = null }) => {
   };
 
   /**
-   * Клубын Badge-г харуулах
+   * Клубын Badge болон дэд бүлэг сонгогч харуулах
    */
   const renderClubBadge = () => {
     if (!clubId || !clubName) return null;
 
+    const selectedSg = clubSubgroups.find(sg => String(sg.id) === selectedSubgroupId);
+
     return (
-      <Alert variant="success" className="py-2 px-3 small mb-2">
-        <div>
-          <Badge pill bg="success" className="me-2">
-            Клуб
-          </Badge>
+      <div className="mb-2">
+        <Alert variant="success" className="py-2 px-3 small mb-2">
+          <Badge pill bg="success" className="me-2">Клуб</Badge>
           {clubName}-д пост үүсгэж байна
-        </div>
-      </Alert>
+        </Alert>
+        {clubSubgroups.length > 0 && (
+          <Form.Select
+            size="sm"
+            value={selectedSubgroupId}
+            onChange={e => setSelectedSubgroupId(e.target.value)}
+            className="mb-1"
+          >
+            <option value="">Бүх гишүүдэд</option>
+            {clubSubgroups.map(sg => (
+              <option key={sg.id} value={sg.id}>{sg.name}</option>
+            ))}
+          </Form.Select>
+        )}
+        {selectedSg && (
+          <div className="small text-muted">
+            Зөвхөн <Badge bg={selectedSg.color || 'secondary'}>{selectedSg.name}</Badge> дэд бүлэгт харагдана
+          </div>
+        )}
+      </div>
     );
   };
 

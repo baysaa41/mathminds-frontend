@@ -68,7 +68,7 @@ const Layout = () => {
         <AppHeader />
 
         {/* Main Content Area */}
-        <Container className="flex-grow-1">
+        <Container fluid className="flex-grow-1">
           <Row className="g-0 h-100">
             {(() => {
               const fullWidth =
