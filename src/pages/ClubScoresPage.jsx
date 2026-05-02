@@ -200,9 +200,12 @@ const ClubScoresPage = () => {
                     </td>
                   ))}
                   <td className="text-center">
-                    {filtered.length > 0
-                      ? (filtered.reduce((s, m) => s + m.total, 0) / filtered.length).toFixed(1)
-                      : '—'}
+                    {(() => {
+                      const active = filtered.filter(m => m.count > 0);
+                      return active.length > 0
+                        ? (active.reduce((s, m) => s + m.total, 0) / active.length).toFixed(1)
+                        : '—';
+                    })()}
                   </td>
                 </tr>
 

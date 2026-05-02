@@ -643,7 +643,7 @@ const ClubSubGroupsPage = () => {
                   ) : (
                     <div className="row g-0">
                       {selected.members.map((m, idx) => (
-                        <div key={m.id} className="col-12 col-sm-6 col-lg-4">
+                        <div key={m.id} className="col-12">
                           <div className={`d-flex align-items-center gap-2 p-2 ${idx % 2 === 0 ? '' : ''}`}
                             style={{ borderBottom: '1px solid #f0f0f0' }}>
                             <Avatar user={m} size={32} />

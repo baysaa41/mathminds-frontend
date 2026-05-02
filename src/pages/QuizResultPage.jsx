@@ -443,25 +443,57 @@ const QuizResultPage = () => {
         <Card.Body className="p-0">
           <ListGroup variant="flush">
             {quiz.problems?.map((problem, index) => {
-              const answer = answers.find((a) => a.problem === problem.id);
-              const isCorrect = answer && answer.user_point > 0;
-              const isUnanswered = !answer;
+              // FIB-д олон хариулт байдаг тул filter ашиглана
+              const problemAnswers = answers.filter((a) => a.problem === problem.id);
+              const answer = problemAnswers[0]; // MC / уламжлалтд нэг л хариулт байна
+
+              // FIB нийт оноо + тоолол
+              const fibScore    = problemAnswers.reduce((s, a) => s + (a.user_point || 0), 0);
+              const fibCorrect  = problemAnswers.filter(a => (a.user_point || 0) > 0).length;
+              const fibTotal    = problem.choices?.length || 0;
+
+              const isUnanswered = problemAnswers.length === 0;
+              const isCorrect =
+                problem.type === 4
+                  ? fibCorrect === fibTotal && fibTotal > 0
+                  : answer && (answer.user_point || 0) > 0;
+              const isPartial = problem.type === 4 && fibCorrect > 0 && fibCorrect < fibTotal;
 
               const maxProblemScore =
                 problem.type === 0
                   ? answer?.assignment_point || 0
                   : problem.choices?.reduce((s, c) => s + (c.default_score || 0), 0) || 0;
 
+              // Мөрийн дэвсгэр өнгө
               let rowBg = '';
-              if (isUnanswered) rowBg = '';
-              else if (problem.type === 0 && (!answer.user_point && answer.user_point !== 0)) rowBg = '';
-              else if (isCorrect) rowBg = 'bg-success-subtle';
-              else rowBg = 'bg-danger-subtle';
+              if (!isUnanswered) {
+                if (problem.type === 0) {
+                  if (answer?.user_point > 0) rowBg = 'bg-success-subtle';
+                } else if (isCorrect) {
+                  rowBg = 'bg-success-subtle';
+                } else if (isPartial) {
+                  rowBg = 'bg-warning-subtle';
+                } else {
+                  rowBg = 'bg-danger-subtle';
+                }
+              }
+
+              // MC сонгосон болон зөв сонголт
+              const mcStudentLabel = problem.type === 1 ? (answer?.label || null) : null;
+              const mcCorrectChoice = problem.type === 1
+                ? problem.choices?.find(c => (c.default_score || 0) > 0)
+                : null;
+
+              // FIB сонголтуудыг эхний үсгээр эрэмбэлнэ
+              const fibChoices = problem.type === 4
+                ? [...(problem.choices || [])].sort((a, b) =>
+                    (a.label || '').localeCompare(b.label || ''))
+                : [];
 
               return (
                 <ListGroup.Item key={problem.id} className={`p-3 ${rowBg}`}>
-                  {/* 헤더: 번호, 타입, 점수 */}
-                  <Stack direction="horizontal" gap={2} className="mb-2">
+                  {/* Дээд хэсэг: төрөл + оноо */}
+                  <Stack direction="horizontal" gap={2} className="mb-2 flex-wrap">
                     <Badge
                       bg={problem.type === 1 ? 'info' : problem.type === 4 ? 'warning' : 'secondary'}
                       text={problem.type === 4 ? 'dark' : undefined}
@@ -480,99 +512,155 @@ const QuizResultPage = () => {
                         >
                           {answer.user_point > 0
                             ? `${answer.user_point}${maxProblemScore > 0 ? ` / ${maxProblemScore}` : ''} оноо`
-                            : isTeacher
-                            ? 'Дүгнэгдээгүй'
-                            : 'Багшаар шалгагдана'}
+                            : isTeacher ? 'Дүгнэгдээгүй' : 'Багшаар шалгагдана'}
+                        </Badge>
+                      ) : problem.type === 4 ? (
+                        <Badge bg={isCorrect ? 'success' : isPartial ? 'warning' : 'danger'}
+                          text={isPartial ? 'dark' : undefined}>
+                          {fibScore}{maxProblemScore > 0 ? ` / ${maxProblemScore}` : ''} оноо
+                          <span className="ms-1 opacity-75">
+                            ({fibCorrect}/{fibTotal} зөв)
+                          </span>
                         </Badge>
                       ) : isCorrect ? (
                         <Badge bg="success">
-                          <i className="bi bi-check-circle me-1"></i>
-                          {answer.user_point}{maxProblemScore > 0 ? ` / ${maxProblemScore}` : ''} оноо
+                          ✓ {answer.user_point}{maxProblemScore > 0 ? ` / ${maxProblemScore}` : ''} оноо
                         </Badge>
                       ) : (
-                        <Badge bg="danger">
-                          <i className="bi bi-x-circle me-1"></i>
-                          Буруу
-                        </Badge>
+                        <Badge bg="danger">✗ Буруу</Badge>
                       )}
                     </div>
                   </Stack>
 
                   {/* Бодлогын гарчиг */}
-                  <div className="fw-bold mb-2 mathjax-content">
+                  <div className="fw-bold mb-2">
                     <LivePreview content={`${index + 1}. ${problem.title || 'Бодлого'}`} />
                   </div>
 
-                  {/* Бодлогын өгүүлбэр — багшид бүтнээр харуулна */}
-                  {isTeacher && problem.statement && (
-                    <div className="mb-3 p-2 bg-light rounded mathjax-content small">
-                      <LivePreview content={problem.statement} />
+                  {/* ── MC: өгүүлбэр + бүх сонголтуудын жагсаалт ── */}
+                  {problem.type === 1 && (
+                    <div className="mt-1">
+                      {problem.statement && (
+                        <div className="mb-2 p-2 bg-light rounded small">
+                          <LivePreview content={problem.statement} />
+                        </div>
+                      )}
+                      <div className="d-flex flex-column gap-1">
+                        {problem.choices?.map((choice) => {
+                          const isChosen  = mcStudentLabel === choice.label;
+                          const isCorrectC = (choice.default_score || 0) > 0;
+                          let chipCls = 'bg-light border';
+                          if (isChosen && isCorrectC)  chipCls = 'bg-success-subtle border-success';
+                          else if (isChosen && !isCorrectC) chipCls = 'bg-danger-subtle border-danger';
+                          else if (!isChosen && isCorrectC && !isUnanswered) chipCls = 'bg-success-subtle border-success';
+                          return (
+                            <div key={choice.label}
+                              className={`d-flex align-items-start gap-2 p-2 rounded border small ${chipCls}`}>
+                              <span className="fw-bold flex-shrink-0" style={{ minWidth: 22 }}>
+                                {choice.label}.
+                              </span>
+                              <div className="flex-grow-1">
+                                <LivePreview content={choice.value || ''} />
+                              </div>
+                              {isChosen && (
+                                <span className={`flex-shrink-0 fw-bold ${isCorrectC ? 'text-success' : 'text-danger'}`}>
+                                  {isCorrectC ? '✓' : '✗'}
+                                </span>
+                              )}
+                              {!isChosen && isCorrectC && !isUnanswered && (
+                                <span className="flex-shrink-0 text-success small">← зөв</span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {isUnanswered && mcCorrectChoice && (
+                        <div className="small text-muted mt-1">
+                          Зөв хариулт: <strong className="text-success">{mcCorrectChoice.label}</strong>
+                        </div>
+                      )}
                     </div>
                   )}
 
-                  {/* MC: сонгосон хариулт + зөв хариулт */}
-                  {problem.type === 1 && answer && (
-                    <div className="small">
-                      <span className="text-muted">Хариулт: </span>
-                      <strong>{answer.label || '—'}</strong>
-                      {!isCorrect && (() => {
-                        const correct = problem.choices?.find((c) => c.default_score > 0);
-                        return correct ? (
-                          <span className="text-success ms-2">
-                            (Зөв: <strong>{correct.label}</strong>)
-                          </span>
-                        ) : null;
-                      })()}
+                  {/* ── FIB: өгүүлбэр + бланк бүрийн хариулт ── */}
+                  {problem.type === 4 && (
+                    <div className="mt-1">
+                      {problem.statement && (
+                        <div className="mb-2 p-2 bg-light rounded small">
+                          <LivePreview content={problem.statement} />
+                        </div>
+                      )}
+                      <div className="d-flex flex-column gap-1">
+                        {fibChoices.map((choice) => {
+                          const stuAns = problemAnswers.find(a => a.label === choice.label);
+                          const blankOk = (stuAns?.user_point || 0) > 0;
+                          let chipCls = 'border-secondary bg-light';
+                          if (stuAns) chipCls = blankOk
+                            ? 'border-success bg-success-subtle'
+                            : 'border-danger bg-danger-subtle';
+                          return (
+                            <div key={choice.label}
+                              className={`d-flex align-items-center gap-2 p-2 rounded border small ${chipCls}`}>
+                              <span className="fw-bold text-secondary flex-shrink-0"
+                                style={{ minWidth: 36 }}>
+                                ({choice.label})
+                              </span>
+                              <div className="flex-grow-1 d-flex gap-3 flex-wrap">
+                                <span>
+                                  Сурагч:{' '}
+                                  <code className={blankOk ? 'text-success' : stuAns ? 'text-danger' : 'text-muted'}>
+                                    {stuAns?.value || '—'}
+                                  </code>
+                                </span>
+                                {(!blankOk) && (
+                                  <span className="text-success">
+                                    Зөв: <code>{choice.value}</code>
+                                  </span>
+                                )}
+                              </div>
+                              <span className={`flex-shrink-0 fw-bold ${blankOk ? 'text-success' : stuAns ? 'text-danger' : 'text-muted'}`}>
+                                {stuAns ? (blankOk ? '✓' : '✗') : '—'}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
 
-                  {/* Fill-in-blank: утга */}
-                  {problem.type === 4 && answer && (
-                    <div className="small">
-                      <span className="text-muted">Хариулт: </span>
-                      <code>{answer.value || '—'}</code>
-                    </div>
-                  )}
-
-                  {/* Уламжлалт: зураг */}
-                  {problem.type === 0 && answer?.image_url && (
-                    <div className="mt-2">
-                      <img
-                        src={answer.image_url}
-                        alt="Хариултын зураг"
-                        style={{ maxWidth: '100%', maxHeight: '500px', objectFit: 'contain' }}
-                        className="border rounded"
-                      />
-                    </div>
-                  )}
-
-                  {/* Уламжлалт: текст хариулт */}
-                  {problem.type === 0 && answer?.value && (
-                    <div className="mt-2 p-2 bg-light rounded small">
-                      <LivePreview content={answer.value} />
-                    </div>
-                  )}
-
-                  {/* Уламжлалт: хариулаагүй */}
-                  {problem.type === 0 && !answer && (
-                    <div className="text-muted small fst-italic">Хариулт ирүүлээгүй</div>
-                  )}
-
-                  {/* Уламжлалт: багшийн оноо өгөх хэсэг */}
-                  {isTeacher && problem.type === 0 && answer && (
-                    <GradeInput
-                      answer={answer}
-                      sheetId={sheetId}
-                      onGraded={handleGraded}
-                    />
-                  )}
-
-                  {/* Сурагч: уламжлалт — дүгнэлт хүлээж байна */}
-                  {!isTeacher && problem.type === 0 && answer && !answer.user_point && (
-                    <Alert variant="info" className="mb-0 mt-2 small py-2">
-                      <i className="bi bi-hourglass-split me-1"></i>
-                      Багшийн дүгнэлт хүлээж байна
-                    </Alert>
+                  {/* ── Уламжлалт ── */}
+                  {problem.type === 0 && (
+                    <>
+                      {isTeacher && problem.statement && (
+                        <div className="mb-2 p-2 bg-light rounded small">
+                          <LivePreview content={problem.statement} />
+                        </div>
+                      )}
+                      {answer?.image_url && (
+                        <div className="mt-2">
+                          <img src={answer.image_url} alt="Хариултын зураг"
+                            style={{ maxWidth: '100%', maxHeight: 500, objectFit: 'contain' }}
+                            className="border rounded" />
+                        </div>
+                      )}
+                      {answer?.value && (
+                        <div className="mt-2 p-2 bg-light rounded small">
+                          <LivePreview content={answer.value} />
+                        </div>
+                      )}
+                      {!answer && (
+                        <div className="text-muted small fst-italic">Хариулт ирүүлээгүй</div>
+                      )}
+                      {isTeacher && answer && (
+                        <GradeInput answer={answer} sheetId={sheetId} onGraded={handleGraded} />
+                      )}
+                      {!isTeacher && answer && !answer.user_point && (
+                        <Alert variant="info" className="mb-0 mt-2 small py-2">
+                          <i className="bi bi-hourglass-split me-1"></i>
+                          Багшийн дүгнэлт хүлээж байна
+                        </Alert>
+                      )}
+                    </>
                   )}
                 </ListGroup.Item>
               );

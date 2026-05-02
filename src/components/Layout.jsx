@@ -75,7 +75,8 @@ const Layout = () => {
                 location.pathname === '/messages' ||
                 location.pathname === '/solver' ||
                 location.pathname.startsWith('/quiz/') ||
-                location.pathname.startsWith('/admin/emails');
+                location.pathname.startsWith('/admin/emails') ||
+                /^\/clubs\/\d+\/assignments\/\d+\/leaderboard/.test(location.pathname);
               return (
                 <Col lg={fullWidth ? 12 : 9} xl={fullWidth ? 12 : 8}
                   className={fullWidth ? '' : 'border-end'}>
@@ -107,7 +108,8 @@ const Layout = () => {
             {location.pathname !== '/messages' &&
               location.pathname !== '/solver' &&
               !location.pathname.startsWith('/quiz/') &&
-              !location.pathname.startsWith('/admin/emails') && (
+              !location.pathname.startsWith('/admin/emails') &&
+              !/^\/clubs\/\d+\/assignments\/\d+\/leaderboard/.test(location.pathname) && (
               <Col lg={3} xl={4} className="bg-light">
                 <div style={{ height: 'calc(100vh - 60px)', overflowY: 'auto' }} className="p-3">
                   <RightSidebar clubData={clubData} />

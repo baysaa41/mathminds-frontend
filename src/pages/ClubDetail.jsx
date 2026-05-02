@@ -257,6 +257,61 @@ const ClubDetail = () => {
   }
 
   const isClubCreator = club.creator === user?.id;
+  const isLeaderboard = /\/assignments\/\d+\/leaderboard/.test(location.pathname);
+
+  const outletContext = {
+    clubData: club,
+    clubActions: {
+      onEditClub: () => {
+        setEditForm({
+          name: club.name,
+          description: club.description || '',
+          monthly_price_silver: club.monthly_price_silver || 0,
+        });
+        setShowEditModal(true);
+      },
+      onShowRegCode: () => setShowRegCodeModal(true),
+      onJoinClub: () => setShowJoinModal(true),
+      onLeaveClub: () => setShowLeaveModal(true),
+      onUpdate: fetchClubDetails,
+      onInviteTeacher: handleInviteTeacher,
+      onRemoveTeacher: handleRemoveTeacher,
+      onRemoveMember: handleRemoveMember,
+    },
+    isTeacherOrAdmin: club.role === 'teacher' || isClubCreator || club.admins?.some(admin => admin.id === user?.id),
+    isCreator: isClubCreator,
+    user,
+    navigate,
+    showToast,
+    newTeacherUsername,
+    setNewTeacherUsername,
+    addingTeacher,
+  };
+
+  const toastEl = (
+    <ToastContainer position="top-end" className="p-3" style={{ zIndex: 9999 }}>
+      <Toast show={toast.show} onClose={hideToast} delay={3000} autohide bg={toast.variant}>
+        <Toast.Header>
+          <strong className="me-auto">
+            {toast.variant === 'success' ? 'Амжилттай' : 'Алдаа'}
+          </strong>
+        </Toast.Header>
+        <Toast.Body className={toast.variant === 'success' ? 'text-white' : ''}>
+          {toast.message}
+        </Toast.Body>
+      </Toast>
+    </ToastContainer>
+  );
+
+  // Дүнгийн жагсаалт — бүтэн хуудас (Container-гүй)
+  if (isLeaderboard) {
+    return (
+      <>
+        {toastEl}
+        <Outlet context={outletContext} />
+      </>
+    );
+  }
 
   return (
     <Container className="py-4">
@@ -288,34 +343,7 @@ const ClubDetail = () => {
       </div>
 
       {/* Child routes will render here */}
-      <Outlet context={{
-        clubData: club,
-        clubActions: {
-          onEditClub: () => {
-            setEditForm({
-              name: club.name,
-              description: club.description || '',
-              monthly_price_silver: club.monthly_price_silver || 0,
-            });
-            setShowEditModal(true);
-          },
-          onShowRegCode: () => setShowRegCodeModal(true),
-          onJoinClub: () => setShowJoinModal(true),
-          onLeaveClub: () => setShowLeaveModal(true),
-          onUpdate: fetchClubDetails,
-          onInviteTeacher: handleInviteTeacher,
-          onRemoveTeacher: handleRemoveTeacher,
-          onRemoveMember: handleRemoveMember
-        },
-        isTeacherOrAdmin: club.role === 'teacher' || isClubCreator || club.admins?.some(admin => admin.id === user?.id),
-        isCreator: isClubCreator,
-        user,
-        navigate,
-        showToast,
-        newTeacherUsername,
-        setNewTeacherUsername,
-        addingTeacher
-      }} />
+      <Outlet context={outletContext} />
 
       {/* Leave Club Modal */}
       <Modal show={showLeaveModal} onHide={() => setShowLeaveModal(false)} centered>
