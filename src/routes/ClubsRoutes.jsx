@@ -19,6 +19,7 @@ import ClubMembersPage from '../pages/ClubMembersPage';
 import ClubFilesPage from '../pages/ClubFilesPage';
 import ClubSubGroupsPage from '../pages/ClubSubGroupsPage';
 import ClubScoresPage from '../pages/ClubScoresPage';
+import StudentReportPage from '../pages/StudentReportPage';
 import CreateClub from '../pages/CreateClub';
 
 const ClubsRoutes = () => {
@@ -44,6 +45,7 @@ const ClubsRoutes = () => {
         <Route path="assignments" element={<ClubAssignmentsPage />} />
         <Route path="assignments/:assignmentId" element={<AssignmentDetailPage />} />
         <Route path="assignments/:assignmentId/leaderboard" element={<AssignmentLeaderboardPage />} />
+        <Route path="report/:username" element={<StudentReportPage />} />
         <Route path="exams" element={<ClubExamsPage />} />
         <Route path="subgroups" element={<ClubSubGroupsPage />} />
         <Route path="scores" element={<ClubScoresPage />} />

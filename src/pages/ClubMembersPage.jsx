@@ -1,6 +1,6 @@
 // ClubMembersPage - Клубын гишүүдийн жагсаалт
 import React, { useState, useEffect, useRef } from 'react';
-import { useOutletContext, Link } from 'react-router-dom';
+import { useOutletContext, Link, useNavigate } from 'react-router-dom';
 import Card from 'react-bootstrap/Card';
 import ListGroup from 'react-bootstrap/ListGroup';
 import Badge from 'react-bootstrap/Badge';
@@ -9,7 +9,7 @@ import Form from 'react-bootstrap/Form';
 import InputGroup from 'react-bootstrap/InputGroup';
 import Spinner from 'react-bootstrap/Spinner';
 import UserAvatar from '../components/UserAvatar';
-import { Users, Crown, GraduationCap, X, Search, UserPlus } from 'lucide-react';
+import { Users, Crown, GraduationCap, X, Search, UserPlus, FileDown } from 'lucide-react';
 import apiClient from '../api/axiosConfig';
 import { inviteTeacher, formatErrorMessage } from '../services/clubsService';
 
@@ -18,11 +18,34 @@ const ClubMembersPage = () => {
     clubData: club,
     clubActions,
     isCreator,
+    isTeacherOrAdmin,
     newTeacherUsername,
     setNewTeacherUsername,
     addingTeacher,
     showToast,
   } = useOutletContext();
+  const navigate = useNavigate();
+  const [exporting, setExporting] = useState(false);
+
+  const handleExportReport = async () => {
+    if (!club?.id || exporting) return;
+    setExporting(true);
+    try {
+      const response = await apiClient.get(`/api/clubs/${club.id}/export_report/`, {
+        responseType: 'blob',
+      });
+      const url = URL.createObjectURL(response.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${club.name}_report.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      showToast?.('Excel татахад алдаа гарлаа.', 'danger');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   // Teacher search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -126,6 +149,17 @@ const ClubMembersPage = () => {
                 <GraduationCap size={12} className="me-1" />
                 Багш
               </Badge>
+            )}
+            {/* Репорт товч — зөвхөн багшид */}
+            {isTeacherOrAdmin && !isTeacher && !isCreatorRole && (
+              <Button
+                variant="outline-info"
+                size="sm"
+                title="Репорт харах"
+                onClick={() => navigate(`/clubs/${club.id}/report/${member.username}`)}
+              >
+                📊
+              </Button>
             )}
             {/* Удирдагч багшаас бусад гишүүдийг хасах боломжтой */}
             {!isCreatorRole && club.role === 'teacher' && clubActions?.onRemoveMember && (
@@ -254,11 +288,27 @@ const ClubMembersPage = () => {
 
       {/* Гишүүд (багш + энгийн нэгтгэсэн) */}
       <Card className="shadow-sm mb-4">
-        <Card.Header className="bg-white">
+        <Card.Header className="bg-white d-flex align-items-center justify-content-between">
           <h6 className="mb-0">
             <Users size={16} className="me-2" />
             Гишүүд ({members.filter((m) => m.id !== creator).length})
           </h6>
+          {isTeacherOrAdmin && (
+            <Button
+              variant="outline-success"
+              size="sm"
+              onClick={handleExportReport}
+              disabled={exporting}
+              title="Excel татах"
+            >
+              {exporting ? (
+                <Spinner animation="border" size="sm" />
+              ) : (
+                <FileDown size={14} className="me-1" />
+              )}
+              Репорт
+            </Button>
+          )}
         </Card.Header>
         {members.filter((m) => m.id !== creator).length > 0 ? (
           <ListGroup variant="flush">

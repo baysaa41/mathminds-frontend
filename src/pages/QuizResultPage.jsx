@@ -533,8 +533,18 @@ const QuizResultPage = () => {
                   </Stack>
 
                   {/* Бодлогын гарчиг */}
-                  <div className="fw-bold mb-2">
+                  <div className="fw-bold mb-2 d-flex align-items-baseline gap-2">
                     <LivePreview content={`${index + 1}. ${problem.title || 'Бодлого'}`} />
+                    {problem.uuid && (
+                      <Link
+                        to={`/problem/${problem.uuid}`}
+                        className="text-muted small flex-shrink-0"
+                        style={{ fontSize: '0.75rem' }}
+                        title="Бодлогын дэлгэрэнгүй"
+                      >
+                        <i className="bi bi-box-arrow-up-right" />
+                      </Link>
+                    )}
                   </div>
 
                   {/* ── MC: өгүүлбэр + бүх сонголтуудын жагсаалт ── */}

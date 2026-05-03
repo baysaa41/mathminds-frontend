@@ -1046,8 +1046,16 @@ const PostCard = ({ post, onPostDeleted, depth = 0, compact = false, onCardClick
                 <PostContent post={originalPost} />
               )}
 
-              {/* Embed */}
-              {originalPost.embed_link && <EmbedRenderer url={originalPost.embed_link} postId={originalPost.id} />}
+              {/* Embed — embed_link байхгүй бол content-аас X/Facebook URL хайна */}
+              {(() => {
+                const link = originalPost.embed_link || (() => {
+                  const m = (originalPost.content || '').match(
+                    /https?:\/\/(?:(?:www\.|m\.)?(?:x\.com|twitter\.com)\/[^/\s]+\/status\/[0-9]+|(?:www\.|m\.)?facebook\.com\/(?:[^/\s]+\/(?:posts|videos)\/|permalink\.php|photo(?:\.php)?\?|watch)[^\s]*|fb\.watch\/[a-zA-Z0-9_-]+)/
+                  );
+                  return m ? m[0] : null;
+                })();
+                return link ? <EmbedRenderer url={link} postId={originalPost.id} /> : null;
+              })()}
             </div>
           </div>
 

@@ -352,7 +352,7 @@ const CreatePostForm = ({ onPostCreated, clubId = null, clubName = null }) => {
             placeholder={
               relatedItem
                 ? 'Сэтгэгдлээ бичнэ үү...'
-                : 'Юу бодож байна... (YouTube, Vimeo линкээ энд хуулж болно)'
+                : 'Юу бодож байна... (YouTube, Vimeo, X, Facebook линкээ энд хуулж болно)'
             }
             value={content}
             onChange={(e) => setContent(e.target.value)} // Энэ алдааг өмнө нь зассан

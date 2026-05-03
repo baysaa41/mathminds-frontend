@@ -1,7 +1,7 @@
 // src/pages/ClubDetail.jsx
 // ✅ ШИНЭЧИЛСЭН: Club Feed нэмэгдсэн
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Outlet, useOutletContext, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Container from 'react-bootstrap/Container';
@@ -38,6 +38,7 @@ const ClubDetail = () => {
   const [club, setClub] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const initialLoadDone = useRef(false);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [showRegCodeModal, setShowRegCodeModal] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -61,11 +62,11 @@ const ClubDetail = () => {
   }, [location.pathname, club]);
 
   const fetchClubDetails = async () => {
+    const isRefresh = initialLoadDone.current;
     try {
-      setLoading(true);
+      if (!isRefresh) setLoading(true);
       setError(null);
       const data = await getClubDetail(id);
-      console.log('Club Data:', data);
       setClub(data);
       setClubData(data); // RightSidebar-д мэдээлэл өгөх
       setPageTitle(data.name || 'Клуб'); // Navbar дээр клубын нэр харуулах
@@ -93,11 +94,12 @@ const ClubDetail = () => {
         onLeaveClub: () => setShowLeaveModal(true),
         onUpdate: fetchClubDetails // Refresh club data after curriculum changes
       });
+      initialLoadDone.current = true;
     } catch (err) {
       console.error('Error fetching club details:', err);
       setError(formatErrorMessage(err));
     } finally {
-      setLoading(false);
+      if (!isRefresh) setLoading(false);
     }
   };
 
@@ -154,6 +156,7 @@ const ClubDetail = () => {
       const result = await inviteTeacher(club.id, username.trim());
       showToast(result.detail || 'Багшийн урилга илгээгдлээ!', 'success');
       setNewTeacherUsername('');
+      fetchClubDetails();
     } catch (err) {
       showToast(formatErrorMessage(err), 'danger');
     } finally {

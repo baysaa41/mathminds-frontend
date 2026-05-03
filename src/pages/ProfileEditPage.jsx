@@ -36,7 +36,17 @@ function ProfileEditPage() {
     last_name: '',
     site_role: '',
     picture_url: '',
+    grade: '',
+    email: '',
   });
+
+  const [grades, setGrades] = useState([]);
+
+  useEffect(() => {
+    apiClient.get('/api/integral/grades/')
+      .then(r => setGrades(r.data.results || r.data || []))
+      .catch(() => {});
+  }, []);
 
   // Username солих (зөвхөн өөрийн профайл засах үед)
   const [newUsername, setNewUsername] = useState('');
@@ -44,6 +54,33 @@ function ProfileEditPage() {
   const [checkingUsername, setCheckingUsername] = useState(false);
   const [usernameError, setUsernameError] = useState(null);
   const [changingUsername, setChangingUsername] = useState(false);
+
+  // Нууц үг солих
+  const [pwForm, setPwForm] = useState({ current_password: '', new_password: '', confirm_password: '' });
+  const [pwLoading, setPwLoading] = useState(false);
+  const [pwError, setPwError] = useState('');
+  const [pwSuccess, setPwSuccess] = useState('');
+
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    setPwError(''); setPwSuccess('');
+    if (pwForm.new_password !== pwForm.confirm_password) {
+      setPwError('Шинэ нууц үг таарахгүй байна.'); return;
+    }
+    if (pwForm.new_password.length < 8) {
+      setPwError('Нууц үг хамгийн багадаа 8 тэмдэгт байх ёстой.'); return;
+    }
+    setPwLoading(true);
+    try {
+      const res = await apiClient.post('/users/api/password/change/', pwForm);
+      setPwSuccess(res.data.detail || 'Нууц үг амжилттай солигдлоо.');
+      setPwForm({ current_password: '', new_password: '', confirm_password: '' });
+    } catch (err) {
+      setPwError(err.response?.data?.detail || 'Алдаа гарлаа.');
+    } finally {
+      setPwLoading(false);
+    }
+  };
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -73,6 +110,8 @@ function ProfileEditPage() {
             last_name: data.last_name || '',
             site_role: data.site_role || 'OTHER',
             picture_url: data.picture_url || '',
+            grade: data.grade ?? '',
+            email: data.email || '',
           });
           setImagePreview(data.picture_url || null);
         })
@@ -89,6 +128,8 @@ function ProfileEditPage() {
         last_name: user.last_name || '',
         site_role: user.site_role || 'OTHER',
         picture_url: user.picture_url || '',
+        grade: user.grade ?? '',
+        email: user.email || '',
       });
       setImagePreview(user.picture_url || null);
     }
@@ -329,6 +370,8 @@ function ProfileEditPage() {
         last_name: formData.last_name,
         site_role: formData.site_role || 'OTHER',
         picture_url: formData.picture_url,
+        grade: formData.grade || null,
+        email: formData.email,
       };
 
       const updatedUser = await apiService.updateUserProfile(
@@ -471,6 +514,18 @@ function ProfileEditPage() {
               </Col>
             </Row>
 
+            {/* Имэйл */}
+            <Form.Group className="mb-3" controlId="email">
+              <Form.Label>Имэйл хаяг</Form.Label>
+              <Form.Control
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="example@email.com"
+              />
+            </Form.Group>
+
             {/* Үндсэн үүрэг (site_role) */}
             <Form.Group className="mb-3" controlId="site_role">
               <Form.Label className="fw-semibold">Таны үүрэг</Form.Label>
@@ -489,6 +544,21 @@ function ProfileEditPage() {
               <Form.Text className="text-muted">
                 Та багш уу, сурагч уу, эсвэл бусад үүрэгтэй юу?
               </Form.Text>
+            </Form.Group>
+
+            {/* Анги */}
+            <Form.Group className="mb-3" controlId="grade">
+              <Form.Label>Анги</Form.Label>
+              <Form.Select
+                name="grade"
+                value={formData.grade ?? ''}
+                onChange={e => setFormData(f => ({ ...f, grade: e.target.value ? parseInt(e.target.value) : null }))}
+              >
+                <option value="">— Сонгох —</option>
+                {grades.map(g => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
+              </Form.Select>
             </Form.Group>
 
             {/* Профайл зураг upload */}
@@ -574,6 +644,61 @@ function ProfileEditPage() {
               </Button>
             </div>
           </Form>
+
+          {/* Нууц үг солих — зөвхөн өөрийн профайл засах үед */}
+          {!isEditingOther && (
+            <>
+              <hr className="my-4" />
+              <h6 className="fw-semibold mb-3">Нууц үг солих</h6>
+              <Form onSubmit={handlePasswordChange}>
+                {pwError && <Alert variant="danger" className="py-2 small">{pwError}</Alert>}
+                {pwSuccess && <Alert variant="success" className="py-2 small">{pwSuccess}</Alert>}
+                <Form.Group className="mb-3">
+                  <Form.Label className="small">Одоогийн нууц үг</Form.Label>
+                  <Form.Control
+                    type="password"
+                    value={pwForm.current_password}
+                    onChange={e => setPwForm(f => ({ ...f, current_password: e.target.value }))}
+                    autoComplete="current-password"
+                    required
+                  />
+                </Form.Group>
+                <Row>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label className="small">Шинэ нууц үг</Form.Label>
+                      <Form.Control
+                        type="password"
+                        value={pwForm.new_password}
+                        onChange={e => setPwForm(f => ({ ...f, new_password: e.target.value }))}
+                        autoComplete="new-password"
+                        minLength={8}
+                        required
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label className="small">Нууц үг давтах</Form.Label>
+                      <Form.Control
+                        type="password"
+                        value={pwForm.confirm_password}
+                        onChange={e => setPwForm(f => ({ ...f, confirm_password: e.target.value }))}
+                        autoComplete="new-password"
+                        minLength={8}
+                        required
+                      />
+                    </Form.Group>
+                  </Col>
+                </Row>
+                <div className="d-flex justify-content-end">
+                  <Button type="submit" variant="outline-primary" size="sm" disabled={pwLoading}>
+                    {pwLoading ? <Spinner as="span" animation="border" size="sm" /> : 'Нууц үг солих'}
+                  </Button>
+                </div>
+              </Form>
+            </>
+          )}
         </Card.Body>
       </Card>
 

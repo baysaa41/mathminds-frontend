@@ -1,6 +1,6 @@
 // ClubSubGroupsPage — клубын дэд бүлгүүд удирдах
 import React, { useState, useEffect, useCallback } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, Link, useNavigate } from 'react-router-dom';
 import Card from 'react-bootstrap/Card';
 import Button from 'react-bootstrap/Button';
 import Badge from 'react-bootstrap/Badge';
@@ -9,9 +9,23 @@ import Modal from 'react-bootstrap/Modal';
 import Form from 'react-bootstrap/Form';
 import Stack from 'react-bootstrap/Stack';
 import ListGroup from 'react-bootstrap/ListGroup';
-import { Users, Plus, Pencil, Trash2, UserPlus, UserMinus, Wand2 } from 'lucide-react';
+import Accordion from 'react-bootstrap/Accordion';
+import Nav from 'react-bootstrap/Nav';
+import {
+  Users, Plus, Pencil, Trash2, UserPlus, UserMinus, Wand2,
+  GraduationCap, CalendarDays, FileText, X, RotateCcw, Target, Sparkles, FileDown,
+} from 'lucide-react';
 import apiClient from '../api/axiosConfig';
 import EmptyState from '../components/common/EmptyState';
+
+const RESOURCE_TYPE_LABELS = {
+  article: 'Өгүүлэл', problem: 'Бодлого', pdf: 'PDF',
+  link: 'Линк', video: 'Видео', quiz: 'Quiz',
+};
+const RESOURCE_TYPE_COLORS = {
+  problem: 'secondary', formula: 'info', article: 'danger',
+  quiz: 'success', pdf: 'dark', video: 'primary', link: 'warning',
+};
 
 const COLOR_OPTIONS = [
   { value: 'primary',   label: 'Цэнхэр'  },
@@ -213,6 +227,113 @@ const AddMembersModal = ({ show, onHide, subgroup, clubMembers, onAdded }) => {
   );
 };
 
+// ── AI суралцахуйн зорилго нэмэх modal ────────────────────────
+const AutoObjectivesModal = ({ show, onHide, subgroup, clubId, onDone }) => {
+  const [assignments, setAssignments] = useState([]);
+  const [loadingAsgn, setLoadingAsgn] = useState(false);
+  const [assignmentId, setAssignmentId] = useState('');
+  const [running, setRunning] = useState(false);
+  const [result, setResult] = useState(null);
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    if (!show || !clubId) return;
+    setResult(null); setErr(''); setAssignmentId('');
+    setLoadingAsgn(true);
+    apiClient.get('/api/club-assignments/', { params: { club: clubId } })
+      .then(r => setAssignments(r.data.results || r.data || []))
+      .catch(() => setAssignments([]))
+      .finally(() => setLoadingAsgn(false));
+  }, [show, clubId]);
+
+  const handleRun = async () => {
+    if (!assignmentId) { setErr('Даалгавар сонгоно уу.'); return; }
+    setRunning(true); setErr(''); setResult(null);
+    try {
+      const r = await apiClient.post(
+        `/api/club-subgroups/${subgroup.id}/auto_objectives/`,
+        { assignment_id: parseInt(assignmentId) },
+      );
+      setResult(r.data);
+    } catch (e) {
+      setErr(e.response?.data?.detail || 'Алдаа гарлаа.');
+    } finally { setRunning(false); }
+  };
+
+  const handleClose = () => {
+    if (result) onDone();
+    onHide();
+  };
+
+  return (
+    <Modal show={show} onHide={handleClose} centered>
+      <Modal.Header closeButton>
+        <Modal.Title className="fs-6 d-flex align-items-center gap-2">
+          <Sparkles size={16} />AI суралцахуйн зорилго нэмэх
+        </Modal.Title>
+      </Modal.Header>
+      <Modal.Body>
+        {result ? (
+          <div>
+            <div className="text-success small fw-medium mb-2">
+              {result.detail}
+            </div>
+            <div className="small text-muted mb-2">
+              {result.week_num}-р долоо хоног — «{result.topic}»
+            </div>
+            {result.added_objectives?.length > 0 && (
+              <ul className="mb-0 ps-3">
+                {result.added_objectives.map(o => (
+                  <li key={o.id} className="small mb-1">{o.text}</li>
+                ))}
+              </ul>
+            )}
+            {result.added_objectives?.length === 0 && (
+              <div className="text-muted small">Давхардалтай тул шинэ зорилго нэмэгдсэнгүй.</div>
+            )}
+          </div>
+        ) : (
+          <>
+            <div className="small text-muted mb-3">
+              Сонгосон тестийн дүнгээр <strong>«{subgroup?.name}»</strong> бүлгийн сул талыг
+              тооцоолж, дараагийн долоо хоногийн сэдэвт AI суралцахуйн зорилго нэмнэ.
+              Хөтөлбөр холбоогүй бол клубын хөтөлбөрийг автоматаар ашиглана.
+            </div>
+            <Form.Group>
+              <Form.Label className="small fw-medium">Даалгавар <span className="text-danger">*</span></Form.Label>
+              {loadingAsgn
+                ? <div className="small text-muted">Ачааллаж байна...</div>
+                : (
+                  <Form.Select size="sm" value={assignmentId}
+                    onChange={e => setAssignmentId(e.target.value)}>
+                    <option value="">— Сонгох —</option>
+                    {assignments.map(a => (
+                      <option key={a.id} value={a.id}>{a.title}</option>
+                    ))}
+                  </Form.Select>
+                )}
+            </Form.Group>
+            {err && <div className="text-danger small mt-2">{err}</div>}
+          </>
+        )}
+      </Modal.Body>
+      <Modal.Footer>
+        <Button variant="secondary" size="sm" onClick={handleClose}>
+          {result ? 'Хаах' : 'Болих'}
+        </Button>
+        {!result && (
+          <Button variant="primary" size="sm" onClick={handleRun}
+            disabled={running || !assignmentId}>
+            {running
+              ? <><Spinner animation="border" size="sm" className="me-1" />Боловсруулж байна...</>
+              : <><Sparkles size={13} className="me-1" />Зорилго нэмэх</>}
+          </Button>
+        )}
+      </Modal.Footer>
+    </Modal>
+  );
+};
+
 const METHOD_OPTIONS = [
   {
     value: 'answer',
@@ -236,6 +357,9 @@ const AutoGroupModal = ({ show, onHide, clubId, onDone }) => {
     name_prefix: 'Бүлэг',
     replace_existing: false,
     method: 'answer',
+    new_program_name: '',
+    new_program_grade: '',
+    curriculum_weeks: 0,
   });
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState(null);
@@ -244,7 +368,12 @@ const AutoGroupModal = ({ show, onHide, clubId, onDone }) => {
   useEffect(() => {
     if (!show || !clubId) return;
     setResult(null); setErr('');
-    setForm(f => ({ ...f, assignment_id: '', n_groups: 3, name_prefix: 'Бүлэг', replace_existing: false, method: 'answer' }));
+    setForm(f => ({
+      ...f,
+      assignment_id: '', n_groups: 3, name_prefix: 'Бүлэг',
+      replace_existing: false, method: 'answer',
+      new_program_name: '', new_program_grade: '', curriculum_weeks: 0,
+    }));
     setLoadingAsgn(true);
     apiClient.get('/api/club-assignments/', { params: { club: clubId } })
       .then(res => setAssignments(res.data.results || res.data || []))
@@ -256,14 +385,20 @@ const AutoGroupModal = ({ show, onHide, clubId, onDone }) => {
     if (!form.assignment_id) { setErr('Даалгавар сонгоно уу.'); return; }
     setSaving(true); setErr(''); setResult(null);
     try {
+      const payload = {
+        n_groups: form.n_groups,
+        name_prefix: form.name_prefix,
+        replace_existing: form.replace_existing,
+        method: form.method,
+      };
+      if (form.new_program_name.trim() && form.new_program_grade && form.curriculum_weeks > 0) {
+        payload.new_program_name = form.new_program_name.trim();
+        payload.new_program_grade = parseInt(form.new_program_grade);
+        payload.curriculum_weeks = form.curriculum_weeks;
+      }
       const res = await apiClient.post(
         `/api/club-assignments/${form.assignment_id}/auto_group/`,
-        {
-          n_groups: form.n_groups,
-          name_prefix: form.name_prefix,
-          replace_existing: form.replace_existing,
-          method: form.method,
-        }
+        payload,
       );
       setResult(res.data);
     } catch (e) {
@@ -351,6 +486,26 @@ const AutoGroupModal = ({ show, onHide, clubId, onDone }) => {
                   {g.profile && !g.profile.weak_categories?.length && (
                     <div className="text-muted small">Тодорхой сул тал илрэлгүй.</div>
                   )}
+
+                  {/* Хөтөлбөрийн үр дүн */}
+                  {g.curriculum && (
+                    <div className="mt-2 pt-2 border-top">
+                      <div className="text-muted mb-1 d-flex align-items-center gap-1" style={{ fontSize: '0.7rem' }}>
+                        <GraduationCap size={11} />{g.curriculum.program}
+                      </div>
+                      {g.curriculum.weeks?.length > 0 ? (
+                        <div className="d-flex flex-wrap gap-1">
+                          {g.curriculum.weeks.map(w => (
+                            <Badge key={w.week_num} bg="success" style={{ fontSize: '0.65rem' }}>
+                              {w.week_num}-р 7 хоног: {w.objectives_added} зорилго
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-muted small">Хөтөлбөрт тохирох сэдэв олдсонгүй.</div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -425,7 +580,52 @@ const AutoGroupModal = ({ show, onHide, clubId, onDone }) => {
               label="Одоо байгаа дэд бүлгүүдийг устгаж дахин үүсгэх"
               checked={form.replace_existing}
               onChange={e => setForm(f => ({ ...f, replace_existing: e.target.checked }))}
-              className="small" />
+              className="small mb-3" />
+
+            {/* Хөтөлбөр бэлдэх */}
+            <div className="border rounded p-3 bg-light">
+              <div className="small fw-medium mb-2 d-flex align-items-center gap-1">
+                <GraduationCap size={13} />
+                Хөтөлбөр бэлдэх
+                <span className="text-muted fw-normal">(заавал биш)</span>
+              </div>
+              <div className="d-flex gap-2 mb-2">
+                <Form.Control size="sm" style={{ flex: 1 }}
+                  placeholder="Хөтөлбөрийн нэр (жишээ: Математик)"
+                  value={form.new_program_name}
+                  onChange={e => setForm(f => ({ ...f, new_program_name: e.target.value }))} />
+                <Form.Select size="sm" style={{ maxWidth: 110 }}
+                  value={form.new_program_grade}
+                  onChange={e => setForm(f => ({ ...f, new_program_grade: e.target.value }))}>
+                  <option value="">Анги</option>
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map(g => (
+                    <option key={g} value={g}>{g}-р анги</option>
+                  ))}
+                </Form.Select>
+              </div>
+              {(form.new_program_name.trim() && form.new_program_grade) && (
+                <Form.Group>
+                  <Form.Label className="small text-muted mb-1">
+                    Хэдэн долоо хоногийн зорилго бэлдэх
+                  </Form.Label>
+                  <div className="d-flex align-items-center gap-3">
+                    <Form.Range min={0} max={8} value={form.curriculum_weeks}
+                      onChange={e => setForm(f => ({ ...f, curriculum_weeks: parseInt(e.target.value) }))}
+                      style={{ flex: 1 }} />
+                    <Badge bg={form.curriculum_weeks > 0 ? 'primary' : 'secondary'}
+                      style={{ minWidth: 32, fontSize: '0.9rem' }}>
+                      {form.curriculum_weeks || '—'}
+                    </Badge>
+                  </div>
+                  {form.curriculum_weeks > 0 && (
+                    <Form.Text className="text-muted" style={{ fontSize: '0.72rem' }}>
+                      Бүлэг бүрт тусдаа шинэ хөтөлбөр үүсгэж {form.curriculum_weeks} долоо
+                      хоногийн AI суралцахуйн зорилго нэмнэ. Хэсэг хугацаа шаардагдана.
+                    </Form.Text>
+                  )}
+                </Form.Group>
+              )}
+            </div>
 
             {err && <div className="text-danger small mt-2">{err}</div>}
           </>
@@ -437,9 +637,14 @@ const AutoGroupModal = ({ show, onHide, clubId, onDone }) => {
         </Button>
         {!result && (
           <Button variant="primary" size="sm" onClick={handleRun} disabled={saving}>
-            {saving
-              ? <Spinner animation="border" size="sm" />
-              : <><Wand2 size={14} className="me-1" />Хуваах</>}
+            {saving ? (
+              <>
+                <Spinner animation="border" size="sm" className="me-1" />
+                {form.curriculum_weeks > 0 ? 'Хөтөлбөр бэлдэж байна...' : 'Хуваж байна...'}
+              </>
+            ) : (
+              <><Wand2 size={14} className="me-1" />Хуваах</>
+            )}
           </Button>
         )}
       </Modal.Footer>
@@ -450,21 +655,54 @@ const AutoGroupModal = ({ show, onHide, clubId, onDone }) => {
 // ── Үндсэн хуудас ───────────────────────────────────────────────
 const ClubSubGroupsPage = () => {
   const { clubData, isTeacherOrAdmin, showToast } = useOutletContext();
+  const navigate = useNavigate();
   const clubId = clubData?.id;
 
   const [subgroups, setSubgroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null); // идэвхтэй дэд бүлэг
+  const [activeTab, setActiveTab] = useState('members'); // 'members' | 'curriculum'
+
+  // Curriculum state
+  const [weeklyTopics, setWeeklyTopics] = useState([]);
+  const [topicsLoading, setTopicsLoading] = useState(false);
+  const [allPrograms, setAllPrograms] = useState([]);
+  const [selectedProgramId, setSelectedProgramId] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [addingProgram, setAddingProgram] = useState(false);
 
   // Modals
   const [formModal, setFormModal] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
   const [addMembersModal, setAddMembersModal] = useState(false);
   const [autoGroupModal, setAutoGroupModal] = useState(false);
+  const [autoObjectivesModal, setAutoObjectivesModal] = useState(false);
   const [removingId, setRemovingId] = useState(null);
+  const [exporting, setExporting] = useState(false);
 
   // Клубын бүх гишүүд (нэмэх modal-д ашиглана)
   const clubMembers = clubData?.members || [];
+
+  const handleExportSubgroup = async () => {
+    if (!selected || !clubId || exporting) return;
+    setExporting(true);
+    try {
+      const response = await apiClient.get(`/api/clubs/${clubId}/export_report/`, {
+        params: { subgroup_id: selected.id },
+        responseType: 'blob',
+      });
+      const url = URL.createObjectURL(response.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${clubData?.name || 'club'}_${selected.name}_report.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      showToast?.('Excel татахад алдаа гарлаа.', 'danger');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const fetchSubgroups = useCallback(async () => {
     if (!clubId) return;
@@ -495,15 +733,103 @@ const ClubSubGroupsPage = () => {
 
   useEffect(() => { fetchSubgroups(); }, [fetchSubgroups]);
 
-  // Сонгосон бүлгийн members татагдаагүй бол (жишээ: анхны автомат сонголт) fetchDetail дуудах
+  // Сонгосон бүлгийн members татагдаагүй бол fetchDetail дуудах
   useEffect(() => {
     if (selected && !selected.members) {
       fetchDetail(selected.id);
     }
   }, [selected?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Curriculum: бүх хөтөлбөрүүдийг татах (багшид)
+  useEffect(() => {
+    if (!isTeacherOrAdmin) return;
+    apiClient.get('/api/curriculum/programs/')
+      .then(r => setAllPrograms(r.data.results || r.data || []))
+      .catch(() => {});
+  }, [isTeacherOrAdmin]);
+
+  // Curriculum: сонгосон дэд бүлгийн долоо хоногийн сэдвүүд
+  const fetchWeeklyTopics = useCallback(async (sgId) => {
+    if (!sgId) return;
+    setTopicsLoading(true);
+    try {
+      const r = await apiClient.get(`/api/club-subgroups/${sgId}/weekly_topics/`);
+      setWeeklyTopics(r.data || []);
+    } catch { setWeeklyTopics([]); }
+    finally { setTopicsLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'curriculum' && selected?.id) {
+      fetchWeeklyTopics(selected.id);
+    }
+  }, [activeTab, selected?.id, fetchWeeklyTopics]);
+
+  // Tab солигдох үед curriculum татах
+  const handleTabSelect = (tab) => {
+    setActiveTab(tab);
+  };
+
+  const programsInfo = selected?.curriculum_programs_info || [];
+  const addablePrograms = allPrograms.filter(p => !programsInfo.some(pi => pi.id === p.id));
+
+  const handleAddProgram = async () => {
+    if (!selectedProgramId || !selected) return;
+    try {
+      setAddingProgram(true);
+      await apiClient.post(`/api/club-subgroups/${selected.id}/add_program/`, {
+        program_id: parseInt(selectedProgramId),
+        ...(startDate ? { start_date: startDate } : {}),
+      });
+      showToast?.('Хөтөлбөр нэмэгдлээ', 'success');
+      setSelectedProgramId('');
+      setStartDate('');
+      await fetchDetail(selected.id);
+      fetchWeeklyTopics(selected.id);
+    } catch (err) {
+      showToast?.(err.response?.data?.detail || 'Алдаа гарлаа', 'danger');
+    } finally { setAddingProgram(false); }
+  };
+
+  const handleRemoveProgram = async (programId, programName) => {
+    if (!window.confirm(`"${programName}" хөтөлбөрийг хасахдаа итгэлтэй байна уу?`)) return;
+    try {
+      await apiClient.post(`/api/club-subgroups/${selected.id}/remove_program/`, { program_id: programId });
+      showToast?.('Хөтөлбөр хасагдлаа', 'success');
+      await fetchDetail(selected.id);
+      fetchWeeklyTopics(selected.id);
+    } catch (err) {
+      showToast?.(err.response?.data?.detail || 'Алдаа гарлаа', 'danger');
+    }
+  };
+
+  const handleSetWeek = async (programId, weekNum) => {
+    try {
+      await apiClient.post(`/api/club-subgroups/${selected.id}/set_week/`, {
+        program_id: programId, current_week: weekNum,
+      });
+      await fetchDetail(selected.id);
+    } catch (err) {
+      showToast?.(err.response?.data?.detail || 'Алдаа гарлаа', 'danger');
+    }
+  };
+
+  const handleResetAutoWeek = async (programId) => {
+    try {
+      await apiClient.post(`/api/club-subgroups/${selected.id}/set_week/`, {
+        program_id: programId, is_auto_week: true,
+      });
+      showToast?.('Автомат горимд шилжлээ', 'success');
+      await fetchDetail(selected.id);
+    } catch (err) {
+      showToast?.(err.response?.data?.detail || 'Алдаа гарлаа', 'danger');
+    }
+  };
+
   const handleSelectGroup = (g) => {
     setSelected(g);
+    setActiveTab('members');
+    setWeeklyTopics([]);
     if (!g.members) fetchDetail(g.id);
   };
 
@@ -612,10 +938,11 @@ const ClubSubGroupsPage = () => {
             </ListGroup>
           </div>
 
-          {/* Баруун: сонгосон бүлгийн гишүүд */}
+          {/* Баруун: сонгосон бүлгийн дэлгэрэнгүй */}
           <div className="col-12 col-md-8 col-lg-9">
             {selected ? (
               <Card>
+                {/* Гарчиг */}
                 <Card.Header className="bg-white d-flex align-items-center justify-content-between">
                   <div className="d-flex align-items-center gap-2">
                     <Badge bg={selected.color} className="fs-6 px-3 py-1">{selected.name}</Badge>
@@ -625,8 +952,17 @@ const ClubSubGroupsPage = () => {
                   </div>
                   {isTeacherOrAdmin && (
                     <Stack direction="horizontal" gap={1}>
+                      <Button variant="outline-success" size="sm"
+                        onClick={handleExportSubgroup}
+                        disabled={exporting}
+                        title="Excel татах">
+                        {exporting
+                          ? <Spinner animation="border" size="sm" />
+                          : <FileDown size={14} className="me-1" />}
+                        Репорт
+                      </Button>
                       <Button variant="outline-primary" size="sm"
-                        onClick={() => { setAddMembersModal(true); }}>
+                        onClick={() => setAddMembersModal(true)}>
                         <UserPlus size={14} className="me-1" />Нэмэх
                       </Button>
                       <Button variant="outline-secondary" size="sm"
@@ -640,46 +976,257 @@ const ClubSubGroupsPage = () => {
                     </Stack>
                   )}
                 </Card.Header>
-                <Card.Body className="p-0">
-                  {!selected.members ? (
-                    <div className="text-center py-3"><Spinner animation="border" size="sm" /></div>
-                  ) : selected.members.length === 0 ? (
-                    <div className="text-center text-muted small py-4">
-                      Гишүүн байхгүй байна.
-                    </div>
-                  ) : (
-                    <div className="row g-0">
-                      {selected.members.map((m, idx) => (
-                        <div key={m.id} className="col-12">
-                          <div className={`d-flex align-items-center gap-2 p-2 ${idx % 2 === 0 ? '' : ''}`}
-                            style={{ borderBottom: '1px solid #f0f0f0' }}>
-                            <Avatar user={m} size={32} />
-                            <div className="flex-grow-1 min-width-0">
-                              <div className="small fw-medium text-truncate">{displayName(m)}</div>
-                              <div className="text-muted text-truncate" style={{ fontSize: '0.7rem' }}>
-                                @{m.username}
+
+                {/* Tab навигац */}
+                <Nav variant="tabs" className="px-3 pt-2 border-bottom-0"
+                  activeKey={activeTab} onSelect={handleTabSelect}>
+                  <Nav.Item>
+                    <Nav.Link eventKey="members" className="small py-1 px-2">
+                      <Users size={13} className="me-1" />Гишүүд
+                      <Badge bg="secondary" className="ms-1 small">{selected.member_count}</Badge>
+                    </Nav.Link>
+                  </Nav.Item>
+                  <Nav.Item>
+                    <Nav.Link eventKey="curriculum" className="small py-1 px-2">
+                      <GraduationCap size={13} className="me-1" />Хөтөлбөр
+                      {programsInfo.length > 0 && (
+                        <Badge bg="primary" className="ms-1 small">{programsInfo.length}</Badge>
+                      )}
+                    </Nav.Link>
+                  </Nav.Item>
+                </Nav>
+
+                {/* ── Гишүүд tab ── */}
+                {activeTab === 'members' && (
+                  <Card.Body className="p-0">
+                    {!selected.members ? (
+                      <div className="text-center py-3"><Spinner animation="border" size="sm" /></div>
+                    ) : selected.members.length === 0 ? (
+                      <div className="text-center text-muted small py-4">Гишүүн байхгүй байна.</div>
+                    ) : (
+                      <div className="row g-0">
+                        {selected.members.map((m) => (
+                          <div key={m.id} className="col-12">
+                            <div className="d-flex align-items-center gap-2 p-2"
+                              style={{ borderBottom: '1px solid #f0f0f0' }}>
+                              <Avatar user={m} size={32} />
+                              <div className="flex-grow-1 min-width-0">
+                                <div className="small fw-medium text-truncate">{displayName(m)}</div>
+                                <div className="text-muted text-truncate" style={{ fontSize: '0.7rem' }}>
+                                  @{m.username}
+                                </div>
                               </div>
+                              {isTeacherOrAdmin && (
+                                <div className="d-flex gap-1 flex-shrink-0">
+                                  <Button variant="link" size="sm" className="text-info p-0"
+                                    title="Репорт харах"
+                                    onClick={() => navigate(`/clubs/${clubData.id}/report/${m.username}`)}>
+                                    📊
+                                  </Button>
+                                  <Button variant="link" size="sm" className="text-danger p-0"
+                                    onClick={() => handleRemoveMember(m.id)}
+                                    disabled={removingId === m.id} title="Хасах">
+                                    {removingId === m.id
+                                      ? <Spinner animation="border" size="sm" />
+                                      : <UserMinus size={14} />}
+                                  </Button>
+                                </div>
+                              )}
                             </div>
-                            {isTeacherOrAdmin && (
-                              <Button variant="link" size="sm" className="text-danger p-0 flex-shrink-0"
-                                onClick={() => handleRemoveMember(m.id)}
-                                disabled={removingId === m.id} title="Хасах">
-                                {removingId === m.id
-                                  ? <Spinner animation="border" size="sm" />
-                                  : <UserMinus size={14} />}
-                              </Button>
-                            )}
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </Card.Body>
-                {selected.members?.length > 0 && (
-                  <Card.Footer className="bg-white text-muted small">
-                    Нийт {selected.members.length} гишүүн
-                  </Card.Footer>
+                        ))}
+                      </div>
+                    )}
+                    {selected.members?.length > 0 && (
+                      <div className="px-3 py-2 text-muted small border-top">
+                        Нийт {selected.members.length} гишүүн
+                      </div>
+                    )}
+                  </Card.Body>
                 )}
+
+                {/* ── Хөтөлбөр tab ── */}
+                {activeTab === 'curriculum' && (
+                  <Card.Body className="p-3">
+
+                    {/* Хөтөлбөр удирдлага (багш) */}
+                    {isTeacherOrAdmin && (
+                      <div className="mb-3">
+                        <div className="fw-medium small mb-2 d-flex align-items-center gap-1">
+                          <GraduationCap size={14} />Хөтөлбөрүүд
+                        </div>
+                        {programsInfo.length > 0 && (
+                          <div className="mb-2">
+                            {programsInfo.map(p => (
+                              <div key={p.id} className="border rounded p-2 mb-2">
+                                <div className="d-flex align-items-center justify-content-between mb-1">
+                                  <div className="d-flex align-items-center gap-2 flex-wrap">
+                                    <span className="fw-medium small">{p.name}</span>
+                                    <Badge bg="secondary" className="small">{p.grade}-р анги</Badge>
+                                    {p.academic_year && <span className="small text-muted">{p.academic_year}</span>}
+                                  </div>
+                                  <Button variant="outline-danger" size="sm" className="py-0 px-1"
+                                    onClick={() => handleRemoveProgram(p.id, p.name)}>
+                                    <X size={13} />
+                                  </Button>
+                                </div>
+                                <div className="d-flex align-items-center gap-2 flex-wrap">
+                                  <span className="small text-muted">
+                                    Эхэлсэн: {new Date(p.start_date).toLocaleDateString('mn-MN')}
+                                  </span>
+                                  <span className="text-muted">·</span>
+                                  <Form.Select size="sm" style={{ maxWidth: 260 }}
+                                    value={p.current_week}
+                                    onChange={e => handleSetWeek(p.id, parseInt(e.target.value))}>
+                                    {(() => {
+                                      const pt = weeklyTopics.filter(w => w.program_id === p.id);
+                                      if (!pt.length) return <option value={p.current_week}>{p.current_week}-р долоо хоног</option>;
+                                      return pt.map(w => (
+                                        <option key={w.week_num} value={w.week_num}>
+                                          {w.week_num}-р долоо хоног{w.topic ? ` — ${w.topic}` : ''}
+                                        </option>
+                                      ));
+                                    })()}
+                                  </Form.Select>
+                                  {!p.is_auto_week && (
+                                    <Button variant="outline-info" size="sm" className="py-0 px-1"
+                                      onClick={() => handleResetAutoWeek(p.id)}>
+                                      <RotateCcw size={12} className="me-1" />
+                                      <span className="small">Автомат</span>
+                                    </Button>
+                                  )}
+                                  {p.is_auto_week && <span className="small text-muted">(автомат)</span>}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {addablePrograms.length > 0 && (
+                          <div className="d-flex gap-2 flex-wrap">
+                            <Form.Select size="sm" style={{ maxWidth: 280 }}
+                              value={selectedProgramId}
+                              onChange={e => setSelectedProgramId(e.target.value)}>
+                              <option value="">— Хөтөлбөр сонгох —</option>
+                              {addablePrograms.map(p => (
+                                <option key={p.id} value={p.id}>
+                                  {p.grade}-р анги — {p.name}
+                                  {p.academic_year ? ` (${p.academic_year})` : ''}
+                                </option>
+                              ))}
+                            </Form.Select>
+                            <Form.Control type="date" size="sm" style={{ maxWidth: 150 }}
+                              value={startDate} onChange={e => setStartDate(e.target.value)} />
+                            <Button variant="primary" size="sm"
+                              onClick={handleAddProgram}
+                              disabled={!selectedProgramId || addingProgram}>
+                              {addingProgram
+                                ? <Spinner animation="border" size="sm" />
+                                : <><Plus size={13} className="me-1" />Нэмэх</>}
+                            </Button>
+                          </div>
+                        )}
+                        {programsInfo.length === 0 && addablePrograms.length === 0 && (
+                          <p className="text-muted small mb-0">Нэмэх боломжтой хөтөлбөр байхгүй байна.</p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Долоо хоногийн сэдвүүд */}
+                    {programsInfo.length > 0 && (
+                      <div>
+                        <div className="fw-medium small mb-2 d-flex align-items-center justify-content-between">
+                          <span className="d-flex align-items-center gap-1">
+                            <CalendarDays size={14} />Долоо хоногийн сэдвүүд
+                          </span>
+                          {isTeacherOrAdmin && (
+                            <Button variant="outline-primary" size="sm" className="py-0 px-2"
+                              onClick={() => setAutoObjectivesModal(true)}>
+                              <Sparkles size={12} className="me-1" />AI зорилго
+                            </Button>
+                          )}
+                        </div>
+                        {topicsLoading ? (
+                          <div className="text-center py-3"><Spinner animation="border" size="sm" /></div>
+                        ) : weeklyTopics.length === 0 ? (
+                          <div className="text-center py-3 text-muted small">Сэдэв тохируулагдаагүй байна</div>
+                        ) : (
+                          <ListGroup variant="flush" className="border rounded">
+                            {weeklyTopics.map((w, idx) => {
+                              const key = `${w.program_id}-${w.week_num}`;
+                              return (
+                                <ListGroup.Item key={`${key}-${idx}`}
+                                  className={`py-2 px-3 ${w.is_current ? 'bg-success bg-opacity-10' : ''}`}>
+                                  <div className="d-flex align-items-start gap-2">
+                                    <span className={`small fw-semibold flex-shrink-0 ${w.is_current ? 'text-success' : w.is_past ? 'text-muted' : ''}`}
+                                      style={{ minWidth: '2.5rem' }}>
+                                      {w.week_num}-р
+                                    </span>
+                                    <div className="flex-grow-1">
+                                      <div className="d-flex align-items-center gap-2 flex-wrap">
+                                        {w.topic
+                                          ? <span className={`small ${w.is_past ? 'text-muted' : ''}`}>{w.topic}</span>
+                                          : <span className="small text-muted fst-italic">Сэдэв байхгүй</span>}
+                                        {w.is_current && <Badge bg="success" className="small">Одоо</Badge>}
+                                        {w.hours > 0 && <span className="small text-muted">({w.hours} цаг)</span>}
+                                        {programsInfo.length > 1 && w.program_name && (
+                                          <Badge bg="light" text="dark" className="small">{w.program_name}</Badge>
+                                        )}
+                                      </div>
+                                      {w.objectives?.length > 0 && (
+                                        <Accordion flush className="mt-1">
+                                          <Accordion.Item eventKey={key} className="border-0 bg-transparent">
+                                            <Accordion.Header className="p-0">
+                                              <span className="text-muted d-flex align-items-center gap-1" style={{ fontSize: '0.75rem' }}>
+                                                <Target size={10} />Зорилт ({w.objectives.length})
+                                              </span>
+                                            </Accordion.Header>
+                                            <Accordion.Body className="p-0 pt-1 ps-2">
+                                              <ul className="list-unstyled mb-0">
+                                                {w.objectives.map((obj, i) => (
+                                                  <li key={i} className="small text-muted mb-1 d-flex align-items-start gap-1">
+                                                    <span className="text-success flex-shrink-0">•</span>
+                                                    <span>{obj}</span>
+                                                  </li>
+                                                ))}
+                                              </ul>
+                                            </Accordion.Body>
+                                          </Accordion.Item>
+                                        </Accordion>
+                                      )}
+                                      {w.resources?.length > 0 && (
+                                        <div className="mt-1 d-flex flex-wrap gap-1">
+                                          {w.resources.map(r => (
+                                            <Link key={r.id} to={r.url} className="text-decoration-none">
+                                              <Badge bg={RESOURCE_TYPE_COLORS[r.resource_type] || 'info'}
+                                                className="small fw-normal d-inline-flex align-items-center gap-1">
+                                                <FileText size={10} />
+                                                <span className="fw-semibold">{RESOURCE_TYPE_LABELS[r.resource_type] || r.resource_type}:</span>
+                                                {r.title.length > 40 ? r.title.slice(0, 40) + '...' : r.title}
+                                              </Badge>
+                                            </Link>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </ListGroup.Item>
+                              );
+                            })}
+                          </ListGroup>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Гишүүдэд: хөтөлбөр байхгүй */}
+                    {!isTeacherOrAdmin && programsInfo.length === 0 && (
+                      <div className="text-center text-muted small py-4">
+                        Энэ дэд бүлэгт хөтөлбөр тохируулагдаагүй байна.
+                      </div>
+                    )}
+                  </Card.Body>
+                )}
+
               </Card>
             ) : (
               <div className="text-center text-muted py-5 small">Бүлэг сонгоно уу</div>
@@ -711,6 +1258,16 @@ const ClubSubGroupsPage = () => {
         onHide={() => setAutoGroupModal(false)}
         clubId={clubId}
         onDone={() => { fetchSubgroups(); showToast?.('Дэд бүлгүүд үүсгэгдлээ', 'success'); }}
+      />
+      <AutoObjectivesModal
+        show={autoObjectivesModal}
+        onHide={() => setAutoObjectivesModal(false)}
+        subgroup={selected}
+        clubId={clubId}
+        onDone={() => {
+          if (selected) fetchWeeklyTopics(selected.id);
+          showToast?.('Суралцахуйн зорилго нэмэгдлээ', 'success');
+        }}
       />
     </div>
   );

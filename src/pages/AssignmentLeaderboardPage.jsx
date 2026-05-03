@@ -249,6 +249,7 @@ const AssignmentLeaderboardPage = () => {
   const [search, setSearch] = useState('');
   const [subgroups, setSubgroups] = useState([]);
   const [subgroupFilter, setSubgroupFilter] = useState('');
+  const [gradeFilter, setGradeFilter] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -296,6 +297,9 @@ const AssignmentLeaderboardPage = () => {
     if (subgroupMemberIds) {
       rows = rows.filter(r => subgroupMemberIds.has(r.student.id));
     }
+    if (gradeFilter) {
+      rows = rows.filter(r => String(r.student.grade_id) === gradeFilter);
+    }
     if (search.trim()) {
       const q = search.toLowerCase();
       rows = rows.filter(r =>
@@ -303,7 +307,7 @@ const AssignmentLeaderboardPage = () => {
       );
     }
     return rows;
-  }, [ranked, search, subgroupMemberIds]);
+  }, [ranked, search, subgroupMemberIds, gradeFilter]);
 
   // Дэд бүлэг/хайлт шүүсний дараа дахин дугаарлах
   const reRanked = useMemo(() => {
@@ -316,6 +320,16 @@ const AssignmentLeaderboardPage = () => {
     });
     return [...out, ...noScore.map(r => ({ ...r, rank: null }))];
   }, [filtered]);
+
+  // Байгаа grade-уудыг жагсаалтаас гаргах
+  const gradeOptions = useMemo(() => {
+    const seen = new Map();
+    for (const r of ranked) {
+      const { grade_id, grade_name } = r.student;
+      if (grade_id != null && !seen.has(grade_id)) seen.set(grade_id, grade_name);
+    }
+    return [...seen.entries()].sort((a, b) => a[0] - b[0]).map(([id, name]) => ({ id, name }));
+  }, [ranked]);
 
   // Статистик — filtered-аар тооцоолох (дэд бүлэг + хайлт хамаарна)
   const stats = useMemo(() => {
@@ -386,6 +400,15 @@ const AssignmentLeaderboardPage = () => {
               <option value="">Бүх бүлэг</option>
               {subgroups.map(sg => (
                 <option key={sg.id} value={String(sg.id)}>{sg.name}</option>
+              ))}
+            </Form.Select>
+          )}
+          {gradeOptions.length > 0 && (
+            <Form.Select size="sm" style={{ width: 120 }}
+              value={gradeFilter} onChange={e => setGradeFilter(e.target.value)}>
+              <option value="">Бүх анги</option>
+              {gradeOptions.map(g => (
+                <option key={g.id} value={String(g.id)}>{g.name}</option>
               ))}
             </Form.Select>
           )}
@@ -576,11 +599,16 @@ const AssignmentLeaderboardPage = () => {
                       position: 'sticky', left: 44, zIndex: 1,
                       background: r.rank === 1 ? '#fff3cd' : r.rank <= 3 ? '#f8f9fa' : '#fff',
                       boxShadow: '2px 0 4px rgba(0,0,0,0.07)',
+                      paddingLeft: '0.75rem',
                     }}>
                       <div className="d-flex align-items-center gap-2">
                         <Avatar student={r.student} size={24} />
                         <div className="overflow-hidden">
-                          <div className="fw-medium text-truncate" style={{ maxWidth: 120 }}>
+                          <div
+                            className="fw-medium text-truncate"
+                            style={{ maxWidth: 120, cursor: 'pointer', color: '#0d6efd' }}
+                            onClick={() => navigate(`/clubs/${clubData?.id}/report/${r.student.username}`)}
+                          >
                             {displayName(r.student)}
                           </div>
                           <div className="text-muted" style={{ fontSize: '0.65rem' }}>

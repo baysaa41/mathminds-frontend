@@ -39,11 +39,13 @@ const QuizTakePage = () => {
   const [isPaused, setIsPaused] = useState(false);
   const [currentProblemTime, setCurrentProblemTime] = useState(0);
   const [problemStartTime, setProblemStartTime] = useState(null);
+  const [problemTimes, setProblemTimes] = useState({}); // { problemId: seconds }
   const [totalElapsedTime, setTotalElapsedTime] = useState(0); // Нийт зарцуулсан хугацаа (секунд)
   const [quizStartTime, setQuizStartTime] = useState(null);
   const [showTimeLimitModal, setShowTimeLimitModal] = useState(false);
   const timerRef = useRef(null);
   const totalTimerRef = useRef(null);
+  const baseTimeRef = useRef(0); // accumulated seconds from previous visits to current problem
 
   // Modal states
   const [showPauseModal, setShowPauseModal] = useState(false);
@@ -126,7 +128,7 @@ const QuizTakePage = () => {
     if (!isPaused && problemStartTime) {
       timerRef.current = setInterval(() => {
         const elapsed = Math.floor((new Date() - problemStartTime) / 1000);
-        setCurrentProblemTime(elapsed);
+        setCurrentProblemTime(baseTimeRef.current + elapsed);
       }, 1000);
     } else {
       if (timerRef.current) {
@@ -232,9 +234,8 @@ const QuizTakePage = () => {
     }
 
     if (currentIndex < problems.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-      setCurrentProblemTime(0);
-      setProblemStartTime(new Date());
+      saveProblemTime(problems[currentIndex].id, currentProblemTime);
+      goToIndex(currentIndex + 1);
     } else {
       setShowFinishModal(true);
     }
@@ -243,9 +244,8 @@ const QuizTakePage = () => {
   // Өмнөх бодлого
   const handlePrevious = () => {
     if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
-      setCurrentProblemTime(0);
-      setProblemStartTime(new Date());
+      saveProblemTime(problems[currentIndex].id, currentProblemTime);
+      goToIndex(currentIndex - 1);
     }
   };
 
@@ -259,6 +259,7 @@ const QuizTakePage = () => {
       if (currentAnswer && currentProblem) {
         await submitAnswer(currentProblem.id, currentAnswer, imageFile).catch(console.error);
       }
+      baseTimeRef.current = currentProblemTime; // freeze accumulated time before pausing
       await apiClient.post(`/api/integral/answer-sheets/${answerSheet.id}/pause/`);
       setIsPaused(true);
       setShowPauseModal(true);
@@ -289,7 +290,7 @@ const QuizTakePage = () => {
       const currentAnswer = answers[currentProblem?.id];
       const imageFile = selectedImages[currentProblem?.id];
       if (currentAnswer && currentProblem) {
-        await submitAnswer(currentProblem.id, currentAnswer, imageFile);
+        await submitAnswer(currentProblem.id, currentAnswer, imageFile).catch(console.error);
       }
 
       // Тест дуусгах
@@ -309,6 +310,43 @@ const QuizTakePage = () => {
       ...prev,
       [problemId]: answersObj ? { answers: answersObj } : { label, value },
     }));
+  };
+
+  // Бодлого шилжихэд хугацааг хадгалж, шинэ хугацааг сэргээх
+  const saveProblemTime = (fromProblemId, totalTime) => {
+    setProblemTimes(prev => ({
+      ...prev,
+      [fromProblemId]: totalTime,
+    }));
+  };
+
+  const goToIndex = (idx) => {
+    const nextProblemId = problems[idx]?.id;
+    const base = problemTimes[nextProblemId] || 0;
+    baseTimeRef.current = base;
+    setCurrentIndex(idx);
+    setCurrentProblemTime(base);
+    setProblemStartTime(new Date());
+  };
+
+  // Sidebar-аас бодлого руу шүүж очих
+  const handleJumpTo = async (idx) => {
+    if (idx === currentIndex || isSaving) return;
+    const currentProblem = problems[currentIndex];
+    const currentAnswer = answers[currentProblem?.id];
+    const imageFile = selectedImages[currentProblem?.id];
+    if (currentAnswer && currentProblem) {
+      setIsSaving(true);
+      try {
+        await submitAnswer(currentProblem.id, currentAnswer, imageFile);
+      } catch (err) {
+        console.error('Хариулт хадгалахад алдаа:', err);
+      } finally {
+        setIsSaving(false);
+      }
+    }
+    saveProblemTime(currentProblem.id, currentProblemTime);
+    goToIndex(idx);
   };
 
   // Format time (seconds to MM:SS)
@@ -349,10 +387,28 @@ const QuizTakePage = () => {
   }
 
   const currentProblem = problems[currentIndex];
-  const progress = ((currentIndex + 1) / problems.length) * 100;
+
+  // Бүх бодлогод зарцуулсан нийт хугацаа
+  const totalProblemTime = currentProblemTime + Object.entries(problemTimes)
+    .filter(([id]) => Number(id) !== currentProblem?.id)
+    .reduce((sum, [, t]) => sum + t, 0);
+
+  const answeredCount = problems.filter(p => {
+    const ans = answers[p.id];
+    if (p.type === 4)
+      return !!ans?.answers &&
+        (p.choices || []).length > 0 &&
+        (p.choices || []).every(c => {
+          const v = ans.answers[c.label];
+          return v !== undefined && v !== '';
+        });
+    return !!ans;
+  }).length;
 
   return (
-    <Container className="py-4" style={{ maxWidth: '900px' }}>
+    <Container fluid className="py-4" style={{ maxWidth: '1100px' }}>
+      <div className="d-flex gap-3 align-items-start">
+      <div style={{ flex: 1, minWidth: 0 }}>
       {/* Progress & Timer */}
       <Card className="mb-3">
         <Card.Body>
@@ -365,20 +421,30 @@ const QuizTakePage = () => {
               <strong>{formatTime(currentProblemTime)}</strong>
               <small className="text-muted"> (одоо)</small>
             </div>
-            {quiz?.default_time_limit && (
-              <div className="ms-auto">
-                <i className="bi bi-hourglass-split me-1"></i>
-                <strong>{formatTime(totalElapsedTime)}</strong>
-                <small className="text-muted"> / {quiz.default_time_limit} мин</small>
-                {totalElapsedTime >= quiz.default_time_limit * 60 * 0.9 && (
-                  <Badge bg="warning" className="ms-2">
-                    Хугацаа дуусч байна!
-                  </Badge>
-                )}
+            <div className="ms-auto d-flex gap-3 align-items-center">
+              <div>
+                <i className="bi bi-stopwatch me-1"></i>
+                <strong>{formatTime(totalProblemTime)}</strong>
+                <small className="text-muted"> (нийт)</small>
               </div>
-            )}
+              {quiz?.default_time_limit && (
+                <div>
+                  <i className="bi bi-hourglass-split me-1"></i>
+                  <strong>{formatTime(totalElapsedTime)}</strong>
+                  <small className="text-muted"> / {quiz.default_time_limit} мин</small>
+                  {totalElapsedTime >= quiz.default_time_limit * 60 * 0.9 && (
+                    <Badge bg="warning" className="ms-2">
+                      Хугацаа дуусч байна!
+                    </Badge>
+                  )}
+                </div>
+              )}
+            </div>
           </Stack>
-          <ProgressBar now={progress} label={`${Math.round(progress)}%`} />
+          <ProgressBar
+            now={problems.length ? Math.round(answeredCount / problems.length * 100) : 0}
+            label={`${answeredCount}/${problems.length}`}
+          />
         </Card.Body>
       </Card>
 
@@ -584,6 +650,102 @@ const QuizTakePage = () => {
           </Button>
         )}
       </Stack>
+      </div>{/* flex main */}
+
+      {/* Right Sidebar */}
+      <div style={{
+        width: 200,
+        flexShrink: 0,
+        position: 'sticky',
+        top: 80,
+        alignSelf: 'flex-start',
+      }}>
+        <div className="card border-0 shadow-sm">
+          <div className="card-header py-2 px-3 bg-white border-bottom d-flex justify-content-between align-items-center">
+            <span className="fw-semibold" style={{ fontSize: '0.8rem' }}>Бодлогууд</span>
+            <span className="text-muted" style={{ fontSize: '0.75rem' }}>
+              {answeredCount}/{problems.length}
+            </span>
+          </div>
+          <div className="card-body p-2">
+            <div className="d-flex flex-wrap gap-1">
+              {problems.map((p, idx) => {
+                const ans = answers[p.id];
+                let isAnswered = false;
+                let isPartial = false;
+                if (p.type === 4) {
+                  const choices = p.choices || [];
+                  const filledCount = choices.filter(c => {
+                    const v = ans?.answers?.[c.label];
+                    return v !== undefined && v !== '';
+                  }).length;
+                  isAnswered = choices.length > 0 && filledCount === choices.length;
+                  isPartial = filledCount > 0 && filledCount < choices.length;
+                } else {
+                  isAnswered = !!ans;
+                }
+                const isCurrent = idx === currentIndex;
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => handleJumpTo(idx)}
+                    disabled={isSaving}
+                    style={{
+                      width: 34,
+                      height: 34,
+                      fontSize: '0.75rem',
+                      fontWeight: isCurrent ? 700 : 500,
+                      border: isCurrent ? '2px solid #0d6efd' : isPartial ? '1px solid #ffc107' : '1px solid #dee2e6',
+                      borderRadius: 6,
+                      cursor: 'pointer',
+                      background: isCurrent
+                        ? '#0d6efd'
+                        : isAnswered
+                        ? '#d1e7dd'
+                        : isPartial
+                        ? '#fff3cd'
+                        : '#f8f9fa',
+                      color: isCurrent ? '#fff' : isAnswered ? '#0a3622' : isPartial ? '#664d03' : '#6c757d',
+                    }}
+                  >
+                    {idx + 1}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-3 d-flex flex-column gap-1" style={{ fontSize: '0.7rem', color: '#6c757d' }}>
+              <div className="d-flex align-items-center gap-1">
+                <span style={{ width: 12, height: 12, background: '#0d6efd', borderRadius: 3, display: 'inline-block' }} />
+                Одоогийн
+              </div>
+              <div className="d-flex align-items-center gap-1">
+                <span style={{ width: 12, height: 12, background: '#d1e7dd', border: '1px solid #dee2e6', borderRadius: 3, display: 'inline-block' }} />
+                Хариулсан
+              </div>
+              <div className="d-flex align-items-center gap-1">
+                <span style={{ width: 12, height: 12, background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 3, display: 'inline-block' }} />
+                Дутуу
+              </div>
+              <div className="d-flex align-items-center gap-1">
+                <span style={{ width: 12, height: 12, background: '#f8f9fa', border: '1px solid #dee2e6', borderRadius: 3, display: 'inline-block' }} />
+                Хариулаагүй
+              </div>
+            </div>
+            <div className="mt-3">
+              <button
+                className="btn btn-success btn-sm w-100"
+                onClick={() => setShowFinishModal(true)}
+                disabled={isSaving}
+                style={{ fontSize: '0.75rem' }}
+              >
+                <i className="bi bi-check-circle me-1"></i>
+                Дуусгах
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      </div>{/* d-flex wrapper */}
 
       {/* Pause Modal */}
       <Modal show={showPauseModal} onHide={handleResume} centered backdrop="static">
@@ -675,5 +837,7 @@ const QuizTakePage = () => {
     </Container>
   );
 };
+
+
 
 export default QuizTakePage;
