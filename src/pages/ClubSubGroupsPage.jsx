@@ -495,6 +495,13 @@ const ClubSubGroupsPage = () => {
 
   useEffect(() => { fetchSubgroups(); }, [fetchSubgroups]);
 
+  // Сонгосон бүлгийн members татагдаагүй бол (жишээ: анхны автомат сонголт) fetchDetail дуудах
+  useEffect(() => {
+    if (selected && !selected.members) {
+      fetchDetail(selected.id);
+    }
+  }, [selected?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleSelectGroup = (g) => {
     setSelected(g);
     if (!g.members) fetchDetail(g.id);

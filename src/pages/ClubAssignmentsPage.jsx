@@ -205,6 +205,7 @@ const ClubAssignmentsPage = () => {
               <Card key={a.id} className="shadow-sm">
                 <Card.Body className="py-2 px-3">
                   <div className="d-flex align-items-start justify-content-between gap-2">
+                    {/* Мэдээлэл */}
                     <div className="flex-grow-1">
                       <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
                         <span
@@ -235,6 +236,7 @@ const ClubAssignmentsPage = () => {
                             })}
                           </span>
                         )}
+                        {/* Сурагчийн төлөв */}
                         {!isTeacherOrAdmin && statusInfo && (
                           <Badge bg={statusInfo.bg} className="small d-flex align-items-center gap-1">
                             <statusInfo.icon size={10} />
@@ -244,67 +246,69 @@ const ClubAssignmentsPage = () => {
                             )}
                           </Badge>
                         )}
-                        {isTeacherOrAdmin && (
-                          <span className="small text-muted">
-                            Илгээсэн: {a.submitted_count || 0}/{a.submission_count || 0}
-                          </span>
+                      </div>
+                    </div>
+
+                    {/* Сурагчийн үйлдлүүд */}
+                    {!isTeacherOrAdmin && a.quiz_uuid && (
+                      <div className="d-flex align-items-center gap-1 flex-shrink-0">
+                        {!my && (
+                          <Button
+                            variant="primary" size="sm"
+                            onClick={() => handleStart(a)}
+                            disabled={startingId === a.id || (isExpired && !a.allow_late)}
+                          >
+                            {startingId === a.id
+                              ? <Spinner animation="border" size="sm" />
+                              : <><PlayCircle size={14} className="me-1" />Эхлэх</>}
+                          </Button>
+                        )}
+                        {my?.status === 'in_progress' && (
+                          <Button variant="warning" size="sm" onClick={() => handleContinue(a)}>
+                            <PlayCircle size={14} className="me-1" />Үргэлжлүүлэх
+                          </Button>
+                        )}
+                        {(my?.status === 'submitted' || my?.status === 'graded') && (
+                          <Button variant="outline-success" size="sm" onClick={() => handleViewResult(a)}>
+                            <CheckCircle size={14} className="me-1" />Үр дүн
+                          </Button>
                         )}
                       </div>
-                      {isTeacherOrAdmin && a.submission_count > 0 && (
+                    )}
+                  </div>
+                </Card.Body>
+
+                {/* Багшийн хэсэг — тусдаа footer */}
+                {isTeacherOrAdmin && (
+                  <Card.Footer className="py-2 px-3 bg-light d-flex align-items-center justify-content-between gap-2 flex-wrap">
+                    <div className="d-flex align-items-center gap-2">
+                      <span className="small text-muted">
+                        Илгээсэн: {a.submitted_count || 0}/{a.submission_count || 0}
+                      </span>
+                      {a.submission_count > 0 && (
                         <ProgressBar
-                          className="mt-1"
-                          style={{ height: '4px' }}
+                          style={{ height: 5, width: 80 }}
                           now={(a.submitted_count / a.submission_count) * 100}
                           variant="success"
                         />
                       )}
                     </div>
-                    <div className="d-flex align-items-center gap-1 flex-shrink-0">
-                      {a.quiz_uuid && (
-                        <>
-                          {!my && (
-                            <Button
-                              variant="primary" size="sm"
-                              onClick={() => handleStart(a)}
-                              disabled={startingId === a.id || (isExpired && !a.allow_late)}
-                            >
-                              {startingId === a.id
-                                ? <Spinner animation="border" size="sm" />
-                                : <><PlayCircle size={14} className="me-1" />Эхлэх</>}
-                            </Button>
-                          )}
-                          {my?.status === 'in_progress' && (
-                            <Button variant="warning" size="sm" onClick={() => handleContinue(a)}>
-                              <PlayCircle size={14} className="me-1" />Үргэлжлүүлэх
-                            </Button>
-                          )}
-                          {(my?.status === 'submitted' || my?.status === 'graded') && (
-                            <Button variant="outline-success" size="sm" onClick={() => handleViewResult(a)}>
-                              <CheckCircle size={14} className="me-1" />Үр дүн
-                            </Button>
-                          )}
-                        </>
-                      )}
-                      {isTeacherOrAdmin && (
-                        <>
-                          <Button
-                            variant="outline-warning" size="sm" className="py-0 px-1"
-                            onClick={() => navigate(`/clubs/${clubId}/assignments/${a.id}/leaderboard`)}
-                            title="Дүнгийн жагсаалт"
-                          >
-                            <Trophy size={14} />
-                          </Button>
-                          <Button
-                            variant="outline-danger" size="sm" className="py-0 px-1"
-                            onClick={() => handleDelete(a.id, a.title)} title="Устгах"
-                          >
-                            <Trash2 size={14} />
-                          </Button>
-                        </>
-                      )}
+                    <div className="d-flex align-items-center gap-1">
+                      <Button
+                        variant="outline-warning" size="sm"
+                        onClick={() => navigate(`/clubs/${clubId}/assignments/${a.id}/leaderboard`)}
+                      >
+                        <Trophy size={13} className="me-1" />Дүнгийн жагсаалт
+                      </Button>
+                      <Button
+                        variant="outline-danger" size="sm"
+                        onClick={() => handleDelete(a.id, a.title)}
+                      >
+                        <Trash2 size={13} className="me-1" />Устгах
+                      </Button>
                     </div>
-                  </div>
-                </Card.Body>
+                  </Card.Footer>
+                )}
               </Card>
             );
           })}

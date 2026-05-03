@@ -76,13 +76,18 @@ const CreatePostForm = ({ onPostCreated, clubId = null, clubName = null }) => {
     }
   }, [clubId]);
 
-  // Клубын дэд бүлгүүдийг татаж авах
+  // Клубын дэд бүлгүүдийг татаж авах (prop болон dropdown-с сонгосон аль ч тохиолдолд)
   useEffect(() => {
-    if (!clubId) return;
-    apiClient.get('/api/club-subgroups/', { params: { club: clubId } })
+    const targetId = clubId || selectedClubId;
+    if (!targetId) {
+      setClubSubgroups([]);
+      setSelectedSubgroupId('');
+      return;
+    }
+    apiClient.get('/api/club-subgroups/', { params: { club: targetId } })
       .then(r => setClubSubgroups(r.data.results || r.data || []))
       .catch(() => {});
-  }, [clubId]);
+  }, [clubId, selectedClubId]);
 
   const fetchMyClubs = async () => {
     try {
@@ -321,6 +326,19 @@ const CreatePostForm = ({ onPostCreated, clubId = null, clubName = null }) => {
                 </option>
               ))}
             </Form.Select>
+            {selectedClubId && clubSubgroups.length > 0 && (
+              <Form.Select
+                size="sm"
+                className="mt-2"
+                value={selectedSubgroupId}
+                onChange={e => setSelectedSubgroupId(e.target.value)}
+              >
+                <option value="">Бүх гишүүдэд</option>
+                {clubSubgroups.map(sg => (
+                  <option key={sg.id} value={sg.id}>{sg.name}</option>
+                ))}
+              </Form.Select>
+            )}
           </Form.Group>
         )}
 
