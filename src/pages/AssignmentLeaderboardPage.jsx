@@ -3,9 +3,11 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useOutletContext, useNavigate } from 'react-router-dom';
 import Badge from 'react-bootstrap/Badge';
 import Button from 'react-bootstrap/Button';
+import Modal from 'react-bootstrap/Modal';
 import Spinner from 'react-bootstrap/Spinner';
 import ProgressBar from 'react-bootstrap/ProgressBar';
 import Form from 'react-bootstrap/Form';
+import { MathJax } from 'better-react-mathjax';
 import { ArrowLeft, Trophy, Search, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import apiClient from '../api/axiosConfig';
@@ -250,6 +252,7 @@ const AssignmentLeaderboardPage = () => {
   const [subgroups, setSubgroups] = useState([]);
   const [subgroupFilter, setSubgroupFilter] = useState('');
   const [gradeFilter, setGradeFilter] = useState('');
+  const [selectedProblem, setSelectedProblem] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -381,6 +384,7 @@ const AssignmentLeaderboardPage = () => {
     : null;
 
   return (
+    <>
     <div className="container-fluid py-3 px-2 px-md-3">
       {/* ── Толгой ── */}
       <div className="d-flex align-items-center gap-2 mb-3 flex-wrap">
@@ -491,13 +495,10 @@ const AssignmentLeaderboardPage = () => {
                 {/* Бодлого бүрийн баган */}
                 {problems.map((p, ci) => (
                   <th key={ci} className="text-center"
-                    style={{ minWidth: 46, maxWidth: 56, whiteSpace: 'nowrap' }}>
+                    style={{ minWidth: 46, maxWidth: 56, whiteSpace: 'nowrap', cursor: p.statement ? 'pointer' : 'default' }}
+                    title={p.statement ? p.title : undefined}
+                    onClick={() => p.statement && setSelectedProblem(p)}>
                     <div style={{ fontSize: '0.7rem', fontWeight: 600 }}>{p.order}</div>
-                    {p.max_point != null && (
-                      <div className="text-muted fw-normal" style={{ fontSize: '0.62rem' }}>
-                        /{p.max_point}
-                      </div>
-                    )}
                   </th>
                 ))}
 
@@ -707,6 +708,32 @@ const AssignmentLeaderboardPage = () => {
         </div>
       </div>
     </div>
+
+      {/* Бодлогын өгүүлбэр модаль */}
+      <Modal show={!!selectedProblem} onHide={() => setSelectedProblem(null)} size="lg" centered>
+        <Modal.Header closeButton>
+          <Modal.Title style={{ fontSize: '1rem' }}>
+            {selectedProblem && (
+              <MathJax dynamic>{selectedProblem.title}</MathJax>
+            )}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+          {selectedProblem && (
+            <MathJax dynamic>
+              <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
+                {selectedProblem.statement}
+              </div>
+            </MathJax>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" size="sm" onClick={() => setSelectedProblem(null)}>
+            Хаах
+          </Button>
+        </Modal.Footer>
+      </Modal>
+    </>
   );
 };
 
