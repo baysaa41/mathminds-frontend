@@ -9,7 +9,7 @@ import {
 import {
   Plus, Pencil, Trash2, ChevronLeft, BookOpen,
   CheckCircle, XCircle, ChevronDown, ChevronUp, Sparkles, FileText,
-  MessageCircle, Send, Check, X as XIcon,
+  MessageCircle, Send, Check, X as XIcon, Search,
 } from 'lucide-react';
 import * as svc from '../services/curriculumAdminService';
 
@@ -658,10 +658,14 @@ function ArticleImproveModal({ show, onHide, topic, articleUuid, onApplied }) {
 
 function WeeklyTopicsTab({ programs }) {
   const [filterProgram, setFilterProgram] = useState('');
+  const [searchText, setSearchText] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [topics, setTopics] = useState([]);
+  const [globalResults, setGlobalResults] = useState([]);
+  const [globalLoading, setGlobalLoading] = useState(false);
   const [expandedTopics, setExpandedTopics] = useState({});
   const [generatingId, setGeneratingId] = useState(null);
-  const [improveTopic, setImproveTopic] = useState(null); // topic object for modal
+  const [improveTopic, setImproveTopic] = useState(null);
   const [improveArticleUuid, setImproveArticleUuid] = useState(null);
 
   const toggleExpand = (id) =>
@@ -691,6 +695,31 @@ function WeeklyTopicsTab({ programs }) {
   }, [filterProgram]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Global search: товч дарах эсвэл Enter дарахад хайна
+  useEffect(() => {
+    if (filterProgram || !searchQuery) { setGlobalResults([]); return; }
+    setGlobalLoading(true);
+    svc.getWeeklyTopics({ search: searchQuery })
+      .then(res => setGlobalResults(res.data))
+      .catch(() => setGlobalResults([]))
+      .finally(() => setGlobalLoading(false));
+  }, [searchQuery, filterProgram]);
+
+  const handleGlobalSearch = () => {
+    const q = searchText.trim();
+    if (q) setSearchQuery(q);
+  };
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); handleGlobalSearch(); }
+  };
+
+  const handleClearSearch = () => {
+    setSearchText('');
+    setSearchQuery('');
+    setGlobalResults([]);
+  };
 
   const openCreate = () => {
     setEditing(null);
@@ -781,9 +810,9 @@ function WeeklyTopicsTab({ programs }) {
 
       {/* Filters */}
       <Row className="mb-3 g-2 align-items-end">
-        <Col md={6}>
+        <Col md={5}>
           <Form.Label className="small mb-1">Хөтөлбөр</Form.Label>
-          <Form.Select size="sm" value={filterProgram} onChange={e => setFilterProgram(e.target.value)}>
+          <Form.Select size="sm" value={filterProgram} onChange={e => { setFilterProgram(e.target.value); setSearchText(''); }}>
             <option value="">— сонгох —</option>
             {programs.map(p => (
               <option key={p.id} value={p.id}>
@@ -793,6 +822,39 @@ function WeeklyTopicsTab({ programs }) {
               </option>
             ))}
           </Form.Select>
+        </Col>
+        <Col md={4}>
+          <Form.Label className="small mb-1">Хайх</Form.Label>
+          <div className="input-group input-group-sm">
+            <span className="input-group-text bg-white">
+              <Search size={13} className="text-muted" />
+            </span>
+            <Form.Control
+              size="sm"
+              placeholder="Сэдвийн нэрээр хайх..."
+              value={searchText}
+              onChange={e => setSearchText(e.target.value)}
+              onKeyDown={handleSearchKeyDown}
+            />
+            {(searchText || searchQuery) && (
+              <Button
+                variant="outline-secondary" size="sm"
+                onClick={handleClearSearch}
+                title="Цэвэрлэх"
+              >
+                <XIcon size={12} />
+              </Button>
+            )}
+            {!filterProgram && (
+              <Button
+                variant="outline-primary" size="sm"
+                onClick={handleGlobalSearch}
+                disabled={!searchText.trim()}
+              >
+                <Search size={13} />
+              </Button>
+            )}
+          </div>
         </Col>
         <Col md="auto">
           <Button
@@ -815,26 +877,135 @@ function WeeklyTopicsTab({ programs }) {
         </div>
       )}
 
-      {/* No filter selected */}
+      {/* No program selected — global search or prompt */}
       {!filterProgram && (
-        <div className="text-center text-muted py-5">
-          <BookOpen size={40} className="mb-2 opacity-25" />
-          <p>Хөтөлбөрийг сонгоно уу</p>
-        </div>
+        <>
+          {!searchQuery && (
+            <div className="text-center text-muted py-5">
+              <BookOpen size={40} className="mb-2 opacity-25" />
+              <p>Хөтөлбөрийг сонгох эсвэл хайлт хийнэ үү</p>
+            </div>
+          )}
+          {searchQuery && (
+            <>
+              {globalLoading && <div className="text-center py-3"><Spinner /></div>}
+              {!globalLoading && (
+                <>
+                  <div className="d-flex justify-content-between mb-2">
+                    <small className="text-muted">
+                      <Search size={12} className="me-1" />
+                      «{searchQuery}» — {globalResults.length} сэдэв олдлоо
+                    </small>
+                  </div>
+                  {globalResults.length === 0 && (
+                    <Alert variant="warning">Хайлтад тохирох сэдэв олдсонгүй.</Alert>
+                  )}
+                  <div className="d-flex flex-column gap-2">
+                    {globalResults.map(t => {
+                      const isOpen = !!expandedTopics[t.id];
+                      return (
+                        <Card key={t.id} className="border">
+                          <div
+                            className="d-flex align-items-center px-3 py-2 gap-2"
+                            style={{ cursor: 'pointer', userSelect: 'none' }}
+                            onClick={() => toggleExpand(t.id)}
+                          >
+                            <span className="text-muted flex-shrink-0">
+                              {isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                            </span>
+                            <Badge bg="secondary" className="flex-shrink-0">
+                              {t.program_grade}-р анги
+                            </Badge>
+                            <Badge bg="light" text="dark" className="flex-shrink-0 border small">
+                              {t.program_name}
+                            </Badge>
+                            <Badge bg="outline-secondary" className="flex-shrink-0 border text-muted">
+                              {t.week_num}-р 7 хоног
+                            </Badge>
+                            <span className="flex-grow-1 text-truncate small fw-medium">{t.topic}</span>
+                            <Badge
+                              bg={t.is_published ? 'success' : 'warning'}
+                              text={t.is_published ? undefined : 'dark'}
+                              className="flex-shrink-0"
+                            >
+                              {t.is_published ? 'Нийтлэгдсэн' : 'Ноорог'}
+                            </Badge>
+                            <div className="flex-shrink-0 d-flex gap-1" onClick={e => e.stopPropagation()}>
+                              <Button size="sm" variant="outline-secondary" className="p-1"
+                                onClick={() => openEdit(t)}>
+                                <Pencil size={12} />
+                              </Button>
+                              <Button size="sm" variant="outline-danger" className="p-1"
+                                onClick={() => setConfirmId(t.id)}>
+                                <Trash2 size={12} />
+                              </Button>
+                            </div>
+                          </div>
+                          <Collapse in={isOpen}>
+                            <div>
+                              <Card.Body className="bg-light border-top pt-3">
+                                {t.description && (
+                                  <p className="text-muted small mb-3">{t.description}</p>
+                                )}
+                                <Row>
+                                  <Col md={6}>
+                                    <h6 className="small fw-bold text-uppercase text-muted mb-2">
+                                      Суралцахуйн зорилтууд
+                                    </h6>
+                                    <ObjectivesEditor topicId={t.id} objectives={t.objectives} onRefresh={() => {
+                                      svc.getWeeklyTopics({ search: searchQuery }).then(r => setGlobalResults(r.data)).catch(() => {});
+                                    }} />
+                                  </Col>
+                                  <Col md={6}>
+                                    <h6 className="small fw-bold text-uppercase text-muted mb-2">
+                                      Материалууд
+                                    </h6>
+                                    <ResourcesEditor topicId={t.id} resources={t.resources} onRefresh={() => {
+                                      svc.getWeeklyTopics({ search: searchQuery }).then(r => setGlobalResults(r.data)).catch(() => {});
+                                    }} />
+                                  </Col>
+                                </Row>
+                              </Card.Body>
+                            </div>
+                          </Collapse>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </>
+          )}
+        </>
       )}
 
       {/* Topics list as Accordion */}
       {loading && <div className="text-center py-3"><Spinner /></div>}
       {!loading && filterProgram && (
         <>
-          <div className="d-flex justify-content-between mb-2">
-            <small className="text-muted">{topics.length} сэдэв</small>
-          </div>
-          {topics.length === 0 && (
-            <Alert variant="info">Сонгосон хөтөлбөрт сэдэв байхгүй байна.</Alert>
-          )}
-          <div className="d-flex flex-column gap-2">
-            {topics.map(t => {
+          {(() => {
+            const q = searchText.trim().toLowerCase();
+            const filtered = q
+              ? topics.filter(t =>
+                  t.topic.toLowerCase().includes(q) ||
+                  (t.description || '').toLowerCase().includes(q)
+                )
+              : topics;
+            return (
+              <>
+                <div className="d-flex justify-content-between mb-2">
+                  <small className="text-muted">
+                    {q ? `${filtered.length} / ${topics.length} сэдэв` : `${topics.length} сэдэв`}
+                  </small>
+                </div>
+                {topics.length === 0 && (
+                  <Alert variant="info">Сонгосон хөтөлбөрт сэдэв байхгүй байна.</Alert>
+                )}
+                {topics.length > 0 && filtered.length === 0 && (
+                  <Alert variant="warning">«{searchText}» хайлтаар сэдэв олдсонгүй.</Alert>
+                )}
+                <div className="d-flex flex-column gap-2">
+                  {filtered.map(t => {
               const isOpen = !!expandedTopics[t.id];
               return (
                 <Card key={t.id} className="border">
@@ -960,8 +1131,11 @@ function WeeklyTopicsTab({ programs }) {
                   </Collapse>
                 </Card>
               );
-            })}
-          </div>
+                  })}
+                </div>
+              </>
+            );
+          })()}
         </>
       )}
 

@@ -357,9 +357,6 @@ const AutoGroupModal = ({ show, onHide, clubId, onDone }) => {
     name_prefix: 'Бүлэг',
     replace_existing: false,
     method: 'answer',
-    new_program_name: '',
-    new_program_grade: '',
-    curriculum_weeks: 0,
   });
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState(null);
@@ -372,7 +369,6 @@ const AutoGroupModal = ({ show, onHide, clubId, onDone }) => {
       ...f,
       assignment_id: '', n_groups: 3, name_prefix: 'Бүлэг',
       replace_existing: false, method: 'answer',
-      new_program_name: '', new_program_grade: '', curriculum_weeks: 0,
     }));
     setLoadingAsgn(true);
     apiClient.get('/api/club-assignments/', { params: { club: clubId } })
@@ -391,11 +387,6 @@ const AutoGroupModal = ({ show, onHide, clubId, onDone }) => {
         replace_existing: form.replace_existing,
         method: form.method,
       };
-      if (form.new_program_name.trim() && form.new_program_grade && form.curriculum_weeks > 0) {
-        payload.new_program_name = form.new_program_name.trim();
-        payload.new_program_grade = parseInt(form.new_program_grade);
-        payload.curriculum_weeks = form.curriculum_weeks;
-      }
       const res = await apiClient.post(
         `/api/club-assignments/${form.assignment_id}/auto_group/`,
         payload,
@@ -582,51 +573,6 @@ const AutoGroupModal = ({ show, onHide, clubId, onDone }) => {
               onChange={e => setForm(f => ({ ...f, replace_existing: e.target.checked }))}
               className="small mb-3" />
 
-            {/* Хөтөлбөр бэлдэх */}
-            <div className="border rounded p-3 bg-light">
-              <div className="small fw-medium mb-2 d-flex align-items-center gap-1">
-                <GraduationCap size={13} />
-                Хөтөлбөр бэлдэх
-                <span className="text-muted fw-normal">(заавал биш)</span>
-              </div>
-              <div className="d-flex gap-2 mb-2">
-                <Form.Control size="sm" style={{ flex: 1 }}
-                  placeholder="Хөтөлбөрийн нэр (жишээ: Математик)"
-                  value={form.new_program_name}
-                  onChange={e => setForm(f => ({ ...f, new_program_name: e.target.value }))} />
-                <Form.Select size="sm" style={{ maxWidth: 110 }}
-                  value={form.new_program_grade}
-                  onChange={e => setForm(f => ({ ...f, new_program_grade: e.target.value }))}>
-                  <option value="">Анги</option>
-                  {Array.from({ length: 12 }, (_, i) => i + 1).map(g => (
-                    <option key={g} value={g}>{g}-р анги</option>
-                  ))}
-                </Form.Select>
-              </div>
-              {(form.new_program_name.trim() && form.new_program_grade) && (
-                <Form.Group>
-                  <Form.Label className="small text-muted mb-1">
-                    Хэдэн долоо хоногийн зорилго бэлдэх
-                  </Form.Label>
-                  <div className="d-flex align-items-center gap-3">
-                    <Form.Range min={0} max={8} value={form.curriculum_weeks}
-                      onChange={e => setForm(f => ({ ...f, curriculum_weeks: parseInt(e.target.value) }))}
-                      style={{ flex: 1 }} />
-                    <Badge bg={form.curriculum_weeks > 0 ? 'primary' : 'secondary'}
-                      style={{ minWidth: 32, fontSize: '0.9rem' }}>
-                      {form.curriculum_weeks || '—'}
-                    </Badge>
-                  </div>
-                  {form.curriculum_weeks > 0 && (
-                    <Form.Text className="text-muted" style={{ fontSize: '0.72rem' }}>
-                      Бүлэг бүрт тусдаа шинэ хөтөлбөр үүсгэж {form.curriculum_weeks} долоо
-                      хоногийн AI суралцахуйн зорилго нэмнэ. Хэсэг хугацаа шаардагдана.
-                    </Form.Text>
-                  )}
-                </Form.Group>
-              )}
-            </div>
-
             {err && <div className="text-danger small mt-2">{err}</div>}
           </>
         )}
@@ -640,7 +586,7 @@ const AutoGroupModal = ({ show, onHide, clubId, onDone }) => {
             {saving ? (
               <>
                 <Spinner animation="border" size="sm" className="me-1" />
-                {form.curriculum_weeks > 0 ? 'Хөтөлбөр бэлдэж байна...' : 'Хуваж байна...'}
+                Хуваж байна...
               </>
             ) : (
               <><Wand2 size={14} className="me-1" />Хуваах</>

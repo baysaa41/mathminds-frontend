@@ -12,11 +12,11 @@ import ListGroup from 'react-bootstrap/ListGroup';
 import InputGroup from 'react-bootstrap/InputGroup';
 import {
   ClipboardList, Plus, Clock, CheckCircle, PlayCircle,
-  Trash2, Award, Search, ClipboardPlus, Trophy, Users,
+  Trash2, Award, Search, ClipboardPlus, Trophy, Users, Pencil,
 } from 'lucide-react';
 import EmptyState from '../components/common/EmptyState';
 import {
-  getAssignments, createAssignment, deleteAssignment,
+  getAssignments, createAssignment, updateAssignment, deleteAssignment,
   startAssignment,
 } from '../services/clubsService';
 import apiClient from '../api/axiosConfig';
@@ -48,6 +48,11 @@ const ClubAssignmentsPage = () => {
   const [assignModal, setAssignModal] = useState(null); // quiz object
   const [assignForm, setAssignForm] = useState({ title: '', deadline: '', allow_late: false, subgroups: [] });
   const [creating, setCreating] = useState(false);
+
+  // Edit assignment modal
+  const [editModal, setEditModal] = useState(null); // assignment object
+  const [editForm, setEditForm] = useState({ title: '', deadline: '', allow_late: false, subgroups: [] });
+  const [saving, setSaving] = useState(false);
 
   const fetchAssignments = useCallback(async () => {
     if (!clubId) return;
@@ -133,6 +138,34 @@ const ClubAssignmentsPage = () => {
       fetchAssignments();
     } catch (err) {
       showToast?.(err.response?.data?.detail || 'Алдаа гарлаа', 'danger');
+    }
+  };
+
+  const openEdit = (a) => {
+    const dl = a.deadline ? new Date(a.deadline).toISOString().slice(0, 16) : '';
+    setEditForm({
+      title: a.title || '',
+      deadline: dl,
+      allow_late: a.allow_late || false,
+      subgroups: a.subgroups || [],
+    });
+    setEditModal(a);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editModal) return;
+    setSaving(true);
+    try {
+      const data = { title: editForm.title, allow_late: editForm.allow_late, subgroups: editForm.subgroups };
+      data.deadline = editForm.deadline ? new Date(editForm.deadline).toISOString() : null;
+      await updateAssignment(editModal.id, data);
+      showToast?.('Хадгалагдлаа', 'success');
+      setEditModal(null);
+      fetchAssignments();
+    } catch (err) {
+      showToast?.(err.response?.data?.detail || 'Алдаа гарлаа', 'danger');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -301,6 +334,12 @@ const ClubAssignmentsPage = () => {
                         <Trophy size={13} className="me-1" />Дүнгийн жагсаалт
                       </Button>
                       <Button
+                        variant="outline-secondary" size="sm"
+                        onClick={() => openEdit(a)}
+                      >
+                        <Pencil size={13} className="me-1" />Засах
+                      </Button>
+                      <Button
                         variant="outline-danger" size="sm"
                         onClick={() => handleDelete(a.id, a.title)}
                       >
@@ -445,6 +484,74 @@ const ClubAssignmentsPage = () => {
             disabled={creating || !assignForm.title.trim()}
           >
             {creating ? <Spinner animation="border" size="sm" /> : 'Даалгавар үүсгэх'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* ========== Даалгавар засах Modal ========== */}
+      <Modal show={!!editModal} onHide={() => setEditModal(null)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title className="fs-6">Даалгавар засах</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form.Group className="mb-3">
+            <Form.Label className="small fw-medium">Даалгаврын нэр</Form.Label>
+            <Form.Control
+              size="sm"
+              value={editForm.title}
+              onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
+            />
+          </Form.Group>
+          <Form.Group className="mb-3">
+            <Form.Label className="small fw-medium">Эцсийн хугацаа</Form.Label>
+            <Form.Control
+              type="datetime-local"
+              size="sm"
+              value={editForm.deadline}
+              onChange={e => setEditForm(f => ({ ...f, deadline: e.target.value }))}
+            />
+          </Form.Group>
+          <Form.Check
+            type="checkbox"
+            label="Хоцорсон хариулт зөвшөөрөх"
+            className="small"
+            checked={editForm.allow_late}
+            onChange={e => setEditForm(f => ({ ...f, allow_late: e.target.checked }))}
+          />
+          {clubSubgroups.length > 0 && (
+            <Form.Group className="mt-3">
+              <Form.Label className="small fw-medium d-flex align-items-center gap-1">
+                <Users size={13} />Дэд бүлэг (хоосон = бүх гишүүд)
+              </Form.Label>
+              <div className="d-flex flex-wrap gap-2">
+                {clubSubgroups.map(sg => (
+                  <Form.Check
+                    key={sg.id}
+                    type="checkbox"
+                    id={`edit-sg-${sg.id}`}
+                    label={<Badge bg={sg.color || 'secondary'}>{sg.name}</Badge>}
+                    className="small"
+                    checked={editForm.subgroups.includes(sg.id)}
+                    onChange={e => setEditForm(f => ({
+                      ...f,
+                      subgroups: e.target.checked
+                        ? [...f.subgroups, sg.id]
+                        : f.subgroups.filter(id => id !== sg.id),
+                    }))}
+                  />
+                ))}
+              </div>
+            </Form.Group>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" size="sm" onClick={() => setEditModal(null)}>Болих</Button>
+          <Button
+            variant="primary" size="sm"
+            onClick={handleSaveEdit}
+            disabled={saving || !editForm.title.trim()}
+          >
+            {saving ? <Spinner animation="border" size="sm" /> : 'Хадгалах'}
           </Button>
         </Modal.Footer>
       </Modal>

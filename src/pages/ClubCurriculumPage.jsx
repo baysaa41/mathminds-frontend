@@ -8,8 +8,10 @@ import Spinner from 'react-bootstrap/Spinner';
 import ListGroup from 'react-bootstrap/ListGroup';
 import Form from 'react-bootstrap/Form';
 import Accordion from 'react-bootstrap/Accordion';
-import { CalendarDays, GraduationCap, Sparkles, Plus, X, RotateCcw, FileText, ExternalLink, Send, Target } from 'lucide-react';
+import { CalendarDays, GraduationCap, Sparkles, Plus, X, RotateCcw, FileText, Send, Target, Wand2 } from 'lucide-react';
+import Modal from 'react-bootstrap/Modal';
 import { generateWeeklyArticle, getWeeklyTopics, getPrograms, addProgram, removeProgram, setWeek } from '../services/clubsService';
+import apiClient from '../api/axiosConfig';
 
 const RESOURCE_TYPE_LABELS = {
   article: 'Өгүүлэл',
@@ -39,6 +41,11 @@ const ClubCurriculumPage = () => {
   const [selectedProgramId, setSelectedProgramId] = useState('');
   const [addingProgram, setAddingProgram] = useState(false);
   const [startDate, setStartDate] = useState('');
+
+  // Хөтөлбөр үүсгэх modal
+  const [showGenModal, setShowGenModal] = useState(false);
+  const [genForm, setGenForm] = useState({ program_name: '', grade: '', weeks_count: 8, hours_per_week: 2, start_date: '' });
+  const [generating, setGenerating] = useState(false);
 
   const programsInfo = clubData?.curriculum_programs_info || [];
 
@@ -114,6 +121,30 @@ const ClubCurriculumPage = () => {
     }
   };
 
+  const handleGenerateCurriculum = async () => {
+    if (!genForm.program_name.trim() || !genForm.grade) return;
+    setGenerating(true);
+    try {
+      const payload = {
+        program_name: genForm.program_name.trim(),
+        grade: parseInt(genForm.grade),
+        weeks_count: genForm.weeks_count,
+        hours_per_week: genForm.hours_per_week,
+      };
+      if (genForm.start_date) payload.start_date = genForm.start_date;
+      await apiClient.post(`/api/clubs/${clubData.id}/generate_curriculum/`, payload);
+      showToast?.('Хөтөлбөр амжилттай үүсгэгдлээ!', 'success');
+      setShowGenModal(false);
+      setGenForm({ program_name: '', grade: '', weeks_count: 8, hours_per_week: 2, start_date: '' });
+      clubActions?.onUpdate?.();
+      fetchTopics();
+    } catch (err) {
+      showToast?.(err.response?.data?.detail || 'Хөтөлбөр үүсгэхэд алдаа гарлаа', 'danger');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   const handleGenerateArticle = async (w) => {
     const hasArticle = w.resources?.some(r => r.resource_type === 'article');
     const msg = hasArticle
@@ -139,7 +170,14 @@ const ClubCurriculumPage = () => {
 
   return (
     <div className="container-fluid">
-      <h4 className="mb-3">Хөтөлбөр</h4>
+      <div className="d-flex align-items-center justify-content-between mb-3">
+        <h4 className="mb-0">Хөтөлбөр</h4>
+        {isTeacherOrAdmin && (
+          <Button variant="primary" size="sm" onClick={() => setShowGenModal(true)}>
+            <Wand2 size={14} className="me-1" />Хөтөлбөр үүсгэх
+          </Button>
+        )}
+      </div>
 
       {/* Хөтөлбөр нэмэх/хасах (багш нарт) */}
       {isTeacherOrAdmin && (
@@ -405,6 +443,75 @@ const ClubCurriculumPage = () => {
         </Card>
       )}
 
+      {/* ── Хөтөлбөр үүсгэх Modal ── */}
+      <Modal show={showGenModal} onHide={() => setShowGenModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title className="fs-6 d-flex align-items-center gap-2">
+            <Wand2 size={16} />AI хөтөлбөр үүсгэх
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form.Group className="mb-3">
+            <Form.Label className="small fw-medium">Хөтөлбөрийн нэр</Form.Label>
+            <Form.Control
+              size="sm"
+              placeholder="жишээ: Математик"
+              value={genForm.program_name}
+              onChange={e => setGenForm(f => ({ ...f, program_name: e.target.value }))}
+            />
+          </Form.Group>
+          <div className="d-flex gap-2 mb-3">
+            <Form.Group style={{ flex: 1 }}>
+              <Form.Label className="small fw-medium">Анги</Form.Label>
+              <Form.Select size="sm" value={genForm.grade}
+                onChange={e => setGenForm(f => ({ ...f, grade: e.target.value }))}>
+                <option value="">— Анги сонгох —</option>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map(g => (
+                  <option key={g} value={g}>{g}-р анги</option>
+                ))}
+              </Form.Select>
+            </Form.Group>
+            <Form.Group style={{ flex: 1 }}>
+              <Form.Label className="small fw-medium">Цаг/7хоног</Form.Label>
+              <Form.Control
+                type="number" size="sm" min={1} max={10}
+                value={genForm.hours_per_week}
+                onChange={e => setGenForm(f => ({ ...f, hours_per_week: parseInt(e.target.value) || 2 }))}
+              />
+            </Form.Group>
+          </div>
+          <Form.Group className="mb-3">
+            <Form.Label className="small fw-medium">Долоо хоногийн тоо: <strong>{genForm.weeks_count}</strong></Form.Label>
+            <Form.Range min={1} max={32} value={genForm.weeks_count}
+              onChange={e => setGenForm(f => ({ ...f, weeks_count: parseInt(e.target.value) }))} />
+          </Form.Group>
+          <Form.Group className="mb-2">
+            <Form.Label className="small fw-medium">Эхлэх огноо</Form.Label>
+            <Form.Control
+              type="date" size="sm"
+              value={genForm.start_date}
+              onChange={e => setGenForm(f => ({ ...f, start_date: e.target.value }))}
+            />
+          </Form.Group>
+          <Form.Text className="text-muted" style={{ fontSize: '0.72rem' }}>
+            AI {genForm.weeks_count} долоо хоногийн сэдэв болон суралцахуйн зорилго боловсруулна. Хэсэг хугацаа шаардагдана.
+          </Form.Text>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" size="sm" onClick={() => setShowGenModal(false)}>Болих</Button>
+          <Button
+            variant="primary" size="sm"
+            onClick={handleGenerateCurriculum}
+            disabled={generating || !genForm.program_name.trim() || !genForm.grade}
+          >
+            {generating ? (
+              <><Spinner animation="border" size="sm" className="me-1" />Боловсруулж байна...</>
+            ) : (
+              <><Wand2 size={14} className="me-1" />Үүсгэх</>
+            )}
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 };

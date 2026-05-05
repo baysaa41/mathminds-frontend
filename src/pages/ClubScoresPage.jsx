@@ -177,6 +177,11 @@ const ClubScoresPage = () => {
                       {a.max_score && (
                         <div className="text-muted fw-normal" style={{ fontSize: '0.65rem' }}>/{a.max_score}</div>
                       )}
+                      {a.deadline && (
+                        <div className="text-muted fw-normal" style={{ fontSize: '0.62rem' }}>
+                          {new Date(a.deadline).toLocaleDateString('mn-MN', { month: 'short', day: 'numeric' })}
+                        </div>
+                      )}
                     </th>
                   ))}
                   <th className="text-center" style={{ minWidth: 60, background: '#f8f9fa' }}>
