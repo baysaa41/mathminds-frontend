@@ -23,10 +23,9 @@ import Stack from 'react-bootstrap/Stack';
 import Badge from 'react-bootstrap/Badge';
 import Accordion from 'react-bootstrap/Accordion';
 import Card from 'react-bootstrap/Card';
-import Form from 'react-bootstrap/Form';
 
 // Icons
-import { Lightbulb, BookOpen, FileText, Sparkles, Pencil, Trash2, StickyNote, BrainCircuit, Check, X } from 'lucide-react';
+import { Lightbulb, BookOpen, FileText, Sparkles, Pencil, Trash2, StickyNote, BrainCircuit } from 'lucide-react';
 
 // ─── Бодлогын зургийн gallery (viewerjs) ─────────────────────────────────
 const ProblemImageGallery = ({ images }) => {
@@ -90,13 +89,6 @@ const ProblemDetailPage = () => {
   const [generatingAI, setGeneratingAI] = useState(false);
   const [aiSuccess, setAiSuccess] = useState(false);
 
-  // Хариулт inline засах
-  const [editingAnswer, setEditingAnswer] = useState(false);
-  const [answerDraft, setAnswerDraft] = useState('');
-  const [savingAnswer, setSavingAnswer] = useState(false);
-
-  // MC зөв сонголт тэмдэглэх
-  const [savingChoice, setSavingChoice] = useState(null); // choice id
   const fontSizes = [1, 1.2, 1.5];
   const [fontSizeIndex, setFontSizeIndex] = useState(0);
   const fontSize = fontSizes[fontSizeIndex];
@@ -163,43 +155,6 @@ const ProblemDetailPage = () => {
     } catch (err) {
       console.error('Бодолт устгахад алдаа:', err);
       setError(err.response?.data?.error || 'Бодолт устгаж чадсангүй.');
-    }
-  };
-
-  // Хариулт хадгалах (type=0,4)
-  const handleSaveAnswer = async () => {
-    setSavingAnswer(true);
-    try {
-      const res = await apiClient.patch(`/api/integral/problems/${id}/`, { answer: answerDraft });
-      setProblem((prev) => ({ ...prev, answer: res.data.answer }));
-      setEditingAnswer(false);
-    } catch (err) {
-      console.error('Хариулт хадгалахад алдаа:', err);
-    } finally {
-      setSavingAnswer(false);
-    }
-  };
-
-  // MC зөв сонголт тэмдэглэх/болиулах
-  const handleToggleCorrect = async (choice) => {
-    setSavingChoice(choice.id);
-    const newScore = choice.default_score > 0 ? 0 : 1;
-    try {
-      // Бүх сонголтуудыг шинэчилнэ: тухайн нэгийг зөв болгоход бусдыг 0 болгоно
-      const updatedChoices = problem.choices.map((c) => ({
-        ...c,
-        default_score: c.id === choice.id ? newScore : 0,
-      }));
-      await apiClient.patch(`/api/integral/problems/${id}/`, {
-        choices: updatedChoices.map(({ id: cid, label, value, default_score, description }) => ({
-          id: cid, label, value, default_score, description,
-        })),
-      });
-      setProblem((prev) => ({ ...prev, choices: updatedChoices }));
-    } catch (err) {
-      console.error('Зөв сонголт тэмдэглэхэд алдаа:', err);
-    } finally {
-      setSavingChoice(null);
     }
   };
 
@@ -384,23 +339,8 @@ const ProblemDetailPage = () => {
                   <div className="flex-grow-1">
                     <LivePreview content={choice.value || '(Сонголт хоосон)'} />
                   </div>
-                  {canEdit && (
-                    <>
-                      {isCorrect && <Badge bg="success" className="flex-shrink-0">Зөв</Badge>}
-                      <Button
-                        size="sm"
-                        variant={isCorrect ? 'success' : 'outline-secondary'}
-                        className="flex-shrink-0 p-1"
-                        style={{ lineHeight: 1 }}
-                        disabled={savingChoice === choice.id}
-                        onClick={() => handleToggleCorrect(choice)}
-                        title={isCorrect ? 'Зөв тэмдэглэлийг болиулах' : 'Зөв хариулт болгох'}
-                      >
-                        {savingChoice === choice.id
-                          ? <Spinner animation="border" size="sm" />
-                          : <Check size={14} />}
-                      </Button>
-                    </>
+                  {canEdit && isCorrect && (
+                    <Badge bg="success" className="flex-shrink-0">Зөв</Badge>
                   )}
                 </div>
               );
@@ -603,59 +543,19 @@ const ProblemDetailPage = () => {
         </div>
       )}
 
-      {/* Хариулт (type=0,4) */}
-      {canEdit && problem.type !== 1 && (
+      {/* Хариулт (type=0,4) — canEdit хэрэглэгчид харах боломжтой, засах нь edit хуудасд */}
+      {canEdit && problem.type !== 1 && problem.answer && (
         <div className="mb-4">
-          {editingAnswer ? (
-            <div>
-              <Form.Label className="fw-semibold small text-muted">Хариулт засах</Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={3}
-                value={answerDraft}
-                onChange={(e) => setAnswerDraft(e.target.value)}
-                placeholder="Зөв хариултыг оруулах..."
-                className="mb-2"
-              />
-              <Stack direction="horizontal" gap={2}>
-                <Button
-                  size="sm"
-                  variant="success"
-                  onClick={handleSaveAnswer}
-                  disabled={savingAnswer}
-                >
-                  {savingAnswer ? <Spinner animation="border" size="sm" /> : <><Check size={14} className="me-1" />Хадгалах</>}
-                </Button>
-                <Button size="sm" variant="outline-secondary" onClick={() => setEditingAnswer(false)}>
-                  <X size={14} className="me-1" />Болих
-                </Button>
-              </Stack>
-            </div>
-          ) : (
-            <details>
-              <summary className="text-muted small d-inline-flex align-items-center gap-2" style={{ cursor: 'pointer' }}>
-                Хариулт {problem.answer ? 'харах' : '(хоосон) — нэмэх'}
-              </summary>
-              <div className="mt-2">
-                {problem.answer && (
-                  <div className="problem-answer p-3 bg-warning bg-opacity-10 rounded border border-warning mb-2">
-                    <LivePreview content={problem.answer} />
-                  </div>
-                )}
-                <Button
-                  size="sm"
-                  variant="outline-warning"
-                  onClick={() => {
-                    setAnswerDraft(problem.answer || '');
-                    setEditingAnswer(true);
-                  }}
-                >
-                  <Pencil size={13} className="me-1" />
-                  {problem.answer ? 'Засах' : 'Хариулт нэмэх'}
-                </Button>
+          <details>
+            <summary className="text-muted small d-inline-flex align-items-center gap-2" style={{ cursor: 'pointer' }}>
+              Хариулт харах
+            </summary>
+            <div className="mt-2">
+              <div className="problem-answer p-3 bg-warning bg-opacity-10 rounded border border-warning">
+                <LivePreview content={problem.answer} />
               </div>
-            </details>
-          )}
+            </div>
+          </details>
         </div>
       )}
 

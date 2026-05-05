@@ -63,6 +63,13 @@ export const API_ENDPOINTS = {
     TOPIC_DETAIL: (id) => `/api/integral/topics/${id}/`,
     MATH_CATEGORIES: '/api/integral/math-categories/',
   },
+
+  // Clubs — Daily Practice
+  CLUBS: {
+    DAILY_PRACTICE: (clubId) => `/api/clubs/${clubId}/daily-practice/`,
+    DAILY_PRACTICE_ANSWER: (clubId) => `/api/clubs/${clubId}/daily-practice/answer/`,
+    DAILY_PRACTICE_HINT: (clubId) => `/api/clubs/${clubId}/daily-practice/hint/`,
+  },
 };
 
 export default API_ENDPOINTS;
