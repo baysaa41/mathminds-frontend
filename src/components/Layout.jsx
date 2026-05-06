@@ -23,6 +23,7 @@ const Layout = () => {
   const mainScrollRef = useRef(null);
 
   const [clubData, setClubData] = useState(null);
+  const [problemNavData, setProblemNavData] = useState(null);
   const [, setClubActions] = useState(null);
   const [, setIsTeacherOrAdmin] = useState(false);
   const [, setIsCreator] = useState(false);
@@ -98,6 +99,7 @@ const Layout = () => {
                         addingTeacher,
                         setAddingTeacher,
                         mainScrollRef,
+                        setProblemNavData,
                       }}
                     />
                   </div>
@@ -112,7 +114,7 @@ const Layout = () => {
               !/^\/clubs\/\d+\/assignments\/\d+\/leaderboard/.test(location.pathname) && (
               <Col lg={3} xl={4} className="bg-light">
                 <div style={{ height: 'calc(100vh - 60px)', overflowY: 'auto' }} className="p-3">
-                  <RightSidebar clubData={clubData} />
+                  <RightSidebar clubData={clubData} problemNavData={problemNavData} />
                 </div>
               </Col>
             )}

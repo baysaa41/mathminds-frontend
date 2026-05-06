@@ -69,6 +69,8 @@ export const API_ENDPOINTS = {
     DAILY_PRACTICE: (clubId) => `/api/clubs/${clubId}/daily-practice/`,
     DAILY_PRACTICE_ANSWER: (clubId) => `/api/clubs/${clubId}/daily-practice/answer/`,
     DAILY_PRACTICE_HINT: (clubId) => `/api/clubs/${clubId}/daily-practice/hint/`,
+    DAILY_PRACTICE_ENRICH: (clubId) => `/api/clubs/${clubId}/daily-practice/enrich/`,
+    DAILY_PRACTICE_EXPLAIN: (clubId) => `/api/clubs/${clubId}/daily-practice/explain/`,
   },
 };
 

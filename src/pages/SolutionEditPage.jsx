@@ -93,15 +93,22 @@ const SolutionEditPage = () => {
 
   // Засварлаж байгаа solution
   const [currentSolution, setCurrentSolution] = useState(null);
+  const [solutionFormulas, setSolutionFormulas] = useState([]);
+  const [formulaSearch, setFormulaSearch] = useState('');
+  const [formulaResults, setFormulaResults] = useState([]);
+  const [formulaSearching, setFormulaSearching] = useState(false);
+  const [formulaUpdating, setFormulaUpdating] = useState(false);
   const [formData, setFormData] = useState({
     hint: '',
     solution: '',
+    explanation: '',
     note: '',
   });
 
   // Debounced values for live preview
   const debouncedHint = useDebounce(formData.hint, 500);
   const debouncedSolution = useDebounce(formData.solution, 500);
+  const debouncedExplanation = useDebounce(formData.explanation, 500);
   const debouncedNote = useDebounce(formData.note, 500);
 
   useEffect(() => {
@@ -141,16 +148,18 @@ const SolutionEditPage = () => {
       if (forceNew || solutionsData.length === 0) {
         // "Шинэ бодолт нэмэх" товчоор ирсэн, эсвэл бодолт байхгүй
         setCurrentSolution(null);
-        setFormData({ hint: '', solution: '', note: '' });
+        setFormData({ hint: '', solution: '', explanation: '', note: '' });
       } else {
         // Тодорхой бодолт дамжуулсан бол тэр бодолтыг, үгүй бол эхнийхийг сонго
         const target = solutionId
           ? solutionsData.find((s) => s.id === solutionId) ?? solutionsData[0]
           : solutionsData[0];
         setCurrentSolution(target);
+        setSolutionFormulas(target.formulas || []);
         setFormData({
           hint: target.hint || '',
           solution: target.solution || '',
+          explanation: target.explanation || '',
           note: target.note || '',
         });
       }
@@ -170,7 +179,7 @@ const SolutionEditPage = () => {
     e.preventDefault();
 
     // Validation
-    if (!formData.hint && !formData.solution && !formData.note) {
+    if (!formData.hint && !formData.solution && !formData.explanation && !formData.note) {
       setError('Дор хаяж нэг талбар бөглөнө үү!');
       return;
     }
@@ -202,6 +211,40 @@ const SolutionEditPage = () => {
 
   const handleCancel = () => {
     navigate(`/problem/${id}`);
+  };
+
+  const handleFormulaSearch = async (q) => {
+    setFormulaSearch(q);
+    if (!q.trim()) { setFormulaResults([]); return; }
+    setFormulaSearching(true);
+    try {
+      const res = await apiClient.get('/api/integral/formulas/', { params: { search: q, page_size: 8 } });
+      setFormulaResults(res.data.results || res.data || []);
+    } catch { setFormulaResults([]); }
+    finally { setFormulaSearching(false); }
+  };
+
+  const handleAddFormula = async (formula) => {
+    if (!currentSolution) return;
+    if (solutionFormulas.some(f => f.id === formula.id)) return;
+    setFormulaUpdating(true);
+    try {
+      await apiClient.post(`/api/integral/solutions/${currentSolution.id}/formulas/add/`, { formula_id: formula.id });
+      setSolutionFormulas(prev => [...prev, formula]);
+      setFormulaSearch('');
+      setFormulaResults([]);
+    } catch { /* ignore */ }
+    finally { setFormulaUpdating(false); }
+  };
+
+  const handleRemoveFormula = async (formulaId) => {
+    if (!currentSolution) return;
+    setFormulaUpdating(true);
+    try {
+      await apiClient.post(`/api/integral/solutions/${currentSolution.id}/formulas/remove/`, { formula_id: formulaId });
+      setSolutionFormulas(prev => prev.filter(f => f.id !== formulaId));
+    } catch { /* ignore */ }
+    finally { setFormulaUpdating(false); }
   };
 
   const handleGenerateAI = async () => {
@@ -490,6 +533,118 @@ const SolutionEditPage = () => {
             </Form.Group>
           </Card.Body>
         </Card>
+
+        {/* Explanation Field + Preview */}
+        <Card className="mb-4 border-warning border-opacity-25">
+          <Card.Header className="bg-warning bg-opacity-10">
+            <Stack direction="horizontal" gap={2}>
+              <Sparkles size={18} className="text-warning" />
+              <strong>AI дэлгэрэнгүй тайлбар</strong>
+              {formData.explanation && (
+                <Badge bg="warning" text="dark">
+                  {formData.explanation.length} тэмдэгт
+                </Badge>
+              )}
+            </Stack>
+          </Card.Header>
+          <Card.Body>
+            <Form.Group>
+              <Form.Control
+                as="textarea"
+                rows={6}
+                value={formData.explanation}
+                onChange={(e) => handleChange('explanation', e.target.value)}
+                placeholder="Бодолтын алхам бүрийг дэлгэрэнгүй тайлбарласан текст..."
+                className="font-monospace"
+                style={{ fontSize: '0.95rem' }}
+              />
+              <Form.Text className="text-muted">Сурагчдад ойлгомжтой дэлгэрэнгүй тайлбар (LaTeX дэмжинэ)</Form.Text>
+              <LivePreview content={debouncedExplanation} label="AI дэлгэрэнгүй тайлбар" />
+            </Form.Group>
+          </Card.Body>
+        </Card>
+
+        {/* Related Formulas */}
+        {currentSolution && (
+          <Card className="mb-4 border-secondary border-opacity-25">
+            <Card.Header className="bg-secondary bg-opacity-10">
+              <Stack direction="horizontal" gap={2}>
+                <i className="bi bi-bookmarks-fill text-secondary" />
+                <strong>Холбоотой томьёо, тодорхойлолт</strong>
+                {solutionFormulas.length > 0 && (
+                  <Badge bg="secondary">{solutionFormulas.length}</Badge>
+                )}
+              </Stack>
+            </Card.Header>
+            <Card.Body>
+              {/* Одоогийн томьёонууд */}
+              {solutionFormulas.length > 0 && (
+                <div className="mb-3 d-flex flex-column gap-2">
+                  {solutionFormulas.map(f => (
+                    <div key={f.id} className="border rounded px-3 py-2 bg-light d-flex align-items-start gap-2">
+                      <div style={{ flex: 1 }}>
+                        {f.title && (
+                          <div className="fw-semibold mb-1" style={{ fontSize: '0.85rem' }}>
+                            <GlobalLivePreview content={f.title} />
+                          </div>
+                        )}
+                        <GlobalLivePreview content={f.content} />
+                      </div>
+                      <Button
+                        variant="link" size="sm" className="p-0 text-danger flex-shrink-0 mt-1"
+                        onClick={() => handleRemoveFormula(f.id)}
+                        disabled={formulaUpdating}
+                        title="Хасах"
+                      >
+                        <X size={14} />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Томьёо хайх */}
+              <div className="position-relative">
+                <Form.Control
+                  type="text"
+                  placeholder="Томьёо хайх..."
+                  value={formulaSearch}
+                  onChange={e => handleFormulaSearch(e.target.value)}
+                  size="sm"
+                />
+                {formulaSearching && (
+                  <Spinner animation="border" size="sm" className="position-absolute end-0 top-50 translate-middle-y me-2" />
+                )}
+                {formulaResults.length > 0 && (
+                  <div className="border rounded mt-1 bg-white shadow-sm" style={{ maxHeight: 260, overflowY: 'auto', zIndex: 10, position: 'relative' }}>
+                    {formulaResults.map(f => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        className="d-block w-100 text-start px-3 py-2 border-0 bg-transparent hover-bg-light"
+                        style={{ cursor: 'pointer', borderBottom: '1px solid #eee' }}
+                        onClick={() => handleAddFormula(f)}
+                        disabled={formulaUpdating || solutionFormulas.some(sf => sf.id === f.id)}
+                      >
+                        {f.title && (
+                          <div className="small fw-semibold">
+                            <GlobalLivePreview content={f.title} />
+                          </div>
+                        )}
+                        <div className="small text-muted text-truncate">
+                          <GlobalLivePreview content={f.content} />
+                        </div>
+                        {solutionFormulas.some(sf => sf.id === f.id) && (
+                          <span className="badge bg-success ms-1" style={{ fontSize: '0.65rem' }}>нэмсэн</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </Card.Body>
+          </Card>
+        )}
 
         {/* Note Field + Preview */}
         <Card className="mb-4 border-info border-opacity-25">

@@ -1,12 +1,18 @@
-// ClubExercisesPage — өдрийн дасгал: бодлого бодох интерактив горим
-import React, { useState, useEffect, useCallback } from 'react';
-import { useOutletContext, useSearchParams } from 'react-router-dom';
+// ClubExercisesPage — өдрийн дасгал: дэд бүлгээр хуваасан интерактив горим
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useOutletContext, useSearchParams, Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import Spinner from 'react-bootstrap/Spinner';
 import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
 import Alert from 'react-bootstrap/Alert';
 import Badge from 'react-bootstrap/Badge';
-import { Dumbbell, ChevronLeft, ChevronRight, Lightbulb, CheckCircle, XCircle } from 'lucide-react';
+import Nav from 'react-bootstrap/Nav';
+import Modal from 'react-bootstrap/Modal';
+import {
+  Dumbbell, ChevronLeft, ChevronRight, Lightbulb,
+  CheckCircle, XCircle, BookOpen, Hash, Sparkles, ChevronDown, ChevronUp,
+} from 'lucide-react';
 
 import LivePreview from '../components/LivePreview';
 import EmptyState from '../components/common/EmptyState';
@@ -14,24 +20,22 @@ import apiClient from '../api/axiosConfig';
 import { API_ENDPOINTS } from '../constants/api';
 
 const MONTHS_MN = [
-  '1-р сар', '2-р сар', '3-р сар', '4-р сар', '5-р сар', '6-р сар',
-  '7-р сар', '8-р сар', '9-р сар', '10-р сар', '11-р сар', '12-р сар',
+  '1-р сар','2-р сар','3-р сар','4-р сар','5-р сар','6-р сар',
+  '7-р сар','8-р сар','9-р сар','10-р сар','11-р сар','12-р сар',
 ];
 function formatDateLabel(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
   return `${d.getFullYear()}.${MONTHS_MN[d.getMonth()]} ${d.getDate()}`;
 }
 
-// ── Бодлогын индексийн товчнууд ──────────────────────────────────────────────
 function IndexNav({ items, currentIdx, userAnswers, onSelect }) {
   return (
     <div className="d-flex flex-wrap gap-2 mb-4">
       {items.map((item, idx) => {
         const ua = userAnswers[item.item_id];
-        const answered = ua?.is_correct !== null && ua?.is_correct !== undefined;
         let variant = 'outline-secondary';
-        if (answered && ua.is_correct === true)  variant = 'success';
-        if (answered && ua.is_correct === false) variant = 'danger';
+        if (ua?.is_correct === true)  variant = 'success';
+        if (ua?.is_correct === false) variant = 'danger';
         const isActive = idx === currentIdx;
         return (
           <Button
@@ -53,36 +57,57 @@ function IndexNav({ items, currentIdx, userAnswers, onSelect }) {
   );
 }
 
-// ── Хариулт оруулах хэсэг ────────────────────────────────────────────────────
 function AnswerInput({ problem, value, onChange, disabled }) {
   if (problem.type === 1) {
-    // Сонгох тест (MC)
     return (
-      <div className="mb-3">
-        {(problem.choices || []).map(c => (
-          <Form.Check
-            key={c.id}
-            type="radio"
-            id={`choice-${c.id}`}
-            name={`problem-${problem.id}`}
-            className="mb-2"
-            checked={value === c.label}
-            onChange={() => onChange(c.label)}
-            disabled={disabled}
-            label={
-              <span className="d-flex gap-2 align-items-start">
-                <Badge bg="secondary" className="flex-shrink-0 mt-1" style={{ minWidth: 22 }}>
-                  {c.label}
-                </Badge>
+      <div className="mb-3 d-flex flex-wrap gap-2">
+        {(problem.choices || []).map(c => {
+          const selected = value === c.label;
+          return (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => !disabled && onChange(c.label)}
+              disabled={disabled}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'flex-start',
+                gap: '0.75rem',
+                padding: '0.6rem 0.9rem',
+                border: `2px solid ${selected ? '#0d6efd' : '#dee2e6'}`,
+                borderRadius: '0.5rem',
+                background: selected ? '#e8f0fe' : '#fff',
+                cursor: disabled ? 'default' : 'pointer',
+                textAlign: 'left',
+                transition: 'border-color 0.15s, background 0.15s',
+                opacity: disabled ? 0.75 : 1,
+              }}
+            >
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minWidth: 26,
+                height: 26,
+                borderRadius: '50%',
+                background: selected ? '#0d6efd' : '#e9ecef',
+                color: selected ? '#fff' : '#495057',
+                fontWeight: 700,
+                fontSize: '0.78rem',
+                flexShrink: 0,
+                marginTop: 2,
+              }}>
+                {c.label}
+              </span>
+              <span>
                 <LivePreview content={c.value} />
               </span>
-            }
-          />
-        ))}
+            </button>
+          );
+        })}
       </div>
     );
   }
-  // Уламжлалт (0) болон нөхөх тест (4)
   return (
     <Form.Control
       className="mb-3"
@@ -96,8 +121,7 @@ function AnswerInput({ problem, value, onChange, disabled }) {
   );
 }
 
-// ── Дүнгийн мессеж ───────────────────────────────────────────────────────────
-function ResultBanner({ ua, correctAnswer }) {
+function ResultBanner({ ua, onRetry }) {
   if (!ua || ua.is_correct === null || ua.is_correct === undefined) return null;
   if (ua.is_correct) {
     return (
@@ -108,18 +132,319 @@ function ResultBanner({ ua, correctAnswer }) {
     );
   }
   return (
-    <Alert variant="danger" className="d-flex align-items-center gap-2 py-2">
-      <XCircle size={18} className="flex-shrink-0" />
-      <span>
-        Буруу.{correctAnswer ? <> Зөв хариулт: <strong>{correctAnswer}</strong></> : null}
+    <Alert variant="danger" className="d-flex align-items-center justify-content-between py-2">
+      <span className="d-flex align-items-center gap-2">
+        <XCircle size={18} className="flex-shrink-0" />
+        <span>Буруу.</span>
       </span>
+      <Button variant="outline-danger" size="sm" onClick={onRetry} className="flex-shrink-0 ms-2">
+        Дахин оролдох
+      </Button>
     </Alert>
   );
 }
 
-// ── Үндсэн хуудас ────────────────────────────────────────────────────────────
+function ExtraInfo({ extra, itemId, enrichState, onEnrich, problemUuid, problemId, hasAnswered }) {
+  const { user } = useAuth();
+  const [showSolution, setShowSolution] = useState(false);
+  const [showExplanation, setShowExplanation] = useState(false);
+  const enrich = enrichState[itemId] || {};
+
+  const hasSolution   = !!(extra?.solution?.solution || extra?.solution?.hint);
+  const hasTopics     = (extra?.topics || []).length > 0;
+  const hasKeywords   = (extra?.keywords || []).length > 0;
+  const hasFormulas   = (extra?.formulas || []).length > 0;
+  const hasAiTopics   = (enrich.topics || []).length > 0;
+  const hasAiSolution = !!enrich.solution;
+
+  const needsEnrich = (!hasSolution && !hasAiSolution)
+    || (!hasTopics && !hasKeywords && !hasAiTopics);
+
+  const topicNames = [
+    ...(extra?.topics || []).map(t => ({ name: t.name, ai: false })),
+    ...(!hasTopics ? (extra?.keywords || []).map(k => ({ name: k.name, ai: false })) : []),
+    ...(enrich.topics || []).map(t => ({ name: t, ai: true })),
+  ];
+
+  const allFormulas = extra?.formulas || [];
+
+  return (
+    <div className="mt-3 pt-3 border-top">
+      {/* Бодолт */}
+      {hasAnswered && (hasSolution || hasAiSolution) && (
+        <div className="mb-2">
+          <div className="d-flex align-items-center gap-2">
+            <Button
+              variant="link" size="sm"
+              className="p-0 text-decoration-none d-flex align-items-center gap-1"
+              onClick={() => setShowSolution(v => !v)}
+            >
+              <BookOpen size={13} />
+              <span style={{ fontSize: '0.8rem' }}>Бодолт харах</span>
+              {showSolution ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+            </Button>
+            {user?.is_staff && problemUuid && (
+              <Link
+                to={`/problem/${problemUuid}/solution/new`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted"
+                style={{ fontSize: '0.72rem' }}
+              >
+                <i className="bi bi-pencil-square me-1" />засах
+              </Link>
+            )}
+          </div>
+          {showSolution && (
+            <div className="border-start border-3 border-success ps-3 mt-2">
+              {/* Сэдэв */}
+              {topicNames.length > 0 && (
+                <div className="mb-2 d-flex flex-wrap gap-1 align-items-center">
+                  <Hash size={13} className="text-muted flex-shrink-0" />
+                  {topicNames.map((t, i) => (
+                    <Badge
+                      key={i}
+                      bg={t.ai ? 'info' : 'light'}
+                      text={t.ai ? 'dark' : 'dark'}
+                      className="border"
+                      style={{ fontSize: '0.72rem' }}
+                    >
+                      {t.ai ? '✦ ' : ''}{t.name}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+
+              {/* Холбоотой томьёо */}
+              {allFormulas.length > 0 && (
+                <div className="mb-3">
+                  <div className="small text-muted mb-1 d-flex align-items-center gap-1">
+                    <BookOpen size={13} />Холбоотой томьёо, тодорхойлолт
+                  </div>
+                  {allFormulas.map(f => (
+                    <div key={f.id} className="border rounded px-3 py-2 mb-2 bg-light">
+                      {f.title && (
+                        <div className="fw-semibold mb-1" style={{ fontSize: '0.85rem' }}>
+                          <LivePreview content={f.title} />
+                        </div>
+                      )}
+                      <LivePreview content={f.content} />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <LivePreview
+                content={
+                  extra?.solution?.solution || extra?.solution?.hint || enrich.solution || ''
+                }
+              />
+
+              {/* Дэлгэрэнгүй тайлбар (хадгалагдсан байвал харуулна) */}
+              {extra?.solution?.explanation && (
+                <div className="mt-2">
+                  <Button
+                    variant="link" size="sm"
+                    className="p-0 text-decoration-none d-flex align-items-center gap-1"
+                    onClick={() => setShowExplanation(v => !v)}
+                  >
+                    <Sparkles size={13} className="text-warning" />
+                    <span style={{ fontSize: '0.8rem' }}>Дэлгэрэнгүй тайлбар</span>
+                    {showExplanation ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                  </Button>
+                  {showExplanation && (
+                    <div className="border-start border-3 border-warning ps-3 mt-2">
+                      <LivePreview content={extra.solution.explanation} />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* AI нөхөх */}
+      {needsEnrich && (
+        <Button
+          variant="outline-secondary" size="sm"
+          className="d-flex align-items-center gap-1 mt-1"
+          style={{ fontSize: '0.75rem' }}
+          onClick={() => onEnrich(itemId)}
+          disabled={!!enrich.loading}
+        >
+          {enrich.loading
+            ? <Spinner animation="border" size="sm" />
+            : <><Sparkles size={13} />AI нөхөх</>}
+        </Button>
+      )}
+      {enrich.error && (
+        <div className="text-danger small mt-1">{enrich.error}</div>
+      )}
+    </div>
+  );
+}
+
+function ProblemCard({
+  item, idx, total,
+  userAnswers, localInput, checking, hintState, enrichState,
+  onAnswer, onCheck, onHint, onEnrich, onRetry, onPrev, onNext,
+}) {
+  const { user } = useAuth();
+  const problem    = item.problem;
+  const ua         = userAnswers[item.item_id];
+  const isAnswered = ua?.is_correct === true;
+  const hint       = hintState[item.item_id] || {};
+
+  const [showHintModal, setShowHintModal] = useState(false);
+  const wasLoadingRef = useRef(false);
+
+  useEffect(() => {
+    if (wasLoadingRef.current && !hint.loading && hint.text) {
+      setShowHintModal(true);
+    }
+    wasLoadingRef.current = !!hint.loading;
+  }, [hint.loading, hint.text]);
+
+  const handleHintClick = () => {
+    if (hint.text) {
+      setShowHintModal(true);
+    } else {
+      onHint(item);
+    }
+  };
+
+  return (
+    <div>
+      <div className="small text-muted mb-2">Бодлого {idx + 1} / {total}</div>
+
+      {problem.title && (
+        <div className="fw-semibold mb-2"><LivePreview content={problem.title} /></div>
+      )}
+      {user?.is_staff && problem.uuid && (
+        <div className="mb-2">
+          <Link
+            to={`/problem/${problem.uuid}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="small text-muted text-decoration-none"
+            style={{ fontSize: '0.72rem' }}
+          >
+            <i className="bi bi-box-arrow-up-right me-1" />бодлого #{problem.id}
+          </Link>
+        </div>
+      )}
+      {problem.statement && (
+        <div className="mb-3 border-start border-3 border-primary ps-3">
+          <LivePreview content={problem.statement} />
+        </div>
+      )}
+
+      {isAnswered ? (
+        <div className="mb-3 d-flex align-items-center gap-2">
+          <CheckCircle size={16} className="text-success flex-shrink-0" />
+          <span className="text-success fw-semibold">{ua.answer}</span>
+        </div>
+      ) : (
+        <AnswerInput
+          problem={problem}
+          value={localInput[item.item_id] || ''}
+          onChange={val => onAnswer(item.item_id, val)}
+          disabled={!!checking[item.item_id]}
+        />
+      )}
+
+      <ResultBanner ua={ua} onRetry={() => onRetry(item.item_id)} />
+
+      <div className="d-flex gap-2 mb-3">
+        {!isAnswered && (
+          <Button
+            variant="primary" size="sm"
+            onClick={() => onCheck(item)}
+            disabled={!(localInput[item.item_id] || '').trim() || !!checking[item.item_id]}
+          >
+            {checking[item.item_id]
+              ? <Spinner animation="border" size="sm" />
+              : 'Шалгах'}
+          </Button>
+        )}
+        <Button
+          variant="outline-secondary" size="sm"
+          onClick={handleHintClick}
+          disabled={!!hint.loading}
+          className="d-flex align-items-center gap-1"
+        >
+          {hint.loading
+            ? <Spinner animation="border" size="sm" />
+            : <><Lightbulb size={14} />Туслалцаа авах</>}
+        </Button>
+      </div>
+
+      <Modal show={showHintModal} onHide={() => setShowHintModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title className="d-flex align-items-center gap-2 fs-6">
+            <Lightbulb size={16} />
+            {hint.type === 'ai' ? 'AI заавар' : 'Заавар'}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <LivePreview content={hint.text || ''} />
+        </Modal.Body>
+      </Modal>
+
+      <ExtraInfo
+        extra={item.extra}
+        itemId={item.item_id}
+        enrichState={enrichState}
+        onEnrich={onEnrich}
+        problemUuid={problem.uuid}
+        problemId={problem.id}
+        hasAnswered={!!ua}
+      />
+
+      <div className="d-flex justify-content-between mt-4 pt-3 border-top">
+        <Button variant="outline-secondary" size="sm" disabled={idx === 0} onClick={onPrev}>
+          <ChevronLeft size={14} className="me-1" />Өмнөх
+        </Button>
+        <Button variant="outline-secondary" size="sm" disabled={idx === total - 1} onClick={onNext}>
+          Дараагийн<ChevronRight size={14} className="ms-1" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+
+function GroupSection({ items, currentIdx, onIdxChange, userAnswers, localInput, checking, hintState, enrichState,
+  onAnswer, onCheck, onHint, onEnrich, onRetry }) {
+  const current = items[currentIdx] || null;
+  if (!current) return null;
+
+  return (
+    <div className="bg-white rounded shadow-sm p-3">
+      <ProblemCard
+        item={current}
+        idx={currentIdx}
+        total={items.length}
+        userAnswers={userAnswers}
+        localInput={localInput}
+        checking={checking}
+        hintState={hintState}
+        enrichState={enrichState}
+        onAnswer={onAnswer}
+        onCheck={onCheck}
+        onHint={onHint}
+        onEnrich={onEnrich}
+        onRetry={onRetry}
+        onPrev={() => onIdxChange(i => i - 1)}
+        onNext={() => onIdxChange(i => i + 1)}
+      />
+    </div>
+  );
+}
+
 const ClubExercisesPage = () => {
-  const { clubData } = useOutletContext();
+  const { clubData, setProblemNavData } = useOutletContext();
   const clubId = clubData?.id;
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedDate = searchParams.get('date');
@@ -128,17 +453,15 @@ const ClubExercisesPage = () => {
   const [noData, setNoData]           = useState(false);
   const [items, setItems]             = useState([]);
   const [loading, setLoading]         = useState(false);
-  const [currentIdx, setCurrentIdx]   = useState(0);
-  // {item_id: {answer, is_correct, correct_answer}}
-  const [userAnswers, setUserAnswers] = useState({});
-  // {item_id: string} — бичиж байгаа утга
-  const [localInput, setLocalInput]   = useState({});
-  // {item_id: bool} — шалгаж байна
-  const [checking, setChecking]       = useState({});
-  // {item_id: {text, type, loading}}
-  const [hintState, setHintState]     = useState({});
+  const [activeTab, setActiveTab]     = useState('main');
 
-  // Бүх өдрийн жагсаалт (sidebar-тай хуваалцдаг)
+  const [userAnswers, setUserAnswers] = useState({});
+  const [localInput, setLocalInput]   = useState({});
+  const [checking, setChecking]       = useState({});
+  const [hintState, setHintState]     = useState({});
+  const [enrichState, setEnrichState] = useState({});
+  const [currentIdxMap, setCurrentIdxMap] = useState({});
+
   useEffect(() => {
     if (!clubId) return;
     apiClient.get(`${API_ENDPOINTS.MINDS.POSTS}dates/`, {
@@ -150,7 +473,6 @@ const ClubExercisesPage = () => {
     }).catch(() => setNoData(true));
   }, [clubId]);
 
-  // Сонгосон өдрийн бодлогуудыг татах
   useEffect(() => {
     if (!clubId || !selectedDate) return;
     let cancelled = false;
@@ -158,17 +480,18 @@ const ClubExercisesPage = () => {
     setUserAnswers({});
     setLocalInput({});
     setHintState({});
-    setCurrentIdx(0);
+    setEnrichState({});
+    setActiveTab('main');
     setLoading(true);
+
     apiClient.get(API_ENDPOINTS.CLUBS.DAILY_PRACTICE(clubId), {
       params: { date: selectedDate },
     }).then(res => {
       if (cancelled) return;
       const fetched = res.data?.items || [];
       setItems(fetched);
-      // Хуудас шинэчлэгдэхэд хариулсан бодлогуудыг сэргээнэ
       const initAnswers = {};
-      const initInput = {};
+      const initInput   = {};
       for (const it of fetched) {
         if (it.user_answer && it.user_answer.is_correct !== null) {
           initAnswers[it.item_id] = {
@@ -186,20 +509,12 @@ const ClubExercisesPage = () => {
     }).finally(() => {
       if (!cancelled) setLoading(false);
     });
+
     return () => { cancelled = true; };
   }, [clubId, selectedDate]);
 
-  const currentItem    = items[currentIdx] || null;
-  const currentProblem = currentItem?.problem || null;
-  const itemId         = currentItem?.item_id;
-  const ua             = userAnswers[itemId];
-  const isAnswered     = ua?.is_correct !== null && ua?.is_correct !== undefined;
-  const hint           = hintState[itemId];
-
-  // Шалгах
-  const handleCheck = useCallback(async () => {
-    if (!currentItem) return;
-    const id = currentItem.item_id;
+  const handleCheck = useCallback(async (item) => {
+    const id = item.item_id;
     const answer = localInput[id] || '';
     if (!answer.trim()) return;
     setChecking(prev => ({ ...prev, [id]: true }));
@@ -210,19 +525,15 @@ const ClubExercisesPage = () => {
       const { is_correct, correct_answer } = res.data;
       setUserAnswers(prev => ({ ...prev, [id]: { answer, is_correct, correct_answer } }));
       setItems(prev => prev.map(it =>
-        it.item_id === id
-          ? { ...it, problem: { ...it.problem, correct_answer } }
-          : it
+        it.item_id === id ? { ...it, problem: { ...it.problem, correct_answer } } : it
       ));
     } finally {
       setChecking(prev => ({ ...prev, [id]: false }));
     }
-  }, [clubId, currentItem, localInput]);
+  }, [clubId, localInput]);
 
-  // Заавар авах
-  const handleHint = useCallback(async () => {
-    if (!currentItem) return;
-    const id = currentItem.item_id;
+  const handleHint = useCallback(async (item) => {
+    const id = item.item_id;
     setHintState(prev => ({ ...prev, [id]: { ...(prev[id] || {}), loading: true } }));
     try {
       const res = await apiClient.post(API_ENDPOINTS.CLUBS.DAILY_PRACTICE_HINT(clubId), {
@@ -238,15 +549,85 @@ const ClubExercisesPage = () => {
         [id]: { text: 'Заавар авахад алдаа гарлаа.', type: 'error', loading: false },
       }));
     }
-  }, [clubId, currentItem]);
+  }, [clubId]);
 
-  // Өдрийн навигаци
+  const handleEnrich = useCallback(async (itemId) => {
+    setEnrichState(prev => ({ ...prev, [itemId]: { loading: true } }));
+    try {
+      const res = await apiClient.post(API_ENDPOINTS.CLUBS.DAILY_PRACTICE_ENRICH(clubId), {
+        item_id: itemId,
+      });
+      setEnrichState(prev => ({ ...prev, [itemId]: { ...res.data, loading: false } }));
+    } catch {
+      setEnrichState(prev => ({
+        ...prev,
+        [itemId]: { error: 'AI нөхөхөд алдаа гарлаа.', loading: false },
+      }));
+    }
+  }, [clubId]);
+
   const dateIdx  = allDates.findIndex(d => d.date === selectedDate);
   const prevDate = dateIdx > 0 ? allDates[dateIdx - 1].date : null;
   const nextDate = dateIdx < allDates.length - 1 ? allDates[dateIdx + 1].date : null;
-  const goTo = d => setSearchParams({ date: d }, { replace: false });
+  const goTo     = d => setSearchParams({ date: d }, { replace: false });
 
-  // ── Render ──
+  const mainItems = useMemo(() => items.filter(it => !it.subgroup), [items]);
+  const subgroups = useMemo(() => {
+    const map = {};
+    for (const it of items) {
+      if (!it.subgroup) continue;
+      const key = it.subgroup.id;
+      if (!map[key]) map[key] = { info: it.subgroup, items: [] };
+      map[key].items.push(it);
+    }
+    return Object.values(map).sort((a, b) => a.info.id - b.info.id);
+  }, [items]);
+  const hasTabs = subgroups.length > 0;
+
+  const handleRetry = useCallback((itemId) => {
+    setUserAnswers(prev => {
+      const next = { ...prev };
+      delete next[itemId];
+      return next;
+    });
+    setLocalInput(prev => ({ ...prev, [itemId]: '' }));
+  }, []);
+
+  const activeItems = useMemo(() => {
+    if (activeTab === 'main') return hasTabs ? mainItems : items;
+    return subgroups.find(sg => `sg-${sg.info.id}` === activeTab)?.items || [];
+  }, [activeTab, hasTabs, mainItems, items, subgroups]);
+  const activeCurrentIdx = currentIdxMap[activeTab] ?? 0;
+
+  const handleNavSelect = useCallback((i) => {
+    setCurrentIdxMap(prev => ({ ...prev, [activeTab]: i }));
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (!setProblemNavData) return;
+    setProblemNavData({
+      items: activeItems,
+      currentIdx: activeCurrentIdx,
+      userAnswers,
+      onSelect: handleNavSelect,
+    });
+  }, [activeItems, activeCurrentIdx, userAnswers, handleNavSelect, setProblemNavData]);
+
+  useEffect(() => {
+    return () => { if (setProblemNavData) setProblemNavData(null); };
+  }, [setProblemNavData]);
+
+  const sharedProps = {
+    userAnswers, localInput, checking, hintState, enrichState,
+    onAnswer: (id, val) => setLocalInput(prev => ({ ...prev, [id]: val })),
+    onCheck: handleCheck,
+    onHint: handleHint,
+    onEnrich: handleEnrich,
+    onRetry: handleRetry,
+  };
+
+  const totalDone = Object.values(userAnswers).filter(a => a.is_correct === true).length;
+
   if (noData) {
     return (
       <EmptyState
@@ -266,13 +647,16 @@ const ClubExercisesPage = () => {
     );
   }
 
-  const doneCount = Object.values(userAnswers).filter(
-    a => a.is_correct !== null && a.is_correct !== undefined
-  ).length;
-
   return (
     <div>
-      {/* Гарчиг + өдрийн навигаци */}
+      {clubId && (
+        <Link
+          to={`/clubs/${clubId}`}
+          className="d-inline-flex align-items-center gap-1 text-muted text-decoration-none small mb-3"
+        >
+          <ChevronLeft size={13} />{clubData?.name || 'Клуб'}
+        </Link>
+      )}
       <div className="d-flex align-items-center justify-content-between mb-3">
         <Button variant="outline-secondary" size="sm" disabled={!prevDate} onClick={() => goTo(prevDate)}>
           <ChevronLeft size={14} />
@@ -280,7 +664,7 @@ const ClubExercisesPage = () => {
         <div className="text-center">
           <div className="fw-semibold">{formatDateLabel(selectedDate)}</div>
           {items.length > 0 && (
-            <small className="text-muted">{doneCount}/{items.length} бодлого</small>
+            <small className="text-muted">{totalDone}/{items.length} бодлого</small>
           )}
         </div>
         <Button variant="outline-secondary" size="sm" disabled={!nextDate} onClick={() => goTo(nextDate)}>
@@ -291,113 +675,64 @@ const ClubExercisesPage = () => {
       {loading ? (
         <div className="text-center py-5"><Spinner animation="border" size="sm" /></div>
       ) : items.length === 0 ? (
-        <div className="text-center py-5 text-muted small">
-          Энэ өдөр дасгал байхгүй байна.
-        </div>
+        <div className="text-center py-5 text-muted small">Энэ өдөр дасгал байхгүй байна.</div>
       ) : (
-        <div className="bg-white rounded shadow-sm p-3">
-          {/* Индексийн товчнууд */}
-          <IndexNav
-            items={items}
-            currentIdx={currentIdx}
-            userAnswers={userAnswers}
-            onSelect={setCurrentIdx}
-          />
-
-          {currentProblem && (
-            <>
-              {/* Бодлогын дугаар */}
-              <div className="small text-muted mb-2">
-                Бодлого {currentIdx + 1} / {items.length}
-              </div>
-
-              {/* Бодлогын гарчиг */}
-              {currentProblem.title && (
-                <div className="fw-semibold mb-2">
-                  <LivePreview content={currentProblem.title} />
-                </div>
-              )}
-
-              {/* Бодлогын текст */}
-              {currentProblem.statement && (
-                <div className="mb-3 border-start border-3 border-primary ps-3">
-                  <LivePreview content={currentProblem.statement} />
-                </div>
-              )}
-
-              {/* Хариулт оруулах */}
-              {!isAnswered && (
-                <AnswerInput
-                  problem={currentProblem}
-                  value={localInput[itemId] || ''}
-                  onChange={val => setLocalInput(prev => ({ ...prev, [itemId]: val }))}
-                  disabled={!!checking[itemId]}
-                />
-              )}
-
-              {/* Дүн */}
-              <ResultBanner ua={ua} correctAnswer={ua?.correct_answer} />
-
-              {/* Товчнууд */}
-              <div className="d-flex gap-2 mb-3">
-                {!isAnswered && (
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={handleCheck}
-                    disabled={!(localInput[itemId] || '').trim() || !!checking[itemId]}
-                  >
-                    {checking[itemId] ? <Spinner animation="border" size="sm" /> : 'Шалгах'}
-                  </Button>
-                )}
-                <Button
-                  variant="outline-secondary"
-                  size="sm"
-                  onClick={handleHint}
-                  disabled={!!hint?.loading}
-                >
-                  {hint?.loading
-                    ? <Spinner animation="border" size="sm" />
-                    : <><Lightbulb size={14} className="me-1" />Заавар</>
-                  }
-                </Button>
-              </div>
-
-              {/* Заавар */}
-              {hint?.text && (
-                <Alert
-                  variant={hint.type === 'ai' ? 'info' : 'light'}
-                  className="small mb-3"
-                >
-                  {hint.type === 'ai' && (
-                    <div className="fw-semibold mb-1 d-flex align-items-center gap-1">
-                      <Lightbulb size={14} />AI заавар
-                    </div>
+        <>
+          {hasTabs && (
+            <Nav variant="tabs" activeKey={activeTab} onSelect={setActiveTab} className="mb-3">
+              <Nav.Item>
+                <Nav.Link eventKey="main" className="small">
+                  Үндсэн
+                  {mainItems.length > 0 && (
+                    <Badge bg="secondary" className="ms-1" style={{ fontSize: '0.65rem' }}>
+                      {mainItems.length}
+                    </Badge>
                   )}
-                  <LivePreview content={hint.text} />
-                </Alert>
-              )}
-
-              {/* Бодлого хооронд шилжих */}
-              <div className="d-flex justify-content-between mt-4 pt-3 border-top">
-                <Button
-                  variant="outline-secondary" size="sm"
-                  disabled={currentIdx === 0}
-                  onClick={() => setCurrentIdx(i => i - 1)}
-                >
-                  <ChevronLeft size={14} className="me-1" />Өмнөх
-                </Button>
-                <Button
-                  variant="outline-secondary" size="sm"
-                  disabled={currentIdx === items.length - 1}
-                  onClick={() => setCurrentIdx(i => i + 1)}
-                >
-                  Дараагийн<ChevronRight size={14} className="ms-1" />
-                </Button>
-              </div>
-            </>
+                </Nav.Link>
+              </Nav.Item>
+              {subgroups.map(sg => (
+                <Nav.Item key={sg.info.id}>
+                  <Nav.Link eventKey={`sg-${sg.info.id}`} className="small">
+                    <span
+                      className="me-1"
+                      style={{
+                        width: 8, height: 8, borderRadius: '50%',
+                        display: 'inline-block', verticalAlign: 'middle',
+                        background: `var(--bs-${sg.info.color || 'primary'})`,
+                      }}
+                    />
+                    {sg.info.name}
+                    <Badge bg="secondary" className="ms-1" style={{ fontSize: '0.65rem' }}>
+                      {sg.items.length}
+                    </Badge>
+                  </Nav.Link>
+                </Nav.Item>
+              ))}
+            </Nav>
           )}
-        </div>
+
+          {(!hasTabs || activeTab === 'main') && (
+            <GroupSection
+              items={hasTabs ? mainItems : items}
+              currentIdx={currentIdxMap['main'] ?? 0}
+              onIdxChange={(v) => setCurrentIdxMap(prev => ({ ...prev, main: typeof v === 'function' ? v(prev.main ?? 0) : v }))}
+              {...sharedProps}
+            />
+          )}
+
+          {subgroups.map(sg => {
+            const key = `sg-${sg.info.id}`;
+            return activeTab === key ? (
+              <GroupSection
+                key={sg.info.id}
+                items={sg.items}
+                currentIdx={currentIdxMap[key] ?? 0}
+                onIdxChange={(v) => setCurrentIdxMap(prev => ({ ...prev, [key]: typeof v === 'function' ? v(prev[key] ?? 0) : v }))}
+                {...sharedProps}
+              />
+            ) : null;
+          })}
+        </>
       )}
     </div>
   );

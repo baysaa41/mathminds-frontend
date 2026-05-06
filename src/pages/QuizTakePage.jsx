@@ -46,11 +46,41 @@ const QuizTakePage = () => {
   const timerRef = useRef(null);
   const totalTimerRef = useRef(null);
   const baseTimeRef = useRef(0); // accumulated seconds from previous visits to current problem
+  const intentionalExitRef = useRef(false); // санаатай гарахад leave modal-г bypass хийнэ
 
   // Modal states
   const [showPauseModal, setShowPauseModal] = useState(false);
   const [showFinishModal, setShowFinishModal] = useState(false);
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingLeave, setIsSavingLeave] = useState(false);
+
+  // Browser close/refresh анхааруулга
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (answerSheet && !loading && !intentionalExitRef.current) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [answerSheet, loading]);
+
+  // Browser back товч анхааруулга (popstate)
+  useEffect(() => {
+    if (!answerSheet || loading) return;
+    // Одоогийн байрлалыг history-д нэмж back-с хамгаална
+    window.history.pushState(null, '', window.location.href);
+    const handlePopState = () => {
+      if (intentionalExitRef.current) return;
+      // Back товч дарсан үед буцааж state нэмж modal харуулна
+      window.history.pushState(null, '', window.location.href);
+      setShowLeaveModal(true);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [answerSheet, loading]);
 
   // Тест эхлүүлэх
   useEffect(() => {
@@ -98,9 +128,43 @@ const QuizTakePage = () => {
           setAnswers(answersMap);
         }
 
+        // Паузласан бол сүүлд бодсон бодлогоос үргэлжлүүлэх
+        if (sheetData.current_problem_index) {
+          setCurrentIndex(sheetData.current_problem_index);
+        }
+
+        // Өмнө зарцуулсан хугацааг сэргээх
+        const savedTime = sheetData.total_time_spent || 0;
+        const restoredStart = new Date(new Date().getTime() - savedTime * 1000);
+        setQuizStartTime(restoredStart);
+        setTotalElapsedTime(savedTime);
+
+        // Бодлого бүрийн хугацааг хариултаас сэргээх
+        const timesMap = {};
+        if (sheetData.answers && sheetData.answers.length > 0) {
+          sheetData.answers.forEach(ans => {
+            if (ans.problem && ans.time_spent) {
+              // Fill-in blanks: нэг бодлогод олон хариулт байж болно — хамгийн ихийг авна
+              timesMap[ans.problem] = Math.max(timesMap[ans.problem] || 0, ans.time_spent);
+            }
+          });
+        }
+        // Хариулт өгөөгүй бодлогын хугацааг current_problem_time-с нөхөх
+        const savedProblemIdx = sheetData.current_problem_index || 0;
+        const savedProblemTime = sheetData.current_problem_time || 0;
+        const currentProblemId = problemsData[savedProblemIdx]?.id;
+        if (currentProblemId && !timesMap[currentProblemId] && savedProblemTime > 0) {
+          timesMap[currentProblemId] = savedProblemTime;
+        }
+        setProblemTimes(timesMap);
+
+        // Одоогийн бодлогын тоологчийг сэргээх
+        const restoredProblemTime = currentProblemId ? (timesMap[currentProblemId] || 0) : savedProblemTime;
+        baseTimeRef.current = restoredProblemTime;
+        setCurrentProblemTime(restoredProblemTime);
+
         // Timer эхлүүлэх
         setProblemStartTime(new Date());
-        setQuizStartTime(new Date());
       } catch (err) {
         console.error('Тест эхлүүлэхэд алдаа гарлаа:', err);
         if (err.response?.data?.error) {
@@ -249,23 +313,46 @@ const QuizTakePage = () => {
     }
   };
 
-  // Түр зогсоох
+  // Одоогийн хариулт хадгалаад паузлах (дотоод хэрэгцээ)
+  const pauseWithIndex = async (idx) => {
+    const currentProblem = problems[currentIndex];
+    const currentAnswer = answers[currentProblem?.id];
+    const imageFile = selectedImages[currentProblem?.id];
+    if (currentAnswer && currentProblem) {
+      await submitAnswer(currentProblem.id, currentAnswer, imageFile).catch(console.error);
+    }
+    baseTimeRef.current = currentProblemTime;
+    await apiClient.post(`/api/integral/answer-sheets/${answerSheet.id}/pause/`, {
+      current_problem_index: idx,
+      time_spent: totalElapsedTime,
+      current_problem_time: currentProblemTime,
+    });
+  };
+
+  // Түр зогсоох (modal харуулна)
   const handlePause = async () => {
     try {
-      // Одоогийн хариулт байвал хадгалах
-      const currentProblem = problems[currentIndex];
-      const currentAnswer = answers[currentProblem?.id];
-      const imageFile = selectedImages[currentProblem?.id];
-      if (currentAnswer && currentProblem) {
-        await submitAnswer(currentProblem.id, currentAnswer, imageFile).catch(console.error);
-      }
-      baseTimeRef.current = currentProblemTime; // freeze accumulated time before pausing
-      await apiClient.post(`/api/integral/answer-sheets/${answerSheet.id}/pause/`);
+      await pauseWithIndex(currentIndex);
       setIsPaused(true);
       setShowPauseModal(true);
     } catch (err) {
       console.error('Түр зогсоохоон алдаа:', err);
       alert('Түр зогсоохоон алдаа гарлаа.');
+    }
+  };
+
+  // Хадгалаад гарах (modal харуулахгүй, шууд гарна)
+  const handleSaveAndExit = async () => {
+    try {
+      setIsSaving(true);
+      await pauseWithIndex(currentIndex);
+      intentionalExitRef.current = true;
+      navigate(`/quiz/${id}`);
+    } catch (err) {
+      console.error('Хадгалаад гарахад алдаа:', err);
+      alert('Хадгалаад гарахад алдаа гарлаа.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -275,7 +362,9 @@ const QuizTakePage = () => {
       await apiClient.post(`/api/integral/answer-sheets/${answerSheet.id}/resume/`);
       setIsPaused(false);
       setShowPauseModal(false);
-      setProblemStartTime(new Date()); // Timer-г дахин эхлүүлэх
+      // Нийт хугацааны тоологчийг зогссон цагаас үргэлжлүүлэх
+      setQuizStartTime(new Date(new Date().getTime() - totalElapsedTime * 1000));
+      setProblemStartTime(new Date());
     } catch (err) {
       console.error('Үргэлжлүүлэхэд алдаа:', err);
       alert('Үргэлжлүүлэхэд алдаа гарлаа.');
@@ -297,6 +386,7 @@ const QuizTakePage = () => {
       await apiClient.post(`/api/integral/answer-sheets/${answerSheet.id}/finish/`);
 
       // Дүн харуулах хуудас руу шилжих
+      intentionalExitRef.current = true;
       navigate(`/quiz/${id}/result/${answerSheet.id}`);
     } catch (err) {
       console.error('Тест дуусгахад алдаа:', err);
@@ -393,17 +483,23 @@ const QuizTakePage = () => {
     .filter(([id]) => Number(id) !== currentProblem?.id)
     .reduce((sum, [, t]) => sum + t, 0);
 
-  const answeredCount = problems.filter(p => {
+  // Бодлогод бодит хариулт байгаа эсэхийг төрлөөр нь шалгах
+  const hasRealAnswer = (p) => {
     const ans = answers[p.id];
-    if (p.type === 4)
+    if (p.type === 4) {
       return !!ans?.answers &&
         (p.choices || []).length > 0 &&
         (p.choices || []).every(c => {
           const v = ans.answers[c.label];
           return v !== undefined && v !== '';
         });
-    return !!ans;
-  }).length;
+    }
+    if (p.type === 1) return !!(ans?.label);
+    // type=0 уламжлалт: текст эсвэл зураг
+    return !!(ans?.value?.trim()) || !!(selectedImages[p.id]);
+  };
+
+  const answeredCount = problems.filter(p => hasRealAnswer(p)).length;
 
   return (
     <Container fluid className="py-4" style={{ maxWidth: '1100px' }}>
@@ -681,8 +777,10 @@ const QuizTakePage = () => {
                   }).length;
                   isAnswered = choices.length > 0 && filledCount === choices.length;
                   isPartial = filledCount > 0 && filledCount < choices.length;
+                } else if (p.type === 1) {
+                  isAnswered = !!(ans?.label);
                 } else {
-                  isAnswered = !!ans;
+                  isAnswered = !!(ans?.value?.trim()) || !!(selectedImages[p.id]);
                 }
                 const isCurrent = idx === currentIndex;
                 return (
@@ -731,7 +829,7 @@ const QuizTakePage = () => {
                 Хариулаагүй
               </div>
             </div>
-            <div className="mt-3">
+            <div className="mt-3 d-flex flex-column gap-2">
               <button
                 className="btn btn-success btn-sm w-100"
                 onClick={() => setShowFinishModal(true)}
@@ -740,6 +838,15 @@ const QuizTakePage = () => {
               >
                 <i className="bi bi-check-circle me-1"></i>
                 Дуусгах
+              </button>
+              <button
+                className="btn btn-outline-secondary btn-sm w-100"
+                onClick={handleSaveAndExit}
+                disabled={isSaving}
+                style={{ fontSize: '0.75rem' }}
+              >
+                <i className="bi bi-save me-1"></i>
+                Хадгалаад гарах
               </button>
             </div>
           </div>
@@ -767,8 +874,9 @@ const QuizTakePage = () => {
             <i className="bi bi-play-circle me-2"></i>
             Үргэлжлүүлэх
           </Button>
-          <Button variant="outline-secondary" onClick={() => navigate(`/quiz/${id}`)}>
-            Гарах
+          <Button variant="outline-secondary" onClick={() => { intentionalExitRef.current = true; navigate(`/quiz/${id}`); }}>
+            <i className="bi bi-save me-1"></i>
+            Хадгалаад гарах
           </Button>
         </Modal.Footer>
       </Modal>
@@ -784,7 +892,7 @@ const QuizTakePage = () => {
         <Modal.Body>
           <p>Та тестийг дуусгахдаа итгэлтэй байна уу?</p>
           <p className="mb-0">
-            <strong>Нийт хариулсан:</strong> {Object.keys(answers).length} / {problems.length}
+            <strong>Нийт хариулсан:</strong> {answeredCount} / {problems.length}
           </p>
         </Modal.Body>
         <Modal.Footer>
@@ -831,6 +939,64 @@ const QuizTakePage = () => {
           <Button variant="danger" onClick={handleFinish}>
             <i className="bi bi-check-circle me-2"></i>
             Тестийг дуусгах
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Leave Warning Modal — back товч дарахад гарна */}
+      <Modal show={showLeaveModal} onHide={() => setShowLeaveModal(false)} centered backdrop="static">
+        <Modal.Header>
+          <Modal.Title>
+            <i className="bi bi-exclamation-triangle text-warning me-2"></i>
+            Тестээс гарах уу?
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>Та тестийг дуусгаагүй байна. Явцыг хадгалаад гарах уу?</p>
+          <p className="text-muted small mb-0">
+            Хадгалсан тохиолдолд дараа үргэлжлүүлж болно.
+          </p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="primary"
+            disabled={isSavingLeave}
+            onClick={async () => {
+              setIsSavingLeave(true);
+              try {
+                await pauseWithIndex(currentIndex);
+              } catch (e) {
+                console.error(e);
+              } finally {
+                setIsSavingLeave(false);
+              }
+              setShowLeaveModal(false);
+              intentionalExitRef.current = true;
+              navigate(`/quiz/${id}`);
+            }}
+          >
+            {isSavingLeave
+              ? <><Spinner as="span" size="sm" className="me-1" />Хадгалж байна...</>
+              : <><i className="bi bi-save me-1" />Хадгалаад гарах</>
+            }
+          </Button>
+          <Button
+            variant="outline-danger"
+            disabled={isSavingLeave}
+            onClick={() => {
+              setShowLeaveModal(false);
+              intentionalExitRef.current = true;
+              navigate(`/quiz/${id}`);
+            }}
+          >
+            Хадгалахгүй гарах
+          </Button>
+          <Button
+            variant="outline-secondary"
+            disabled={isSavingLeave}
+            onClick={() => setShowLeaveModal(false)}
+          >
+            Цуцлах
           </Button>
         </Modal.Footer>
       </Modal>

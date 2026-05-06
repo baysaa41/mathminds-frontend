@@ -25,6 +25,9 @@ const MyClubsWidget = () => {
         const data = await getMyClubs(user.username);
         if (!cancelled) {
           const list = Array.isArray(data) ? data : data.results || [];
+          list.sort((a, b) =>
+            (b.members_count ?? b.member_count ?? 0) - (a.members_count ?? a.member_count ?? 0)
+          );
           setClubs(list);
         }
       } catch (err) {

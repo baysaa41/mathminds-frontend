@@ -31,7 +31,8 @@ const ClubDetail = () => {
     newTeacherUsername,
     setNewTeacherUsername,
     addingTeacher,
-    setAddingTeacher
+    setAddingTeacher,
+    setProblemNavData,
   } = useOutletContext(); // RightSidebar болон PageTitle
 
   const location = useLocation();
@@ -289,6 +290,7 @@ const ClubDetail = () => {
     newTeacherUsername,
     setNewTeacherUsername,
     addingTeacher,
+    setProblemNavData,
   };
 
   const toastEl = (

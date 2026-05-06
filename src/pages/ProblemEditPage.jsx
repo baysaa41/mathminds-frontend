@@ -828,6 +828,18 @@ const ProblemEditPage = () => {
                     onChange={handleProblemChange}
                   />
                   <Form.Text>Сонгох/Нөхөх тестийн зөв хариултын Label (A, B, abcde...)</Form.Text>
+                  {(problem.alternative_answers?.length > 0) && (
+                    <div className="mt-2">
+                      <Form.Text className="d-block text-muted mb-1">Алтернатив хариултууд:</Form.Text>
+                      <div className="d-flex flex-wrap gap-1">
+                        {problem.alternative_answers.map((a, i) => (
+                          <span key={i} className="badge bg-secondary-subtle text-secondary border" style={{ fontSize: '0.75rem' }}>
+                            {a}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </Form.Group>
               </Col>
               <Col md={4} className="d-flex align-items-center pt-3">
