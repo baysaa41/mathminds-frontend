@@ -8,9 +8,10 @@ import Spinner from 'react-bootstrap/Spinner';
 import ProgressBar from 'react-bootstrap/ProgressBar';
 import Form from 'react-bootstrap/Form';
 import { MathJax } from 'better-react-mathjax';
-import { ArrowLeft, Trophy, Search, Download } from 'lucide-react';
+import { Trophy, Search, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import apiClient from '../api/axiosConfig';
+import AppBreadcrumb from '../components/common/AppBreadcrumb';
 
 const MEDAL = { 1: '🥇', 2: '🥈', 3: '🥉' };
 
@@ -365,10 +366,13 @@ const AssignmentLeaderboardPage = () => {
 
   if (error) return (
     <div className="py-3">
-      <div className="text-danger small mb-2">{error}</div>
-      <Button variant="outline-secondary" size="sm" onClick={() => navigate(-1)}>
-        <ArrowLeft size={14} className="me-1" />Буцах
-      </Button>
+      <AppBreadcrumb className="mb-2" items={[
+        { label: 'Клубууд', to: '/clubs' },
+        { label: clubData?.name || 'Клуб', to: `/clubs/${clubData?.id}` },
+        { label: 'Даалгаврууд', to: `/clubs/${clubData?.id}/assignments` },
+        { label: 'Дүнгийн жагсаалт' },
+      ]} />
+      <div className="text-danger small">{error}</div>
     </div>
   );
 
@@ -387,11 +391,14 @@ const AssignmentLeaderboardPage = () => {
     <>
     <div className="container-fluid py-3 px-2 px-md-3">
       {/* ── Толгой ── */}
+      <AppBreadcrumb className="mb-3" items={[
+        { label: 'Клубууд', to: '/clubs' },
+        { label: clubData?.name || 'Клуб', to: `/clubs/${clubData?.id}` },
+        { label: 'Даалгаврууд', to: `/clubs/${clubData?.id}/assignments` },
+        { label: assignment?.title || '…', to: `/clubs/${clubData?.id}/assignments/${assignmentId}` },
+        { label: 'Дүнгийн жагсаалт' },
+      ]} />
       <div className="d-flex align-items-center gap-2 mb-3 flex-wrap">
-        <Button variant="outline-secondary" size="sm"
-          onClick={() => navigate(`/clubs/${clubData?.id}/assignments/${assignmentId}`)}>
-          <ArrowLeft size={14} className="me-1" />Буцах
-        </Button>
         <h5 className="mb-0 d-flex align-items-center gap-2">
           <Trophy size={18} className="text-warning" />
           Дүнгийн жагсаалт

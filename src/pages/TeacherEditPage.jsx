@@ -15,7 +15,8 @@ import Button from 'react-bootstrap/Button';
 import Spinner from 'react-bootstrap/Spinner';
 import Alert from 'react-bootstrap/Alert';
 import Badge from 'react-bootstrap/Badge';
-import { Save, ArrowLeft, Trash2, Plus } from 'lucide-react';
+import { Save, Trash2, Plus } from 'lucide-react';
+import AppBreadcrumb from '../components/common/AppBreadcrumb';
 
 export default function TeacherEditPage() {
   const { id } = useParams();
@@ -200,10 +201,7 @@ export default function TeacherEditPage() {
   return (
     <Container className="py-4">
       <div className="mb-4">
-        <Button variant="link" onClick={() => navigate('/teachers')} className="p-0 text-decoration-none">
-          <ArrowLeft size={16} className="me-1" />
-          Буцах
-        </Button>
+        <AppBreadcrumb items={[{ label: 'Багш нар', to: '/teachers' }, { label: 'Засах' }]} />
       </div>
 
       <Row>

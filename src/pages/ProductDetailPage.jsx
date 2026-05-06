@@ -24,6 +24,7 @@ import {
 } from '../services/productsService';
 import { useAuth } from '../context/AuthContext';
 import { formatDate } from '../utils/dateFormatter';
+import AppBreadcrumb from '../components/common/AppBreadcrumb';
 
 export default function ProductDetailPage() {
   const { id } = useParams();
@@ -201,7 +202,7 @@ export default function ProductDetailPage() {
     return (
       <Container className="py-5">
         <Alert variant="danger">{error || 'Бүтээгдэхүүн олдсонгүй'}</Alert>
-        <Button onClick={() => navigate('/products')}>Буцах</Button>
+        <AppBreadcrumb items={[{ label: 'Бүтээгдэхүүн', to: '/products' }, { label: 'Дэлгэрэнгүй' }]} />
       </Container>
     );
   }
@@ -209,14 +210,10 @@ export default function ProductDetailPage() {
   return (
     <div className="py-4">
       <Container>
-          {/* Буцах товч */}
-          <Button
-            variant="outline-secondary"
-            className="mb-4"
-            onClick={() => navigate('/products')}
-          >
-            ← Буцах
-          </Button>
+          <AppBreadcrumb className="mb-4" items={[
+            { label: 'Бүтээгдэхүүн', to: '/products' },
+            { label: product?.name || 'Дэлгэрэнгүй' },
+          ]} />
 
           <Row className="mb-5">
             {/* Зүүн тал - Зураг */}

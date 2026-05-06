@@ -5,7 +5,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Container, Form, Button, Card, Alert, Spinner } from 'react-bootstrap';
-import { ArrowLeft, PlusCircle } from 'lucide-react';
+import { PlusCircle } from 'lucide-react';
+import AppBreadcrumb from '../components/common/AppBreadcrumb';
 
 // ✅ Service-г ашиглах
 import clubsService, { formatErrorMessage } from '../services/clubsService'; //
@@ -43,15 +44,10 @@ const CreateClub = () => {
 
   return (
     <Container className="py-4" style={{ maxWidth: '700px' }}>
-      {/* Буцах товч */}
-      <Button
-        variant="link"
-        onClick={() => navigate('/clubs')}
-        className="p-0 text-decoration-none mb-3"
-      >
-        <ArrowLeft size={16} className="me-2" />
-        Миний клубууд руу буцах
-      </Button>
+      <AppBreadcrumb className="mb-3" items={[
+        { label: 'Клубууд', to: '/clubs' },
+        { label: 'Шинэ клуб' },
+      ]} />
 
       <Card className="shadow-sm">
         <Card.Header className="p-4">

@@ -17,6 +17,7 @@ import Alert from 'react-bootstrap/Alert';
 import Form from 'react-bootstrap/Form';
 import Modal from 'react-bootstrap/Modal';
 import ProgressBar from 'react-bootstrap/ProgressBar';
+import AppBreadcrumb from '../components/common/AppBreadcrumb';
 
 // ─── Constants ────────────────────────────────────────────────────────────
 
@@ -568,9 +569,7 @@ export default function DocImportPage() {
     <Container fluid className="py-4 px-4">
       {/* Header */}
       <div className="d-flex align-items-center gap-3 mb-4">
-        <Button variant="link" className="p-0 text-decoration-none" onClick={() => navigate('/admin')}>
-          ← Буцах
-        </Button>
+        <AppBreadcrumb items={[{ label: 'Admin', to: '/admin' }, { label: 'Баримт импорт' }]} />
         <div>
           <h3 className="mb-0 fw-bold">📥 Баримт бичгийг импортлох</h3>
           <small className="text-muted">PDF, зураг, Word, Excel файлаас бодлогуудыг AI-аар таньж оруулна</small>

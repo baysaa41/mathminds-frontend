@@ -7,7 +7,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Excalidraw } from '@excalidraw/excalidraw';
 import '@excalidraw/excalidraw/index.css';
 import apiClient from '../api/axiosConfig.js';
-import { Save, ArrowLeft, PenLine, Trash2 } from 'lucide-react';
+import { Save, PenLine, Trash2 } from 'lucide-react';
 
 const TOOLBAR_H = 52;
 
@@ -132,8 +132,7 @@ export default function DrawPage() {
           onClick={handleBack}
           disabled={saving}
         >
-          <ArrowLeft size={15} />
-          Буцах
+          ‹ Нүүр
         </button>
 
         <PenLine size={17} className="text-primary flex-shrink-0" />

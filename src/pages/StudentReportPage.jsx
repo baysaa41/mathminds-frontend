@@ -5,8 +5,9 @@ import Button from 'react-bootstrap/Button';
 import Spinner from 'react-bootstrap/Spinner';
 import ProgressBar from 'react-bootstrap/ProgressBar';
 import Nav from 'react-bootstrap/Nav';
-import { ArrowLeft, User } from 'lucide-react';
+import { User } from 'lucide-react';
 import apiClient from '../api/axiosConfig';
+import AppBreadcrumb from '../components/common/AppBreadcrumb';
 
 const STATUS_CONFIG = {
   not_started: { label: 'Өгөөгүй',       bg: 'secondary' },
@@ -110,7 +111,7 @@ const AssignmentsTable = ({ assignments, isTeacherOrAdmin, navigate }) => (
           const si = STATUS_CONFIG[a.status] || STATUS_CONFIG.not_started;
           const hasResult = a.answer_sheet_id && ['submitted', 'graded'].includes(a.status);
           const pct = a.score != null && a.max_score
-            ? Math.round(a.score / a.max_score * 100) : null;
+            ? Math.min(100, Math.round(a.score / a.max_score * 100)) : null;
 
           return (
             <tr key={a.assignment_id}>
@@ -195,10 +196,12 @@ const StudentReportPage = () => {
 
   if (error) return (
     <div className="py-3">
-      <div className="text-danger small mb-2">{error}</div>
-      <Button variant="outline-secondary" size="sm" onClick={() => navigate(-1)}>
-        <ArrowLeft size={14} className="me-1" />Буцах
-      </Button>
+      <AppBreadcrumb className="mb-2" items={[
+        { label: clubData?.name || 'Клуб', to: `/clubs/${clubData?.id}` },
+        { label: 'Гишүүд', to: `/clubs/${clubData?.id}/members` },
+        { label: username },
+      ]} />
+      <div className="text-danger small">{error}</div>
     </div>
   );
 
@@ -209,14 +212,12 @@ const StudentReportPage = () => {
 
   return (
     <div className="container-fluid py-3 px-2 px-md-3" style={{ maxWidth: 800 }}>
-      {/* Толгой */}
-      <div className="d-flex align-items-center gap-2 mb-4 flex-wrap">
-        <Button variant="outline-secondary" size="sm" onClick={() => navigate(-1)}>
-          <ArrowLeft size={14} className="me-1" />Буцах
-        </Button>
-        <User size={16} className="text-muted" />
-        <span className="text-muted small">Сурагчийн репорт</span>
-      </div>
+      {/* Breadcrumb */}
+      <AppBreadcrumb className="mb-3" items={[
+        { label: clubData?.name || 'Клуб', to: `/clubs/${clubData?.id}` },
+        { label: 'Гишүүд', to: `/clubs/${clubData?.id}/members` },
+        { label: displayName(student) || username },
+      ]} />
 
       {/* Сурагчийн мэдээлэл */}
       <div className="card border-0 shadow-sm mb-3">

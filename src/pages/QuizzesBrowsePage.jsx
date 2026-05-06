@@ -182,9 +182,9 @@ function QuizzesBrowsePage() {
             </InputGroup>
           </Form>
 
-          <Button variant="outline-secondary" size="sm" onClick={() => navigate('/content/browse?type=quizzes')}>
-            <i className="bi bi-arrow-left me-1"></i>Буцах
-          </Button>
+          <Link to="/content/browse?type=quizzes" className="btn btn-outline-secondary btn-sm">
+            <i className="bi bi-arrow-left me-1"></i>Тестүүд
+          </Link>
         </Navbar>
 
         {/* Main Content */}

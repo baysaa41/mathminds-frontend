@@ -31,6 +31,7 @@ import {
   Send,
   Check,
 } from 'lucide-react';
+import AppBreadcrumb from '../components/common/AppBreadcrumb';
 
 const ArticleEditPage = () => {
   const { uuid: id } = useParams();
@@ -215,7 +216,10 @@ const ArticleEditPage = () => {
     return (
       <Container className="mt-4">
         <Alert variant="danger">{error}</Alert>
-        <Link to={initialAuthorId ? `/article/${id}` : '/'}> &laquo; Буцах</Link>
+        <AppBreadcrumb items={[
+          { label: 'Нийтлэл', to: initialAuthorId ? `/article/${id}` : '/' },
+          { label: 'Засах' },
+        ]} />
       </Container>
     );
   }

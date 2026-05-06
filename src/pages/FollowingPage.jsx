@@ -16,7 +16,8 @@ import ListGroup from 'react-bootstrap/ListGroup';
 import Spinner from 'react-bootstrap/Spinner';
 import Alert from 'react-bootstrap/Alert';
 import Button from 'react-bootstrap/Button';
-import { ArrowLeft, User, CheckCircle, UserPlus } from 'lucide-react';
+import { User, CheckCircle, UserPlus } from 'lucide-react';
+import AppBreadcrumb from '../components/common/AppBreadcrumb';
 import UserAvatar from '../components/UserAvatar';
 import UserName from '../components/UserName';
 
@@ -105,35 +106,31 @@ function FollowingPage() {
     );
   }
 
+  const breadcrumb = (
+    <AppBreadcrumb className="mb-3" items={[
+      { label: `@${username}`, to: `/profile/${username}` },
+      { label: 'Дагаж байгаа' },
+    ]} />
+  );
+
   if (error && following.length === 0) {
     return (
       <Container className="my-4">
+        {breadcrumb}
         <Alert variant="danger">{error}</Alert>
-        <div className="d-flex gap-2">
-          <Button variant="secondary" onClick={handleBack}>
-            <ArrowLeft size={16} className="me-2" />
-            Буцах
-          </Button>
-          <Button variant="primary" onClick={refresh}>
-            Дахин оролдох
-          </Button>
-        </div>
+        <Button variant="primary" size="sm" onClick={refresh}>Дахин оролдох</Button>
       </Container>
     );
   }
 
   return (
     <Container className="my-4" style={{ maxWidth: '600px' }}>
+      {breadcrumb}
       <Card className="shadow-sm border-0">
         <Card.Header className="bg-light p-3 border-0">
-          <div className="d-flex align-items-center">
-            <Button variant="link" onClick={handleBack} className="text-decoration-none p-0 me-3">
-              <ArrowLeft size={20} />
-            </Button>
-            <div>
-              <h4 className="mb-0">@{username} дагаж буй</h4>
-              <small className="text-muted">{following.length} хүн</small>
-            </div>
+          <div>
+            <h4 className="mb-0">@{username} дагаж буй</h4>
+            <small className="text-muted">{following.length} хүн</small>
           </div>
         </Card.Header>
         <Card.Body className="p-0">

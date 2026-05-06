@@ -11,7 +11,6 @@ import Card from 'react-bootstrap/Card';
 import Badge from 'react-bootstrap/Badge';
 import Spinner from 'react-bootstrap/Spinner';
 import Alert from 'react-bootstrap/Alert';
-import Breadcrumb from 'react-bootstrap/Breadcrumb';
 import Button from 'react-bootstrap/Button';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
@@ -21,6 +20,7 @@ import Modal from 'react-bootstrap/Modal';
 import ProgressBar from 'react-bootstrap/ProgressBar';
 import Tab from 'react-bootstrap/Tab';
 import Tabs from 'react-bootstrap/Tabs';
+import AppBreadcrumb from '../components/common/AppBreadcrumb';
 
 const EmailCampaignDetailPage = () => {
   const { id } = useParams();
@@ -152,24 +152,17 @@ const EmailCampaignDetailPage = () => {
     return (
       <Container className="mt-4">
         <Alert variant="warning">Кампанит ажил олдсонгүй.</Alert>
-        <Button variant="outline-primary" onClick={() => navigate('/admin/emails')}>
-          Буцах
-        </Button>
+        <AppBreadcrumb items={[{ label: 'Имэйл кампанит', to: '/admin/emails' }, { label: 'Дэлгэрэнгүй' }]} />
       </Container>
     );
   }
 
   return (
     <Container className="py-4">
-      <Breadcrumb className="mb-3">
-        <Breadcrumb.Item linkAs={Link} linkProps={{ to: '/' }}>
-          Нүүр
-        </Breadcrumb.Item>
-        <Breadcrumb.Item linkAs={Link} linkProps={{ to: '/admin/emails' }}>
-          Email Campaigns
-        </Breadcrumb.Item>
-        <Breadcrumb.Item active>{campaign.name}</Breadcrumb.Item>
-      </Breadcrumb>
+      <AppBreadcrumb className="mb-3" items={[
+        { label: 'Имэйл кампанит', to: '/admin/emails' },
+        { label: campaign.name },
+      ]} />
 
       {/* Result alerts */}
       {sendResult && (

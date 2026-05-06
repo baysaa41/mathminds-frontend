@@ -6,7 +6,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Excalidraw } from '@excalidraw/excalidraw';
 import '@excalidraw/excalidraw/index.css';
 import apiClient from '../api/axiosConfig.js';
-import { Save, ArrowLeft, PenLine } from 'lucide-react';
+import { Save, PenLine } from 'lucide-react';
 
 const TOOLBAR_H = 52;
 
@@ -128,8 +128,7 @@ export default function SolutionDrawPage() {
           onClick={() => navigate(`/problem/${problemUuid}`)}
           disabled={saving}
         >
-          <ArrowLeft size={15} />
-          Буцах
+          ‹ Бодлого
         </button>
 
         <PenLine size={18} className="text-primary" style={{ flexShrink: 0 }} />

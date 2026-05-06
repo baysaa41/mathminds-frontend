@@ -11,8 +11,8 @@ import Container from 'react-bootstrap/Container';
 import Card from 'react-bootstrap/Card';
 import Spinner from 'react-bootstrap/Spinner';
 import Alert from 'react-bootstrap/Alert';
-import Breadcrumb from 'react-bootstrap/Breadcrumb';
 import Button from 'react-bootstrap/Button';
+import AppBreadcrumb from '../components/common/AppBreadcrumb';
 import Stack from 'react-bootstrap/Stack';
 import Table from 'react-bootstrap/Table';
 import Badge from 'react-bootstrap/Badge';
@@ -116,20 +116,18 @@ const QuizLeaderboardPage = () => {
     return (
       <Container className="mt-4">
         <Alert variant="danger">{error}</Alert>
-        <Button variant="outline-secondary" onClick={() => navigate(-1)}>&laquo; Буцах</Button>
+        <AppBreadcrumb items={[{ label: 'Тестүүд', to: '/quizzes' }, { label: 'Дүнгийн жагсаалт' }]} />
       </Container>
     );
   }
 
   return (
     <Container className="py-4" style={{ maxWidth: '1000px' }}>
-      <Breadcrumb className="mb-3">
-        <Breadcrumb.Item linkAs={Link} linkProps={{ to: '/' }}>Нүүр</Breadcrumb.Item>
-        <Breadcrumb.Item linkAs={Link} linkProps={{ to: `/quiz/${uuid}` }}>
-          {quiz?.title}
-        </Breadcrumb.Item>
-        <Breadcrumb.Item active>Дүнгийн жагсаалт</Breadcrumb.Item>
-      </Breadcrumb>
+      <AppBreadcrumb className="mb-3" items={[
+        { label: 'Тестүүд', to: '/quizzes' },
+        { label: quiz?.title || uuid, to: `/quiz/${uuid}` },
+        { label: 'Дүнгийн жагсаалт' },
+      ]} />
 
       <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <h4 className="mb-0">

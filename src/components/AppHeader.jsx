@@ -76,7 +76,6 @@ export default function AppHeader() {
             to="/"
             className="fw-bold text-primary d-flex align-items-center"
           >
-            <i className="bi bi-house me-2"></i>
             <span className="d-none d-sm-inline">MathMinds.Club</span>
           </Navbar.Brand>
 

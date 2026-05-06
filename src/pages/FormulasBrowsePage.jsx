@@ -182,9 +182,9 @@ function FormulasBrowsePage() {
             </InputGroup>
           </Form>
 
-          <Button variant="outline-secondary" size="sm" onClick={() => navigate('/content/browse?type=formulas')}>
-            <i className="bi bi-arrow-left me-1"></i>Буцах
-          </Button>
+          <Link to="/content/browse?type=formulas" className="btn btn-outline-secondary btn-sm">
+            <i className="bi bi-arrow-left me-1"></i>Томьёонууд
+          </Link>
         </Navbar>
 
         {/* Main Content */}

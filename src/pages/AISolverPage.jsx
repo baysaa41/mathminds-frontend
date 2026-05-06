@@ -10,6 +10,7 @@ import apiClient from '../api/axiosConfig.js';
 import Spinner from 'react-bootstrap/Spinner';
 import LivePreview from '../components/LivePreview.jsx';
 import AppHeader from '../components/AppHeader.jsx';
+import AppBreadcrumb from '../components/common/AppBreadcrumb';
 
 // ─── LaTeX хамгаалсан Markdown renderer ──────────────────────────────────────
 function renderMarkdown(text) {
@@ -347,9 +348,7 @@ export default function AISolverPage() {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', gap: 12 }}>
         <div style={{ color: '#c00', fontSize: 15 }}>{fetchError}</div>
-        <button onClick={() => navigate(-1)} style={{ border: '1.5px solid #dde', borderRadius: 8, padding: '8px 20px', cursor: 'pointer', background: '#fff' }}>
-          ← Буцах
-        </button>
+        <AppBreadcrumb items={[{ label: 'Бодлогууд', to: '/problems' }, { label: 'AI шийдэл' }]} />
       </div>
     );
   }
@@ -384,7 +383,7 @@ export default function AISolverPage() {
               fontSize: 12, display: 'flex', alignItems: 'center', gap: 5,
             }}
           >
-            ← Буцах
+            ‹ Бодлого
           </button>
           <span style={{ fontSize: 16 }}>🤝</span>
           <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 600, color: '#333',

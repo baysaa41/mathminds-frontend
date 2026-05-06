@@ -17,11 +17,11 @@ import Card from 'react-bootstrap/Card';
 import Form from 'react-bootstrap/Form';
 import Stack from 'react-bootstrap/Stack';
 import Badge from 'react-bootstrap/Badge';
-import Breadcrumb from 'react-bootstrap/Breadcrumb';
 import Modal from 'react-bootstrap/Modal';
 
 // Icons
-import { Save, X, Lightbulb, FileText, StickyNote, ArrowLeft, Sparkles, PlusCircle, Wand2 } from 'lucide-react';
+import { Save, X, Lightbulb, FileText, StickyNote, Sparkles, PlusCircle, Wand2 } from 'lucide-react';
+import AppBreadcrumb from '../components/common/AppBreadcrumb';
 
 // --- Debounce Hook ---
 const useDebounce = (value, delay) => {
@@ -338,13 +338,19 @@ const SolutionEditPage = () => {
     );
   }
 
+  const breadcrumb = (
+    <AppBreadcrumb className="mb-3" items={[
+      { label: 'Бодлогууд', to: '/problems' },
+      { label: problem?.title || `Бодлого #${id}`, to: `/problem/${id}` },
+      { label: 'Бодолт засах' },
+    ]} />
+  );
+
   if (error && !problem) {
     return (
       <Container className="mt-4">
+        <AppBreadcrumb className="mb-2" items={[{ label: 'Бодлогууд', to: '/problems' }, { label: 'Бодолт засах' }]} />
         <Alert variant="danger">{error}</Alert>
-        <Button as={Link} to={`/problem/${id}`} variant="outline-secondary" size="sm">
-          &laquo; Буцах
-        </Button>
       </Container>
     );
   }
@@ -352,10 +358,8 @@ const SolutionEditPage = () => {
   if (!problem) {
     return (
       <Container className="mt-4">
+        <AppBreadcrumb className="mb-2" items={[{ label: 'Бодлогууд', to: '/problems' }, { label: 'Бодолт засах' }]} />
         <Alert variant="warning">Бодлого олдсонгүй.</Alert>
-        <Button as={Link} to="/" variant="outline-secondary" size="sm">
-          &laquo; Нүүр хуудас
-        </Button>
       </Container>
     );
   }
@@ -363,26 +367,15 @@ const SolutionEditPage = () => {
   if (!canEdit) {
     return (
       <Container className="mt-4">
+        {breadcrumb}
         <Alert variant="warning">Та энэ бодлогын бодолтыг засах эрхгүй байна.</Alert>
-        <Button as={Link} to={`/problem/${id}`} variant="outline-secondary" size="sm">
-          &laquo; Буцах
-        </Button>
       </Container>
     );
   }
 
   return (
     <Container className="py-4">
-      {/* Breadcrumb */}
-      <Breadcrumb className="mb-3">
-        <Breadcrumb.Item linkAs={Link} linkProps={{ to: '/' }}>
-          Нүүр
-        </Breadcrumb.Item>
-        <Breadcrumb.Item linkAs={Link} linkProps={{ to: `/problem/${id}` }}>
-          {problem.title || `Бодлого #${id}`}
-        </Breadcrumb.Item>
-        <Breadcrumb.Item active>Бодолт засах</Breadcrumb.Item>
-      </Breadcrumb>
+      {breadcrumb}
 
       {/* Header - Бодлогын мэдээлэл */}
       <div className="mb-3">
@@ -393,10 +386,6 @@ const SolutionEditPage = () => {
           {problem.level_name && <Badge bg="secondary">{problem.level_name}</Badge>}
           {currentSolution && <Badge bg="success">Одоогийн бодолт</Badge>}
           {!currentSolution && <Badge bg="primary">Шинэ бодолт</Badge>}
-          <Button variant="outline-secondary" size="sm" as={Link} to={`/problem/${id}`} className="ms-auto">
-            <ArrowLeft size={16} className="me-1" />
-            Буцах
-          </Button>
         </Stack>
       </div>
 

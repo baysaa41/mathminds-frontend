@@ -442,8 +442,7 @@ function DjangoCommandsPage() {
               </Badge>
             </div>
             <Link to="/admin" className="btn btn-outline-secondary btn-sm">
-              <ArrowLeft size={16} className="me-1" />
-              Admin Dashboard
+              ‹ Admin Dashboard
             </Link>
           </div>
           <Card className="shadow-sm">

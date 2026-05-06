@@ -407,10 +407,7 @@ function SalesStatsPage() {
     <Container className="py-4">
       <Row className="mb-4">
         <Col>
-          <Link to="/admin" className="btn btn-outline-secondary mb-3">
-            <ArrowLeft size={18} className="me-2" />
-            Dashboard руу буцах
-          </Link>
+          <Link to="/admin" className="btn btn-outline-secondary mb-3">‹ Dashboard</Link>
           <h1 className="mb-0">Борлуулалтын Статистик</h1>
           <p className="text-muted">Бүтээгдэхүүний зарагдсан тоо, QPay гүйлгээ</p>
         </Col>

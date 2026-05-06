@@ -9,9 +9,10 @@ import Table from 'react-bootstrap/Table';
 import Form from 'react-bootstrap/Form';
 import Modal from 'react-bootstrap/Modal';
 import {
-  ArrowLeft, PlayCircle, CheckCircle, Clock, Award,
+  PlayCircle, CheckCircle, Clock, Award,
   Users, BarChart3, Trophy,
 } from 'lucide-react';
+import AppBreadcrumb from '../components/common/AppBreadcrumb';
 import {
   getMySubmission, getSubmissions, getAssignmentProgress,
   startAssignment, gradeSubmission,
@@ -150,16 +151,14 @@ const AssignmentDetailPage = () => {
 
   return (
     <div className="container-fluid">
-      {/* Header: back + leaderboard */}
+      {/* Breadcrumb + leaderboard */}
       <div className="d-flex align-items-center justify-content-between mb-2">
-        <Button
-          variant="link"
-          size="sm"
-          className="text-muted p-0"
-          onClick={() => navigate(`/clubs/${clubData?.id}/assignments`)}
-        >
-          <ArrowLeft size={14} className="me-1" />Даалгаврууд
-        </Button>
+        <AppBreadcrumb items={[
+          { label: 'Клубууд', to: '/clubs' },
+          { label: clubData?.name || 'Клуб', to: `/clubs/${clubData?.id}` },
+          { label: 'Даалгаврууд', to: `/clubs/${clubData?.id}/assignments` },
+          { label: assignment?.title || '…' },
+        ]} />
         {isTeacherOrAdmin && (
           <Button
             variant="outline-warning"

@@ -9,8 +9,9 @@ import ListGroup from 'react-bootstrap/ListGroup';
 import Button from 'react-bootstrap/Button';
 import Spinner from 'react-bootstrap/Spinner';
 import Alert from 'react-bootstrap/Alert';
-import { ArrowLeft, UserPlus, Users, CheckCircle } from 'lucide-react';
+import { UserPlus, Users, CheckCircle } from 'lucide-react';
 import apiClient from '../api/axiosConfig';
+import AppBreadcrumb from '../components/common/AppBreadcrumb';
 import UserAvatar from '../components/UserAvatar';
 import UserName from '../components/UserName';
 
@@ -87,34 +88,31 @@ const SuggestedUsersPage = () => {
     );
   }
 
+  const breadcrumb = (
+    <AppBreadcrumb className="mb-3" items={[{ label: 'Санал болгох хэрэглэгчид' }]} />
+  );
+
   if (error) {
     return (
       <Container className="my-4" style={{ maxWidth: '600px' }}>
+        {breadcrumb}
         <Alert variant="danger">{error}</Alert>
-        <Button variant="secondary" onClick={handleBack}>
-          <ArrowLeft size={16} className="me-2" />
-          Буцах
-        </Button>
       </Container>
     );
   }
 
   return (
     <Container className="my-4" style={{ maxWidth: '600px' }}>
+      {breadcrumb}
       <Card className="shadow-sm border-0">
         <Card.Header className="bg-white border-bottom p-3">
-          <div className="d-flex align-items-center">
-            <Button variant="link" onClick={handleBack} className="text-decoration-none p-0 me-3">
-              <ArrowLeft size={20} />
-            </Button>
-            <div>
-              <h4 className="mb-0 fw-bold">
-                <Users size={24} className="me-2" />
+          <div>
+            <h4 className="mb-0 fw-bold">
+              <Users size={24} className="me-2" />
                 Санал болгох хэрэглэгчид
               </h4>
               <small className="text-muted">{users.length} хэрэглэгч</small>
             </div>
-          </div>
         </Card.Header>
         <Card.Body className="p-0">
           {users.length === 0 ? (

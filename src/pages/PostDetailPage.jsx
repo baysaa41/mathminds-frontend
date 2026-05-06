@@ -7,6 +7,7 @@ import apiClient from '../api/axiosConfig';
 
 import PostCard from '../components/PostCard';
 import UserAvatar from '../components/UserAvatar';
+import AppBreadcrumb from '../components/common/AppBreadcrumb';
 
 import Container from 'react-bootstrap/Container';
 import Spinner from 'react-bootstrap/Spinner';
@@ -371,7 +372,7 @@ const PostDetailPage = () => {
         <Alert variant="danger">
           <Alert.Heading>Алдаа</Alert.Heading>
           <p>{error}</p>
-          <Button variant="outline-danger" onClick={() => navigate(-1)}>Буцах</Button>
+          <AppBreadcrumb items={[{ label: 'Пост' }]} />
         </Alert>
       </Container>
     );
@@ -379,13 +380,7 @@ const PostDetailPage = () => {
 
   return (
     <Container fluid ref={topRef} className="my-4 ps-0 pe-2" style={{ maxWidth: '100%' }}>
-      <Button
-        variant="link"
-        onClick={() => navigate(-1)}
-        className="mb-3 ms-3 ms-sm-0 p-0 text-decoration-none text-muted"
-      >
-        <i className="bi bi-arrow-left me-1" /> Буцах
-      </Button>
+      <AppBreadcrumb className="mb-3" items={[{ label: 'Пост' }]} />
 
       <div className="bg-white overflow-hidden">
         {visibleList.length === 0 ? (

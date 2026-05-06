@@ -10,7 +10,8 @@ import Button from 'react-bootstrap/Button';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 import { MathJax } from 'better-react-mathjax';
-import { ArrowLeft, Copy, Check } from 'lucide-react';
+import { Copy, Check } from 'lucide-react';
+import AppBreadcrumb from '../components/common/AppBreadcrumb';
 import { LATEX_EXAMPLES } from '../components/LatexTutorialWidget';
 
 const LaTeXExamplesPage = () => {
@@ -41,14 +42,7 @@ const LaTeXExamplesPage = () => {
     <Container className="py-4">
       {/* Header */}
       <div className="mb-4">
-        <Button
-          variant="link"
-          onClick={() => navigate(-1)}
-          className="p-0 text-decoration-none mb-3"
-        >
-          <ArrowLeft size={16} className="me-2" />
-          Буцах
-        </Button>
+        <AppBreadcrumb className="mb-3" items={[{ label: 'LaTeX жишээнүүд' }]} />
 
         <Card className="shadow-sm border-0 bg-light">
           <Card.Body>

@@ -405,7 +405,7 @@ export default function CheckoutPage() {
                         onClick={() => navigate('/cart')}
                         disabled={submitting}
                       >
-                        Буцах
+                        Сагс руу буцах
                       </Button>
                     </div>
                   </Form>

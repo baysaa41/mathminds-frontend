@@ -15,7 +15,8 @@ import Form from 'react-bootstrap/Form';
 import { getClubDetail, updateClub, leaveClub, inviteTeacher, removeTeacher, removeMember, refreshRegCode, formatErrorMessage } from '../services/clubsService';
 import useToast from '../hooks/useToast';
 import JoinClubModal from '../components/JoinClubModal';
-import { ArrowLeft, LogOut, Key, Clipboard, RefreshCw } from 'lucide-react';
+import { LogOut, Key, Clipboard, RefreshCw } from 'lucide-react';
+import AppBreadcrumb from '../components/common/AppBreadcrumb';
 
 const ClubDetail = () => {
   const { id } = useParams();
@@ -250,18 +251,40 @@ const ClubDetail = () => {
     return (
       <Container className="py-5">
         <Alert variant="danger">{error || 'Клуб олдсонгүй'}</Alert>
-        <Button
-          variant="primary"
-          onClick={() => navigate('/clubs')}
-        >
-          Буцах
-        </Button>
+        <AppBreadcrumb items={[{ label: 'Клубууд', to: '/clubs' }, { label: 'Клуб' }]} />
       </Container>
     );
   }
 
   const isClubCreator = club.creator === user?.id;
   const isLeaderboard = /\/assignments\/\d+\/leaderboard/.test(location.pathname);
+
+  // Dynamic breadcrumb: compute 3rd-level label from current path
+  const SUB_PAGE_LABELS = {
+    discussions: 'Хэлэлцүүлэг',
+    curriculum: 'Хичээлийн хөтөлбөр',
+    videos: 'Видео',
+    media: 'Медиа',
+    files: 'Файлууд',
+    lessons: 'Хичээл',
+    assignments: 'Даалгавар',
+    exercises: 'Дасгал',
+    exams: 'Шалгалт',
+    subgroups: 'Дэд бүлэг',
+    scores: 'Оноо',
+    members: 'Гишүүд',
+  };
+  // Pages that render their own deep breadcrumb (assignments/:id, leaderboard, report)
+  const hasOwnBreadcrumb =
+    /\/assignments\/\d+/.test(location.pathname) ||
+    /\/report\//.test(location.pathname);
+  const subSegment = location.pathname.replace(`/clubs/${id}`, '').split('/').filter(Boolean)[0];
+  const subLabel = SUB_PAGE_LABELS[subSegment];
+  const breadcrumbItems = [
+    { label: 'Клубууд', to: '/clubs' },
+    { label: club?.name || 'Клуб', ...(subLabel ? { to: `/clubs/${id}` } : {}) },
+    ...(subLabel ? [{ label: subLabel }] : []),
+  ];
 
   const outletContext = {
     clubData: club,
@@ -333,19 +356,9 @@ const ClubDetail = () => {
         </Toast>
       </ToastContainer>
 
-      {/* Header - Буцах холбоос */}
-      <div className="mb-4">
-        <Button
-          variant="link"
-          onClick={() =>
-            navigate('/clubs')
-          }
-          className="p-0 text-decoration-none"
-        >
-          <ArrowLeft size={16} className="me-2" />
-          Буцах
-        </Button>
-      </div>
+      {!hasOwnBreadcrumb && (
+        <AppBreadcrumb className="mb-4" items={breadcrumbItems} />
+      )}
 
       {/* Child routes will render here */}
       <Outlet context={outletContext} />

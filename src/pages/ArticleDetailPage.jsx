@@ -8,6 +8,7 @@ import { MathJax } from 'better-react-mathjax';
 import { useAuth } from '../context/AuthContext.jsx';
 import { usePrefill } from '../context/PrefillContext.jsx';
 import UserName from '../components/UserName.jsx';
+import AppBreadcrumb from '../components/common/AppBreadcrumb';
 import { formatDate } from '../utils/dateFormatter';
 import LivePreview from '../components/LivePreview.jsx';
 
@@ -94,7 +95,7 @@ const ArticleDetailPage = () => {
     return (
       <Container className="mt-4">
         <Alert variant="danger">{error}</Alert>
-        <Link to="/"> &laquo; Буцах</Link>
+        <AppBreadcrumb items={[{ label: 'Нийтлэл' }]} />
       </Container>
     );
   }

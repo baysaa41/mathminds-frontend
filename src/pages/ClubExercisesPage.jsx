@@ -28,36 +28,8 @@ function formatDateLabel(dateStr) {
   return `${d.getFullYear()}.${MONTHS_MN[d.getMonth()]} ${d.getDate()}`;
 }
 
-function IndexNav({ items, currentIdx, userAnswers, onSelect }) {
-  return (
-    <div className="d-flex flex-wrap gap-2 mb-4">
-      {items.map((item, idx) => {
-        const ua = userAnswers[item.item_id];
-        let variant = 'outline-secondary';
-        if (ua?.is_correct === true)  variant = 'success';
-        if (ua?.is_correct === false) variant = 'danger';
-        const isActive = idx === currentIdx;
-        return (
-          <Button
-            key={item.item_id}
-            variant={variant}
-            size="sm"
-            onClick={() => onSelect(idx)}
-            style={{
-              width: 36, height: 36, borderRadius: '50%', padding: 0,
-              fontWeight: 700, fontSize: 13,
-              boxShadow: isActive ? '0 0 0 3px rgba(13,110,253,.35)' : undefined,
-            }}
-          >
-            {idx + 1}
-          </Button>
-        );
-      })}
-    </div>
-  );
-}
 
-function AnswerInput({ problem, value, onChange, disabled }) {
+function AnswerInput({ problem, value, onChange, disabled, blankResults }) {
   if (problem.type === 1) {
     return (
       <div className="mb-3 d-flex flex-wrap gap-2">
@@ -108,6 +80,45 @@ function AnswerInput({ problem, value, onChange, disabled }) {
       </div>
     );
   }
+  if (problem.type === 4) {
+    const blanks = problem.choices || [];
+    const parsed = (() => { try { return JSON.parse(value || '{}'); } catch { return {}; } })();
+    return (
+      <div className="mb-3 d-flex flex-column gap-2">
+        {blanks.map(blank => {
+          const br = blankResults?.[blank.label];
+          const borderColor = br ? (br.is_correct ? '#198754' : '#dc3545') : '#dee2e6';
+          const bg          = br ? (br.is_correct ? '#f0fff4' : '#fff5f5') : '#fff';
+          return (
+            <div key={blank.label} className="d-flex align-items-center gap-2">
+              <span className="fw-semibold" style={{ minWidth: 36, fontSize: '0.85rem', color: br ? (br.is_correct ? '#198754' : '#dc3545') : '#6c757d' }}>
+                {blank.label})
+              </span>
+              <Form.Control
+                type="text"
+                placeholder="Хариулт..."
+                value={parsed[blank.label] || ''}
+                onChange={e => {
+                  const updated = { ...parsed, [blank.label]: e.target.value };
+                  onChange(JSON.stringify(updated));
+                }}
+                disabled={disabled}
+                style={{ maxWidth: 220, borderColor, background: bg }}
+                onKeyDown={e => { if (e.key === 'Enter') e.preventDefault(); }}
+              />
+              {br && (
+                <span style={{ fontSize: '0.78rem', color: br.is_correct ? '#198754' : '#dc3545' }}>
+                  {br.is_correct
+                    ? `+${br.score}`
+                    : `0/${br.max_score} (зөв: ${br.correct_value})`}
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
   return (
     <Form.Control
       className="mb-3"
@@ -121,8 +132,38 @@ function AnswerInput({ problem, value, onChange, disabled }) {
   );
 }
 
-function ResultBanner({ ua, onRetry }) {
+function ResultBanner({ ua, onRetry, problemType }) {
   if (!ua || ua.is_correct === null || ua.is_correct === undefined) return null;
+
+  // Fill-in-blank: оноотой нийлмэл мессеж
+  if (problemType === 4) {
+    const hasScore = ua.max_score != null && ua.max_score > 0;
+    if (ua.is_correct) {
+      return (
+        <Alert variant="success" className="d-flex align-items-center gap-2 py-2">
+          <CheckCircle size={18} className="flex-shrink-0" />
+          <span>Бүгд зөв!{hasScore && <strong> {ua.score}/{ua.max_score} оноо</strong>}</span>
+        </Alert>
+      );
+    }
+    const partialOk = hasScore && ua.score > 0;
+    return (
+      <Alert variant={partialOk ? 'warning' : 'danger'} className="py-2">
+        <div className="d-flex align-items-center justify-content-between">
+          <span className="d-flex align-items-center gap-2">
+            {partialOk
+              ? <span>Хэсэгчлэн зөв — <strong>{ua.score}/{ua.max_score} оноо</strong></span>
+              : <span><XCircle size={18} className="flex-shrink-0 me-1" />Буруу. <strong>0/{ua.max_score} оноо</strong></span>
+            }
+          </span>
+          <Button variant={`outline-${partialOk ? 'warning' : 'danger'}`} size="sm" onClick={onRetry} className="flex-shrink-0 ms-2">
+            Дахин оролдох
+          </Button>
+        </div>
+      </Alert>
+    );
+  }
+
   if (ua.is_correct) {
     return (
       <Alert variant="success" className="d-flex align-items-center gap-2 py-2">
@@ -131,15 +172,18 @@ function ResultBanner({ ua, onRetry }) {
       </Alert>
     );
   }
+  const correctDisplay = ua.correct_answer || null;
   return (
-    <Alert variant="danger" className="d-flex align-items-center justify-content-between py-2">
-      <span className="d-flex align-items-center gap-2">
-        <XCircle size={18} className="flex-shrink-0" />
-        <span>Буруу.</span>
-      </span>
-      <Button variant="outline-danger" size="sm" onClick={onRetry} className="flex-shrink-0 ms-2">
-        Дахин оролдох
-      </Button>
+    <Alert variant="danger" className="py-2">
+      <div className="d-flex align-items-center justify-content-between">
+        <span className="d-flex align-items-center gap-2">
+          <XCircle size={18} className="flex-shrink-0" />
+          <span>Буруу.{correctDisplay && <> Зөв: <strong>{correctDisplay}</strong></>}</span>
+        </span>
+        <Button variant="outline-danger" size="sm" onClick={onRetry} className="flex-shrink-0 ms-2">
+          Дахин оролдох
+        </Button>
+      </div>
     </Alert>
   );
 }
@@ -293,7 +337,10 @@ function ProblemCard({
   const { user } = useAuth();
   const problem    = item.problem;
   const ua         = userAnswers[item.item_id];
-  const isAnswered = ua?.is_correct === true;
+  // Fill-in: хариулт өгсөн бол (зөв/буруу аль ч байсан) input хааж, feedback харуулна
+  const isAnswered = problem.type === 4
+    ? (ua?.is_correct !== undefined && ua?.is_correct !== null)
+    : ua?.is_correct === true;
   const hint       = hintState[item.item_id] || {};
 
   const [showHintModal, setShowHintModal] = useState(false);
@@ -341,10 +388,20 @@ function ProblemCard({
       )}
 
       {isAnswered ? (
-        <div className="mb-3 d-flex align-items-center gap-2">
-          <CheckCircle size={16} className="text-success flex-shrink-0" />
-          <span className="text-success fw-semibold">{ua.answer}</span>
-        </div>
+        problem.type === 4 ? (
+          <AnswerInput
+            problem={problem}
+            value={ua.answer || ''}
+            onChange={() => {}}
+            disabled={true}
+            blankResults={ua.blank_results}
+          />
+        ) : (
+          <div className="mb-3 d-flex align-items-center gap-2">
+            <CheckCircle size={16} className="text-success flex-shrink-0" />
+            <span className="text-success fw-semibold">{ua.answer}</span>
+          </div>
+        )
       ) : (
         <AnswerInput
           problem={problem}
@@ -354,20 +411,32 @@ function ProblemCard({
         />
       )}
 
-      <ResultBanner ua={ua} onRetry={() => onRetry(item.item_id)} />
+      <ResultBanner ua={ua} onRetry={() => onRetry(item.item_id)} problemType={problem.type} />
 
       <div className="d-flex gap-2 mb-3">
-        {!isAnswered && (
-          <Button
-            variant="primary" size="sm"
-            onClick={() => onCheck(item)}
-            disabled={!(localInput[item.item_id] || '').trim() || !!checking[item.item_id]}
-          >
-            {checking[item.item_id]
-              ? <Spinner animation="border" size="sm" />
-              : 'Шалгах'}
-          </Button>
-        )}
+        {!isAnswered && (() => {
+          let inputOk;
+          const rawInput = localInput[item.item_id] || '';
+          if (problem.type === 4) {
+            try {
+              const p = JSON.parse(rawInput || '{}');
+              inputOk = (problem.choices || []).every(b => (p[b.label] || '').trim());
+            } catch { inputOk = false; }
+          } else {
+            inputOk = !!rawInput.trim();
+          }
+          return (
+            <Button
+              variant="primary" size="sm"
+              onClick={() => onCheck(item)}
+              disabled={!inputOk || !!checking[item.item_id]}
+            >
+              {checking[item.item_id]
+                ? <Spinner animation="border" size="sm" />
+                : 'Шалгах'}
+            </Button>
+          );
+        })()}
         <Button
           variant="outline-secondary" size="sm"
           onClick={handleHintClick}
@@ -462,6 +531,10 @@ const ClubExercisesPage = () => {
   const [enrichState, setEnrichState] = useState({});
   const [currentIdxMap, setCurrentIdxMap] = useState({});
 
+  // Таймер: item_id тус бүрд хэдэн секунд зарцуулсныг хадгална
+  const timeAccRef   = useRef({});  // { [item_id]: accumulated_seconds }
+  const activeTimerRef = useRef(null); // { item_id, startMs }
+
   useEffect(() => {
     if (!clubId) return;
     apiClient.get(`${API_ENDPOINTS.MINDS.POSTS}dates/`, {
@@ -498,6 +571,9 @@ const ClubExercisesPage = () => {
             answer: it.user_answer.answer,
             is_correct: it.user_answer.is_correct,
             correct_answer: it.problem.correct_answer || '',
+            blank_results: it.user_answer.blank_results || null,
+            score: it.user_answer.score ?? null,
+            max_score: it.user_answer.max_score ?? null,
           };
           initInput[it.item_id] = it.user_answer.answer || '';
         }
@@ -517,13 +593,26 @@ const ClubExercisesPage = () => {
     const id = item.item_id;
     const answer = localInput[id] || '';
     if (!answer.trim()) return;
+
+    // Одоогийн таймерийг зогсоож нийт хугацааг тооцно
+    const prev = activeTimerRef.current;
+    let elapsed = timeAccRef.current[id] || 0;
+    if (prev?.item_id === id) {
+      elapsed += Math.floor((Date.now() - prev.startMs) / 1000);
+      timeAccRef.current[id] = elapsed;
+      activeTimerRef.current = null; // хариулсны дараа таймер зогсоно
+    }
+
     setChecking(prev => ({ ...prev, [id]: true }));
     try {
       const res = await apiClient.post(API_ENDPOINTS.CLUBS.DAILY_PRACTICE_ANSWER(clubId), {
-        item_id: id, answer,
+        item_id: id, answer, time_spent: elapsed || undefined,
       });
-      const { is_correct, correct_answer } = res.data;
-      setUserAnswers(prev => ({ ...prev, [id]: { answer, is_correct, correct_answer } }));
+      const { is_correct, correct_answer, blank_results, score, max_score } = res.data;
+      setUserAnswers(prev => ({
+        ...prev,
+        [id]: { answer, is_correct, correct_answer, blank_results, score, max_score },
+      }));
       setItems(prev => prev.map(it =>
         it.item_id === id ? { ...it, problem: { ...it.problem, correct_answer } } : it
       ));
@@ -599,6 +688,29 @@ const ClubExercisesPage = () => {
   }, [activeTab, hasTabs, mainItems, items, subgroups]);
   const activeCurrentIdx = currentIdxMap[activeTab] ?? 0;
 
+  // Идэвхтэй бодлого солигдоход таймер шилжүүлнэ
+  useEffect(() => {
+    const newItemId = activeItems[activeCurrentIdx]?.item_id;
+    const prev = activeTimerRef.current;
+    if (prev) {
+      timeAccRef.current[prev.item_id] =
+        (timeAccRef.current[prev.item_id] || 0) + Math.floor((Date.now() - prev.startMs) / 1000);
+    }
+    activeTimerRef.current = newItemId ? { item_id: newItemId, startMs: Date.now() } : null;
+  }, [activeItems, activeCurrentIdx]);
+
+  // Хуудас орхиход таймер зогсоно
+  useEffect(() => {
+    return () => {
+      const prev = activeTimerRef.current;
+      if (prev) {
+        timeAccRef.current[prev.item_id] =
+          (timeAccRef.current[prev.item_id] || 0) + Math.floor((Date.now() - prev.startMs) / 1000);
+        activeTimerRef.current = null;
+      }
+    };
+  }, []);
+
   const handleNavSelect = useCallback((i) => {
     setCurrentIdxMap(prev => ({ ...prev, [activeTab]: i }));
   }, [activeTab]);
@@ -649,14 +761,6 @@ const ClubExercisesPage = () => {
 
   return (
     <div>
-      {clubId && (
-        <Link
-          to={`/clubs/${clubId}`}
-          className="d-inline-flex align-items-center gap-1 text-muted text-decoration-none small mb-3"
-        >
-          <ChevronLeft size={13} />{clubData?.name || 'Клуб'}
-        </Link>
-      )}
       <div className="d-flex align-items-center justify-content-between mb-3">
         <Button variant="outline-secondary" size="sm" disabled={!prevDate} onClick={() => goTo(prevDate)}>
           <ChevronLeft size={14} />

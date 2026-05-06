@@ -205,9 +205,9 @@ function ProblemsBrowsePage() {
             </InputGroup>
           </Form>
 
-          <Button variant="outline-secondary" size="sm" onClick={() => navigate('/content/browse?type=problems')}>
-            <i className="bi bi-arrow-left me-1"></i>Буцах
-          </Button>
+          <Link to="/content/browse?type=problems" className="btn btn-outline-secondary btn-sm">
+            <i className="bi bi-arrow-left me-1"></i>Бодлогууд
+          </Link>
         </Navbar>
 
         {/* Main Content */}

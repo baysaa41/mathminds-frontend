@@ -14,7 +14,7 @@ import Form from 'react-bootstrap/Form';
 import Button from 'react-bootstrap/Button';
 import Spinner from 'react-bootstrap/Spinner';
 import Alert from 'react-bootstrap/Alert';
-import Breadcrumb from 'react-bootstrap/Breadcrumb';
+import AppBreadcrumb from '../components/common/AppBreadcrumb';
 import Card from 'react-bootstrap/Card';
 import ListGroup from 'react-bootstrap/ListGroup';
 import Modal from 'react-bootstrap/Modal';
@@ -523,21 +523,18 @@ const QuizEditPage = () => {
     return (
       <Container className="mt-4">
         <Alert variant="danger">{error}</Alert>
-        <Link to={id ? `/quiz/${id}` : '/quizzes'}>&laquo; Буцах</Link>
+        <AppBreadcrumb items={[{ label: 'Тестүүд', to: '/quizzes' }, { label: 'Засварлах' }]} />
       </Container>
     );
   }
 
   return (
     <Container className="py-4">
-      <Breadcrumb className="mb-3">
-        <Breadcrumb.Item linkAs={Link} linkProps={{ to: '/' }}>Нүүр</Breadcrumb.Item>
-        <Breadcrumb.Item linkAs={Link} linkProps={{ to: '/quizzes' }}>Тестүүд</Breadcrumb.Item>
-        <Breadcrumb.Item linkAs={Link} linkProps={{ to: `/quiz/${id}` }}>
-          <MathJax inline dynamic>{originalTitle || 'Тест'}</MathJax>
-        </Breadcrumb.Item>
-        <Breadcrumb.Item active>Засварлах</Breadcrumb.Item>
-      </Breadcrumb>
+      <AppBreadcrumb className="mb-3" items={[
+        { label: 'Тестүүд', to: '/quizzes' },
+        { label: originalTitle || 'Тест', to: `/quiz/${id}` },
+        { label: 'Засварлах' },
+      ]} />
 
       <h1 className="h3 fw-bold mb-4">
         <Edit3 size={24} className="me-2" />
