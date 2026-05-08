@@ -8,10 +8,11 @@ import Spinner from 'react-bootstrap/Spinner';
 import ProgressBar from 'react-bootstrap/ProgressBar';
 import Form from 'react-bootstrap/Form';
 import { MathJax } from 'better-react-mathjax';
-import { Trophy, Search, Download } from 'lucide-react';
+import { Trophy, Search, Download, Trash2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import apiClient from '../api/axiosConfig';
 import AppBreadcrumb from '../components/common/AppBreadcrumb';
+import { useAuth } from '../context/AuthContext.jsx';
 
 const MEDAL = { 1: '🥇', 2: '🥈', 3: '🥉' };
 
@@ -145,6 +146,12 @@ const ScaledScoreHistogram = ({ results, scoreTable }) => {
   );
 };
 
+const fmtTime = (s) => {
+  if (s == null) return '';
+  if (s < 60) return `${s}с`;
+  return `${Math.floor(s / 60)}м ${s % 60}с`;
+};
+
 // Excel export
 const exportXLSX = (assignment, problems, results, scoreTable) => {
   const wb = XLSX.utils.book_new();
@@ -154,7 +161,7 @@ const exportXLSX = (assignment, problems, results, scoreTable) => {
     p.max_point != null ? `Б${p.order} (/${p.max_point})` : `Б${p.order}`
   );
   const hasScaled = !!scoreTable;
-  const header = ['Зэрэг', 'Нэр', 'Username', 'Төлөв', ...probHeaders, 'Нийт оноо', ...(hasScaled ? ['Хэмжээст оноо'] : [])];
+  const header = ['Зэрэг', 'Нэр', 'Username', 'Төлөв', ...probHeaders, 'Нийт оноо', ...(hasScaled ? ['Хэмжээст оноо'] : []), 'Хугацаа (сек)'];
   const rows = results.map(r => [
     r.rank ?? '',
     displayName(r.student),
@@ -163,6 +170,7 @@ const exportXLSX = (assignment, problems, results, scoreTable) => {
     ...(r.problem_points ?? []).map(pt => pt ?? ''),
     r.score ?? '',
     ...(hasScaled ? [getScaledScore(r.score, scoreTable) ?? ''] : []),
+    r.time_spent ?? '',
   ]);
 
   const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
@@ -176,6 +184,7 @@ const exportXLSX = (assignment, problems, results, scoreTable) => {
     ...problems.map(() => ({ wch: 7 })),
     { wch: 10 },  // Нийт
     ...(hasScaled ? [{ wch: 12 }] : []),  // Хэмжээст
+    { wch: 12 },  // Хугацаа
   ];
 
   XLSX.utils.book_append_sheet(wb, ws, 'Дүн');
@@ -244,7 +253,9 @@ const exportXLSX = (assignment, problems, results, scoreTable) => {
 const AssignmentLeaderboardPage = () => {
   const { assignmentId } = useParams();
   const { clubData, isTeacherOrAdmin } = useOutletContext();
+  const { user } = useAuth();
   const navigate = useNavigate();
+  const isStaff = user?.is_staff;
 
   const [loading, setLoading] = useState(true);
   const [error, setError]   = useState(null);
@@ -254,6 +265,8 @@ const AssignmentLeaderboardPage = () => {
   const [subgroupFilter, setSubgroupFilter] = useState('');
   const [gradeFilter, setGradeFilter] = useState('');
   const [selectedProblem, setSelectedProblem] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null); // { submission_id, name }
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -275,6 +288,31 @@ const AssignmentLeaderboardPage = () => {
       .then(res => setSubgroups(res.data.results || res.data || []))
       .catch(() => {});
   }, [clubData?.id]);
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await apiClient.delete(
+        `/api/club-assignments/${assignmentId}/delete_submission/`,
+        { params: { submission_id: deleteTarget.submission_id } }
+      );
+      // Local state-с устгах
+      setData(prev => ({
+        ...prev,
+        results: prev.results.map(r =>
+          r.submission_id === deleteTarget.submission_id
+            ? { ...r, submission_id: null, status: 'not_started', score: null, time_spent: null, submitted_at: null, answer_sheet_id: null, source: null }
+            : r
+        ),
+      }));
+      setDeleteTarget(null);
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Устгахад алдаа гарлаа.');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   // Зэрэг тооцоолол
   const ranked = useMemo(() => {
@@ -340,14 +378,18 @@ const AssignmentLeaderboardPage = () => {
     if (!filtered.length) return null;
     const scored    = filtered.filter(r => r.score != null);
     const submitted = filtered.filter(r => ['submitted', 'graded'].includes(r.status));
+    const timed     = filtered.filter(r => r.time_spent != null);
     const avg = scored.length
       ? (scored.reduce((s, r) => s + r.score, 0) / scored.length).toFixed(1) : null;
+    const avgTime = timed.length
+      ? Math.round(timed.reduce((s, r) => s + r.time_spent, 0) / timed.length) : null;
     return {
       total: filtered.length,
       submitted: submitted.length,
       avg,
       max: scored.length ? Math.max(...scored.map(r => r.score)) : null,
       pct: filtered.length ? Math.round((submitted.length / filtered.length) * 100) : 0,
+      avgTime,
     };
   }, [filtered]);
 
@@ -465,6 +507,12 @@ const AssignmentLeaderboardPage = () => {
                   <div className="text-muted" style={{ fontSize: '0.72rem' }}>Өндөр оноо</div>
                 </div>
               )}
+              {stats.avgTime != null && (
+                <div className="text-center">
+                  <div className="fw-bold fs-5 text-secondary">{fmtTime(stats.avgTime)}</div>
+                  <div className="text-muted" style={{ fontSize: '0.72rem' }}>Дундаж хугацаа</div>
+                </div>
+              )}
               <div className="flex-grow-1" style={{ minWidth: 120 }}>
                 <div className="text-muted mb-1" style={{ fontSize: '0.72rem' }}>
                   Хамрагдалт {stats.pct}%
@@ -522,11 +570,14 @@ const AssignmentLeaderboardPage = () => {
                   </th>
                 )}
 
+                {/* Хугацаа */}
+                <th className="text-center" style={{ minWidth: 72 }}>Хугацаа</th>
+
                 {/* Төлөв */}
                 <th className="text-center" style={{ minWidth: 80 }}>Төлөв</th>
 
-                {/* Харах (багш) */}
-                {isTeacherOrAdmin && <th style={{ width: 48 }} />}
+                {/* Харах (багш) / Устгах (staff) */}
+                {(isTeacherOrAdmin || isStaff) && <th style={{ width: isStaff ? 72 : 48 }} />}
               </tr>
 
               {/* Дундаж мөр */}
@@ -568,8 +619,11 @@ const AssignmentLeaderboardPage = () => {
                       </td>
                     );
                   })()}
+                  <td className="text-center fw-semibold text-muted">
+                    {stats?.avgTime != null ? fmtTime(stats.avgTime) : '—'}
+                  </td>
                   <td />
-                  {isTeacherOrAdmin && <td />}
+                  {(isTeacherOrAdmin || isStaff) && <td />}
                 </tr>
               )}
             </thead>
@@ -660,6 +714,11 @@ const AssignmentLeaderboardPage = () => {
                       );
                     })()}
 
+                    {/* Хугацаа */}
+                    <td className="text-center text-muted" style={{ fontSize: '0.75rem' }}>
+                      {r.time_spent != null ? fmtTime(r.time_spent) : <span style={{ opacity: 0.35 }}>—</span>}
+                    </td>
+
                     {/* Төлөв */}
                     <td className="text-center">
                       <Badge bg={si.bg} style={{ fontSize: '0.65rem' }}>{si.label}</Badge>
@@ -671,18 +730,34 @@ const AssignmentLeaderboardPage = () => {
                       )}
                     </td>
 
-                    {/* Харах (багш) */}
-                    {isTeacherOrAdmin && (
+                    {/* Харах (багш) / Устгах (staff) */}
+                    {(isTeacherOrAdmin || isStaff) && (
                       <td className="text-center">
-                        {hasResult && (
-                          <Button variant="outline-primary" size="sm" className="py-0 px-1"
-                            title="Дэлгэрэнгүй харах"
-                            onClick={() => navigate(
-                              `/quiz/${encodeURIComponent(data.assignment?.quiz_uuid || '')}/result/${r.answer_sheet_id}`
-                            )}>
-                            👁
-                          </Button>
-                        )}
+                        <div className="d-flex gap-1 justify-content-center">
+                          {hasResult && (
+                            <Button variant="outline-primary" size="sm" className="py-0 px-1"
+                              title="Дэлгэрэнгүй харах"
+                              onClick={() => navigate(
+                                `/quiz/${encodeURIComponent(data.assignment?.quiz_uuid || '')}/result/${r.answer_sheet_id}`
+                              )}>
+                              👁
+                            </Button>
+                          )}
+                          {isStaff && r.submission_id && (
+                            <Button
+                              variant="outline-danger"
+                              size="sm"
+                              className="py-0 px-1"
+                              title="Submission устгах"
+                              onClick={() => setDeleteTarget({
+                                submission_id: r.submission_id,
+                                name: displayName(r.student),
+                              })}
+                            >
+                              <Trash2 size={12} />
+                            </Button>
+                          )}
+                        </div>
                       </td>
                     )}
                   </tr>
@@ -715,6 +790,32 @@ const AssignmentLeaderboardPage = () => {
         </div>
       </div>
     </div>
+
+      {/* Submission устгах баталгаажуулах модаль */}
+      <Modal show={!!deleteTarget} onHide={() => !deleting && setDeleteTarget(null)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title className="fs-6 text-danger">
+            <Trash2 size={16} className="me-2" />
+            Submission устгах
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="mb-1">
+            <strong>{deleteTarget?.name}</strong>-ийн submission-г устгах уу?
+          </p>
+          <p className="text-muted small mb-0">
+            Энэ үйлдлийг буцаах боломжгүй. Сурагч дахин даалгавар ажиллах боломжтой болно.
+          </p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" size="sm" onClick={() => setDeleteTarget(null)} disabled={deleting}>
+            Болих
+          </Button>
+          <Button variant="danger" size="sm" onClick={handleDeleteConfirm} disabled={deleting}>
+            {deleting ? <Spinner animation="border" size="sm" /> : <><Trash2 size={13} className="me-1" />Устгах</>}
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
       {/* Бодлогын өгүүлбэр модаль */}
       <Modal show={!!selectedProblem} onHide={() => setSelectedProblem(null)} size="lg" centered>

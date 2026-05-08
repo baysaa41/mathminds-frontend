@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Badge from 'react-bootstrap/Badge';
 import Spinner from 'react-bootstrap/Spinner';
-import { Calendar } from 'lucide-react';
+import { Calendar, Clock } from 'lucide-react';
 import apiClient from '../api/axiosConfig';
 import { API_ENDPOINTS } from '../constants/api';
 
@@ -15,6 +15,22 @@ const MONTHS_MN = [
 function formatDay(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
   return `${d.getDate()}`;
+}
+
+function fmtTime(secs) {
+  if (!secs) return null;
+  const m = Math.floor(secs / 60);
+  const s = String(secs % 60).padStart(2, '0');
+  return `${m}:${s}`;
+}
+
+function getSavedTime(clubId, date) {
+  try {
+    const saved = JSON.parse(localStorage.getItem(`exercises_time_${clubId}_${date}`) || '{}');
+    return Object.values(saved).reduce((sum, v) => sum + v, 0);
+  } catch {
+    return 0;
+  }
 }
 
 function groupByMonth(dates) {
@@ -39,6 +55,13 @@ const ExerciseDatesWidget = ({ clubId }) => {
 
   const [dates, setDates] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [, forceUpdate] = useState(0);
+
+  useEffect(() => {
+    const handler = () => forceUpdate(n => n + 1);
+    window.addEventListener('exercises-time-saved', handler);
+    return () => window.removeEventListener('exercises-time-saved', handler);
+  }, []);
 
   useEffect(() => {
     if (!clubId) return;
@@ -95,23 +118,42 @@ const ExerciseDatesWidget = ({ clubId }) => {
                 {group.label}
               </span>
             </div>
-            {group.items.map(item => (
-              <button
-                key={item.date}
-                type="button"
-                className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center py-2 px-3 border-0${selectedDate === item.date ? ' active' : ''}`}
-                onClick={() => handleSelect(item.date)}
-              >
-                <span className="small">{item.date}</span>
-                <Badge
-                  bg={selectedDate === item.date ? 'light' : 'primary'}
-                  text={selectedDate === item.date ? 'dark' : undefined}
-                  style={{ fontSize: '0.65rem' }}
+            {group.items.map(item => {
+              const timeStr = fmtTime(getSavedTime(clubId, item.date));
+              const isActive = selectedDate === item.date;
+              return (
+                <button
+                  key={item.date}
+                  type="button"
+                  className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center py-2 px-3 border-0${isActive ? ' active' : ''}`}
+                  onClick={() => handleSelect(item.date)}
                 >
-                  {item.count}
-                </Badge>
-              </button>
-            ))}
+                  <span className="small">{item.date}</span>
+                  <div className="d-flex align-items-center gap-2">
+                    {timeStr && (
+                      <span
+                        className="d-flex align-items-center gap-1"
+                        style={{
+                          fontSize: '0.65rem',
+                          color: isActive ? 'rgba(255,255,255,0.8)' : '#6c757d',
+                          fontVariantNumeric: 'tabular-nums',
+                        }}
+                      >
+                        <Clock size={10} />
+                        {timeStr}
+                      </span>
+                    )}
+                    <Badge
+                      bg={isActive ? 'light' : 'primary'}
+                      text={isActive ? 'dark' : undefined}
+                      style={{ fontSize: '0.65rem' }}
+                    >
+                      {item.count}
+                    </Badge>
+                  </div>
+                </button>
+              );
+            })}
           </React.Fragment>
         ))}
       </div>

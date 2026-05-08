@@ -287,10 +287,13 @@ const QuizResultPage = () => {
     quiz.author &&
     user.id === quiz.author.id;
 
-  // Статистик
+  // Статистик — duplicate MC answer record байж болох тул бодлогоор unique тоолно
   const totalProblems = quiz.problems?.length || 0;
-  const answeredCount = answers.length;
-  const correctCount = answers.filter((a) => a.user_point > 0).length;
+  const answeredCount = new Set(answers.map((a) => a.problem)).size;
+  const correctProblemIds = new Set(
+    answers.filter((a) => (a.user_point || 0) > 0).map((a) => a.problem)
+  );
+  const correctCount = correctProblemIds.size;
 
   // Max оноо: MC + fill-in-blank-н автомат + уламжлалтын assignment_point
   const maxScore = quiz.problems?.reduce((sum, p) => {
@@ -445,7 +448,10 @@ const QuizResultPage = () => {
             {quiz.problems?.map((problem, index) => {
               // FIB-д олон хариулт байдаг тул filter ашиглана
               const problemAnswers = answers.filter((a) => a.problem === problem.id);
-              const answer = problemAnswers[0]; // MC / уламжлалтд нэг л хариулт байна
+              // MC-д давхардсан хариулт байж болох тул хамгийн сүүлийн (id-гаар) хариултыг авна
+              const answer = problem.type === 1 && problemAnswers.length > 1
+                ? problemAnswers.reduce((latest, a) => (a.id > latest.id ? a : latest))
+                : problemAnswers[0];
 
               // FIB нийт оноо + тоолол
               const fibScore    = problemAnswers.reduce((s, a) => s + (a.user_point || 0), 0);

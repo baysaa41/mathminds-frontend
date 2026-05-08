@@ -11,7 +11,7 @@ import Nav from 'react-bootstrap/Nav';
 import Modal from 'react-bootstrap/Modal';
 import {
   Dumbbell, ChevronLeft, ChevronRight, Lightbulb,
-  CheckCircle, XCircle, BookOpen, Hash, Sparkles, ChevronDown, ChevronUp,
+  CheckCircle, XCircle, BookOpen, Hash, Sparkles, ChevronDown, ChevronUp, Clock,
 } from 'lucide-react';
 
 import LivePreview from '../components/LivePreview';
@@ -332,6 +332,7 @@ function ExtraInfo({ extra, itemId, enrichState, onEnrich, problemUuid, problemI
 function ProblemCard({
   item, idx, total,
   userAnswers, localInput, checking, hintState, enrichState,
+  elapsedSeconds,
   onAnswer, onCheck, onHint, onEnrich, onRetry, onPrev, onNext,
 }) {
   const { user } = useAuth();
@@ -363,7 +364,15 @@ function ProblemCard({
 
   return (
     <div>
-      <div className="small text-muted mb-2">Бодлого {idx + 1} / {total}</div>
+      <div className="small text-muted mb-2 d-flex align-items-center justify-content-between">
+        <span>Бодлого {idx + 1} / {total}</span>
+        <span className="d-flex align-items-center gap-1">
+          <Clock size={13} />
+          <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+            {Math.floor(elapsedSeconds / 60)}:{String(elapsedSeconds % 60).padStart(2, '0')}
+          </span>
+        </span>
+      </div>
 
       {problem.title && (
         <div className="fw-semibold mb-2"><LivePreview content={problem.title} /></div>
@@ -445,7 +454,7 @@ function ProblemCard({
         >
           {hint.loading
             ? <Spinner animation="border" size="sm" />
-            : <><Lightbulb size={14} />Туслалцаа авах</>}
+            : <><Lightbulb size={14} />Заавар авах</>}
         </Button>
       </div>
 
@@ -485,7 +494,7 @@ function ProblemCard({
 
 
 function GroupSection({ items, currentIdx, onIdxChange, userAnswers, localInput, checking, hintState, enrichState,
-  onAnswer, onCheck, onHint, onEnrich, onRetry }) {
+  elapsedSeconds, onAnswer, onCheck, onHint, onEnrich, onRetry }) {
   const current = items[currentIdx] || null;
   if (!current) return null;
 
@@ -500,6 +509,7 @@ function GroupSection({ items, currentIdx, onIdxChange, userAnswers, localInput,
         checking={checking}
         hintState={hintState}
         enrichState={enrichState}
+        elapsedSeconds={elapsedSeconds}
         onAnswer={onAnswer}
         onCheck={onCheck}
         onHint={onHint}
@@ -532,8 +542,13 @@ const ClubExercisesPage = () => {
   const [currentIdxMap, setCurrentIdxMap] = useState({});
 
   // Таймер: item_id тус бүрд хэдэн секунд зарцуулсныг хадгална
-  const timeAccRef   = useRef({});  // { [item_id]: accumulated_seconds }
+  const timeAccRef     = useRef({});   // { [item_id]: accumulated_seconds }
   const activeTimerRef = useRef(null); // { item_id, startMs }
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [totalSeconds, setTotalSeconds] = useState(0);
+  const timerIntervalRef  = useRef(null);
+  const selectedDateRef   = useRef(selectedDate);
+  useEffect(() => { selectedDateRef.current = selectedDate; }, [selectedDate]);
 
   useEffect(() => {
     if (!clubId) return;
@@ -549,6 +564,15 @@ const ClubExercisesPage = () => {
   useEffect(() => {
     if (!clubId || !selectedDate) return;
     let cancelled = false;
+
+    // Өмнө хадгалсан хугацааг ачаалах
+    const storageKey = `exercises_time_${clubId}_${selectedDate}`;
+    try {
+      timeAccRef.current = JSON.parse(localStorage.getItem(storageKey) || '{}');
+    } catch {
+      timeAccRef.current = {};
+    }
+
     setItems([]);
     setUserAnswers({});
     setLocalInput({});
@@ -586,7 +610,20 @@ const ClubExercisesPage = () => {
       if (!cancelled) setLoading(false);
     });
 
-    return () => { cancelled = true; };
+    return () => {
+      // Идэвхтэй таймерийн хугацааг нэгтгэж localStorage-д хадгална
+      const active = activeTimerRef.current;
+      if (active) {
+        timeAccRef.current[active.item_id] =
+          (timeAccRef.current[active.item_id] || 0) + Math.floor((Date.now() - active.startMs) / 1000);
+        activeTimerRef.current = null;
+      }
+      if (Object.keys(timeAccRef.current).length > 0) {
+        localStorage.setItem(storageKey, JSON.stringify(timeAccRef.current));
+      }
+      timeAccRef.current = {};
+      cancelled = true;
+    };
   }, [clubId, selectedDate]);
 
   const handleCheck = useCallback(async (item) => {
@@ -601,6 +638,12 @@ const ClubExercisesPage = () => {
       elapsed += Math.floor((Date.now() - prev.startMs) / 1000);
       timeAccRef.current[id] = elapsed;
       activeTimerRef.current = null; // хариулсны дараа таймер зогсоно
+    }
+    // Хугацааг localStorage-д хадгалж sidebar-д мэдэгдэнэ
+    const date = selectedDateRef.current;
+    if (date) {
+      localStorage.setItem(`exercises_time_${clubId}_${date}`, JSON.stringify(timeAccRef.current));
+      window.dispatchEvent(new CustomEvent('exercises-time-saved'));
     }
 
     setChecking(prev => ({ ...prev, [id]: true }));
@@ -680,6 +723,8 @@ const ClubExercisesPage = () => {
       return next;
     });
     setLocalInput(prev => ({ ...prev, [itemId]: '' }));
+    // Таймерыг дахин эхлүүлнэ (хуримтлагдсан хугацаа хадгалагдана)
+    activeTimerRef.current = { item_id: itemId, startMs: Date.now() };
   }, []);
 
   const activeItems = useMemo(() => {
@@ -711,6 +756,45 @@ const ClubExercisesPage = () => {
     };
   }, []);
 
+  // Дэлгэцийн таймер — 1 секунд тутамд: одоогийн бодлогын + нийт хугацааг шинэчлэнэ
+  useEffect(() => {
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+
+    const itemId = activeItems[activeCurrentIdx]?.item_id;
+    const isAnswered = itemId ? userAnswers[itemId] !== undefined : false;
+
+    const tick = () => {
+      const active = activeTimerRef.current;
+      const activeExtra = active ? Math.floor((Date.now() - active.startMs) / 1000) : 0;
+
+      // Нийт хугацаа
+      const accTotal = Object.values(timeAccRef.current).reduce((s, v) => s + v, 0);
+      setTotalSeconds(accTotal + activeExtra);
+
+      // Одоогийн бодлогын хугацаа: хариулсан бол хөлдөөнө, үгүй бол явна
+      if (itemId) {
+        const acc = timeAccRef.current[itemId] || 0;
+        if (isAnswered) {
+          setElapsedSeconds(acc);
+        } else {
+          const extra = active?.item_id === itemId ? activeExtra : 0;
+          setElapsedSeconds(acc + extra);
+        }
+      }
+    };
+
+    tick();
+    timerIntervalRef.current = setInterval(tick, 1000);
+
+    return () => {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    };
+  }, [activeItems, activeCurrentIdx, userAnswers]);
+
   const handleNavSelect = useCallback((i) => {
     setCurrentIdxMap(prev => ({ ...prev, [activeTab]: i }));
   }, [activeTab]);
@@ -721,6 +805,7 @@ const ClubExercisesPage = () => {
       items: activeItems,
       currentIdx: activeCurrentIdx,
       userAnswers,
+      times: { ...timeAccRef.current },
       onSelect: handleNavSelect,
     });
   }, [activeItems, activeCurrentIdx, userAnswers, handleNavSelect, setProblemNavData]);
@@ -731,6 +816,7 @@ const ClubExercisesPage = () => {
 
   const sharedProps = {
     userAnswers, localInput, checking, hintState, enrichState,
+    elapsedSeconds,
     onAnswer: (id, val) => setLocalInput(prev => ({ ...prev, [id]: val })),
     onCheck: handleCheck,
     onHint: handleHint,
@@ -768,7 +854,15 @@ const ClubExercisesPage = () => {
         <div className="text-center">
           <div className="fw-semibold">{formatDateLabel(selectedDate)}</div>
           {items.length > 0 && (
-            <small className="text-muted">{totalDone}/{items.length} бодлого</small>
+            <small className="text-muted d-flex align-items-center gap-2 justify-content-center">
+              <span>{totalDone}/{items.length} бодлого</span>
+              <span className="d-flex align-items-center gap-1">
+                <Clock size={11} />
+                <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+                  {Math.floor(totalSeconds / 60)}:{String(totalSeconds % 60).padStart(2, '0')}
+                </span>
+              </span>
+            </small>
           )}
         </div>
         <Button variant="outline-secondary" size="sm" disabled={!nextDate} onClick={() => goTo(nextDate)}>

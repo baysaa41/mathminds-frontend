@@ -302,6 +302,7 @@ const AssignmentDetailPage = () => {
                     <th>Сурагч</th>
                     <th>Төлөв</th>
                     <th>Оноо</th>
+                    <th>Хугацаа</th>
                     <th>Илгээсэн</th>
                     <th></th>
                   </tr>
@@ -309,6 +310,10 @@ const AssignmentDetailPage = () => {
                 <tbody>
                   {submissions.map(sub => {
                     const si = STATUS_LABELS[sub.status] || STATUS_LABELS.not_started;
+                    const t = sub.time_spent;
+                    const timeStr = t != null
+                      ? t < 60 ? `${t}с` : `${Math.floor(t / 60)}м ${t % 60}с`
+                      : '—';
                     return (
                       <tr key={sub.id} className="small">
                         <td>
@@ -337,6 +342,7 @@ const AssignmentDetailPage = () => {
                         <td>
                           {sub.score != null ? `${sub.score}/${sub.max_score || '?'}` : '—'}
                         </td>
+                        <td className="text-nowrap text-muted">{timeStr}</td>
                         <td>
                           {sub.submitted_at
                             ? new Date(sub.submitted_at).toLocaleString('mn-MN', {

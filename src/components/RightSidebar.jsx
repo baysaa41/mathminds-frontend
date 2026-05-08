@@ -10,7 +10,12 @@ import SearchWidget from './SearchWidget';
 import MyClubsWidget from './MyClubsWidget';
 import { ChevronLeft } from 'lucide-react';
 
-function ProblemNavList({ items, currentIdx, userAnswers, onSelect }) {
+function fmtTime(secs) {
+  if (!secs) return null;
+  return `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+}
+
+function ProblemNavList({ items, currentIdx, userAnswers, times, onSelect }) {
   if (!items || items.length === 0) return null;
   return (
     <div>
@@ -23,6 +28,7 @@ function ProblemNavList({ items, currentIdx, userAnswers, onSelect }) {
           const isCorrect = ua?.is_correct === true;
           const isWrong = ua && !isCorrect;
           const isCurrent = i === currentIdx;
+          const timeStr = fmtTime(times?.[item.item_id]);
           return (
             <button
               key={item.item_id}
@@ -50,6 +56,15 @@ function ProblemNavList({ items, currentIdx, userAnswers, onSelect }) {
               <span className="small text-truncate" style={{ flex: 1, color: isCurrent ? '#0d6efd' : '#212529' }}>
                 {item.problem?.title || `Бодлого ${i + 1}`}
               </span>
+              {timeStr && (
+                <span style={{
+                  fontSize: '0.65rem', flexShrink: 0,
+                  color: isCurrent ? '#0d6efd' : '#6c757d',
+                  fontVariantNumeric: 'tabular-nums',
+                }}>
+                  {timeStr}
+                </span>
+              )}
             </button>
           );
         })}
@@ -74,6 +89,7 @@ const RightSidebar = ({ clubData = null, problemNavData = null }) => {
             items={problemNavData.items}
             currentIdx={problemNavData.currentIdx}
             userAnswers={problemNavData.userAnswers}
+            times={problemNavData.times}
             onSelect={problemNavData.onSelect}
           />
         )}
