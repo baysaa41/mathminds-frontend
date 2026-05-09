@@ -16,7 +16,6 @@ import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 
 const Layout = () => {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -77,14 +76,16 @@ const Layout = () => {
                 location.pathname === '/solver' ||
                 location.pathname.startsWith('/quiz/') ||
                 location.pathname.startsWith('/admin/emails') ||
-                /^\/clubs\/\d+\/assignments\/\d+\/leaderboard/.test(location.pathname);
+                /^\/clubs\/\d+\/assignments\/\d+\/leaderboard/.test(location.pathname) ||
+                /^\/clubs\/\d+\/group-report/.test(location.pathname) ||
+                /^\/clubs\/\d+\/report\//.test(location.pathname);
               return (
                 <Col lg={fullWidth ? 12 : 9} xl={fullWidth ? 12 : 8}
                   className={fullWidth ? '' : 'border-end'}>
                   <div
                     ref={mainScrollRef}
                     style={{ height: 'calc(100vh - 60px)', overflowY: 'auto' }}
-                    className={location.pathname === '/solver' ? 'p-0' : 'p-3'}
+                    className={location.pathname === '/solver' ? 'p-0' : fullWidth ? 'container-fluid' : 'p-3'}
                   >
                     <ScrollRestoration scrollRef={mainScrollRef} />
                     <Outlet
@@ -111,7 +112,10 @@ const Layout = () => {
               location.pathname !== '/solver' &&
               !location.pathname.startsWith('/quiz/') &&
               !location.pathname.startsWith('/admin/emails') &&
-              !/^\/clubs\/\d+\/assignments\/\d+\/leaderboard/.test(location.pathname) && (
+              !/^\/clubs\/\d+\/assignments\/\d+\/leaderboard/.test(location.pathname) &&
+              !/^\/clubs\/\d+\/group-report/.test(location.pathname) &&
+              !/^\/clubs\/\d+\/report\//.test(location.pathname) &&
+              (
               <Col lg={3} xl={4} className="bg-light">
                 <div style={{ height: 'calc(100vh - 60px)', overflowY: 'auto' }} className="p-3">
                   <RightSidebar clubData={clubData} problemNavData={problemNavData} />

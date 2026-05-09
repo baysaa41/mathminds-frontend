@@ -21,6 +21,7 @@ import ClubSubGroupsPage from '../pages/ClubSubGroupsPage';
 import ClubScoresPage from '../pages/ClubScoresPage';
 import StudentReportPage from '../pages/StudentReportPage';
 import CreateClub from '../pages/CreateClub';
+const SubgroupReportPage = React.lazy(() => import('../pages/SubgroupReportPage'));
 
 const ClubsRoutes = () => {
   return (
@@ -48,6 +49,7 @@ const ClubsRoutes = () => {
         <Route path="report/:username" element={<StudentReportPage />} />
         <Route path="exams" element={<ClubExamsPage />} />
         <Route path="subgroups" element={<ClubSubGroupsPage />} />
+        <Route path="group-report" element={<SubgroupReportPage />} />
         <Route path="scores" element={<ClubScoresPage />} />
         <Route path="members" element={<ClubMembersPage />} />
       </Route>

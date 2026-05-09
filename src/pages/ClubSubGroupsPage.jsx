@@ -666,6 +666,7 @@ const ClubSubGroupsPage = () => {
       }
     } catch { /* ignore */ }
     finally { setLoading(false); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clubId]);
 
   // Дэлгэрэнгүй (members-тэй) татах
@@ -898,6 +899,11 @@ const ClubSubGroupsPage = () => {
                   </div>
                   {isTeacherOrAdmin && (
                     <Stack direction="horizontal" gap={1}>
+                      <Button variant="outline-primary" size="sm"
+                        onClick={() => navigate(`/clubs/${clubId}/group-report?subgroup_id=${selected.id}`)}
+                        title="Веб репорт харах">
+                        Веб репорт
+                      </Button>
                       <Button variant="outline-success" size="sm"
                         onClick={handleExportSubgroup}
                         disabled={exporting}

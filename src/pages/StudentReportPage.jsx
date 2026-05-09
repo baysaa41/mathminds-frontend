@@ -5,7 +5,7 @@ import Button from 'react-bootstrap/Button';
 import Spinner from 'react-bootstrap/Spinner';
 import ProgressBar from 'react-bootstrap/ProgressBar';
 import Nav from 'react-bootstrap/Nav';
-import { User } from 'lucide-react';
+import { Dumbbell, Clock } from 'lucide-react';
 import apiClient from '../api/axiosConfig';
 import AppBreadcrumb from '../components/common/AppBreadcrumb';
 
@@ -96,6 +96,7 @@ const AssignmentsTable = ({ assignments, isTeacherOrAdmin, navigate }) => (
           <th style={{ minWidth: 200 }}>Даалгавар</th>
           <th className="text-center" style={{ width: 100 }}>Оноо</th>
           <th className="text-center" style={{ width: 110 }}>Төлөв</th>
+          <th className="text-center" style={{ width: 90 }}>Хугацаа</th>
           <th className="text-center" style={{ width: 110 }}>Огноо</th>
           {isTeacherOrAdmin && <th style={{ width: 60 }} />}
         </tr>
@@ -103,7 +104,7 @@ const AssignmentsTable = ({ assignments, isTeacherOrAdmin, navigate }) => (
       <tbody>
         {assignments.length === 0 ? (
           <tr>
-            <td colSpan={isTeacherOrAdmin ? 5 : 4} className="text-center text-muted py-4">
+            <td colSpan={isTeacherOrAdmin ? 6 : 5} className="text-center text-muted py-4">
               Энэ хугацаанд гүйцэтгэсэн даалгавар байхгүй
             </td>
           </tr>
@@ -147,6 +148,13 @@ const AssignmentsTable = ({ assignments, isTeacherOrAdmin, navigate }) => (
                 )}
               </td>
               <td className="text-center text-muted" style={{ fontSize: '0.72rem' }}>
+                {a.time_spent ? (
+                  <span className="d-flex align-items-center justify-content-center gap-1">
+                    <Clock size={11} />{fmtTime(a.time_spent)}
+                  </span>
+                ) : '—'}
+              </td>
+              <td className="text-center text-muted" style={{ fontSize: '0.72rem' }}>
                 {a.submitted_at
                   ? new Date(a.submitted_at).toLocaleDateString('mn-MN')
                   : '—'}
@@ -164,6 +172,90 @@ const AssignmentsTable = ({ assignments, isTeacherOrAdmin, navigate }) => (
                   )}
                 </td>
               )}
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  </div>
+);
+
+function fmtTime(secs) {
+  if (!secs) return '—';
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = secs % 60;
+  if (h > 0) return `${h}ц ${m}м`;
+  if (m > 0) return `${m}м ${s}с`;
+  return `${s}с`;
+}
+
+const ExerciseSummaryCards = ({ summary }) => {
+  const rateColor = summary.correct_rate == null ? '#6c757d'
+    : summary.correct_rate >= 80 ? '#198754'
+    : summary.correct_rate >= 50 ? '#fd7e14' : '#dc3545';
+  return (
+    <div className="row g-3 text-center">
+      <div className="col-6 col-sm-3">
+        <div className="fw-bold fs-4 text-primary">{summary.days}</div>
+        <div className="text-muted" style={{ fontSize: '0.75rem' }}>Оролцсон өдөр</div>
+      </div>
+      <div className="col-6 col-sm-3">
+        <div className="fw-bold fs-4 text-success">{summary.answered}</div>
+        <div className="text-muted" style={{ fontSize: '0.75rem' }}>Нийт хариулт</div>
+      </div>
+      <div className="col-6 col-sm-3">
+        <div className="fw-bold fs-4" style={{ color: rateColor }}>
+          {summary.correct_rate != null ? `${summary.correct_rate}%` : '—'}
+        </div>
+        <div className="text-muted" style={{ fontSize: '0.75rem' }}>Зөв хариултын %</div>
+      </div>
+      <div className="col-6 col-sm-3">
+        <div className="fw-bold fs-4 text-info d-flex align-items-center justify-content-center gap-1">
+          <Clock size={18} />{fmtTime(summary.total_time)}
+        </div>
+        <div className="text-muted" style={{ fontSize: '0.75rem' }}>Нийт хугацаа</div>
+      </div>
+    </div>
+  );
+};
+
+const ExercisesTable = ({ byDate }) => (
+  <div style={{ overflowX: 'auto' }}>
+    <table className="table table-sm table-hover mb-0 align-middle" style={{ fontSize: '0.82rem' }}>
+      <thead className="table-light">
+        <tr>
+          <th>Огноо</th>
+          <th className="text-center">Бодлого</th>
+          <th className="text-center">Зөв</th>
+          <th className="text-center">Амжилт</th>
+          <th className="text-center">Хугацаа</th>
+        </tr>
+      </thead>
+      <tbody>
+        {byDate.length === 0 ? (
+          <tr>
+            <td colSpan={5} className="text-center text-muted py-4">
+              Энэ хугацаанд дасгал хийгээгүй байна
+            </td>
+          </tr>
+        ) : byDate.map(row => {
+          const pct = row.answered > 0 ? Math.round(row.correct / row.answered * 100) : 0;
+          const color = pct >= 80 ? '#198754' : pct >= 50 ? '#fd7e14' : '#dc3545';
+          return (
+            <tr key={row.date}>
+              <td className="ps-3 fw-medium">{row.date}</td>
+              <td className="text-center">
+                {row.answered}
+                <span className="text-muted">/{row.total_items}</span>
+              </td>
+              <td className="text-center text-success fw-semibold">{row.correct}</td>
+              <td className="text-center">
+                {row.answered > 0 ? (
+                  <span style={{ color, fontWeight: 600 }}>{pct}%</span>
+                ) : <span className="text-muted">—</span>}
+              </td>
+              <td className="text-center text-muted">{fmtTime(row.time_spent)}</td>
             </tr>
           );
         })}
@@ -211,7 +303,7 @@ const StudentReportPage = () => {
   const current = tab === 'all' ? all_time : last_7_days;
 
   return (
-    <div className="container-fluid py-3 px-2 px-md-3" style={{ maxWidth: 800 }}>
+    <div className="py-3" style={{ maxWidth: 800 }}>
       {/* Breadcrumb */}
       <AppBreadcrumb className="mb-3" items={[
         { label: clubData?.name || 'Клуб', to: `/clubs/${clubData?.id}` },
@@ -263,7 +355,7 @@ const StudentReportPage = () => {
       </div>
 
       {/* Даалгаврын дэлгэрэнгүй */}
-      <div className="card border-0 shadow-sm">
+      <div className="card border-0 shadow-sm mb-3">
         <div className="card-header bg-white fw-semibold py-2" style={{ fontSize: '0.85rem' }}>
           {tab === 'all' ? 'Бүх даалгаврын дүн' : 'Сүүлийн 7 өдрийн дүн'}
         </div>
@@ -273,6 +365,34 @@ const StudentReportPage = () => {
           navigate={navigate}
         />
       </div>
+
+      {/* Дасгалын статистик */}
+      {current.exercises && (
+        <>
+          <div className="card border-0 shadow-sm mb-3">
+            <div className="card-header bg-white py-2 d-flex align-items-center gap-2"
+              style={{ fontSize: '0.85rem' }}>
+              <Dumbbell size={15} />
+              <span className="fw-semibold">Өдрийн дасгал</span>
+              <Badge bg="secondary" style={{ fontSize: '0.65rem' }}>
+                {current.exercises.summary.days} өдөр
+              </Badge>
+            </div>
+            <div className="card-body py-3">
+              <ExerciseSummaryCards summary={current.exercises.summary} />
+            </div>
+          </div>
+
+          {current.exercises.by_date.length > 0 && (
+            <div className="card border-0 shadow-sm">
+              <div className="card-header bg-white fw-semibold py-2" style={{ fontSize: '0.85rem' }}>
+                Өдөр тус бүрийн дасгал
+              </div>
+              <ExercisesTable byDate={current.exercises.by_date} />
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 };

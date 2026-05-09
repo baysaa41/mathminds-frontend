@@ -9,7 +9,7 @@ import Form from 'react-bootstrap/Form';
 import InputGroup from 'react-bootstrap/InputGroup';
 import Spinner from 'react-bootstrap/Spinner';
 import UserAvatar from '../components/UserAvatar';
-import { Users, Crown, GraduationCap, X, Search, UserPlus, FileDown } from 'lucide-react';
+import { Users, Crown, GraduationCap, X, Search, UserPlus, BarChart2 } from 'lucide-react';
 import apiClient from '../api/axiosConfig';
 import { inviteTeacher, formatErrorMessage } from '../services/clubsService';
 
@@ -17,7 +17,6 @@ const ClubMembersPage = () => {
   const {
     clubData: club,
     clubActions,
-    isCreator,
     isTeacherOrAdmin,
     newTeacherUsername,
     setNewTeacherUsername,
@@ -25,28 +24,6 @@ const ClubMembersPage = () => {
     showToast,
   } = useOutletContext();
   const navigate = useNavigate();
-  const [exporting, setExporting] = useState(false);
-
-  const handleExportReport = async () => {
-    if (!club?.id || exporting) return;
-    setExporting(true);
-    try {
-      const response = await apiClient.get(`/api/clubs/${club.id}/export_report/`, {
-        responseType: 'blob',
-      });
-      const url = URL.createObjectURL(response.data);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${club.name}_report.xlsx`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      showToast?.('Excel татахад алдаа гарлаа.', 'danger');
-    } finally {
-      setExporting(false);
-    }
-  };
-
   // Teacher search state
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -295,17 +272,12 @@ const ClubMembersPage = () => {
           </h6>
           {isTeacherOrAdmin && (
             <Button
-              variant="outline-success"
+              variant="outline-primary"
               size="sm"
-              onClick={handleExportReport}
-              disabled={exporting}
-              title="Excel татах"
+              onClick={() => navigate(`/clubs/${club.id}/group-report`)}
+              title="Веб репорт харах"
             >
-              {exporting ? (
-                <Spinner animation="border" size="sm" />
-              ) : (
-                <FileDown size={14} className="me-1" />
-              )}
+              <BarChart2 size={14} className="me-1" />
               Репорт
             </Button>
           )}

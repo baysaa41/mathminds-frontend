@@ -54,6 +54,7 @@ const ClubDetail = () => {
 
   useEffect(() => {
     fetchClubDetails();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   // Дэд хуудас өөрчлөгдөх бүрт клубын нэрийг RecentlyVisitedWidget-д мэдэгдэх
@@ -61,7 +62,7 @@ const ClubDetail = () => {
     if (club?.name) {
       setPageTitle(club.name);
     }
-  }, [location.pathname, club]);
+  }, [location.pathname, club, setPageTitle]);
 
   const fetchClubDetails = async () => {
     const isRefresh = initialLoadDone.current;
@@ -258,6 +259,10 @@ const ClubDetail = () => {
 
   const isClubCreator = club.creator === user?.id;
   const isLeaderboard = /\/assignments\/\d+\/leaderboard/.test(location.pathname);
+  const isFullWidthPage =
+    isLeaderboard ||
+    /\/group-report/.test(location.pathname) ||
+    /\/report\//.test(location.pathname);
 
   // Dynamic breadcrumb: compute 3rd-level label from current path
   const SUB_PAGE_LABELS = {
@@ -277,7 +282,8 @@ const ClubDetail = () => {
   // Pages that render their own deep breadcrumb (assignments/:id, leaderboard, report)
   const hasOwnBreadcrumb =
     /\/assignments\/\d+/.test(location.pathname) ||
-    /\/report\//.test(location.pathname);
+    /\/report\//.test(location.pathname) ||
+    /\/group-report/.test(location.pathname);
   const subSegment = location.pathname.replace(`/clubs/${id}`, '').split('/').filter(Boolean)[0];
   const subLabel = SUB_PAGE_LABELS[subSegment];
   const breadcrumbItems = [
@@ -331,8 +337,8 @@ const ClubDetail = () => {
     </ToastContainer>
   );
 
-  // Дүнгийн жагсаалт — бүтэн хуудас (Container-гүй)
-  if (isLeaderboard) {
+  // Бүтэн өргөн хуудсууд — Container-гүй
+  if (isFullWidthPage) {
     return (
       <>
         {toastEl}
