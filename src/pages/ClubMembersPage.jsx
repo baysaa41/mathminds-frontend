@@ -127,12 +127,12 @@ const ClubMembersPage = () => {
                 Багш
               </Badge>
             )}
-            {/* Репорт товч — зөвхөн багшид */}
+            {/* Тайлан товч — зөвхөн багшид */}
             {isTeacherOrAdmin && !isTeacher && !isCreatorRole && (
               <Button
                 variant="outline-info"
                 size="sm"
-                title="Репорт харах"
+                title="Тайлан харах"
                 onClick={() => navigate(`/clubs/${club.id}/report/${member.username}`)}
               >
                 📊
@@ -275,10 +275,10 @@ const ClubMembersPage = () => {
               variant="outline-primary"
               size="sm"
               onClick={() => navigate(`/clubs/${club.id}/group-report`)}
-              title="Веб репорт харах"
+              title="Веб тайлан харах"
             >
               <BarChart2 size={14} className="me-1" />
-              Репорт
+              Тайлан
             </Button>
           )}
         </Card.Header>

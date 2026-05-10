@@ -3,7 +3,9 @@ import { useParams, useOutletContext, useNavigate, useSearchParams } from 'react
 import Button from 'react-bootstrap/Button';
 import Spinner from 'react-bootstrap/Spinner';
 import Form from 'react-bootstrap/Form';
-import { Download, BarChart2, Clock } from 'lucide-react';
+import Nav from 'react-bootstrap/Nav';
+import Badge from 'react-bootstrap/Badge';
+import { Download, BarChart2, Clock, Dumbbell } from 'lucide-react';
 import apiClient from '../api/axiosConfig';
 import AppBreadcrumb from '../components/common/AppBreadcrumb';
 
@@ -24,12 +26,6 @@ const rateColor = (rate) => {
   return { color: '#991b1b', background: '#fee2e2', borderRadius: 4, padding: '1px 5px' };
 };
 
-const SORT_FIELDS = [
-  { key: 'full_name', label: 'Нэр' },
-  { key: 'success_rate', label: 'Амжилт%' },
-  { key: 'prob_rate', label: 'Бодлогын%' },
-  { key: 'completed', label: 'Гүйцэтгэл' },
-];
 
 const SubgroupReportPage = () => {
   const { id: clubId } = useParams();
@@ -46,6 +42,8 @@ const SubgroupReportPage = () => {
   const [exporting, setExporting] = useState(false);
   const [subgroups, setSubgroups] = useState([]);
   const [showTeachers, setShowTeachers] = useState(false);
+  const [activeTab, setActiveTab] = useState('combined');
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState(null);
 
   useEffect(() => {
     apiClient.get('/api/club-subgroups/', { params: { club: clubId } })
@@ -60,6 +58,9 @@ const SubgroupReportPage = () => {
         const params = subgroupId ? { subgroup_id: subgroupId } : {};
         const res = await apiClient.get(`/api/clubs/${clubId}/web_report/`, { params });
         setData(res.data);
+        if (res.data?.assignments?.length) {
+          setSelectedAssignmentId(res.data.assignments[0].id);
+        }
       } catch (err) {
         setError(err.response?.data?.detail || 'Мэдээлэл ачааллахад алдаа гарлаа.');
       } finally {
@@ -102,6 +103,14 @@ const SubgroupReportPage = () => {
     return { total: sorted.length, avgSuccess, avgProb };
   }, [sorted]);
 
+  const assignmentRanking = useMemo(() => {
+    const selA = data?.assignments?.find(a => a.id === selectedAssignmentId);
+    if (!selA) return [];
+    return [...sorted]
+      .map(m => ({ ...m, _r: m.results.find(r => r.assignment_id === selA.id) }))
+      .sort((a, b) => (b._r?.score ?? -1) - (a._r?.score ?? -1));
+  }, [sorted, selectedAssignmentId, data]);
+
   const handleExcelDownload = async () => {
     if (exporting) return;
     setExporting(true);
@@ -140,7 +149,7 @@ const SubgroupReportPage = () => {
           { label: 'Клубууд', to: '/clubs' },
           { label: clubData?.name || 'Клуб', to: `/clubs/${clubId}` },
           { label: 'Гишүүд', to: `/clubs/${clubId}/members` },
-          { label: 'Репорт' },
+          { label: 'Тайлан' },
         ]} />
         <div className="text-danger small">{error}</div>
       </div>
@@ -150,13 +159,35 @@ const SubgroupReportPage = () => {
   if (!data) return null;
 
   const { club_name, subgroup_name, assignments } = data;
+  const selAssignment = assignments.find(a => a.id === selectedAssignmentId);
 
   const breadcrumbItems = [
     { label: 'Клубууд', to: '/clubs' },
     { label: club_name || clubData?.name || 'Клуб', to: `/clubs/${clubId}` },
     { label: 'Гишүүд', to: `/clubs/${clubId}/members` },
-    { label: subgroup_name ? `${subgroup_name} Репорт` : 'Репорт' },
+    { label: subgroup_name ? `${subgroup_name} Тайлан` : 'Тайлан' },
   ];
+
+  const MemberNameCell = ({ member, sticky = false }) => (
+    <td style={sticky ? {
+      position: 'sticky', left: 0, zIndex: 1, background: '#fff',
+      boxShadow: '2px 0 4px rgba(0,0,0,0.07)', paddingLeft: '0.75rem',
+    } : { paddingLeft: '0.75rem' }}>
+      <div className="d-flex align-items-center gap-1">
+        <span className="fw-medium" style={{ cursor: 'pointer', color: '#0d6efd' }}
+          onClick={() => navigate(`/clubs/${clubId}/report/${member.username}`)}>
+          {member.full_name}
+        </span>
+        {member.is_teacher && (
+          <span style={{ fontSize: '0.6rem', fontWeight: 600, lineHeight: 1, padding: '1px 4px', borderRadius: 3, background: '#d1fae5', color: '#065f46' }}>Багш</span>
+        )}
+      </div>
+      <div className="text-muted" style={{ fontSize: '0.65rem' }}>@{member.username}</div>
+      {member.subgroups.length > 0 && (
+        <div style={{ fontSize: '0.62rem', color: '#6c757d' }}>{member.subgroups.join(', ')}</div>
+      )}
+    </td>
+  );
 
   return (
     <div className="py-3">
@@ -165,32 +196,17 @@ const SubgroupReportPage = () => {
       <div className="d-flex align-items-center gap-3 mb-3 flex-wrap">
         <h5 className="mb-0 d-flex align-items-center gap-2">
           <BarChart2 size={18} className="text-primary" />
-          {subgroup_name ? `${subgroup_name} — Репорт` : 'Клубын репорт'}
+          {subgroup_name ? `${subgroup_name} — Тайлан` : 'Клубын тайлан'}
         </h5>
         {subgroups.length > 0 && (
-          <Form.Select
-            size="sm"
-            style={{ width: 'auto', minWidth: 160 }}
-            value={subgroupId}
-            onChange={e => {
-              const val = e.target.value;
-              setSearchParams(val ? { subgroup_id: val } : {});
-            }}
-          >
+          <Form.Select size="sm" style={{ width: 'auto', minWidth: 160 }} value={subgroupId}
+            onChange={e => { const val = e.target.value; setSearchParams(val ? { subgroup_id: val } : {}); }}>
             <option value="">Бүх гишүүд</option>
-            {subgroups.map(sg => (
-              <option key={sg.id} value={sg.id}>{sg.name}</option>
-            ))}
+            {subgroups.map(sg => <option key={sg.id} value={sg.id}>{sg.name}</option>)}
           </Form.Select>
         )}
-        <Form.Check
-          type="checkbox"
-          id="show-teachers"
-          label="Багш нар"
-          checked={showTeachers}
-          onChange={e => setShowTeachers(e.target.checked)}
-          className="mb-0 small"
-        />
+        <Form.Check type="checkbox" id="show-teachers" label="Багш нар"
+          checked={showTeachers} onChange={e => setShowTeachers(e.target.checked)} className="mb-0 small" />
       </div>
 
       {summary && (
@@ -215,9 +231,7 @@ const SubgroupReportPage = () => {
               )}
               <div className="ms-auto">
                 <Button variant="outline-success" size="sm" onClick={handleExcelDownload} disabled={exporting}>
-                  {exporting
-                    ? <Spinner animation="border" size="sm" className="me-1" />
-                    : <Download size={14} className="me-1" />}
+                  {exporting ? <Spinner animation="border" size="sm" className="me-1" /> : <Download size={14} className="me-1" />}
                   Excel татах
                 </Button>
               </div>
@@ -226,200 +240,261 @@ const SubgroupReportPage = () => {
         </div>
       )}
 
-      <div className="d-flex align-items-center gap-1 mb-2 flex-wrap">
-        <span className="text-muted small me-1">Эрэмбэлэх:</span>
-        {SORT_FIELDS.map(f => (
-          <Button
-            key={f.key}
-            variant={sortField === f.key ? 'primary' : 'outline-secondary'}
-            size="sm"
-            className="py-0 px-2"
-            style={{ fontSize: '0.75rem' }}
-            onClick={() => handleSort(f.key)}
-          >
-            {f.label}
-            {sortField === f.key && (sortDir === 1 ? ' ↑' : ' ↓')}
-          </Button>
-        ))}
-      </div>
+      {/* ── Табууд ── */}
+      <Nav variant="tabs" className="mb-0" activeKey={activeTab} onSelect={setActiveTab}>
+        <Nav.Item>
+          <Nav.Link eventKey="combined" style={{ fontSize: '0.85rem' }}>
+            Нэгдсэн тайлан
+            <Badge bg="secondary" className="ms-2" style={{ fontSize: '0.65rem' }}>{sorted.length}</Badge>
+          </Nav.Link>
+        </Nav.Item>
+        <Nav.Item>
+          <Nav.Link eventKey="assignment" style={{ fontSize: '0.85rem' }}>
+            Сорилго тус бүр
+            <Badge bg="secondary" className="ms-2" style={{ fontSize: '0.65rem' }}>{assignments.length}</Badge>
+          </Nav.Link>
+        </Nav.Item>
+        <Nav.Item>
+          <Nav.Link eventKey="exercises" style={{ fontSize: '0.85rem' }}>
+            <Dumbbell size={13} className="me-1" />Дасгал
+          </Nav.Link>
+        </Nav.Item>
+      </Nav>
 
-      <div className="card border-0 shadow-sm">
-        <div style={{ overflowX: 'auto' }}>
-          <table
-            className="table table-bordered table-sm mb-0 align-middle"
-            style={{ fontSize: '0.78rem', minWidth: 600 + assignments.length * 120 }}
-          >
-            <thead className="table-light">
-              <tr>
-                <th className="text-center" style={{ width: 36, minWidth: 36 }}>#</th>
-                <th style={{ minWidth: 160, position: 'sticky', left: 0, zIndex: 3, background: '#f8f9fa', boxShadow: '2px 0 4px rgba(0,0,0,0.07)' }}>
-                  Нэр
-                </th>
-                <th className="text-center" style={{ minWidth: 70 }}>Анги</th>
-                <th className="text-center" style={{ minWidth: 72 }}>Гүйцэтгэл</th>
-                <th className="text-center" style={{ minWidth: 80 }}>Амжилт%</th>
-                <th className="text-center" style={{ minWidth: 72 }}>Бодлого</th>
-                <th className="text-center" style={{ minWidth: 84 }}>Бодлогын%</th>
-                {assignments.map(a => (
-                  <th key={a.id} className="text-center" colSpan={2}
-                    style={{ minWidth: 110, whiteSpace: 'nowrap' }}
-                    title={a.title}>
-                    <div style={{ maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {a.title}
-                    </div>
-                    <div className="text-muted fw-normal" style={{ fontSize: '0.65rem' }}>
-                      /{a.max_score ?? '?'}
-                    </div>
-                  </th>
-                ))}
-              </tr>
-              <tr className="table-secondary" style={{ fontSize: '0.7rem' }}>
-                <td />
-                <td style={{ position: 'sticky', left: 0, zIndex: 2, background: '#e9ecef', boxShadow: '2px 0 4px rgba(0,0,0,0.07)' }} />
-                <td />
-                <td />
-                <td />
-                <td />
-                <td />
-                {assignments.map(a => (
-                  <React.Fragment key={a.id}>
-                    <td className="text-center fw-semibold" style={{ color: '#0d6efd' }}>
-                      {(() => {
-                        const vals = sorted.map(m => m.results.find(r => r.assignment_id === a.id)?.score).filter(v => v != null);
-                        return vals.length ? (vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(1) : '—';
-                      })()}
-                    </td>
-                    <td className="text-center text-muted" style={{ fontSize: '0.65rem' }}>Зөв/Буруу</td>
-                  </React.Fragment>
-                ))}
-              </tr>
-            </thead>
-
-            <tbody>
-              {sorted.length === 0 ? (
+      {/* ── Таб 1: Нэгдсэн тайлан ── */}
+      {activeTab === 'combined' && (
+        <div className="card border-0 shadow-sm border-top-0 rounded-top-0">
+          <div style={{ overflowX: 'auto' }}>
+            <table className="table table-bordered table-sm mb-0 align-middle"
+              style={{ fontSize: '0.78rem', minWidth: 600 + assignments.length * 120 }}>
+              <thead className="table-light">
                 <tr>
-                  <td colSpan={7 + assignments.length * 2} className="text-center text-muted py-3">
-                    Гишүүн олдсонгүй
-                  </td>
+                  <th className="text-center" style={{ width: 36, minWidth: 36 }}>#</th>
+                  <th style={{ minWidth: 160, position: 'sticky', left: 0, zIndex: 3, background: '#f8f9fa', boxShadow: '2px 0 4px rgba(0,0,0,0.07)', cursor: 'pointer', userSelect: 'none' }}
+                    onClick={() => handleSort('full_name')}>
+                    Нэр {sortField === 'full_name' ? (sortDir === 1 ? '↑' : '↓') : <span style={{ opacity: 0.3 }}>↕</span>}
+                  </th>
+                  <th className="text-center" style={{ minWidth: 70 }}>Анги</th>
+                  <th className="text-center" style={{ minWidth: 72, cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('completed')}>
+                    Гүйцэтгэл {sortField === 'completed' ? (sortDir === 1 ? '↑' : '↓') : <span style={{ opacity: 0.3 }}>↕</span>}
+                  </th>
+                  <th className="text-center" style={{ minWidth: 80, cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('success_rate')}>
+                    Амжилт% {sortField === 'success_rate' ? (sortDir === 1 ? '↑' : '↓') : <span style={{ opacity: 0.3 }}>↕</span>}
+                  </th>
+                  <th className="text-center" style={{ minWidth: 72 }}>Бодлого</th>
+                  <th className="text-center" style={{ minWidth: 84, cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('prob_rate')}>
+                    Бодлогын% {sortField === 'prob_rate' ? (sortDir === 1 ? '↑' : '↓') : <span style={{ opacity: 0.3 }}>↕</span>}
+                  </th>
+                  {assignments.map(a => (
+                    <th key={a.id} className="text-center" colSpan={2}
+                      style={{ minWidth: 110 }} title={a.title}>
+                      <div style={{ maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.title}</div>
+                      <div className="text-muted fw-normal" style={{ fontSize: '0.65rem' }}>/{a.max_score ?? '?'}</div>
+                    </th>
+                  ))}
                 </tr>
-              ) : sorted.map((member, idx) => (
-                <tr key={member.username}>
-                  <td className="text-center text-muted">{idx + 1}</td>
-                  <td style={{
-                    position: 'sticky', left: 0, zIndex: 1, background: '#fff',
-                    boxShadow: '2px 0 4px rgba(0,0,0,0.07)', paddingLeft: '0.75rem',
-                  }}>
-                    <div className="d-flex align-items-center gap-1">
-                      <div
-                        className="fw-medium"
-                        style={{ cursor: 'pointer', color: '#0d6efd' }}
-                        onClick={() => navigate(`/clubs/${clubId}/report/${member.username}`)}
-                      >
-                        {member.full_name}
-                      </div>
-                      {member.is_teacher && (
-                        <span style={{
-                          fontSize: '0.6rem', fontWeight: 600, lineHeight: 1,
-                          padding: '1px 4px', borderRadius: 3,
-                          background: '#d1fae5', color: '#065f46',
-                        }}>Багш</span>
-                      )}
-                    </div>
-                    <div className="text-muted" style={{ fontSize: '0.65rem' }}>@{member.username}</div>
-                    {member.subgroups.length > 0 && (
-                      <div style={{ fontSize: '0.62rem', color: '#6c757d' }}>
-                        {member.subgroups.join(', ')}
-                      </div>
-                    )}
-                  </td>
-                  <td className="text-center">{member.grade ?? '—'}</td>
-                  <td className="text-center">
-                    {member.completed}/{member.total_assignments}
-                  </td>
-                  <td className="text-center fw-semibold">
-                    {member.success_rate != null
-                      ? <span style={rateColor(member.success_rate)}>{member.success_rate}%</span>
-                      : <span className="text-muted">—</span>}
-                  </td>
-                  <td className="text-center">
-                    {member.answered_problems}/{member.total_problems}
-                  </td>
-                  <td className="text-center fw-semibold">
-                    {member.prob_rate != null
-                      ? <span style={rateColor(member.prob_rate)}>{member.prob_rate}%</span>
-                      : <span className="text-muted">—</span>}
-                  </td>
-                  {assignments.map(a => {
-                    const result = member.results.find(r => r.assignment_id === a.id);
-                    const score = result?.score ?? null;
-                    const maxS = result?.max_score ?? null;
-                    const done = result?.done ?? false;
-                    const timeStr = result?.time_spent ? fmtTime(result.time_spent) : null;
-
-                    let scoreBg = '#f8f9fa';
-                    let scoreColor = '#adb5bd';
-                    if (score != null) {
-                      if (done && maxS && score >= maxS * 0.7) {
-                        scoreBg = '#d1fae5'; scoreColor = '#065f46';
-                      } else if (done) {
-                        scoreBg = '#fef9c3'; scoreColor = '#713f12';
-                      } else {
-                        scoreBg = '#fee2e2'; scoreColor = '#991b1b';
+                <tr className="table-secondary" style={{ fontSize: '0.7rem' }}>
+                  <td /><td style={{ position: 'sticky', left: 0, zIndex: 2, background: '#e9ecef', boxShadow: '2px 0 4px rgba(0,0,0,0.07)' }} />
+                  <td /><td /><td /><td /><td />
+                  {assignments.map(a => (
+                    <React.Fragment key={a.id}>
+                      <td className="text-center fw-semibold" style={{ color: '#0d6efd' }}>
+                        {(() => {
+                          const vals = sorted.map(m => m.results.find(r => r.assignment_id === a.id)?.score).filter(v => v != null);
+                          return vals.length ? (vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(1) : '—';
+                        })()}
+                      </td>
+                      <td className="text-center text-muted" style={{ fontSize: '0.65rem' }}>Зөв/Буруу</td>
+                    </React.Fragment>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {sorted.length === 0 ? (
+                  <tr><td colSpan={7 + assignments.length * 2} className="text-center text-muted py-3">Гишүүн олдсонгүй</td></tr>
+                ) : sorted.map((member, idx) => (
+                  <tr key={member.username}>
+                    <td className="text-center text-muted">{idx + 1}</td>
+                    <MemberNameCell member={member} sticky />
+                    <td className="text-center">{member.grade ?? '—'}</td>
+                    <td className="text-center">{member.completed}/{member.total_assignments}</td>
+                    <td className="text-center fw-semibold">
+                      {member.success_rate != null ? <span style={rateColor(member.success_rate)}>{member.success_rate}%</span> : <span className="text-muted">—</span>}
+                    </td>
+                    <td className="text-center">{member.answered_problems}/{member.total_problems}</td>
+                    <td className="text-center fw-semibold">
+                      {member.prob_rate != null ? <span style={rateColor(member.prob_rate)}>{member.prob_rate}%</span> : <span className="text-muted">—</span>}
+                    </td>
+                    {assignments.map(a => {
+                      const result = member.results.find(r => r.assignment_id === a.id);
+                      const score = result?.score ?? null;
+                      const maxS = result?.max_score ?? null;
+                      const done = result?.done ?? false;
+                      const timeStr = result?.time_spent ? fmtTime(result.time_spent) : null;
+                      let scoreBg = '#f8f9fa', scoreColor = '#adb5bd';
+                      if (score != null) {
+                        if (done && maxS && score >= maxS * 0.7) { scoreBg = '#d1fae5'; scoreColor = '#065f46'; }
+                        else if (done) { scoreBg = '#fef9c3'; scoreColor = '#713f12'; }
+                        else { scoreBg = '#fee2e2'; scoreColor = '#991b1b'; }
                       }
-                    }
-
-                    return (
-                      <React.Fragment key={a.id}>
-                        <td className="text-center fw-semibold"
-                          style={{ background: scoreBg, color: scoreColor }}>
-                          {score != null ? score : <span style={{ opacity: 0.4 }}>—</span>}
-                          {timeStr && (
-                            <div className="d-flex align-items-center justify-content-center gap-1 fw-normal"
-                              style={{ fontSize: '0.62rem', color: '#6c757d', marginTop: 1 }}>
-                              <Clock size={9} />{timeStr}
-                            </div>
-                          )}
-                        </td>
-                        <td className="text-center" style={{ fontSize: '0.72rem' }}>
-                          {result ? (
-                            <>
-                              <span style={{ color: '#065f46' }}>{result.correct}</span>
-                              <span className="text-muted mx-1">/</span>
-                              <span style={{ color: '#991b1b' }}>{result.wrong}</span>
-                            </>
-                          ) : (
-                            <span className="text-muted">—</span>
-                          )}
-                        </td>
-                      </React.Fragment>
-                    );
-                  })}
-                </tr>
+                      return (
+                        <React.Fragment key={a.id}>
+                          <td className="text-center fw-semibold" style={{ background: scoreBg, color: scoreColor }}>
+                            {score != null ? score : <span style={{ opacity: 0.4 }}>—</span>}
+                            {timeStr && (
+                              <div className="d-flex align-items-center justify-content-center gap-1 fw-normal"
+                                style={{ fontSize: '0.62rem', color: '#6c757d', marginTop: 1 }}>
+                                <Clock size={9} />{timeStr}
+                              </div>
+                            )}
+                          </td>
+                          <td className="text-center" style={{ fontSize: '0.72rem' }}>
+                            {result ? (
+                              <><span style={{ color: '#065f46' }}>{result.correct}</span><span className="text-muted mx-1">/</span><span style={{ color: '#991b1b' }}>{result.wrong}</span></>
+                            ) : <span className="text-muted">—</span>}
+                          </td>
+                        </React.Fragment>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="card-footer bg-white border-top py-2">
+            <div className="d-flex gap-3 flex-wrap align-items-center">
+              <span className="text-muted small">Амжилт%:</span>
+              {[{ bg: '#d1fae5', color: '#065f46', label: '≥70%' }, { bg: '#fef9c3', color: '#713f12', label: '50–69%' }, { bg: '#fee2e2', color: '#991b1b', label: '<50%' }].map(({ bg, color, label }) => (
+                <span key={label} className="d-flex align-items-center gap-1 small">
+                  <span style={{ width: 12, height: 12, background: bg, border: '1px solid #dee2e6', display: 'inline-block', borderRadius: 2 }} />
+                  <span style={{ color }}>{label}</span>
+                </span>
               ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="card-footer bg-white border-top py-2">
-          <div className="d-flex gap-3 flex-wrap align-items-center">
-            <span className="text-muted small">Амжилт%:</span>
-            {[
-              { bg: '#d1fae5', color: '#065f46', label: '≥70%' },
-              { bg: '#fef9c3', color: '#713f12', label: '50–69%' },
-              { bg: '#fee2e2', color: '#991b1b', label: '<50%' },
-            ].map(({ bg, color, label }) => (
-              <span key={label} className="d-flex align-items-center gap-1 small">
-                <span style={{
-                  width: 12, height: 12, background: bg,
-                  border: '1px solid #dee2e6', display: 'inline-block', borderRadius: 2,
-                }} />
-                <span style={{ color }}>{label}</span>
-              </span>
-            ))}
-            <span className="text-muted small ms-3">Зөв/Буруу = даалгавар дахь зөв/буруу бодлогын тоо</span>
+              <span className="text-muted small ms-3">Зөв/Буруу = даалгавар дахь зөв/буруу бодлогын тоо</span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* ── Таб 2: Сорилго тус бүрийн тайлан ── */}
+      {activeTab === 'assignment' && (
+        <div className="card border-0 shadow-sm border-top-0 rounded-top-0">
+          <div className="card-body py-2 border-bottom">
+            <div className="d-flex align-items-center gap-2 flex-wrap">
+              <span className="text-muted small fw-semibold">Сорилго:</span>
+              <Form.Select size="sm" style={{ width: 'auto', minWidth: 200 }}
+                value={selectedAssignmentId ?? ''}
+                onChange={e => setSelectedAssignmentId(Number(e.target.value))}>
+                {assignments.map(a => (
+                  <option key={a.id} value={a.id}>{a.title} {a.max_score ? `(/${a.max_score})` : ''}</option>
+                ))}
+              </Form.Select>
+            </div>
+          </div>
+          {selAssignment ? (
+            <div style={{ overflowX: 'auto' }}>
+              <table className="table table-bordered table-sm mb-0 align-middle" style={{ fontSize: '0.82rem' }}>
+                <thead className="table-light">
+                  <tr>
+                    <th className="text-center" style={{ width: 40 }}>#</th>
+                    <th style={{ minWidth: 180 }}>Нэр</th>
+                    <th className="text-center" style={{ width: 70 }}>Анги</th>
+                    <th className="text-center" style={{ minWidth: 110 }}>Оноо</th>
+                    <th className="text-center" style={{ width: 80 }}>Зөв/Буруу</th>
+                    <th className="text-center" style={{ width: 90 }}>Хугацаа</th>
+                    <th className="text-center" style={{ width: 100 }}>Төлөв</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {assignmentRanking.length === 0 ? (
+                    <tr><td colSpan={7} className="text-center text-muted py-3">Гишүүн олдсонгүй</td></tr>
+                  ) : assignmentRanking.map((member, idx) => {
+                    const r = member._r;
+                    const score = r?.score ?? null;
+                    const maxS = r?.max_score ?? selAssignment.max_score ?? null;
+                    const pct = score != null && maxS ? Math.round(score / maxS * 100) : null;
+                    const timeStr = r?.time_spent ? fmtTime(r.time_spent) : null;
+                    const STATUS_LABEL = { not_started: 'Өгөөгүй', in_progress: 'Явагдаж байна', submitted: 'Илгээсэн', graded: 'Үнэлэгдсэн' };
+                    const STATUS_BG = { not_started: 'secondary', in_progress: 'warning', submitted: 'info', graded: 'success' };
+                    const st = r?.status || 'not_started';
+                    return (
+                      <tr key={member.username}>
+                        <td className="text-center text-muted">{idx + 1}</td>
+                        <MemberNameCell member={member} />
+                        <td className="text-center">{member.grade ?? '—'}</td>
+                        <td className="text-center fw-semibold" style={score != null ? rateColor(pct) : {}}>
+                          {score != null ? (
+                            <>{score}{maxS ? <span className="fw-normal text-muted">/{maxS}</span> : null}{pct != null ? <span className="ms-1 fw-normal" style={{ fontSize: '0.72rem' }}>({pct}%)</span> : null}</>
+                          ) : <span className="text-muted">—</span>}
+                        </td>
+                        <td className="text-center" style={{ fontSize: '0.78rem' }}>
+                          {r ? <><span style={{ color: '#065f46' }}>{r.correct}</span><span className="text-muted mx-1">/</span><span style={{ color: '#991b1b' }}>{r.wrong}</span></> : <span className="text-muted">—</span>}
+                        </td>
+                        <td className="text-center text-muted" style={{ fontSize: '0.78rem' }}>
+                          {timeStr ? <span className="d-flex align-items-center justify-content-center gap-1"><Clock size={11} />{timeStr}</span> : '—'}
+                        </td>
+                        <td className="text-center">
+                          <Badge bg={STATUS_BG[st]} style={{ fontSize: '0.68rem' }}>{STATUS_LABEL[st]}</Badge>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center text-muted py-4">Сорилго сонгоно уу</div>
+          )}
+        </div>
+      )}
+
+      {/* ── Таб 3: Дасгалын тайлан ── */}
+      {activeTab === 'exercises' && (
+        <div className="card border-0 shadow-sm border-top-0 rounded-top-0">
+          <div style={{ overflowX: 'auto' }}>
+            <table className="table table-bordered table-sm mb-0 align-middle" style={{ fontSize: '0.82rem' }}>
+              <thead className="table-light">
+                <tr>
+                  <th className="text-center" style={{ width: 40 }}>#</th>
+                  <th style={{ minWidth: 180 }}>Нэр</th>
+                  <th className="text-center" style={{ width: 70 }}>Анги</th>
+                  <th className="text-center" style={{ minWidth: 80 }}>Оролцсон өдөр</th>
+                  <th className="text-center" style={{ minWidth: 80 }}>Нийт хариулт</th>
+                  <th className="text-center" style={{ minWidth: 80 }}>Зөв%</th>
+                  <th className="text-center" style={{ minWidth: 90 }}>Нийт хугацаа</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sorted.length === 0 ? (
+                  <tr><td colSpan={7} className="text-center text-muted py-3">Гишүүн олдсонгүй</td></tr>
+                ) : [...sorted]
+                  .sort((a, b) => (b.exercises?.answered ?? 0) - (a.exercises?.answered ?? 0))
+                  .map((member, idx) => {
+                    const ex = member.exercises || {};
+                    const timeStr = ex.total_time ? fmtTime(ex.total_time) : null;
+                    return (
+                      <tr key={member.username}>
+                        <td className="text-center text-muted">{idx + 1}</td>
+                        <MemberNameCell member={member} />
+                        <td className="text-center">{member.grade ?? '—'}</td>
+                        <td className="text-center fw-semibold text-primary">{ex.days ?? 0}</td>
+                        <td className="text-center">{ex.answered ?? 0}</td>
+                        <td className="text-center fw-semibold">
+                          {ex.correct_rate != null
+                            ? <span style={rateColor(ex.correct_rate)}>{ex.correct_rate}%</span>
+                            : <span className="text-muted">—</span>}
+                        </td>
+                        <td className="text-center text-muted">
+                          {timeStr ? <span className="d-flex align-items-center justify-content-center gap-1"><Clock size={11} />{timeStr}</span> : '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

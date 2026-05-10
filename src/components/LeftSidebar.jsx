@@ -78,7 +78,7 @@ const LeftSidebar = () => {
         <Nav.Item>
           <Nav.Link as={NavLink} to="/reports" className="d-flex align-items-center gap-2">
             <i className="bi bi-flag fs-5"></i>
-            <span>Репорт</span>
+            <span>Тайлан</span>
           </Nav.Link>
         </Nav.Item>
 

@@ -901,8 +901,8 @@ const ClubSubGroupsPage = () => {
                     <Stack direction="horizontal" gap={1}>
                       <Button variant="outline-primary" size="sm"
                         onClick={() => navigate(`/clubs/${clubId}/group-report?subgroup_id=${selected.id}`)}
-                        title="Веб репорт харах">
-                        Веб репорт
+                        title="Веб тайлан харах">
+                        Веб тайлан
                       </Button>
                       <Button variant="outline-success" size="sm"
                         onClick={handleExportSubgroup}
@@ -911,7 +911,7 @@ const ClubSubGroupsPage = () => {
                         {exporting
                           ? <Spinner animation="border" size="sm" />
                           : <FileDown size={14} className="me-1" />}
-                        Репорт
+                        Тайлан
                       </Button>
                       <Button variant="outline-primary" size="sm"
                         onClick={() => setAddMembersModal(true)}>
@@ -971,7 +971,7 @@ const ClubSubGroupsPage = () => {
                               {isTeacherOrAdmin && (
                                 <div className="d-flex gap-1 flex-shrink-0">
                                   <Button variant="link" size="sm" className="text-info p-0"
-                                    title="Репорт харах"
+                                    title="Тайлан харах"
                                     onClick={() => navigate(`/clubs/${clubData.id}/report/${m.username}`)}>
                                     📊
                                   </Button>
