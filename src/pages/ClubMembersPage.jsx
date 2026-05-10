@@ -9,7 +9,7 @@ import Form from 'react-bootstrap/Form';
 import InputGroup from 'react-bootstrap/InputGroup';
 import Spinner from 'react-bootstrap/Spinner';
 import UserAvatar from '../components/UserAvatar';
-import { Users, Crown, GraduationCap, X, Search, UserPlus, BarChart2 } from 'lucide-react';
+import { Users, Users2, Crown, GraduationCap, X, Search, UserPlus, BarChart2, TrendingUp } from 'lucide-react';
 import apiClient from '../api/axiosConfig';
 import { inviteTeacher, formatErrorMessage } from '../services/clubsService';
 
@@ -265,22 +265,39 @@ const ClubMembersPage = () => {
 
       {/* Гишүүд (багш + энгийн нэгтгэсэн) */}
       <Card className="shadow-sm mb-4">
-        <Card.Header className="bg-white d-flex align-items-center justify-content-between">
+        <Card.Header className="bg-white d-flex align-items-center justify-content-between flex-wrap gap-2">
           <h6 className="mb-0">
             <Users size={16} className="me-2" />
             Гишүүд ({members.filter((m) => m.id !== creator).length})
           </h6>
-          {isTeacherOrAdmin && (
+          <div className="d-flex gap-2">
             <Button
-              variant="outline-primary"
+              variant="outline-secondary"
               size="sm"
-              onClick={() => navigate(`/clubs/${club.id}/group-report`)}
-              title="Веб тайлан харах"
+              onClick={() => navigate(`/clubs/${club.id}/subgroups`)}
+            >
+              <Users2 size={14} className="me-1" />
+              Дэд бүлэг
+            </Button>
+            <Button
+              variant="outline-secondary"
+              size="sm"
+              onClick={() => navigate(`/clubs/${club.id}/scores`)}
             >
               <BarChart2 size={14} className="me-1" />
-              Тайлан
+              Дүн матриц
             </Button>
-          )}
+            {isTeacherOrAdmin && (
+              <Button
+                variant="outline-primary"
+                size="sm"
+                onClick={() => navigate(`/clubs/${club.id}/group-report`)}
+              >
+                <TrendingUp size={14} className="me-1" />
+                Тайлан
+              </Button>
+            )}
+          </div>
         </Card.Header>
         {members.filter((m) => m.id !== creator).length > 0 ? (
           <ListGroup variant="flush">

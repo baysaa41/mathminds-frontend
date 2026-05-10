@@ -277,6 +277,7 @@ const ClubDetail = () => {
     exams: 'Шалгалт',
     subgroups: 'Дэд бүлэг',
     scores: 'Оноо',
+    'exercises-report': 'Дасгалын тайлан',
     members: 'Гишүүд',
   };
   // Pages that render their own deep breadcrumb (assignments/:id, leaderboard, report)

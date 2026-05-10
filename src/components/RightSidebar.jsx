@@ -76,9 +76,10 @@ function ProblemNavList({ items, currentIdx, userAnswers, times, onSelect }) {
 const RightSidebar = ({ clubData = null, problemNavData = null }) => {
   const location = useLocation();
   const isClubsPage = location.pathname.startsWith('/clubs');
-  const isExercisesPage = /^\/clubs\/(\d+)\/exercises/.test(location.pathname);
-  const exercisesClubId = isExercisesPage
-    ? location.pathname.match(/^\/clubs\/(\d+)\/exercises/)?.[1]
+  const isExercisesPage = /^\/clubs\/(\d+)\/exercises$/.test(location.pathname);
+  const isExercisesReportPage = /^\/clubs\/(\d+)\/exercises-report/.test(location.pathname);
+  const exercisesClubId = (isExercisesPage || isExercisesReportPage)
+    ? location.pathname.match(/^\/clubs\/(\d+)\//)?.[1]
     : null;
 
   if (isExercisesPage) {
@@ -94,6 +95,15 @@ const RightSidebar = ({ clubData = null, problemNavData = null }) => {
           />
         )}
         {exercisesClubId && <ExerciseDatesWidget clubId={exercisesClubId} />}
+      </Stack>
+    );
+  }
+
+  if (isExercisesReportPage) {
+    return (
+      <Stack gap={3}>
+        {clubData && <ClubMenuWidget club={clubData} />}
+        {exercisesClubId && <ExerciseDatesWidget clubId={exercisesClubId} autoSelect={false} />}
       </Stack>
     );
   }

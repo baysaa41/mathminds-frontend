@@ -49,7 +49,7 @@ function groupByMonth(dates) {
   return Object.values(groups).reverse();
 }
 
-const ExerciseDatesWidget = ({ clubId }) => {
+const ExerciseDatesWidget = ({ clubId, autoSelect = true }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedDate = searchParams.get('date');
 
@@ -74,7 +74,7 @@ const ExerciseDatesWidget = ({ clubId }) => {
       const list = res.data || [];
       setDates(list);
       // Өдөр сонгогдоогүй бол хамгийн сүүлийн өдрийг автоматаар сонгох
-      if (list.length > 0 && !searchParams.get('date')) {
+      if (autoSelect && list.length > 0 && !searchParams.get('date')) {
         setSearchParams({ date: list[list.length - 1].date }, { replace: true });
       }
     }).catch(() => {
@@ -86,7 +86,11 @@ const ExerciseDatesWidget = ({ clubId }) => {
   }, [clubId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSelect = (date) => {
-    setSearchParams({ date }, { replace: false });
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.set('date', date);
+      return next;
+    }, { replace: false });
   };
 
   if (loading) {

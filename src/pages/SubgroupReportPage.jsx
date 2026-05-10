@@ -207,6 +207,10 @@ const SubgroupReportPage = () => {
         )}
         <Form.Check type="checkbox" id="show-teachers" label="Багш нар"
           checked={showTeachers} onChange={e => setShowTeachers(e.target.checked)} className="mb-0 small" />
+        <Button variant="outline-primary" size="sm" className="ms-auto"
+          onClick={() => navigate(`/clubs/${clubId}/exercises-report${subgroupId ? `?subgroup_id=${subgroupId}` : ''}`)}>
+          <Dumbbell size={14} className="me-1" />Дасгалын матриц
+        </Button>
       </div>
 
       {summary && (
