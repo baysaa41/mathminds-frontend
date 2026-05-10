@@ -42,6 +42,7 @@ const SubgroupReportPage = () => {
   const [exporting, setExporting] = useState(false);
   const [subgroups, setSubgroups] = useState([]);
   const [showTeachers, setShowTeachers] = useState(false);
+  const [gradeFilter, setGradeFilter] = useState('');
   const [activeTab, setActiveTab] = useState('combined');
   const [selectedAssignmentId, setSelectedAssignmentId] = useState(null);
 
@@ -78,9 +79,17 @@ const SubgroupReportPage = () => {
     }
   };
 
+  const allGrades = useMemo(() => {
+    if (!data?.members) return [];
+    const set = new Set();
+    data.members.forEach(m => { if (m.grade) set.add(m.grade); });
+    return [...set].sort();
+  }, [data]);
+
   const sorted = useMemo(() => {
     if (!data?.members) return [];
-    const filtered = showTeachers ? data.members : data.members.filter(m => !m.is_teacher);
+    let filtered = showTeachers ? data.members : data.members.filter(m => !m.is_teacher);
+    if (gradeFilter) filtered = filtered.filter(m => m.grade === gradeFilter);
     return [...filtered].sort((a, b) => {
       const av = a[sortField] ?? (sortField === 'full_name' ? '' : -Infinity);
       const bv = b[sortField] ?? (sortField === 'full_name' ? '' : -Infinity);
@@ -88,7 +97,7 @@ const SubgroupReportPage = () => {
       if (av > bv) return sortDir;
       return 0;
     });
-  }, [data, sortField, sortDir, showTeachers]);
+  }, [data, sortField, sortDir, showTeachers, gradeFilter]);
 
   const summary = useMemo(() => {
     if (!sorted.length) return null;
@@ -203,6 +212,13 @@ const SubgroupReportPage = () => {
             onChange={e => { const val = e.target.value; setSearchParams(val ? { subgroup_id: val } : {}); }}>
             <option value="">Бүх гишүүд</option>
             {subgroups.map(sg => <option key={sg.id} value={sg.id}>{sg.name}</option>)}
+          </Form.Select>
+        )}
+        {allGrades.length > 1 && (
+          <Form.Select size="sm" style={{ width: 'auto', minWidth: 120 }} value={gradeFilter}
+            onChange={e => setGradeFilter(e.target.value)}>
+            <option value="">Бүх анги</option>
+            {allGrades.map(g => <option key={g} value={g}>{g}</option>)}
           </Form.Select>
         )}
         <Form.Check type="checkbox" id="show-teachers" label="Багш нар"
