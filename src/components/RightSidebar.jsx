@@ -3,6 +3,7 @@ import React from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import Stack from 'react-bootstrap/Stack';
 import ClubMenuWidget from './ClubMenuWidget';
+import ClubMeetingsWidget from './ClubMeetingsWidget';
 import ClubPaymentInfoWidget from './ClubPaymentInfoWidget';
 import TrendingPostsWidget from './TrendingPostsWidget';
 import ExerciseDatesWidget from './ExerciseDatesWidget';
@@ -113,6 +114,7 @@ const RightSidebar = ({ clubData = null, problemNavData = null }) => {
       {!clubData && <SearchWidget />}
       {!clubData && <MyClubsWidget />}
       {clubData && <ClubMenuWidget club={clubData} />}
+      {clubData && <ClubMeetingsWidget club={clubData} isTeacherOrAdmin={false} />}
       {clubData && clubData.club_type === 'STUDY' && <ClubPaymentInfoWidget club={clubData} />}
       {!clubData && !isClubsPage && <TrendingPostsWidget />}
     </Stack>

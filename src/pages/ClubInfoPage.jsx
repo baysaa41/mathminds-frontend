@@ -11,12 +11,14 @@ import UserAvatar from '../components/UserAvatar';
 import { Calendar, Users, Award, ShieldCheck, DollarSign, Settings, Key, LogIn, LogOut, X, CalendarDays, GraduationCap } from 'lucide-react';
 import LivePreview from '../components/LivePreview';
 import ClubFeed from '../components/ClubFeed';
+import ClubMeetingsWidget from '../components/ClubMeetingsWidget';
 
 const ClubInfoPage = ({ forceInfo = false }) => {
   const {
     clubData: club,
     clubActions,
     isCreator,
+    isTeacherOrAdmin,
   } = useOutletContext();
 
   if (!club) return null;
@@ -167,6 +169,13 @@ const ClubInfoPage = ({ forceInfo = false }) => {
         </Card.Body>
       </Card>
 
+      {/* Видео уулзалт */}
+      <ClubMeetingsWidget
+        club={club}
+        onUpdate={clubActions?.onUpdate}
+        isTeacherOrAdmin={isTeacherOrAdmin}
+      />
+
       {/* Одоогийн долоо хоногийн сэдвүүд (олон хөтөлбөр) */}
       {club.current_week_topics && club.current_week_topics.length > 0 && (
         <Card className="shadow-sm mb-4 border-primary border-opacity-25">
@@ -270,6 +279,7 @@ const ClubInfoPage = ({ forceInfo = false }) => {
           </ListGroup>
         </Card>
       )}
+
 
     </div>
   );

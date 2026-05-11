@@ -402,6 +402,40 @@ export const moveVideoDown = async (id) => {
 };
 
 // -----------------------------------------------------------------
+// Meeting Management Functions
+// -----------------------------------------------------------------
+
+export const createMeetingItem = async (clubId, data) => {
+  try {
+    const response = await apiClient.post('/api/club-meetings/', { ...data, club: clubId });
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error creating meeting:', error);
+    throw error;
+  }
+};
+
+export const updateMeetingItem = async (id, data) => {
+  try {
+    const response = await apiClient.patch(`/api/club-meetings/${id}/`, data);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error updating meeting:', error);
+    throw error;
+  }
+};
+
+export const deleteMeetingItem = async (id) => {
+  try {
+    const response = await apiClient.delete(`/api/club-meetings/${id}/`);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error deleting meeting:', error);
+    throw error;
+  }
+};
+
+// -----------------------------------------------------------------
 // Exam Management Functions
 // -----------------------------------------------------------------
 
@@ -572,6 +606,9 @@ const clubsService = {
   deleteVideoItem,
   moveVideoUp,
   moveVideoDown,
+  createMeetingItem,
+  updateMeetingItem,
+  deleteMeetingItem,
   createExamItem,
   updateExamItem,
   deleteExamItem,

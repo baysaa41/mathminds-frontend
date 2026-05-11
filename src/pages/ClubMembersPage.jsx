@@ -9,7 +9,7 @@ import Form from 'react-bootstrap/Form';
 import InputGroup from 'react-bootstrap/InputGroup';
 import Spinner from 'react-bootstrap/Spinner';
 import UserAvatar from '../components/UserAvatar';
-import { Users, Users2, Crown, GraduationCap, X, Search, UserPlus, BarChart2, TrendingUp } from 'lucide-react';
+import { Users, Users2, X, Search, UserPlus, BarChart2, TrendingUp } from 'lucide-react';
 import apiClient from '../api/axiosConfig';
 import { inviteTeacher, formatErrorMessage } from '../services/clubsService';
 
@@ -157,18 +157,6 @@ const ClubMembersPage = () => {
 
   return (
     <div className="container-fluid">
-      {/* Удирдагч багш */}
-      {creatorMember && (
-        <Card className="shadow-sm mb-4">
-          <Card.Header>
-            <h6 className="mb-0">
-              <Crown size={16} className="me-2" />
-              Удирдагч багш
-            </h6>
-          </Card.Header>
-          <ListGroup variant="flush">{renderMember(creatorMember, 'creator')}</ListGroup>
-        </Card>
-      )}
       {/* Багш урих (зөвхөн багш бол) */}
       {club.role === 'teacher' && clubActions?.onInviteTeacher && (
         <Card className="shadow-sm mb-4">
@@ -268,7 +256,7 @@ const ClubMembersPage = () => {
         <Card.Header className="bg-white d-flex align-items-center justify-content-between flex-wrap gap-2">
           <h6 className="mb-0">
             <Users size={16} className="me-2" />
-            Гишүүд ({members.filter((m) => m.id !== creator).length})
+            Сурагчид ({regularMembers.length})
           </h6>
           <div className="d-flex gap-2">
             <Button
@@ -299,15 +287,14 @@ const ClubMembersPage = () => {
             )}
           </div>
         </Card.Header>
-        {members.filter((m) => m.id !== creator).length > 0 ? (
+        {regularMembers.length > 0 ? (
           <ListGroup variant="flush">
-            {teacherMembers.map((member) => renderMember(member, 'teacher'))}
             {regularMembers.map((member) => renderMember(member, 'member'))}
           </ListGroup>
         ) : (
           <Card.Body className="text-center text-muted py-4">
             <Users size={36} className="mb-2 opacity-25" />
-            <p className="mb-0">Одоогоор гишүүд байхгүй байна.</p>
+            <p className="mb-0">Одоогоор сурагч байхгүй байна.</p>
           </Card.Body>
         )}
       </Card>
