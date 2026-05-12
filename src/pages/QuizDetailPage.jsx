@@ -49,6 +49,9 @@ const QuizDetailPage = () => {
   const [teacherClubs, setTeacherClubs] = useState([]);
   const [clubsLoading, setClubsLoading] = useState(false);
   const [selectedClubId, setSelectedClubId] = useState('');
+  const [subgroups, setSubgroups] = useState([]);
+  const [subgroupsLoading, setSubgroupsLoading] = useState(false);
+  const [selectedSubgroupId, setSelectedSubgroupId] = useState('');
   const [addingToClub, setAddingToClub] = useState(false);
   const [addProgress, setAddProgress] = useState({ current: 0, total: 0 });
   const [addError, setAddError] = useState(null);
@@ -169,6 +172,8 @@ const QuizDetailPage = () => {
     setAddError(null);
     setAddSuccess(false);
     setSelectedClubId('');
+    setSelectedSubgroupId('');
+    setSubgroups([]);
     setAddProgress({ current: 0, total: 0 });
     setClubsLoading(true);
     try {
@@ -179,6 +184,22 @@ const QuizDetailPage = () => {
       setAddError('Клубын жагсаалт ачааллахад алдаа гарлаа.');
     } finally {
       setClubsLoading(false);
+    }
+  };
+
+  const handleClubChange = async (clubId) => {
+    setSelectedClubId(clubId);
+    setSelectedSubgroupId('');
+    setSubgroups([]);
+    if (!clubId) return;
+    setSubgroupsLoading(true);
+    try {
+      const res = await apiClient.get('/api/club-subgroups/', { params: { club: clubId } });
+      setSubgroups(res.data?.results || res.data || []);
+    } catch {
+      // subgroup алдаа — чимээгүй орхино
+    } finally {
+      setSubgroupsLoading(false);
     }
   };
 
@@ -212,11 +233,13 @@ const QuizDetailPage = () => {
     for (let i = 0; i < problems.length; i++) {
       setAddProgress({ current: i + 1, total: problems.length });
       try {
-        await apiClient.post('/api/minds/posts/', {
+        const payload = {
           related_problem_id: problems[i].uuid,
           club: parseInt(selectedClubId),
           content: '',
-        });
+        };
+        if (selectedSubgroupId) payload.subgroup = parseInt(selectedSubgroupId);
+        await apiClient.post('/api/minds/posts/', payload);
         successCount++;
       } catch (err) {
         console.error(`Бодлого #${problems[i].id} оруулахад алдаа:`, err);
@@ -564,7 +587,7 @@ const QuizDetailPage = () => {
                 <Form.Label className="fw-semibold small">Клуб сонгох</Form.Label>
                 <Form.Select
                   value={selectedClubId}
-                  onChange={(e) => setSelectedClubId(e.target.value)}
+                  onChange={(e) => handleClubChange(e.target.value)}
                   disabled={addingToClub || addSuccess}
                 >
                   <option value="">— Клуб сонгох —</option>
@@ -575,6 +598,31 @@ const QuizDetailPage = () => {
                   ))}
                 </Form.Select>
               </Form.Group>
+
+              {selectedClubId && (
+                <Form.Group className="mb-3">
+                  <Form.Label className="fw-semibold small">
+                    Дэд бүлэг{subgroupsLoading && <Spinner size="sm" animation="border" className="ms-2" />}
+                  </Form.Label>
+                  <Form.Select
+                    value={selectedSubgroupId}
+                    onChange={(e) => setSelectedSubgroupId(e.target.value)}
+                    disabled={addingToClub || addSuccess || subgroupsLoading}
+                  >
+                    <option value="">Бүх гишүүдэд</option>
+                    {subgroups.map((sg) => (
+                      <option key={sg.id} value={sg.id}>
+                        {sg.name}
+                      </option>
+                    ))}
+                  </Form.Select>
+                  {selectedSubgroupId && (
+                    <Form.Text className="text-muted">
+                      Зөвхөн <strong>{subgroups.find(sg => String(sg.id) === selectedSubgroupId)?.name}</strong> дэд бүлэгт харагдана
+                    </Form.Text>
+                  )}
+                </Form.Group>
+              )}
             </>
           )}
 
