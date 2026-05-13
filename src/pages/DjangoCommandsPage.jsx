@@ -374,6 +374,127 @@ const DJANGO_COMMANDS = [
     ],
   },
   {
+    category: 'ЭЕШ Мок Тест',
+    color: '#fd7e14',
+    commands: [
+      {
+        name: 'tag_eesh_problems',
+        help: 'Claude API-аар бодлогуудыг ЭЕШ-ийн 5 категорид таглах (eesh_category талбар)',
+        usage: 'python manage.py tag_eesh_problems',
+        flags: [
+          '--all — Бүх type=0/1/4 бодлогуудыг таглах (default: зөвхөн ЭЕШ Багц)',
+          '--problem-id <id> — Тодорхой нэг бодлого',
+          '--limit <N> — Хэдэн бодлого боловсруулах (default: хязгааргүй)',
+          '--confidence <0-1> — Хамгийн бага итгэлцэл (default: 0.75)',
+          '--delay <сек> — API дуудалт хоорондын хугацаа (default: 0.5)',
+          '--force — Аль хэдийн тагласан бодлогуудыг дахин таглах',
+          '--dry-run — Хадгалахгүй, зөвхөн харуулах',
+        ],
+        note: 'Дутуу/зурагтай/ойлгомжгүй өгүүлбэрийг автоматаар алгасана. Эхлэж --limit 20 --dry-run-аар туршина уу.',
+      },
+      {
+        name: 'convert_eesh_batch',
+        help: 'ЭЕШ Багц quizzes-ийн type=0 бодлогоос Claude API-аар type=1 (сонгох) + type=4 (нөхөх) үүсгэх',
+        usage: 'python manage.py convert_eesh_batch',
+        flags: [
+          '--quiz-ids <id,...> — Тодорхой quiz ID-уудыг таслалаар (жишээ: 5405,5406)',
+          '--mc-only — Зөвхөн type=1 (сонгох, 5 сонголт) үүсгэх',
+          '--fill-only — Зөвхөн type=4 (нөхөх) үүсгэх',
+          '--limit <N> — Хэдэн эх бодлого боловсруулах (default: бүгд)',
+          '--delay <сек> — API дуудалт хоорондын хугацаа (default: 1.0)',
+          '--dry-run — Хадгалахгүй, зөвхөн харуулах',
+        ],
+        note: 'Нэг type=0 бодлогоос type=1 + type=4 хоёр шинэ бодлого үүснэ (is_public=False). Нийтлэхийн өмнө admin-д review хийнэ үү.',
+      },
+      {
+        name: 'generate_eesh_quiz',
+        help: 'ЭЕШ блюпринт дагуу 36 сонгох + 4 нөхөх quiz автоматаар үүсгэх',
+        usage: 'python manage.py generate_eesh_quiz --year 2026 --variant A',
+        flags: [
+          '--year <он> — Блюпринтийн он: 2025 эсвэл 2026 (default: 2026)',
+          '--variant <A|B|...> — Хувилбарын нэр (default: A)',
+          '--exclude-quizzes <id,...> — Давтагдахаас хассах quiz ID-ууд',
+          '--source <eesh-batch|all> — eesh-batch: Багц-аас үүсгэсэн, all: бүх pool (default: all)',
+          '--seed <N> — Random seed (нэг дүнг давтах)',
+          '--public — Нийтэд нээлттэй байдлаар үүсгэх (default: хаалттай)',
+          '--dry-run — Quiz хадгалахгүй, pool статистик харуулах',
+        ],
+        note: '2025 vs 2026 ялгаа: ALGEBRA 11→12, PROBABILITY 7→6. Одоо даруй ажиллана — таглалт заавал биш (fallback ажиллана).',
+        examples: [
+          'python manage.py generate_eesh_quiz --year 2026 --variant A --dry-run',
+          'python manage.py generate_eesh_quiz --year 2026 --variant A --public',
+          'python manage.py generate_eesh_quiz --year 2026 --variant B --exclude-quizzes 192,331 --public',
+          'python manage.py generate_eesh_quiz --year 2025 --variant A --public',
+        ],
+      },
+      {
+        name: 'check_eesh_completeness',
+        help: 'PDF/DOCX бодлогуудыг DB-тэй харьцуулж, дутуу бодлогыг нэмэх, keyword-ээр таглах',
+        usage: 'python manage.py check_eesh_completeness --dir <хавтас>',
+        flags: [
+          '--dir <хавтас> — PDF/DOCX файлын хавтас',
+          '--files <f1 f2...> — Тодорхой файлууд',
+          '--min-sim <0-1> — Jaccard давхцлын босго (default: 0.30)',
+          '--keyword <нэр> — Таглах keyword (default: "ЭЕШ жишиг")',
+          '--tag-all — Тохирсон бодлогуудыг keyword-ээр таглах',
+          '--add-missing — Дутуу бодлогуудыг DB-д нэмэх',
+          '--show-missing — Олдоогүй бодлогуудыг дэлгэрэнгүй харуулах',
+          '--report <файл> — JSON тайлан хадгалах',
+        ],
+        note: 'DOCX файлуудыг эхлээд PDF болгоно: libreoffice --headless --convert-to pdf *.docx',
+        examples: [
+          'python manage.py check_eesh_completeness --dir /home/deploy/Documents/1000problems --tag-all --add-missing',
+          'python manage.py check_eesh_completeness --dir /home/deploy/Documents/1000problems --show-missing',
+        ],
+      },
+      {
+        name: 'create_eesh_problems',
+        help: 'ЭЕШ блюпринт дагуу "ЭЕШ жишиг" загвараас Claude API-р шинэ бодлого үүсгэх (интерактив)',
+        usage: 'python manage.py create_eesh_problems --category ALGEBRA --type mc --count 5',
+        flags: [
+          '--year <он> — Блюпринтийн он (default: 2026)',
+          '--category <кат> — NUMBER_THEORY | ALGEBRA | ANALYSIS | GEOMETRY | PROBABILITY',
+          '--all-categories — Бүх 5 категориор дамжин үүсгэх',
+          '--type <mc|fill> — mc=сонгох тест, fill=нөхөх тест (default: mc)',
+          '--count <N> — Нэг категорид үүсгэх тоо (default: 5)',
+          '--level <1-4> — Хүндрэлийн түвшин (default: blueprint дагуу автомат)',
+          '--author <username> — Зохиогч (default: baysa)',
+          '--keyword <нэр> — Загвар хайх keyword (default: "ЭЕШ жишиг")',
+          '--no-confirm — Баталгаажуулалгүйгээр шууд хадгалах',
+          '--seed <N> — Random seed',
+        ],
+        note: 'Интерактив горим: [y] хадгал · [r] дахин үүсгэх · [s] алгасах · [q] гарах. Бодлогуудын автор: baysa.',
+        examples: [
+          'python manage.py create_eesh_problems --category ALGEBRA --type mc --count 3',
+          'python manage.py create_eesh_problems --category GEOMETRY --type fill --count 2 --level 3',
+          'python manage.py create_eesh_problems --all-categories --type mc --count 5 --no-confirm',
+        ],
+      },
+      {
+        name: 'fill_eesh_quiz',
+        help: 'ЭЕШ темплэйт тест үүсгэж, бодлогуудыг Claude API-р нэг нэгээр солих (дурын үед зогсоож, үргэлжлүүлнэ)',
+        usage: 'python manage.py fill_eesh_quiz --create --year 2026 --variant A',
+        flags: [
+          '--create — Шинэ темплэйт тест үүсгэх (байгаа бодлогуудаар)',
+          '--year <он> — Блюпринтийн он (default: 2026)',
+          '--variant <A|B|...> — Хувилбарын нэр (default: A)',
+          '--quiz-id <id> — Дүүргэх / үргэлжлүүлэх quiz ID',
+          '--from-order <N> — Хэдэн дугааргаас эхлэх (default: 1)',
+          '--no-confirm — Баталгаажуулалгүйгээр шууд хадгалах',
+          '--author <username> — Зохиогч (default: baysa)',
+          '--keyword <нэр> — Загвар хайх keyword (default: "ЭЕШ жишиг")',
+        ],
+        note: 'Явц ~/.eesh_fill_<quiz_id>.json файлд хадгалагдана. q дарж зогсоод --quiz-id-аар дахин ажиллуулна.',
+        examples: [
+          'python manage.py fill_eesh_quiz --create --year 2026 --variant A',
+          'python manage.py fill_eesh_quiz --quiz-id 7159',
+          'python manage.py fill_eesh_quiz --quiz-id 7159 --from-order 15',
+          'python manage.py fill_eesh_quiz --quiz-id 7159 --no-confirm',
+        ],
+      },
+    ],
+  },
+  {
     category: 'Төлбөр & Мессеж',
     color: '#ffc107',
     commands: [
@@ -498,6 +619,22 @@ function DjangoCommandsPage() {
                             {flag.includes(' — ') && (
                               <span className="ms-1">{flag.split(' — ')[1]}</span>
                             )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {cmd.note && (
+                      <div className="mt-2 small px-2 py-1 rounded" style={{ background: '#fff3cd', color: '#856404' }}>
+                        ⚠ {cmd.note}
+                      </div>
+                    )}
+                    {cmd.examples && cmd.examples.length > 0 && (
+                      <div className="mt-2">
+                        <div className="small text-muted ps-2 mb-1">Жишээ:</div>
+                        {cmd.examples.map((ex, eIdx) => (
+                          <div key={eIdx} className="mt-1 d-flex align-items-center ps-2">
+                            <code className="small bg-dark text-light px-2 py-1 rounded">{ex}</code>
+                            <CopyButton text={ex} />
                           </div>
                         ))}
                       </div>

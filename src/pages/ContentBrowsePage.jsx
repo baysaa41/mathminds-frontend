@@ -767,11 +767,16 @@ function ContentBrowsePage() {
                             >
                               <LivePreview content={stripPSTricks(config.getBody(item), 150)} />
                             </div>
-                            <div className="text-muted small mt-2 pt-2 border-top">
-                              <i className="bi bi-person me-1"></i>
-                              <UserName user={item.author} />
-                              {config.getDate(item) && (
-                                <><span className="mx-1">·</span><span>{formatDate(config.getDate(item))}</span></>
+                            <div className="text-muted small mt-2 pt-2 border-top d-flex justify-content-between align-items-center">
+                              <div>
+                                <i className="bi bi-person me-1"></i>
+                                <UserName user={item.author} />
+                                {config.getDate(item) && (
+                                  <><span className="mx-1">·</span><span>{formatDate(config.getDate(item))}</span></>
+                                )}
+                              </div>
+                              {contentType === 'quizzes' && (
+                                <span className="text-muted" style={{ fontSize: '0.75rem' }}>#{item.id}</span>
                               )}
                             </div>
                           </Card.Body>
