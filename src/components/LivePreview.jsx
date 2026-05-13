@@ -228,7 +228,26 @@ function applyLatexFilters(text) {
   // href=, src= гэх мэт HTML attribute дотор аль хэдийн байгаа URL-г орхино
   html = html.replace(
     /(?<![="'>])(https?:\/\/[^\s<>"']+)/g,
-    '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
+    (match, url) => {
+      let cleanUrl = url;
+      // Strip trailing punctuation unlikely to be part of a URL
+      cleanUrl = cleanUrl.replace(/[.,;:!?]+$/, '');
+      // Strip unbalanced trailing closing parentheses/brackets
+      while (
+        cleanUrl.endsWith(')') &&
+        (cleanUrl.match(/\(/g) || []).length < (cleanUrl.match(/\)/g) || []).length
+      ) {
+        cleanUrl = cleanUrl.slice(0, -1);
+      }
+      while (
+        cleanUrl.endsWith(']') &&
+        (cleanUrl.match(/\[/g) || []).length < (cleanUrl.match(/\]/g) || []).length
+      ) {
+        cleanUrl = cleanUrl.slice(0, -1);
+      }
+      const suffix = url.slice(cleanUrl.length);
+      return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer">${cleanUrl}</a>${suffix}`;
+    }
   );
 
   return html;
