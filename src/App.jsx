@@ -100,6 +100,8 @@ const AIGuidePage = lazy(() => import('./pages/AIGuidePage.jsx'));
 
 // Admin
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const AIConversationsPage = lazy(() => import('./pages/AIConversationsPage.jsx'));
+const AdminConversationPage = lazy(() => import('./pages/AdminConversationPage.jsx'));
 const ReportsPage = lazy(() => import('./pages/ReportsPage.jsx'));
 const MMOImportPage = lazy(() => import('./pages/MMOImportPage.jsx'));
 const DocImportPage = lazy(() => import('./pages/DocImportPage.jsx'));
@@ -434,6 +436,26 @@ function App() {
           element={
             <AdminRoute>
               <DjangoCommandsPage />
+            </AdminRoute>
+          }
+        />
+
+        {/* AI Conversations - Staff only */}
+        <Route
+          path="/admin/ai-conversations"
+          element={
+            <AdminRoute>
+              <AIConversationsPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/conversation/:conversationUuid"
+          element={
+            <AdminRoute>
+              <MathJaxContext version={3} config={mathJaxConfig}>
+                <AdminConversationPage />
+              </MathJaxContext>
             </AdminRoute>
           }
         />

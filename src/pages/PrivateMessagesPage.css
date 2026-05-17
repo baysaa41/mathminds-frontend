@@ -518,6 +518,32 @@
   min-width: 56px;
 }
 
+.ai-thinking-bubble {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background: #f1f5f9;
+  border-radius: 18px;
+  font-size: 0.9rem;
+  color: #475569;
+}
+
+.ai-thinking-icon {
+  font-size: 1.1rem;
+  animation: thinking-pulse 1.6s ease-in-out infinite;
+}
+
+.ai-thinking-text {
+  font-weight: 500;
+  color: #334155;
+}
+
+@keyframes thinking-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.6; transform: scale(0.92); }
+}
+
 .typing-dot {
   width: 8px;
   height: 8px;
@@ -534,4 +560,21 @@
 @keyframes typing-bounce {
   0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
   30%           { transform: translateY(-6px); opacity: 1; }
+}
+
+/* Typewriter cursor */
+.typewriter-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: currentColor;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: cursor-blink 0.7s steps(1) infinite;
+  opacity: 0.7;
+}
+
+@keyframes cursor-blink {
+  0%, 100% { opacity: 0.7; }
+  50%       { opacity: 0; }
 }

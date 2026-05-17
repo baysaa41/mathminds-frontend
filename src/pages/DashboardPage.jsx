@@ -15,6 +15,7 @@ import {
   ShoppingCart,
   Terminal,
   Mail,
+  Bot,
 } from 'lucide-react';
 import authService from '../services/authService';
 
@@ -225,6 +226,25 @@ function DashboardPage() {
               <Link to="/admin/commands" className="btn" style={{ backgroundColor: '#20c997', color: '#fff' }}>
                 <Terminal size={18} className="me-2" />
                 Заавар үзэх
+              </Link>
+            </Card.Body>
+          </Card>
+        </Col>
+
+        {/* AI Ярилцлагууд */}
+        <Col md={6} lg={4}>
+          <Card className="h-100 shadow-sm" style={{ borderColor: '#0ea5e9' }}>
+            <Card.Body className="d-flex flex-column">
+              <div className="mb-3">
+                <Bot size={40} style={{ color: '#0ea5e9' }} />
+              </div>
+              <Card.Title>AI Багштай Ярилцлагууд</Card.Title>
+              <Card.Text className="text-muted flex-grow-1">
+                Хэрэглэгчид AI багштай хийсэн ярилцлагуудын жагсаалт, хайлт.
+              </Card.Text>
+              <Link to="/admin/ai-conversations" className="btn" style={{ backgroundColor: '#0ea5e9', color: '#fff' }}>
+                <Bot size={18} className="me-2" />
+                Харах
               </Link>
             </Card.Body>
           </Card>

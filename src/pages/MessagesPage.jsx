@@ -84,9 +84,46 @@ const openImageViewer = (e) => {
 
 // React.memo: message prop өөрчлөгдөөгүй бол re-render хийхгүй
 // → MathJax/LivePreview зөвхөн шинэ мессеж дээр л ажиллана
-const MessageBubble = memo(function MessageBubble({ message, currentUserId, onReuse }) {
+const MessageBubble = memo(function MessageBubble({ message, currentUserId, onReuse, isTypewriting, onTypewritingDone }) {
   const isSent = message.author?.id === currentUserId;
   const [copied, setCopied] = useState(false);
+  const bubbleRef = useRef(null);
+  const [displayedLen, setDisplayedLen] = useState(isTypewriting ? 0 : Infinity);
+
+  // Typewriter animation
+  useEffect(() => {
+    if (!isTypewriting) {
+      setDisplayedLen(Infinity);
+      return;
+    }
+    setDisplayedLen(0);
+    const content = message.content || '';
+    const SPEED = 25; // ms per character
+    let current = 0;
+    const tick = () => {
+      current = Math.min(current + 1, content.length);
+      setDisplayedLen(current);
+      if (current < content.length) {
+        timerId = setTimeout(tick, SPEED);
+      } else {
+        onTypewritingDone?.();
+      }
+    };
+    let timerId = setTimeout(tick, SPEED);
+    return () => clearTimeout(timerId);
+  }, [isTypewriting, message.content]); // eslint-disable-line
+
+  // MathJax: дууссаны дараа л render хийнэ
+  useEffect(() => {
+    if (displayedLen < (message.content?.length || 0)) return;
+    if (bubbleRef.current && window.MathJax?.typesetPromise) {
+      window.MathJax.typesetPromise([bubbleRef.current]).catch(() => {});
+    }
+  }, [displayedLen, message.content]);
+
+  const visibleContent = displayedLen >= (message.content?.length || 0)
+    ? null // бүтэн — LivePreview ашиглана
+    : (message.content || '').substring(0, displayedLen);
 
   const handleCopy = () => {
     if (!message.content) return;
@@ -99,8 +136,15 @@ const MessageBubble = memo(function MessageBubble({ message, currentUserId, onRe
   return (
     <div className={`message ${isSent ? 'sent' : 'received'}`}>
       <div className="message-bubble">
-        <div className="message-content">
-          <LivePreview content={message.content} />
+        <div className="message-content" ref={bubbleRef}>
+          {visibleContent !== null ? (
+            <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+              {visibleContent}
+              <span className="typewriter-cursor" />
+            </span>
+          ) : (
+            <LivePreview content={message.content} />
+          )}
         </div>
         {message.attachments && message.attachments.length > 0 && (
           <div className="message-images">
@@ -164,6 +208,7 @@ const MessagesPage = ({ aiOnly = false }) => {
   const [error, setError] = useState(null);
   const [sending, setSending] = useState(false);
   const [aiTyping, setAiTyping] = useState(false);
+  const [typewriterMsgId, setTypewriterMsgId] = useState(null);
   const [uploadedImages, setUploadedImages] = useState([]);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -320,7 +365,8 @@ const MessagesPage = ({ aiOnly = false }) => {
           abortController.signal,
         )
         if (cancelled) return
-        setAiTyping(data.ai_typing || false)
+        const isTyping = data.ai_typing || false
+        setAiTyping(isTyping)
         if (data.messages?.length > 0) {
           setMessages((prev) => {
             const realMessages = prev.filter((m) => !m._isOptimistic)
@@ -328,19 +374,20 @@ const MessagesPage = ({ aiOnly = false }) => {
           })
           const last = data.messages[data.messages.length - 1]
           if (last.id) lastMessageIdRef.current = last.id
+          // AI мессеж ирвэл typewriter эффект эхлүүлнэ
+          const aiMsg = [...data.messages].reverse().find((m) => m.author?.is_ai_teacher)
+          if (aiMsg?.uuid) setTypewriterMsgId(aiMsg.uuid)
         }
+        // AI бичиж байх үед 500ms, эс бөгөөс 2000ms
+        if (!cancelled) timeoutId = setTimeout(poll, isTyping ? 500 : 2000)
       } catch (err) {
-        // AbortError болон CanceledError (axios) — дохио дамжуулж зогсоосон тул орхино
         if (cancelled || err?.name === 'AbortError' || err?.name === 'CanceledError') return
-        // Бусад алдаа чимээгүй орхино
-      }
-      if (!cancelled) {
-        timeoutId = setTimeout(poll, 2000)
+        if (!cancelled) timeoutId = setTimeout(poll, 2000)
       }
     }
 
-    // Анхны poll 2 секундын дараа эхэлнэ
-    timeoutId = setTimeout(poll, 2000)
+    // Анхны poll 1 секундын дараа эхэлнэ
+    timeoutId = setTimeout(poll, 1000)
 
     return () => {
       cancelled = true
@@ -494,6 +541,9 @@ const MessagesPage = ({ aiOnly = false }) => {
     if (textareaRef.current) textareaRef.current.value = ''
     setUploadedImages([])
     if (fileInputRef.current) fileInputRef.current.value = ''
+
+    // AI харилцагчтай бол мессеж илгээмэгц "Бодож байна" шууд харуулна
+    if (isAiConv(selectedConversation)) setAiTyping(true)
 
     try {
       setSending(true)
@@ -863,13 +913,17 @@ const MessagesPage = ({ aiOnly = false }) => {
                     message={message}
                     currentUserId={user?.id}
                     onReuse={handleReuse}
+                    isTypewriting={message.uuid === typewriterMsgId}
+                    onTypewritingDone={() => setTypewriterMsgId(null)}
                   />
                 ))
               )}
               {/* AI typing indicator */}
               {aiTyping && (
-                <div className="message received">
-                  <div className="message-bubble typing-bubble">
+                <div className="message received ai-thinking-row">
+                  <div className="message-bubble ai-thinking-bubble">
+                    <span className="ai-thinking-icon">🧠</span>
+                    <span className="ai-thinking-text">Бодож байна</span>
                     <span className="typing-dot" />
                     <span className="typing-dot" />
                     <span className="typing-dot" />
