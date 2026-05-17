@@ -84,7 +84,7 @@ const openImageViewer = (e) => {
 
 // React.memo: message prop өөрчлөгдөөгүй бол re-render хийхгүй
 // → MathJax/LivePreview зөвхөн шинэ мессеж дээр л ажиллана
-const MessageBubble = memo(function MessageBubble({ message, currentUserId, onReuse, isTypewriting, onTypewritingDone }) {
+const MessageBubble = memo(function MessageBubble({ message, currentUserId, onReuse, isTypewriting, onTypewritingDone, onTypewritingStart }) {
   const isSent = message.author?.id === currentUserId;
   const [copied, setCopied] = useState(false);
   const bubbleRef = useRef(null);
@@ -102,6 +102,7 @@ const MessageBubble = memo(function MessageBubble({ message, currentUserId, onRe
     let current = 0;
     const tick = () => {
       current = Math.min(current + 1, content.length);
+      if (current === 1) onTypewritingStart?.();
       setDisplayedLen(current);
       if (current < content.length) {
         timerId = setTimeout(tick, SPEED);
@@ -209,6 +210,7 @@ const MessagesPage = ({ aiOnly = false }) => {
   const [sending, setSending] = useState(false);
   const [aiTyping, setAiTyping] = useState(false);
   const [typewriterMsgId, setTypewriterMsgId] = useState(null);
+  const [typewriterStarted, setTypewriterStarted] = useState(false);
   const [uploadedImages, setUploadedImages] = useState([]);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -370,13 +372,18 @@ const MessagesPage = ({ aiOnly = false }) => {
         if (data.messages?.length > 0) {
           setMessages((prev) => {
             const realMessages = prev.filter((m) => !m._isOptimistic)
-            return [...realMessages, ...data.messages]
+            const existingIds = new Set(realMessages.map((m) => m.id).filter(Boolean))
+            const brandNew = data.messages.filter((m) => !existingIds.has(m.id))
+            return [...realMessages, ...brandNew]
           })
           const last = data.messages[data.messages.length - 1]
           if (last.id) lastMessageIdRef.current = last.id
           // AI мессеж ирвэл typewriter эффект эхлүүлнэ
           const aiMsg = [...data.messages].reverse().find((m) => m.author?.is_ai_teacher)
-          if (aiMsg?.uuid) setTypewriterMsgId(aiMsg.uuid)
+          if (aiMsg?.uuid) {
+            setTypewriterStarted(false)
+            setTypewriterMsgId(aiMsg.uuid)
+          }
         }
         // AI бичиж байх үед 500ms, эс бөгөөс 2000ms
         if (!cancelled) timeoutId = setTimeout(poll, isTyping ? 500 : 2000)
@@ -914,12 +921,13 @@ const MessagesPage = ({ aiOnly = false }) => {
                     currentUserId={user?.id}
                     onReuse={handleReuse}
                     isTypewriting={message.uuid === typewriterMsgId}
-                    onTypewritingDone={() => setTypewriterMsgId(null)}
+                    onTypewritingDone={() => { setTypewriterMsgId(null); setTypewriterStarted(false); }}
+                    onTypewritingStart={() => setTypewriterStarted(true)}
                   />
                 ))
               )}
               {/* AI typing indicator */}
-              {aiTyping && (
+              {(aiTyping || (typewriterMsgId && !typewriterStarted)) && (
                 <div className="message received ai-thinking-row">
                   <div className="message-bubble ai-thinking-bubble">
                     <span className="ai-thinking-icon">🧠</span>
