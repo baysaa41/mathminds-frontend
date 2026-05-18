@@ -397,7 +397,7 @@ function ProblemCard({
       )}
 
       {isAnswered ? (
-        problem.type === 4 ? (
+        (problem.type === 1 || problem.type === 4) ? (
           <AnswerInput
             problem={problem}
             value={ua.answer || ''}
