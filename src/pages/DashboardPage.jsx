@@ -16,6 +16,7 @@ import {
   Terminal,
   Mail,
   Bot,
+  Languages,
 } from 'lucide-react';
 import authService from '../services/authService';
 
@@ -245,6 +246,29 @@ function DashboardPage() {
               <Link to="/admin/ai-conversations" className="btn" style={{ backgroundColor: '#0ea5e9', color: '#fff' }}>
                 <Bot size={18} className="me-2" />
                 Харах
+              </Link>
+            </Card.Body>
+          </Card>
+        </Col>
+
+        {/* Нэр томьёо */}
+        <Col md={6} lg={4}>
+          <Card className="h-100 shadow-sm" style={{ borderColor: '#fd7e14' }}>
+            <Card.Body className="d-flex flex-column">
+              <div className="mb-3">
+                <Languages size={40} style={{ color: '#fd7e14' }} />
+              </div>
+              <Card.Title>Нэр томьёо</Card.Title>
+              <Card.Text className="text-muted flex-grow-1">
+                AI багш ашиглах зөв/буруу нэр томьёоны жагсаалт. Шинэ нэр томьёо нэмэх, засварлах.
+              </Card.Text>
+              <Link
+                to="/admin/math-terms"
+                className="btn"
+                style={{ backgroundColor: '#fd7e14', color: '#fff' }}
+              >
+                <Languages size={18} className="me-2" />
+                Удирдах
               </Link>
             </Card.Body>
           </Card>

@@ -371,10 +371,16 @@ const MessagesPage = ({ aiOnly = false }) => {
         setAiTyping(isTyping)
         if (data.messages?.length > 0) {
           setMessages((prev) => {
+            const optimistic = prev.filter((m) => m._isOptimistic)
             const realMessages = prev.filter((m) => !m._isOptimistic)
             const existingIds = new Set(realMessages.map((m) => m.id).filter(Boolean))
             const brandNew = data.messages.filter((m) => !existingIds.has(m.id))
-            return [...realMessages, ...brandNew]
+            // Optimistic мессежүүдийг хадгалж, poll-д ирсэн мессежтэй давхардаагүй эсэхийг шалгана
+            const pollIds = new Set(brandNew.map((m) => m.id))
+            const safeOptimistic = optimistic.filter(
+              (m) => !pollIds.has(m.id)
+            )
+            return [...realMessages, ...safeOptimistic, ...brandNew]
           })
           const last = data.messages[data.messages.length - 1]
           if (last.id) lastMessageIdRef.current = last.id
@@ -534,6 +540,12 @@ const MessagesPage = ({ aiOnly = false }) => {
 
     // Optimistic: мессежийг шууд харуулах
     const tempId = 'temp-' + Date.now()
+    const optimisticAttachments = uploadedImages.map((file, i) => ({
+      id: `temp-att-${i}`,
+      file: URL.createObjectURL(file),
+      file_type: file.type.startsWith('image/') ? 'image' : 'other',
+      uploaded_at: new Date().toISOString(),
+    }))
     setMessages((prev) => [
       ...prev,
       {
@@ -541,7 +553,7 @@ const MessagesPage = ({ aiOnly = false }) => {
         author: user,
         content: inputText,
         created_at: new Date().toISOString(),
-        attachments: [],
+        attachments: optimisticAttachments,
         _isOptimistic: true,
       },
     ])

@@ -109,6 +109,7 @@ const AllUsersPage = lazy(() => import('./pages/AllUsersPage.jsx'));
 const SalesStatsPage = lazy(() => import('./pages/SalesStatsPage.jsx'));
 const CurriculumAdminPage = lazy(() => import('./pages/CurriculumAdminPage.jsx'));
 const DjangoCommandsPage = lazy(() => import('./pages/DjangoCommandsPage.jsx'));
+const MathTermsPage = lazy(() => import('./pages/MathTermsPage.jsx'));
 
 // Email Campaigns
 const EmailCampaignsPage = lazy(() => import('./pages/EmailCampaignsPage.jsx'));
@@ -456,6 +457,16 @@ function App() {
               <MathJaxContext version={3} config={mathJaxConfig}>
                 <AdminConversationPage />
               </MathJaxContext>
+            </AdminRoute>
+          }
+        />
+
+        {/* Math Terms - Staff only */}
+        <Route
+          path="/admin/math-terms"
+          element={
+            <AdminRoute>
+              <MathTermsPage />
             </AdminRoute>
           }
         />
