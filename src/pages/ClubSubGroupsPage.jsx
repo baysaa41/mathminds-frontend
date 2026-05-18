@@ -818,8 +818,11 @@ const ClubSubGroupsPage = () => {
   };
 
   // Бүлэгт орогдоогүй гишүүдийн тоо
+  // List API → member_ids, detail API → members. Аль нэгийг ашиглана.
   const ungroupedCount = (() => {
-    const inGroup = new Set(subgroups.flatMap(g => (g.members || []).map(m => m.id)));
+    const inGroup = new Set(subgroups.flatMap(g =>
+      g.member_ids ?? (g.members || []).map(m => m.id)
+    ));
     return clubMembers.filter(m => !inGroup.has(m.id)).length;
   })();
 

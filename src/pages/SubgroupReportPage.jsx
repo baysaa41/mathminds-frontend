@@ -9,6 +9,40 @@ import { Download, BarChart2, Clock, Dumbbell } from 'lucide-react';
 import apiClient from '../api/axiosConfig';
 import AppBreadcrumb from '../components/common/AppBreadcrumb';
 
+const CategoryStatsPanel = ({ stats, title }) => {
+  if (!stats?.length) return null;
+  return (
+    <div className="card border-0 shadow-sm mb-3">
+      <div className="card-header bg-white fw-semibold py-2" style={{ fontSize: '0.85rem' }}>
+        {title || 'Категори тус бүрийн амжилт'}
+      </div>
+      <div className="card-body py-2 px-3">
+        {stats.map(cs => {
+          const pct = cs.total > 0 ? Math.round(cs.correct / cs.total * 100) : 0;
+          const barColor = pct >= 70 ? '#198754' : pct >= 50 ? '#fd7e14' : '#dc3545';
+          return (
+            <div key={cs.id} className="mb-2">
+              <div className="d-flex align-items-center justify-content-between mb-1">
+                <div className="d-flex align-items-center gap-2">
+                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: cs.color, display: 'inline-block', flexShrink: 0 }} />
+                  <span className="fw-medium" style={{ fontSize: '0.82rem' }}>{cs.name_mn || cs.name}</span>
+                </div>
+                <div className="d-flex align-items-center gap-3" style={{ fontSize: '0.78rem' }}>
+                  <span className="text-muted">{cs.correct}/{cs.total} бодлого</span>
+                  <span className="fw-bold" style={{ color: barColor, minWidth: 38, textAlign: 'right' }}>{pct}%</span>
+                </div>
+              </div>
+              <div style={{ height: 6, background: '#e9ecef', borderRadius: 4, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${pct}%`, background: barColor, borderRadius: 4, transition: 'width 0.3s' }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 function fmtTime(secs) {
   if (!secs) return null;
   const h = Math.floor(secs / 3600);
@@ -167,7 +201,7 @@ const SubgroupReportPage = () => {
 
   if (!data) return null;
 
-  const { club_name, subgroup_name, assignments } = data;
+  const { club_name, subgroup_name, assignments, overall_category_stats } = data;
   const selAssignment = assignments.find(a => a.id === selectedAssignmentId);
 
   const breadcrumbItems = [
@@ -283,6 +317,7 @@ const SubgroupReportPage = () => {
 
       {/* ── Таб 1: Нэгдсэн тайлан ── */}
       {activeTab === 'combined' && (
+        <>
         <div className="card border-0 shadow-sm border-top-0 rounded-top-0">
           <div style={{ overflowX: 'auto' }}>
             <table className="table table-bordered table-sm mb-0 align-middle"
@@ -394,6 +429,15 @@ const SubgroupReportPage = () => {
             </div>
           </div>
         </div>
+        {overall_category_stats?.length > 0 && (
+          <div className="mt-3">
+            <CategoryStatsPanel
+              stats={overall_category_stats}
+              title="Бүх сорилгын нэгдсэн — категори тус бүрийн амжилт"
+            />
+          </div>
+        )}
+        </>
       )}
 
       {/* ── Таб 2: Сорилго тус бүрийн тайлан ── */}
@@ -464,6 +508,14 @@ const SubgroupReportPage = () => {
             </div>
           ) : (
             <div className="text-center text-muted py-4">Сорилго сонгоно уу</div>
+          )}
+          {selAssignment?.category_stats?.length > 0 && (
+            <div className="p-3 border-top">
+              <CategoryStatsPanel
+                stats={selAssignment.category_stats}
+                title={`"${selAssignment.title}" — категори тус бүрийн амжилт`}
+              />
+            </div>
           )}
         </div>
       )}

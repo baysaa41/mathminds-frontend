@@ -744,7 +744,7 @@ const ClubExercisesReportPage = () => {
                             <Tooltip>
                               <div className="text-start" style={{ fontSize: '0.78rem' }}>
                                 <div><strong>{fmtDateFull(d)}</strong></div>
-                                <div>Хариулт: {cell.answered}/{date_totals[d] || cell.answered}</div>
+                                <div>Хариулт: {cell.answered}/{cell.total_items || date_totals[d] || cell.answered}</div>
                                 <div>Зөв: {cell.correct} ({cell.correct_rate}%)</div>
                                 {cell.time_spent > 0 && <div>Хугацаа: {fmtTime(cell.time_spent)}</div>}
                                 <div className="mt-1 text-info" style={{ fontSize: '0.7rem' }}>Дарж дэлгэрэнгүй харах</div>
