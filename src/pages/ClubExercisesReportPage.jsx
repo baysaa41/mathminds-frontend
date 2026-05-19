@@ -9,7 +9,7 @@ import Modal from 'react-bootstrap/Modal';
 import ProgressBar from 'react-bootstrap/ProgressBar';
 import OverlayTrigger from 'react-bootstrap/OverlayTrigger';
 import Tooltip from 'react-bootstrap/Tooltip';
-import { Dumbbell, Clock, Download, ChevronLeft, ChevronRight, CheckCircle, XCircle, Minus, Lightbulb, Sparkles, Users } from 'lucide-react';
+import { Dumbbell, Clock, Download, ChevronLeft, ChevronRight, CheckCircle, XCircle, Minus, Lightbulb, Sparkles, Users, Trash2 } from 'lucide-react';
 import apiClient from '../api/axiosConfig';
 
 async function downloadExcel(clubId, sgFilter) {
@@ -70,19 +70,18 @@ function cellStyle(cell) {
 
 
 // ── Тухайн өдрийн дэлгэрэнгүй Modal ──────────────────────────────
-const DayDetailModal = ({ show, date, clubId, sgFilter, _allMembers, onHide, onNavigateReport }) => {
+const DayDetailModal = ({ show, date, clubId, sgFilter, _allMembers, onHide, onNavigateReport, isTeacher }) => {
   const [loading, setLoading] = useState(false);
   const [detail, setDetail] = useState(null);
   const [error, setError] = useState(null);
   const [expandedStudent, setExpandedStudent] = useState(null);
   const [showAbsent, setShowAbsent] = useState(false);
+  const [deletingKey, setDeletingKey] = useState(null);
 
-  useEffect(() => {
+  const fetchDetail = useCallback(() => {
     if (!show || !date || !clubId) return;
     setLoading(true);
-    setDetail(null);
     setError(null);
-    setExpandedStudent(null);
     const params = { date };
     if (sgFilter) params.subgroup_id = sgFilter;
     apiClient.get(`/api/clubs/${clubId}/daily_exercise_detail/`, { params })
@@ -90,6 +89,43 @@ const DayDetailModal = ({ show, date, clubId, sgFilter, _allMembers, onHide, onN
       .catch(e => setError(e.response?.data?.detail || 'Алдаа гарлаа.'))
       .finally(() => setLoading(false));
   }, [show, date, clubId, sgFilter]);
+
+  useEffect(() => {
+    setDetail(null);
+    setExpandedStudent(null);
+    fetchDetail();
+  }, [fetchDetail]);
+
+  const handleDeleteAnswer = useCallback(async (itemId, userId) => {
+    const key = `${itemId}-${userId}`;
+    if (!window.confirm('Энэ хариултыг устгах уу?')) return;
+    setDeletingKey(key);
+    try {
+      await apiClient.delete(`/api/clubs/${clubId}/daily-practice/answer/`, {
+        data: { item_id: itemId, user_id: userId },
+      });
+      fetchDetail();
+    } catch (e) {
+      alert(e.response?.data?.error || 'Устгахад алдаа гарлаа.');
+    } finally {
+      setDeletingKey(null);
+    }
+  }, [clubId, fetchDetail]);
+
+  const handleDeleteUserAnswers = useCallback(async (userId, fullName) => {
+    if (!window.confirm(`${fullName}-ийн ${fmtDateFull(date)} өдрийн бүх хариултыг устгах уу?`)) return;
+    setDeletingKey(`user-${userId}`);
+    try {
+      await apiClient.delete(`/api/clubs/${clubId}/daily-practice/answer/`, {
+        data: { date, user_id: userId },
+      });
+      fetchDetail();
+    } catch (e) {
+      alert(e.response?.data?.error || 'Устгахад алдаа гарлаа.');
+    } finally {
+      setDeletingKey(null);
+    }
+  }, [clubId, date, fetchDetail]);
 
   if (!show) return null;
 
@@ -246,11 +282,24 @@ const DayDetailModal = ({ show, date, clubId, sgFilter, _allMembers, onHide, onN
                               {fmtTime(s.summary.time_spent)}
                             </td>
                             <td className="text-center">
-                              <Button variant="link" size="sm" className="p-0 text-primary"
-                                style={{ fontSize: '0.72rem' }}
-                                onClick={e => { e.stopPropagation(); onNavigateReport(s.username); }}>
-                                📊
-                              </Button>
+                              <div className="d-flex align-items-center justify-content-center gap-1">
+                                <Button variant="link" size="sm" className="p-0 text-primary"
+                                  style={{ fontSize: '0.72rem' }}
+                                  onClick={e => { e.stopPropagation(); onNavigateReport(s.username); }}>
+                                  📊
+                                </Button>
+                                {isTeacher && (
+                                  <Button variant="link" size="sm" className="p-0 text-danger"
+                                    style={{ fontSize: '0.72rem' }}
+                                    disabled={deletingKey === `user-${s.user_id}`}
+                                    title="Энэ сурагчийн бүх хариулт устгах"
+                                    onClick={e => { e.stopPropagation(); handleDeleteUserAnswers(s.user_id, s.full_name); }}>
+                                    {deletingKey === `user-${s.user_id}`
+                                      ? <span className="spinner-border spinner-border-sm" style={{ width: 10, height: 10 }} />
+                                      : <Trash2 size={12} />}
+                                  </Button>
+                                )}
+                              </div>
                             </td>
                           </tr>
 
@@ -288,7 +337,7 @@ const DayDetailModal = ({ show, date, clubId, sgFilter, _allMembers, onHide, onN
                                         {!ans?.answer && isCorrect === null && (
                                           <div className="text-muted" style={{ fontSize: '0.68rem' }}>Хариулаагүй</div>
                                         )}
-                                        <div className="d-flex gap-2 mt-1 flex-wrap">
+                                        <div className="d-flex gap-2 mt-1 flex-wrap align-items-center">
                                           {ans?.time_spent > 0 && (
                                             <span className="d-flex align-items-center gap-1 text-muted" style={{ fontSize: '0.65rem' }}>
                                               <Clock size={9} />{fmtTime(ans.time_spent)}
@@ -303,6 +352,18 @@ const DayDetailModal = ({ show, date, clubId, sgFilter, _allMembers, onHide, onN
                                             <span className="d-flex align-items-center gap-1" style={{ fontSize: '0.65rem', color: '#7c3aed' }}>
                                               <Sparkles size={9} />AI
                                             </span>
+                                          )}
+                                          {isTeacher && ans && (
+                                            <button
+                                              className="btn btn-link p-0 ms-auto text-danger"
+                                              style={{ fontSize: '0.65rem', lineHeight: 1 }}
+                                              disabled={deletingKey === `${p.item_id}-${s.user_id}`}
+                                              title="Хариулт устгах"
+                                              onClick={e => { e.stopPropagation(); handleDeleteAnswer(p.item_id, s.user_id); }}>
+                                              {deletingKey === `${p.item_id}-${s.user_id}`
+                                                ? <span className="spinner-border spinner-border-sm" style={{ width: 10, height: 10 }} />
+                                                : <Trash2 size={11} />}
+                                            </button>
                                           )}
                                         </div>
                                       </div>
@@ -365,7 +426,7 @@ const DayDetailModal = ({ show, date, clubId, sgFilter, _allMembers, onHide, onN
 const PAGE_SIZE = 14;
 
 const ClubExercisesReportPage = () => {
-  const { clubData } = useOutletContext();
+  const { clubData, isTeacherOrAdmin } = useOutletContext();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const clubId = clubData?.id;
@@ -818,6 +879,7 @@ const ClubExercisesReportPage = () => {
         allMembers={filtered}
         onHide={closeModal}
         onNavigateReport={username => navigate(`/clubs/${clubId}/report/${username}`)}
+        isTeacher={isTeacherOrAdmin}
       />
     </div>
   );
