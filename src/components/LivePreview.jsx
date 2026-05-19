@@ -101,7 +101,7 @@ function convertTabularToHTML(text) {
   if (!text) return text;
   // ... (код хэвээрээ) ...
   return text.replace(
-    /\\begin\{tabular\}\{([^\}]*)\}([\s\S]*?)\\end\{tabular\}/g,
+    /\\begin\{tabular\}\{([^}]*)\}([\s\S]*?)\\end\{tabular\}/g,
     (match, colSpec, body) => {
       const colMatches = colSpec.match(/[lcr]/g) || [];
       const colCount =
@@ -110,9 +110,9 @@ function convertTabularToHTML(text) {
       const rows = rawRows.map((r) => r.trim()).filter((r) => r.length > 0);
       let html = `<div class="table-responsive"><table class="table table-sm" style="border-collapse:collapse;">`;
       const cellStyle = 'style="border:1px solid #dee2e6;padding:6px;vertical-align:middle;"';
-      rows.forEach((rowRaw, rowIndex) => {
+      rows.forEach((rowRaw, _rowIndex) => {
         let row = rowRaw.replace(/\\hline/g, '').trim();
-        let rowColorMatch = row.match(/(?:<comment>\s*)?\\rowcolor\{([^\}]+)\}(?:\s*<\/comment>)?/);
+        let rowColorMatch = row.match(/(?:<comment>\s*)?\\rowcolor\{([^}]+)\}(?:\s*<\/comment>)?/);
         let rowClass = '';
         if (rowColorMatch) {
           const colorName = rowColorMatch[1].trim();
@@ -213,7 +213,7 @@ function applyLatexFilters(text) {
 
   html = html.replace(/\\emph{(.*?)}/g, '<em>$1</em>');
   html = html.replace(/\\textbf{(.*?)}/g, '<strong>$1</strong>');
-  html = html.replace(/``(.*?)\'\'/g, '<q>$1</q>');
+  html = html.replace(/``(.*?)''/g, '<q>$1</q>');
   html = html.replace(/\\begin{center}(.*?)\\end{center}/gs, '<div class="text-center">$1</div>');
   html = html.replace(/\n\n/g, '<br/><br/>');
 

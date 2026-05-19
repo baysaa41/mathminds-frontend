@@ -82,7 +82,7 @@ const SolutionEditPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [generatingAI, setGeneratingAI] = useState(false);
+  const [generatingAI, _setGeneratingAI] = useState(false);
   const [generatingNote, setGeneratingNote] = useState(false);
   const [improvingAI, setImprovingAI] = useState(false);
   const [showImproveModal, setShowImproveModal] = useState(false);
@@ -245,20 +245,6 @@ const SolutionEditPage = () => {
       setSolutionFormulas(prev => prev.filter(f => f.id !== formulaId));
     } catch { /* ignore */ }
     finally { setFormulaUpdating(false); }
-  };
-
-  const handleGenerateAI = async () => {
-    try {
-      setGeneratingAI(true);
-      setAiError(null);
-      await apiClient.post(`/api/integral/problems/${id}/generate_ai_solution/`);
-      await fetchProblemAndSolutions();
-    } catch (err) {
-      console.error('AI бодолт үүсгэхэд алдаа:', err);
-      setAiError(err.response?.data?.error || 'AI бодолт үүсгэж чадсангүй.');
-    } finally {
-      setGeneratingAI(false);
-    }
   };
 
   const handleGenerateNote = async () => {

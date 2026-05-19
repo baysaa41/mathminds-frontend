@@ -139,6 +139,7 @@ export function convertLatexStructure(html) {
   processed = unwrapParagraph(processed);
 
   // 7. Math блокуудыг сэргээх
+  // eslint-disable-next-line no-control-regex
   processed = processed.replace(/\x00MATH(\d+)\x00/g, (_, i) => mathBlocks[+i]);
 
   return processed;

@@ -10,6 +10,7 @@ import { MathJax } from 'better-react-mathjax';
 import { RefreshCw, ChevronLeft, ChevronRight, Copy, Check, BookOpen } from 'lucide-react';
 
 // LaTeX-ийн жишээнүүд
+// eslint-disable-next-line react-refresh/only-export-components
 export const LATEX_EXAMPLES = [
   {
     title: 'Үндсэн тэмдэгтүүд ба илэрхийлэл',

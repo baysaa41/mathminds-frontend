@@ -70,11 +70,6 @@ const GroupDetailPage = () => {
     }
   };
 
-  // PostForm-с шинэ пост нэмэгдэхэд дуудагдах функц
-  const handleNewPost = (newPost) => {
-    setPosts([newPost, ...posts]);
-  };
-
   // Пост устгасны дараа жагсаалтаас хасах
   const handlePostDeleted = (deletedPostId) => {
     setPosts(posts.filter((post) => post.id !== deletedPostId));

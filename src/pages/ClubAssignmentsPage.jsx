@@ -42,7 +42,7 @@ const ClubAssignmentsPage = () => {
   const [quizSearchQuery, setQuizSearchQuery] = useState('');
   const [quizResults, setQuizResults] = useState([]);
   const [quizLoading, setQuizLoading] = useState(false);
-  const [assigningQuizId, setAssigningQuizId] = useState(null);
+  const [assigningQuizId, _setAssigningQuizId] = useState(null);
 
   // Assign confirm modal (deadline, title, subgroups)
   const [assignModal, setAssignModal] = useState(null); // quiz object

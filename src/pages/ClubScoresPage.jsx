@@ -170,7 +170,7 @@ const ClubScoresPage = () => {
                   }}>
                     Сурагч ({filtered.length})
                   </th>
-                  {assignments.map((a, ci) => (
+                  {assignments.map((a, _ci) => (
                     <th key={a.id} className="text-center"
                       style={{ minWidth: 90, whiteSpace: 'normal', wordBreak: 'break-word' }}>
                       <div style={{ fontSize: '0.72rem', lineHeight: 1.2 }}>{a.title}</div>

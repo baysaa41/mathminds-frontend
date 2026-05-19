@@ -188,7 +188,7 @@ function ResultBanner({ ua, onRetry, problemType }) {
   );
 }
 
-function ExtraInfo({ extra, itemId, enrichState, onEnrich, problemUuid, problemId, hasAnswered }) {
+function ExtraInfo({ extra, itemId, enrichState, onEnrich, problemUuid, _problemId, hasAnswered }) {
   const { user } = useAuth();
   const [showSolution, setShowSolution] = useState(false);
   const [showExplanation, setShowExplanation] = useState(false);
@@ -197,7 +197,6 @@ function ExtraInfo({ extra, itemId, enrichState, onEnrich, problemUuid, problemI
   const hasSolution   = !!(extra?.solution?.solution || extra?.solution?.hint);
   const hasTopics     = (extra?.topics || []).length > 0;
   const hasKeywords   = (extra?.keywords || []).length > 0;
-  const hasFormulas   = (extra?.formulas || []).length > 0;
   const hasAiTopics   = (enrich.topics || []).length > 0;
   const hasAiSolution = !!enrich.solution;
 

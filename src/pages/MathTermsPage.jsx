@@ -60,7 +60,7 @@ function MathTermsPage() {
       const res = await apiClient.get('/api/integral/math-terms/', { params });
       const data = res.data.results ?? res.data;
       setTerms(Array.isArray(data) ? data : []);
-    } catch (err) {
+    } catch {
       setError('Нэр томьёоны жагсаалтыг ачааллахад алдаа гарлаа.');
     } finally {
       setLoading(false);

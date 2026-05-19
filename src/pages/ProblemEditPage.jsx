@@ -7,7 +7,6 @@ import apiClient from '../api/axiosConfig.js';
 import { MathJax } from 'better-react-mathjax';
 import LivePreview from '../components/LivePreview.jsx';
 import RichTextEditor from '../components/RichTextEditor';
-import { useAuth } from '../context/AuthContext.jsx';
 
 // React Bootstrap components
 import Container from 'react-bootstrap/Container';
@@ -140,8 +139,6 @@ const ProblemEditPage = () => {
   const { uuid: id } = useParams();
   const navigate = useNavigate();
   const { setPageTitle } = useOutletContext();
-  const { user } = useAuth();
-
   const [problem, setProblem] = useState(null);
   const [choices, setChoices] = useState([]);
   const [keywords, setKeywords] = useState([]);
@@ -165,7 +162,6 @@ const ProblemEditPage = () => {
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
 
   // Debounce
-  const debouncedStatement = useDebounce(problem?.statement || '', 500);
   const debouncedChoiceValues = useDebounce(
     choices.map((c) => c.value),
     500
@@ -306,7 +302,7 @@ const ProblemEditPage = () => {
 
   // --- Choices Handlers (Formset logic) ---
   const handleChoiceChange = (index, e) => {
-    const { name, value, type } = e.target;
+    const { name, value } = e.target;
     // Label-г гараар өөрчлөхийг хориглосон тул энд шалгалт хийх шаардлагагүй
     const val = name === 'default_score' ? parseInt(value, 10) || 0 : value;
 

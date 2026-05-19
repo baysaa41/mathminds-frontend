@@ -55,10 +55,6 @@ function FollowingPage() {
     navigate(`/profile/${followingUsername}`);
   };
 
-  const handleBack = () => {
-    navigate(`/profile/${username}`);
-  };
-
   const handleToggleFollow = async (targetUsername, userId, e) => {
     e.stopPropagation(); // Prevent navigation to profile
     if (processingIds.has(userId)) return;

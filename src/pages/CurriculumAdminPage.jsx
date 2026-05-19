@@ -782,7 +782,7 @@ function WeeklyTopicsTab({ programs }) {
       const params = { program: filterProgram };
       const res = await svc.getWeeklyTopics(params);
       setTopics(res.data);
-    } catch {}
+    } catch { /* ignore */ }
   }, [filterProgram]);
 
   const handleGenerateArticle = async (t) => {

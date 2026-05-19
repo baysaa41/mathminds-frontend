@@ -12,6 +12,7 @@ function renderMarkdown(text) {
   if (!text) return '';
   const saved = [];
   const save = (m) => { const k = `\x00L${saved.length}\x00`; saved.push(m); return k; };
+  // eslint-disable-next-line no-control-regex
   const restore = (h) => h.replace(/\x00L(\d+)\x00/g, (_, i) => saved[+i]);
   let t = text;
   t = t.replace(/\$\$[\s\S]*?\$\$/g, save);

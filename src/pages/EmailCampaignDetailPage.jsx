@@ -2,7 +2,7 @@
 // Имэйл кампанит ажлын дэлгэрэнгүй хуудас
 
 import { useState, useEffect } from 'react';
-import { Link, useParams, useNavigate, useOutletContext } from 'react-router-dom';
+import { Link, useParams, useOutletContext } from 'react-router-dom';
 import { getCampaign, sendTestEmail, sendCampaign } from '../services/emailService';
 
 // React Bootstrap
@@ -24,7 +24,6 @@ import AppBreadcrumb from '../components/common/AppBreadcrumb';
 
 const EmailCampaignDetailPage = () => {
   const { id } = useParams();
-  const navigate = useNavigate();
   const { setPageTitle } = useOutletContext();
 
   const [campaign, setCampaign] = useState(null);

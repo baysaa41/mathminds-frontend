@@ -2,7 +2,7 @@
 // Санал болгох хэрэглэгчдийн бүрэн жагсаалт
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import Container from 'react-bootstrap/Container';
 import Card from 'react-bootstrap/Card';
 import ListGroup from 'react-bootstrap/ListGroup';
@@ -16,7 +16,6 @@ import UserAvatar from '../components/UserAvatar';
 import UserName from '../components/UserName';
 
 const SuggestedUsersPage = () => {
-  const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -72,10 +71,6 @@ const SuggestedUsersPage = () => {
         return newSet;
       });
     }
-  };
-
-  const handleBack = () => {
-    navigate(-1);
   };
 
   if (loading) {

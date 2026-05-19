@@ -290,12 +290,8 @@ export const removeTeacher = async (clubId, username) => {
 };
 
 export const removeMember = async (clubId, username) => {
-  try {
-    const response = await apiClient.post(`/api/clubs/${clubId}/remove_member/`, { username });
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await apiClient.post(`/api/clubs/${clubId}/remove_member/`, { username });
+  return response.data;
 };
 
 /**

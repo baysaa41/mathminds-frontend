@@ -139,7 +139,7 @@ function MembershipSummary({ isOwnProfile = false }) {
     return null;
   }
 
-  const { current_status, statistics, by_tier, by_month } = summary;
+  const { current_status, statistics, by_tier } = summary;
   const TierIcon = tierConfig[current_status.current_tier]?.icon || Star;
   const tierColor = tierConfig[current_status.current_tier]?.color || 'secondary';
   const tierEmoji = tierConfig[current_status.current_tier]?.emoji || '❓';

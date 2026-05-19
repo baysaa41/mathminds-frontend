@@ -25,8 +25,8 @@ function ProductListPage() {
 
   // Модалын state-үүд (хуучин төлбөрийн систем)
   const [showModal, setShowModal] = useState(false);
-  const [modalData, setModalData] = useState(null);
-  const [localInvoiceId, setLocalInvoiceId] = useState(null);
+  const [modalData, _setModalData] = useState(null);
+  const [localInvoiceId, _setLocalInvoiceId] = useState(null);
 
   // Ангиллын тодорхойлолт
   const categories = [

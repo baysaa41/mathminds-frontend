@@ -85,8 +85,8 @@ const ClubMembersPage = () => {
   const creator = club.creator;
 
   // Гишүүдийг ангилах: удирдагч, багш нар, энгийн гишүүд
-  const creatorMember = members.find(m => m.id === creator);
-  const teacherMembers = members.filter(m =>
+  const _creatorMember = members.find(m => m.id === creator);
+  const _teacherMembers = members.filter(m =>
     admins.some(a => a.id === m.id) && m.id !== creator
   );
   const regularMembers = members.filter(m =>

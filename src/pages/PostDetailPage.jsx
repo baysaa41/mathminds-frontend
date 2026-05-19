@@ -1,7 +1,7 @@
 // frontend/src/pages/PostDetailPage.jsx
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
+import { useParams, useOutletContext } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import apiClient from '../api/axiosConfig';
 
@@ -202,7 +202,6 @@ const TYPE_LABELS = {
 const PostDetailPage = () => {
   const { postId } = useParams();
   const { user }   = useAuth();
-  const navigate   = useNavigate();
   const { setPageTitle } = useOutletContext() || {};
 
   const [ancestors, setAncestors]         = useState([]);

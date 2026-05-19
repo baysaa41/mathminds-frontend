@@ -5,7 +5,6 @@ import RightSidebar from '../components/RightSidebar';
 import JoinClubModal from '../components/JoinClubModal';
 import ScrollRestoration from '../components/ScrollRestoration';
 import AppHeader from './AppHeader';
-import { useAuth } from '../context/AuthContext';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 
 import { MathJaxContext } from 'better-react-mathjax';

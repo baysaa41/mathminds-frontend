@@ -28,7 +28,6 @@ const ClubInfoPage = ({ forceInfo = false }) => {
     return <ClubFeed clubId={club.id} clubName={club.name} />;
   }
 
-  const teachers = club.teachers || [];
   const admins = club.admins || [];
 
   // Удирдагч багшийг багш нарын жагсаалтаас хасах

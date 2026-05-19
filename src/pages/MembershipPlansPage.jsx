@@ -29,7 +29,7 @@ import {
   Users,
   Shield,
   Sparkles,
-  Infinity,
+  Infinity as InfinityIcon,
   Lock,
 } from 'lucide-react';
 
@@ -207,13 +207,6 @@ function MembershipPlansPage() {
   const formatPrice = (price) => {
     if (price === 0) return 'Үнэгүй';
     return new Intl.NumberFormat('mn-MN').format(price) + '₮';
-  };
-
-  const getDiscountPercent = (plan) => {
-    if (plan.price.monthly === 0) return 0;
-    const yearlyMonthly = plan.price.yearly / 12;
-    const discount = ((plan.price.monthly - yearlyMonthly) / plan.price.monthly) * 100;
-    return Math.round(discount);
   };
 
   return (
@@ -505,7 +498,7 @@ function MembershipPlansPage() {
                     {tiers.map((tierKey) => (
                       <td key={tierKey} className="text-center">
                         {membershipPlans[tierKey].limitations.max_clubs === '∞' ? (
-                          <Infinity size={20} className="text-warning" />
+                          <InfinityIcon size={20} className="text-warning" />
                         ) : (
                           membershipPlans[tierKey].limitations.max_clubs
                         )}
@@ -520,7 +513,7 @@ function MembershipPlansPage() {
                     {tiers.map((tierKey) => (
                       <td key={tierKey} className="text-center">
                         {membershipPlans[tierKey].limitations.max_club_members === '∞' ? (
-                          <Infinity size={20} className="text-warning" />
+                          <InfinityIcon size={20} className="text-warning" />
                         ) : (
                           membershipPlans[tierKey].limitations.max_club_members
                         )}
@@ -535,7 +528,7 @@ function MembershipPlansPage() {
                     {tiers.map((tierKey) => (
                       <td key={tierKey} className="text-center">
                         {membershipPlans[tierKey].limitations.boosted_posts_per_month === '∞' ? (
-                          <Infinity size={20} className="text-warning" />
+                          <InfinityIcon size={20} className="text-warning" />
                         ) : membershipPlans[tierKey].limitations.boosted_posts_per_month === 0 ? (
                           <XCircle size={18} className="text-muted" />
                         ) : (

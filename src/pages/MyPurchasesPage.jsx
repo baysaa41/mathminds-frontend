@@ -56,7 +56,7 @@ export default function MyPurchasesPage() {
     return <Badge bg={statusInfo.variant}>{statusInfo.text}</Badge>;
   };
 
-  const handleDownload = async (purchaseId, productName) => {
+  const handleDownload = async (purchaseId, _productName) => {
     try {
       const downloadUrl = `${import.meta.env.VITE_API_BASE_URL}/api/v1/purchases/${purchaseId}/download/`;
       const token = localStorage.getItem('access_token');

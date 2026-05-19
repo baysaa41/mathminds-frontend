@@ -2,7 +2,7 @@
 // Багшийн урилгуудыг харах, зөвшөөрөх/татгалзах хуудас
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useOutletContext } from 'react-router-dom';
+import { useOutletContext } from 'react-router-dom';
 import Container from 'react-bootstrap/Container';
 import Card from 'react-bootstrap/Card';
 import Button from 'react-bootstrap/Button';
@@ -17,7 +17,6 @@ import Toast from 'react-bootstrap/Toast';
 import ToastContainer from 'react-bootstrap/ToastContainer';
 
 const TeacherInvitationsPage = () => {
-  const navigate = useNavigate();
   const { setPageTitle } = useOutletContext();
   const { toast, showToast, hideToast } = useToast();
 

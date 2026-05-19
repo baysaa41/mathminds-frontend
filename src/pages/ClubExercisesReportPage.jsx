@@ -70,7 +70,7 @@ function cellStyle(cell) {
 
 
 // ── Тухайн өдрийн дэлгэрэнгүй Modal ──────────────────────────────
-const DayDetailModal = ({ show, date, clubId, sgFilter, allMembers, onHide, onNavigateReport }) => {
+const DayDetailModal = ({ show, date, clubId, sgFilter, _allMembers, onHide, onNavigateReport }) => {
   const [loading, setLoading] = useState(false);
   const [detail, setDetail] = useState(null);
   const [error, setError] = useState(null);

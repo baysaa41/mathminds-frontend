@@ -15,6 +15,7 @@ export const PrefillProvider = ({ children }) => {
 };
 
 // 3. Custom Hook (Хайрцгаас "бэлэг" авах/хийх хялбар арга)
+// eslint-disable-next-line react-refresh/only-export-components
 export const usePrefill = () => {
   const context = useContext(PrefillContext);
   if (!context) {

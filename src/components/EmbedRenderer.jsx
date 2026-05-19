@@ -67,7 +67,7 @@ const EmbedRenderer = ({ url, postId }) => {
 
   try {
     // 1. YouTube - YouTubePlayer компонент ашиглах (progress tracking-тэй)
-    let ytMatch = url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/);
+    let ytMatch = url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch[?]v=|[&]v=)([^#&?]*).*/);
     if (ytMatch && ytMatch[2].length === 11) {
       return <YouTubePlayer videoId={ytMatch[2]} postId={postId} />;
     }

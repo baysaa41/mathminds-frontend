@@ -1,7 +1,7 @@
 // frontend/src/pages/PasswordResetConfirmPage.jsx (ӨӨРЧЛӨГДСӨН)
 
 import { useState } from 'react'; // useEffect-г хасав
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import apiClient from '../api/axiosConfig';
 
 // React Bootstrap
@@ -15,7 +15,6 @@ import Form from 'react-bootstrap/Form';
 const PasswordResetConfirmPage = () => {
   // URL-ийн параметруудыг авах
   const { uidb64, token } = useParams();
-  const navigate = useNavigate();
 
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');

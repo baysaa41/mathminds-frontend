@@ -16,7 +16,7 @@ const VimeoPlayer = ({ videoId, postId }) => {
   const saveIntervalRef = useRef(null);
   const observerRef = useRef(null);
   const autoPausedRef = useRef(false);
-  const [playerReady, setPlayerReady] = useState(false);
+  const [_playerReady, setPlayerReady] = useState(false);
 
   // LocalStorage key - Хэрэглэгч бүрт тусдаа
   const getStorageKey = useCallback(() => {

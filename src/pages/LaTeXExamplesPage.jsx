@@ -2,7 +2,7 @@
 // Бүх LaTeX жишээнүүдийг нэгэн зэрэг харуулах хуудас
 
 import React, { useState } from 'react';
-import { useNavigate, useOutletContext } from 'react-router-dom';
+import { useOutletContext } from 'react-router-dom';
 import { useEffect } from 'react';
 import Container from 'react-bootstrap/Container';
 import Card from 'react-bootstrap/Card';
@@ -15,7 +15,6 @@ import AppBreadcrumb from '../components/common/AppBreadcrumb';
 import { LATEX_EXAMPLES } from '../components/LatexTutorialWidget';
 
 const LaTeXExamplesPage = () => {
-  const navigate = useNavigate();
   const { setPageTitle } = useOutletContext();
   const [copiedIndex, setCopiedIndex] = useState(null);
 

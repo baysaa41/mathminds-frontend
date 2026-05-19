@@ -4,7 +4,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useOutletContext, Link } from 'react-router-dom';
 import apiClient from '../api/axiosConfig.js';
-import { useAuth } from '../context/AuthContext.jsx';
 import LivePreview from '../components/LivePreview.jsx';
 
 // React Bootstrap components
@@ -22,7 +21,6 @@ import Modal from 'react-bootstrap/Modal';
 
 const QuizTakePage = () => {
   const { uuid: id } = useParams(); // quiz uuid
-  const { user } = useAuth();
   const navigate = useNavigate();
   const { setPageTitle } = useOutletContext();
 

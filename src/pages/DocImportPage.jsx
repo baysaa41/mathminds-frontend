@@ -2,7 +2,6 @@
 // Баримт бичгээс бодлогуудыг AI-аар таньж импортлох хуудас
 
 import React, { useState, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import apiClient from '../api/axiosConfig.js';
 import LivePreview from '../components/LivePreview.jsx';
 
@@ -382,8 +381,6 @@ function FileResultSection({ result, onProblemsChange }) {
 // ─── Main Page ─────────────────────────────────────────────────────────────
 
 export default function DocImportPage() {
-  const navigate = useNavigate();
-
   const [activeTab, setActiveTab] = useState('ai'); // 'ai' | 'json'
 
   const [files, setFiles] = useState([]);

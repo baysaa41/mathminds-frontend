@@ -12,11 +12,6 @@ const MONTHS_MN = [
   '7-р сар', '8-р сар', '9-р сар', '10-р сар', '11-р сар', '12-р сар',
 ];
 
-function formatDay(dateStr) {
-  const d = new Date(dateStr + 'T00:00:00');
-  return `${d.getDate()}`;
-}
-
 function fmtTime(secs) {
   if (!secs) return null;
   const m = Math.floor(secs / 60);

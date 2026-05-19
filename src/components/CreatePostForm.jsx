@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   Form,
   Button,
@@ -24,7 +23,6 @@ import EmojiPickerButton from './EmojiPickerButton';
  * @param {String} clubName - Optional club name for display
  */
 const CreatePostForm = ({ onPostCreated, clubId = null, clubName = null }) => {
-  const navigate = useNavigate();
   const { prefillData, setPrefillData } = usePrefill();
 
   // --- Form fields ---

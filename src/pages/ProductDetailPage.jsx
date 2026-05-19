@@ -2,7 +2,7 @@
 // Бүтээгдэхүүний дэлгэрэнгүй хуудас
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
@@ -28,7 +28,6 @@ import AppBreadcrumb from '../components/common/AppBreadcrumb';
 
 export default function ProductDetailPage() {
   const { id } = useParams();
-  const navigate = useNavigate();
   const { user } = useAuth();
 
   const [product, setProduct] = useState(null);

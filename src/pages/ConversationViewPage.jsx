@@ -62,7 +62,7 @@ const ConversationViewPage = () => {
         ]);
         setConversation(conv);
         setMessages(msgData.messages || []);
-      } catch (err) {
+      } catch {
         setError('Харилцан яриа олдсонгүй эсвэл устгагдсан байна.');
       } finally {
         setLoading(false);

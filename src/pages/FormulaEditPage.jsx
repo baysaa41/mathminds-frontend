@@ -5,7 +5,6 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useOutletContext, Link } from 'react-router-dom';
 import apiClient from '../api/axiosConfig.js';
 import { MathJax } from 'better-react-mathjax';
-import { useAuth } from '../context/AuthContext.jsx';
 import RichTextEditor from '../components/RichTextEditor';
 
 // React Bootstrap components
@@ -43,27 +42,11 @@ import {
   Calculator,
 } from 'lucide-react';
 
-// --- Debounce Hook ---
-const useDebounce = (value, delay) => {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
-  return debouncedValue;
-};
-
 // --- Томьёо Засварлах Хуудас ---
 const FormulaEditPage = () => {
   const { uuid: id } = useParams();
   const navigate = useNavigate();
   const { setPageTitle } = useOutletContext();
-  const { user } = useAuth();
-
   const [formula, setFormula] = useState(null);
   const [topics, setTopics] = useState([]);
   const [keywords, setKeywords] = useState([]);
@@ -81,8 +64,6 @@ const FormulaEditPage = () => {
   const [viewMode, setViewMode] = useState('source'); // 'visual' or 'source' - default: source
   const [isCopied, setIsCopied] = useState(false);
   const [originalTitle, setOriginalTitle] = useState('');
-
-  const debouncedContent = useDebounce(formula?.content || '', 500);
 
   // --- Data Fetching ---
   useEffect(() => {
