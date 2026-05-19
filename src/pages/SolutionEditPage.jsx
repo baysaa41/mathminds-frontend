@@ -375,7 +375,7 @@ const SolutionEditPage = () => {
         </Stack>
       </div>
 
-      {/* Бодлогын нөхцөл - товч харуулах */}
+      {/* Бодлогын нөхцөл */}
       <Card className="mb-4 bg-light border-0">
         <Card.Body className="p-3">
           <h6 className="fw-semibold mb-2">Бодлогын нөхцөл:</h6>
@@ -384,8 +384,7 @@ const SolutionEditPage = () => {
               className="mathjax-content small text-muted"
               style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
             >
-              {problem.statement?.substring(0, 300)}
-              {problem.statement?.length > 300 && '...'}
+              {problem.statement}
             </div>
           </MathJax>
         </Card.Body>
