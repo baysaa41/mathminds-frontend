@@ -227,30 +227,18 @@ const QuizDetailPage = () => {
     if (!selectedClubId || !quiz.problems?.length) return;
     setAddingToClub(true);
     setAddError(null);
-    const problems = quiz.problems;
-    setAddProgress({ current: 0, total: problems.length });
-    let successCount = 0;
-    for (let i = 0; i < problems.length; i++) {
-      setAddProgress({ current: i + 1, total: problems.length });
-      try {
-        const payload = {
-          related_problem_id: problems[i].uuid,
-          club: parseInt(selectedClubId),
-          content: '',
-        };
-        if (selectedSubgroupId) payload.subgroup = parseInt(selectedSubgroupId);
-        await apiClient.post('/api/minds/posts/', payload);
-        successCount++;
-      } catch (err) {
-        console.error(`Бодлого #${problems[i].id} оруулахад алдаа:`, err);
-      }
-    }
-    setAddingToClub(false);
-    if (successCount > 0) {
+    setAddProgress({ current: 0, total: quiz.problems.length });
+    try {
+      const payload = { quiz_id: quiz.id };
+      if (selectedSubgroupId) payload.subgroup_id = parseInt(selectedSubgroupId);
+      await apiClient.post(`/api/clubs/${selectedClubId}/add-quiz-as-exercise/`, payload);
       setAddSuccess(true);
-      setAddProgress({ current: successCount, total: problems.length });
-    } else {
-      setAddError('Бодлого оруулахад алдаа гарлаа. Та клубын багш мөн эсэхийг шалгана уу.');
+      setAddProgress({ current: quiz.problems.length, total: quiz.problems.length });
+    } catch (err) {
+      console.error('Дасгал нэмэхэд алдаа:', err);
+      setAddError('Дасгал нэмэхэд алдаа гарлаа. Та клубын багш мөн эсэхийг шалгана уу.');
+    } finally {
+      setAddingToClub(false);
     }
   };
 
