@@ -217,6 +217,17 @@ function applyLatexFilters(text) {
   html = html.replace(/\\begin{center}(.*?)\\end{center}/gs, '<div class="text-center">$1</div>');
   html = html.replace(/\n\n/g, '<br/><br/>');
 
+  // Markdown bold **text** → <strong>
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+  // Markdown links [text](url) → <a>
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, url) => {
+    if (/^https?:\/\//.test(url)) {
+      return `<a href="${url}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+    }
+    return `<a href="${url}">${text}</a>`;
+  });
+
   // @mention → profile link
   // HTML tag дотор байгаа @-г орхино
   html = html.replace(

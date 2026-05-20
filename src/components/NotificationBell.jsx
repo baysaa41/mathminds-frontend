@@ -117,7 +117,7 @@ const NotificationBell = () => {
 
   // Мэдэгдлийн текстийг форматлах
   const formatNotificationText = (notification) => {
-    const actorName = notification.actor?.username || 'Хэрэглэгч';
+    const actorName = notification.actor?.first_name || notification.actor?.username || 'Хэрэглэгч';
     return `${actorName} ${notification.verb}`;
   };
 

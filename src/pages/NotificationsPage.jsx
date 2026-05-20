@@ -24,20 +24,22 @@ const getNotifIcon = (verb) => {
   return 'bi-bell text-secondary';
 };
 
+const actorName = (actor) => actor?.first_name || actor?.username || 'Хэрэглэгч';
+
 const formatActorText = (notif) => {
   if (notif.is_grouped && notif.grouped_actors?.length > 0) {
     const actors = notif.grouped_actors;
     const total = notif.total_actor_count;
     if (total === 2) {
-      return `${actors[0].username} болон ${actors[1]?.username ?? ''}`;
+      return `${actorName(actors[0])} болон ${actorName(actors[1])}`;
     } else if (total === 3 && actors.length >= 3) {
-      return `${actors[0].username}, ${actors[1].username} болон ${actors[2].username}`;
+      return `${actorName(actors[0])}, ${actorName(actors[1])} болон ${actorName(actors[2])}`;
     } else if (total > 2) {
-      return `${actors[0].username}, ${actors[1]?.username ?? ''} болон ${total - 2} бусад`;
+      return `${actorName(actors[0])}, ${actorName(actors[1])} болон ${total - 2} бусад`;
     }
-    return actors[0].username;
+    return actorName(actors[0]);
   }
-  return notif.actor?.username || 'Хэрэглэгч';
+  return actorName(notif.actor);
 };
 
 /** Post контентыг MathJax-р рендер хийх жижиг компонент */
