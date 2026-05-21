@@ -88,7 +88,7 @@ export default function CheckoutPage() {
 
       if (result.payment_method === 'qpay') {
         // QPay modal харуулах
-        setQpayData(result.qpay_data);
+        setQpayData(result);
         setQpayInvoiceId(result.invoice_id);
         setShowQPayModal(true);
       } else {
