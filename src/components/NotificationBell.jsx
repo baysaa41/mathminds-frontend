@@ -34,8 +34,8 @@ const NotificationBell = () => {
         <Badge
           bg="danger"
           pill
-          className="position-absolute top-0 start-100 translate-middle"
-          style={{ fontSize: '0.65rem' }}
+          className="position-absolute"
+          style={{ fontSize: '0.65rem', top: '1px', right: '-2px' }}
         >
           {unreadCount > 99 ? '99+' : unreadCount}
         </Badge>

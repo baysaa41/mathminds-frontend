@@ -15,8 +15,13 @@ import LivePreview from './LivePreview';
 const getPostTitle = (post) => {
   // Хэрвээ энгийн пост бол content-ийг товчлон харуулна
   if (post.content_type === 'post' || post.content_type === 'repost' || post.content_type === 'reply') {
+    // Content хоосон бол AI тайлбар эсвэл зурган пост гэж харуулна
     if (!post.content || typeof post.content !== 'string') {
-      return '(Агуулгагүй)';
+      if (post.ai_image_description) {
+        const desc = post.ai_image_description;
+        return desc.length > 60 ? desc.substring(0, 60) + '...' : desc;
+      }
+      return '🖼 Зурган пост';
     }
 
     const maxLength = 60;
@@ -104,13 +109,17 @@ const TrendingPostsWidget = () => {
         const response = await apiClient.get('/api/minds/posts/trending/', {
           params: { days: 7, limit: 5 },
         });
-        // Постууд нь content эсвэл related_* объект байх ёстой
+        // Постууд нь ямар нэгэн харуулах агуулгатай байх ёстой
         const validPosts = (response.data || []).filter((post) => {
           if (!post) return false;
 
-          // Энгийн пост бол content байх ёстой
+          // Энгийн пост: content, зураг, эсвэл AI тайлбар байвал харуулна
           if (post.content_type === 'post' || post.content_type === 'repost' || post.content_type === 'reply') {
-            return post.content !== null && post.content !== undefined && typeof post.content === 'string';
+            return (
+              (post.content && typeof post.content === 'string') ||
+              (post.images && post.images.length > 0) ||
+              post.ai_image_description
+            );
           }
 
           // Бодлого, томьёо, өгүүлэл, тест бол холбоотой объект байх ёстой
