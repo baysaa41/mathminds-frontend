@@ -74,7 +74,7 @@ const ProblemBodyPreview = ({ problem }) => (
     )}
     {problem.type === 1 && problem.choices?.length > 0 && (
       <div className="mb-2">
-        {problem.choices.map((choice) => (
+        {[...problem.choices].sort((a, b) => a.label.localeCompare(b.label)).map((choice) => (
           <div key={choice.id} className="d-flex align-items-baseline gap-2 mb-1" style={{ fontSize: '0.88rem' }}>
             <i className="bi bi-circle flex-shrink-0 text-secondary" style={{ fontSize: '0.65rem' }} />
             <LivePreview content={`${choice.label}: ${choice.value}`} />
@@ -84,7 +84,7 @@ const ProblemBodyPreview = ({ problem }) => (
     )}
     {problem.type === 4 && problem.choices?.length > 0 && (
       <div className="mb-2">
-        {problem.choices.map((choice) => (
+        {[...problem.choices].sort((a, b) => a.label.localeCompare(b.label)).map((choice) => (
           <div key={choice.id} className="d-flex align-items-center gap-2 mb-1" style={{ fontSize: '0.88rem' }}>
             <span className="badge bg-secondary flex-shrink-0" style={{ minWidth: 36 }}>
               <LivePreview content={choice.label} />
