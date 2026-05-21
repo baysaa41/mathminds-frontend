@@ -28,6 +28,12 @@ import { Edit3, Save, X, FileText, AlignLeft, Clock, GraduationCap, PlusCircle, 
 const PROBLEM_TYPE_LABELS = { 0: 'Уламжлалт', 1: 'Сонгох', 4: 'Нөхөх' };
 const PROBLEM_TYPE_COLORS = { 0: '#6c757d', 1: '#0d6efd', 4: '#198754' };
 
+// Modal хайлтад raw текст харуулах (LaTeX кодоор нь, render хийхгүй)
+const rawText = (text, maxLen = 160) => {
+  if (!text) return '';
+  return text.replace(/\s+/g, ' ').trim().slice(0, maxLen);
+};
+
 // ── Бодлогын мөр (selected list болон modal аль алинд) ──────────
 const ProblemMeta = ({ problem }) => (
   <div className="d-flex flex-wrap align-items-center gap-1 mt-1">
@@ -949,8 +955,10 @@ const QuizEditPage = () => {
                   return (
                     <ListGroup.Item key={problem.id} className="d-flex align-items-center gap-2 py-2">
                       <div className="flex-grow-1 min-width-0">
-                        <div className="fw-semibold text-truncate">{problem.title || `Бодлого #${problem.id}`}</div>
-                        <ProblemMeta problem={problem} />
+                        <div className="fw-semibold text-truncate">{rawText(problem.title) || `Бодлого #${problem.id}`}</div>
+                        {problem.statement && (
+                          <div className="text-muted small text-truncate">{rawText(problem.statement)}</div>
+                        )}
                       </div>
                       <Button
                         variant={isAdded ? 'success' : 'outline-primary'}
@@ -1159,8 +1167,10 @@ const QuizEditPage = () => {
                       style={isCurrent ? { background: '#f0f7ff' } : undefined}
                     >
                       <div className="flex-grow-1 min-width-0">
-                        <div className="fw-semibold text-truncate">{problem.title || `Бодлого #${problem.id}`}</div>
-                        <ProblemMeta problem={problem} />
+                        <div className="fw-semibold text-truncate">{rawText(problem.title) || `Бодлого #${problem.id}`}</div>
+                        {problem.statement && (
+                          <div className="text-muted small text-truncate">{rawText(problem.statement)}</div>
+                        )}
                       </div>
                       <Button
                         variant={isCurrent ? 'secondary' : isElsewhere ? 'outline-secondary' : 'outline-info'}
