@@ -61,6 +61,45 @@ const ProblemMeta = ({ problem }) => (
   </div>
 );
 
+// ── Бодлогын бүрэн харагдац (QuizTakePage-тай адил) ─────────────
+const ProblemBodyPreview = ({ problem }) => (
+  <div>
+    <div className="fw-semibold mb-1">
+      <LivePreview content={problem.title || `Бодлого #${problem.id}`} />
+    </div>
+    {problem.statement && (
+      <div className="mb-2" style={{ fontSize: '0.92rem' }}>
+        <LivePreview content={problem.statement} />
+      </div>
+    )}
+    {problem.type === 1 && problem.choices?.length > 0 && (
+      <div className="mb-2">
+        {problem.choices.map((choice) => (
+          <div key={choice.id} className="d-flex align-items-baseline gap-2 mb-1" style={{ fontSize: '0.88rem' }}>
+            <i className="bi bi-circle flex-shrink-0 text-secondary" style={{ fontSize: '0.65rem' }} />
+            <LivePreview content={`${choice.label}: ${choice.value}`} />
+          </div>
+        ))}
+      </div>
+    )}
+    {problem.type === 4 && problem.choices?.length > 0 && (
+      <div className="mb-2">
+        {problem.choices.map((choice) => (
+          <div key={choice.id} className="d-flex align-items-center gap-2 mb-1" style={{ fontSize: '0.88rem' }}>
+            <span className="badge bg-secondary flex-shrink-0" style={{ minWidth: 36 }}>
+              <LivePreview content={choice.label} />
+            </span>
+            <span className="border-bottom border-2 border-secondary d-inline-block text-muted"
+              style={{ minWidth: 80 }}>
+            </span>
+          </div>
+        ))}
+      </div>
+    )}
+    <ProblemMeta problem={problem} />
+  </div>
+);
+
 const QuizEditPage = () => {
   const { uuid: id } = useParams();
   const navigate = useNavigate();
@@ -89,14 +128,6 @@ const QuizEditPage = () => {
   const [wasInitiallyPublic, setWasInitiallyPublic] = useState(false);
 
   // ── AI Summary state ──────────────────────────────────────────
-  const [expandedStatements, setExpandedStatements] = useState(new Set());
-  const toggleStatement = (id) =>
-    setExpandedStatements((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-
   const [generatingSummaryFor, setGeneratingSummaryFor] = useState(null);
   const [generatingAll, setGeneratingAll] = useState(false);
   const [generateAllProgress, setGenerateAllProgress] = useState({ current: 0, total: 0 });
@@ -612,44 +643,23 @@ const QuizEditPage = () => {
                               <ListGroup.Item
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
-                                className="d-flex align-items-center gap-2"
+                                className="d-flex align-items-start gap-2 py-3"
                               >
                                 {/* Drag handle */}
                                 <div
                                   {...provided.dragHandleProps}
-                                  className="px-1 text-muted flex-shrink-0"
+                                  className="px-1 text-muted flex-shrink-0 mt-1"
                                   title="Чирч эрэмбийг солих"
                                   style={{ cursor: 'grab' }}
                                 >
                                   <i className="bi bi-grip-vertical" />
                                 </div>
 
-                                <span className="fw-bold flex-shrink-0">{index + 1}.</span>
+                                <span className="fw-bold flex-shrink-0 mt-1">{index + 1}.</span>
 
-                                {/* Бодлогын мэдээлэл */}
+                                {/* Бодлогын бүрэн харагдац */}
                                 <div className="flex-grow-1 min-width-0">
-                                  <div className="d-flex align-items-baseline gap-2">
-                                    <LivePreview content={problem.title || `Бодлого #${problem.id}`} />
-                                    {problem.statement && (
-                                      <button
-                                        type="button"
-                                        className="btn btn-link p-0 text-muted flex-shrink-0"
-                                        style={{ fontSize: '0.72rem' }}
-                                        onClick={() => toggleStatement(problem.id)}
-                                      >
-                                        {expandedStatements.has(problem.id) ? 'нуух' : 'өгүүлбэр'}
-                                      </button>
-                                    )}
-                                  </div>
-                                  {expandedStatements.has(problem.id) && problem.statement && (
-                                    <div
-                                      className="text-muted mt-1"
-                                      style={{ fontSize: '0.82rem', maxHeight: 120, overflowY: 'auto' }}
-                                    >
-                                      <LivePreview content={problem.statement} />
-                                    </div>
-                                  )}
-                                  <ProblemMeta problem={problem} />
+                                  <ProblemBodyPreview problem={problem} />
                                 </div>
 
                                 {/* AI Summary товч */}
@@ -936,15 +946,9 @@ const QuizEditPage = () => {
               ? addProblems.map((problem) => {
                   const isAdded = selectedProblems.some((p) => p.id === problem.id);
                   return (
-                    <ListGroup.Item key={problem.id} className="d-flex align-items-start gap-2 py-2">
+                    <ListGroup.Item key={problem.id} className="d-flex align-items-start gap-2 py-3">
                       <div className="flex-grow-1 min-width-0">
-                        <LivePreview content={problem.title || `Бодлого #${problem.id}`} />
-                        {problem.statement && (
-                          <div className="text-muted mt-1" style={{ fontSize: '0.85rem', maxHeight: 140, overflowY: 'auto' }}>
-                            <LivePreview content={problem.statement} />
-                          </div>
-                        )}
-                        <ProblemMeta problem={problem} />
+                        <ProblemBodyPreview problem={problem} />
                       </div>
                       <Button
                         variant={isAdded ? 'success' : 'outline-primary'}
@@ -1149,17 +1153,11 @@ const QuizEditPage = () => {
                   return (
                     <ListGroup.Item
                       key={problem.id}
-                      className="d-flex align-items-start gap-2 py-2"
+                      className="d-flex align-items-start gap-2 py-3"
                       style={isCurrent ? { background: '#f0f7ff' } : undefined}
                     >
                       <div className="flex-grow-1 min-width-0">
-                        <LivePreview content={problem.title || `Бодлого #${problem.id}`} />
-                        {problem.statement && (
-                          <div className="text-muted mt-1" style={{ fontSize: '0.85rem', maxHeight: 140, overflowY: 'auto' }}>
-                            <LivePreview content={problem.statement} />
-                          </div>
-                        )}
-                        <ProblemMeta problem={problem} />
+                        <ProblemBodyPreview problem={problem} />
                       </div>
                       <Button
                         variant={isCurrent ? 'secondary' : isElsewhere ? 'outline-secondary' : 'outline-info'}
