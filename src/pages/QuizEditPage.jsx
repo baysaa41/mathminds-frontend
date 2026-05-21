@@ -501,14 +501,15 @@ const QuizEditPage = () => {
   const handleOpenReplaceModal = (index) => {
     const prob = selectedProblems[index];
     const catId = prob?.math_category?.id ?? '';
+    const typeFilter = prob?.type != null ? String(prob.type) : '';
     setReplacingIndex(index);
     setReplaceQuery('');
     setReplaceCatId(String(catId));
-    setReplaceTypeFilter('');
+    setReplaceTypeFilter(typeFilter);
     setReplaceProblems([]);
     setReplaceNextPageUrl(null);
     setReplaceLoadError(null);
-    fetchReplaceProblems('', String(catId), '', true);
+    fetchReplaceProblems('', String(catId), typeFilter, true);
   };
 
   const handleCloseReplaceModal = () => {
