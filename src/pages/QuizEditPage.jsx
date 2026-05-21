@@ -139,6 +139,10 @@ const QuizEditPage = () => {
   const [warningAcknowledged, setWarningAcknowledged] = useState(false);
   const [wasInitiallyPublic, setWasInitiallyPublic] = useState(false);
 
+  // ── Auto-save state ───────────────────────────────────────────
+  const [autoSaving, setAutoSaving] = useState(false);
+  const [autoSaveError, setAutoSaveError] = useState(null);
+
   // ── AI Summary state ──────────────────────────────────────────
   const [generatingSummaryFor, setGeneratingSummaryFor] = useState(null);
   const [generatingAll, setGeneratingAll] = useState(false);
@@ -559,19 +563,29 @@ const QuizEditPage = () => {
     return () => { if (el) obs.unobserve(el); };
   }, [replaceNextPageUrl, handleReplaceModalLoadMore]);
 
-  const handleReplaceProblem = (newProblem) => {
+  const handleReplaceProblem = async (newProblem) => {
     if (replacingIndex === null) return;
-    // аль хэдийн байгаа бол солихгүй (өөр индекс дээр)
     const existsElsewhere = selectedProblems.some(
       (p, i) => p.id === newProblem.id && i !== replacingIndex
     );
     if (existsElsewhere) return;
-    setSelectedProblems((prev) => {
-      const arr = [...prev];
-      arr[replacingIndex] = newProblem;
-      return arr;
-    });
+
+    const newProblems = [...selectedProblems];
+    newProblems[replacingIndex] = newProblem;
+    setSelectedProblems(newProblems);
     handleCloseReplaceModal();
+
+    setAutoSaving(true);
+    setAutoSaveError(null);
+    try {
+      await apiClient.patch(`/api/integral/quizzes/${id}/`, {
+        problems: newProblems.map((p) => p.uuid),
+      });
+    } catch {
+      setAutoSaveError('Хадгалахад алдаа гарлаа.');
+    } finally {
+      setAutoSaving(false);
+    }
   };
 
   // ── Render ───────────────────────────────────────────────────
@@ -611,7 +625,17 @@ const QuizEditPage = () => {
             <DragDropContext onDragEnd={handleDragEnd}>
               <Card className="mb-4">
                 <Card.Header as="h5" className="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                  <span>Тестэд багтсан бодлогууд ({selectedProblems.length})</span>
+                  <span className="d-flex align-items-center gap-2">
+                    Тестэд багтсан бодлогууд ({selectedProblems.length})
+                    {autoSaving && (
+                      <span className="text-muted fw-normal" style={{ fontSize: '0.78rem' }}>
+                        <Spinner as="span" size="sm" className="me-1" />хадгалж байна...
+                      </span>
+                    )}
+                    {!autoSaving && autoSaveError && (
+                      <span className="text-danger fw-normal" style={{ fontSize: '0.78rem' }}>{autoSaveError}</span>
+                    )}
+                  </span>
                   <div className="d-flex gap-2">
                     {selectedProblems.some((p) => !p.ai_summary) && (
                       <Button
