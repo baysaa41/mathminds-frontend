@@ -946,16 +946,17 @@ const QuizEditPage = () => {
               ? addProblems.map((problem) => {
                   const isAdded = selectedProblems.some((p) => p.id === problem.id);
                   return (
-                    <ListGroup.Item key={problem.id} className="d-flex align-items-start gap-2 py-3">
+                    <ListGroup.Item key={problem.id} className="d-flex align-items-center gap-2 py-2">
                       <div className="flex-grow-1 min-width-0">
-                        <ProblemBodyPreview problem={problem} />
+                        <div className="fw-semibold text-truncate">{problem.title || `Бодлого #${problem.id}`}</div>
+                        <ProblemMeta problem={problem} />
                       </div>
                       <Button
                         variant={isAdded ? 'success' : 'outline-primary'}
                         size="sm"
                         onClick={() => handleAddProblem(problem)}
                         disabled={isAdded}
-                        className="flex-shrink-0 mt-1"
+                        className="flex-shrink-0"
                       >
                         {isAdded ? <><i className="bi bi-check-lg" /> Нэмэгдсэн</> : 'Нэмэх'}
                       </Button>
@@ -1153,18 +1154,19 @@ const QuizEditPage = () => {
                   return (
                     <ListGroup.Item
                       key={problem.id}
-                      className="d-flex align-items-start gap-2 py-3"
+                      className="d-flex align-items-center gap-2 py-2"
                       style={isCurrent ? { background: '#f0f7ff' } : undefined}
                     >
                       <div className="flex-grow-1 min-width-0">
-                        <ProblemBodyPreview problem={problem} />
+                        <div className="fw-semibold text-truncate">{problem.title || `Бодлого #${problem.id}`}</div>
+                        <ProblemMeta problem={problem} />
                       </div>
                       <Button
                         variant={isCurrent ? 'secondary' : isElsewhere ? 'outline-secondary' : 'outline-info'}
                         size="sm"
                         onClick={() => !isCurrent && !isElsewhere && handleReplaceProblem(problem)}
                         disabled={isCurrent || isElsewhere}
-                        className="flex-shrink-0 mt-1"
+                        className="flex-shrink-0"
                         title={
                           isCurrent ? 'Одоогийн бодлого' :
                           isElsewhere ? 'Аль хэдийн тестэд байна' : 'Энэ бодлогоор солих'
