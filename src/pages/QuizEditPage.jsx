@@ -28,10 +28,15 @@ import { Edit3, Save, X, FileText, AlignLeft, Clock, GraduationCap, PlusCircle, 
 const PROBLEM_TYPE_LABELS = { 0: 'Уламжлалт', 1: 'Сонгох', 4: 'Нөхөх' };
 const PROBLEM_TYPE_COLORS = { 0: '#6c757d', 1: '#0d6efd', 4: '#198754' };
 
-// Modal хайлтад raw текст харуулах (LaTeX кодоор нь, render хийхгүй)
+// Modal хайлтад plain текст харуулах — $ тэмдэг хасна (MathJax trigger болохоос сэргийлнэ)
 const rawText = (text, maxLen = 160) => {
   if (!text) return '';
-  return text.replace(/\s+/g, ' ').trim().slice(0, maxLen);
+  return text
+    .replace(/\$\$[\s\S]*?\$\$|\$[^$\n]*?\$/g, '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, maxLen);
 };
 
 // ── Бодлогын мөр (selected list болон modal аль алинд) ──────────
@@ -68,7 +73,8 @@ const ProblemMeta = ({ problem }) => (
 );
 
 // ── Бодлогын бүрэн харагдац (QuizTakePage-тай адил) ─────────────
-const ProblemBodyPreview = ({ problem }) => (
+// React.memo: problem prop өөрчлөгдөөгүй бол LivePreview дахин render болохгүй
+const ProblemBodyPreview = React.memo(({ problem }) => (
   <div>
     <div className="fw-semibold mb-1">
       <LivePreview content={problem.title || `Бодлого #${problem.id}`} />
@@ -104,7 +110,7 @@ const ProblemBodyPreview = ({ problem }) => (
     )}
     <ProblemMeta problem={problem} />
   </div>
-);
+));
 
 const QuizEditPage = () => {
   const { uuid: id } = useParams();
