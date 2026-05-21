@@ -24,9 +24,21 @@ import Col from 'react-bootstrap/Col';
 
 import { Edit3, Save, X, FileText, AlignLeft, Clock, GraduationCap, PlusCircle, Sparkles, Trash2, ArrowLeftRight, Download, Wand2, Copy } from 'lucide-react';
 
+// ── Бодлогын төрөл ──────────────────────────────────────────────
+const PROBLEM_TYPE_LABELS = { 0: 'Уламжлалт', 1: 'Сонгох', 4: 'Нөхөх' };
+const PROBLEM_TYPE_COLORS = { 0: '#6c757d', 1: '#0d6efd', 4: '#198754' };
+
 // ── Бодлогын мөр (selected list болон modal аль алинд) ──────────
 const ProblemMeta = ({ problem }) => (
-  <div className="d-flex flex-wrap gap-1 mt-1">
+  <div className="d-flex flex-wrap align-items-center gap-1 mt-1">
+    {problem.type !== undefined && problem.type !== null && (
+      <span
+        className="badge"
+        style={{ backgroundColor: PROBLEM_TYPE_COLORS[problem.type] ?? '#6c757d', fontSize: '0.68rem' }}
+      >
+        {PROBLEM_TYPE_LABELS[problem.type] ?? 'Тодорхойгүй'}
+      </span>
+    )}
     {problem.ai_summary ? (
       <span className="text-muted small">
         <Sparkles size={11} className="me-1 text-warning" />
@@ -95,6 +107,7 @@ const QuizEditPage = () => {
   // ── "Бодлого нэмэх" Modal ─────────────────────────────────────
   const [showAddModal, setShowAddModal] = useState(false);
   const [addQuery, setAddQuery] = useState('');
+  const [addTypeFilter, setAddTypeFilter] = useState('');
   const [addProblems, setAddProblems] = useState([]);
   const [addLoading, setAddLoading] = useState(false);
   const [addNextPageUrl, setAddNextPageUrl] = useState(null);
@@ -106,6 +119,7 @@ const QuizEditPage = () => {
   const [replacingIndex, setReplacingIndex] = useState(null);   // солигдох бодлогын index
   const [replaceQuery, setReplaceQuery] = useState('');
   const [replaceCatId, setReplaceCatId] = useState('');
+  const [replaceTypeFilter, setReplaceTypeFilter] = useState('');
   const [replaceProblems, setReplaceProblems] = useState([]);
   const [replaceLoading, setReplaceLoading] = useState(false);
   const [replaceNextPageUrl, setReplaceNextPageUrl] = useState(null);
@@ -363,12 +377,14 @@ const QuizEditPage = () => {
   // ════════════════════════════════════════════════════════════
   // "БОДЛОГО НЭМЭХ" MODAL
   // ════════════════════════════════════════════════════════════
-  const fetchAddProblems = useCallback(async (query, isNew = false) => {
+  const fetchAddProblems = useCallback(async (query, typeFilter, isNew = false) => {
     addLoadingMoreRef.current = true;
     setAddLoading(true);
     setAddLoadError(null);
     try {
-      const res = await apiClient.get('/api/integral/problems/', { params: { search: query, page_size: 10 } });
+      const params = { search: query, page_size: 10 };
+      if (typeFilter !== '') params.type = typeFilter;
+      const res = await apiClient.get('/api/integral/problems/', { params });
       if (res.data && Array.isArray(res.data.results)) {
         setAddProblems((prev) => isNew ? res.data.results : [...prev, ...res.data.results]);
         setAddNextPageUrl(res.data.next);
@@ -384,10 +400,11 @@ const QuizEditPage = () => {
   const handleShowAddModal = () => {
     setShowAddModal(true);
     setAddQuery('');
+    setAddTypeFilter('');
     setAddProblems([]);
     setAddNextPageUrl(null);
     setAddLoadError(null);
-    fetchAddProblems('', true);
+    fetchAddProblems('', '', true);
   };
 
   const handleAddModalLoadMore = useCallback(async () => {
@@ -429,13 +446,14 @@ const QuizEditPage = () => {
   // ════════════════════════════════════════════════════════════
   // "СОЛИХ" MODAL
   // ════════════════════════════════════════════════════════════
-  const fetchReplaceProblems = useCallback(async (query, catId, isNew = false) => {
+  const fetchReplaceProblems = useCallback(async (query, catId, typeFilter, isNew = false) => {
     replaceLoadingMoreRef.current = true;
     setReplaceLoading(true);
     setReplaceLoadError(null);
     try {
       const params = { search: query, page_size: 10 };
       if (catId) params.math_category = catId;
+      if (typeFilter !== '') params.type = typeFilter;
       const res = await apiClient.get('/api/integral/problems/', { params });
       if (res.data && Array.isArray(res.data.results)) {
         setReplaceProblems((prev) => isNew ? res.data.results : [...prev, ...res.data.results]);
@@ -455,10 +473,11 @@ const QuizEditPage = () => {
     setReplacingIndex(index);
     setReplaceQuery('');
     setReplaceCatId(String(catId));
+    setReplaceTypeFilter('');
     setReplaceProblems([]);
     setReplaceNextPageUrl(null);
     setReplaceLoadError(null);
-    fetchReplaceProblems('', String(catId), true);
+    fetchReplaceProblems('', String(catId), '', true);
   };
 
   const handleCloseReplaceModal = () => {
@@ -874,8 +893,8 @@ const QuizEditPage = () => {
           <Modal.Title>Бодлогын сангаас сонгох</Modal.Title>
         </Modal.Header>
         <Modal.Body style={{ minHeight: '60vh' }}>
-          <Form onSubmit={(e) => { e.preventDefault(); fetchAddProblems(addQuery, true); }}>
-            <InputGroup className="mb-3">
+          <Form onSubmit={(e) => { e.preventDefault(); fetchAddProblems(addQuery, addTypeFilter, true); }}>
+            <InputGroup className="mb-2">
               <Form.Control
                 type="text"
                 placeholder="Гарчиг, агуулгаар хайх..."
@@ -888,6 +907,28 @@ const QuizEditPage = () => {
             </InputGroup>
           </Form>
 
+          {/* Төрлийн фильтр */}
+          <div className="btn-group btn-group-sm mb-3 w-100" role="group" aria-label="Бодлогын төрлөөр шүүх">
+            {[
+              { label: 'Бүгд', value: '' },
+              { label: 'Сонгох', value: '1' },
+              { label: 'Нөхөх', value: '4' },
+              { label: 'Уламжлалт', value: '0' },
+            ].map(({ label, value }) => (
+              <button
+                key={value}
+                type="button"
+                className={`btn ${addTypeFilter === value ? 'btn-primary' : 'btn-outline-secondary'}`}
+                onClick={() => {
+                  setAddTypeFilter(value);
+                  fetchAddProblems(addQuery, value, true);
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
           {addLoadError && <Alert variant="danger">{addLoadError}</Alert>}
 
           <ListGroup variant="flush">
@@ -895,9 +936,14 @@ const QuizEditPage = () => {
               ? addProblems.map((problem) => {
                   const isAdded = selectedProblems.some((p) => p.id === problem.id);
                   return (
-                    <ListGroup.Item key={problem.id} className="d-flex align-items-center gap-2">
-                      <div className="flex-grow-1">
+                    <ListGroup.Item key={problem.id} className="d-flex align-items-start gap-2 py-2">
+                      <div className="flex-grow-1 min-width-0">
                         <LivePreview content={problem.title || `Бодлого #${problem.id}`} />
+                        {problem.statement && (
+                          <div className="text-muted mt-1" style={{ fontSize: '0.85rem', maxHeight: 140, overflowY: 'auto' }}>
+                            <LivePreview content={problem.statement} />
+                          </div>
+                        )}
                         <ProblemMeta problem={problem} />
                       </div>
                       <Button
@@ -905,7 +951,7 @@ const QuizEditPage = () => {
                         size="sm"
                         onClick={() => handleAddProblem(problem)}
                         disabled={isAdded}
-                        className="flex-shrink-0"
+                        className="flex-shrink-0 mt-1"
                       >
                         {isAdded ? <><i className="bi bi-check-lg" /> Нэмэгдсэн</> : 'Нэмэх'}
                       </Button>
@@ -1034,10 +1080,10 @@ const QuizEditPage = () => {
           <Form
             onSubmit={(e) => {
               e.preventDefault();
-              fetchReplaceProblems(replaceQuery, replaceCatId, true);
+              fetchReplaceProblems(replaceQuery, replaceCatId, replaceTypeFilter, true);
             }}
           >
-            <Row className="g-2 mb-3">
+            <Row className="g-2 mb-2">
               <Col>
                 <InputGroup>
                   <Form.Control
@@ -1057,7 +1103,7 @@ const QuizEditPage = () => {
                   style={{ minWidth: 160 }}
                   onChange={(e) => {
                     setReplaceCatId(e.target.value);
-                    fetchReplaceProblems(replaceQuery, e.target.value, true);
+                    fetchReplaceProblems(replaceQuery, e.target.value, replaceTypeFilter, true);
                   }}
                 >
                   <option value="">Бүх категори</option>
@@ -1071,6 +1117,28 @@ const QuizEditPage = () => {
             </Row>
           </Form>
 
+          {/* Төрлийн фильтр */}
+          <div className="btn-group btn-group-sm mb-3 w-100" role="group" aria-label="Бодлогын төрлөөр шүүх">
+            {[
+              { label: 'Бүгд', value: '' },
+              { label: 'Сонгох', value: '1' },
+              { label: 'Нөхөх', value: '4' },
+              { label: 'Уламжлалт', value: '0' },
+            ].map(({ label, value }) => (
+              <button
+                key={value}
+                type="button"
+                className={`btn ${replaceTypeFilter === value ? 'btn-primary' : 'btn-outline-secondary'}`}
+                onClick={() => {
+                  setReplaceTypeFilter(value);
+                  fetchReplaceProblems(replaceQuery, replaceCatId, value, true);
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
           {replaceLoadError && <Alert variant="danger">{replaceLoadError}</Alert>}
 
           <ListGroup variant="flush">
@@ -1081,11 +1149,16 @@ const QuizEditPage = () => {
                   return (
                     <ListGroup.Item
                       key={problem.id}
-                      className="d-flex align-items-center gap-2"
+                      className="d-flex align-items-start gap-2 py-2"
                       style={isCurrent ? { background: '#f0f7ff' } : undefined}
                     >
-                      <div className="flex-grow-1">
+                      <div className="flex-grow-1 min-width-0">
                         <LivePreview content={problem.title || `Бодлого #${problem.id}`} />
+                        {problem.statement && (
+                          <div className="text-muted mt-1" style={{ fontSize: '0.85rem', maxHeight: 140, overflowY: 'auto' }}>
+                            <LivePreview content={problem.statement} />
+                          </div>
+                        )}
                         <ProblemMeta problem={problem} />
                       </div>
                       <Button
@@ -1093,7 +1166,7 @@ const QuizEditPage = () => {
                         size="sm"
                         onClick={() => !isCurrent && !isElsewhere && handleReplaceProblem(problem)}
                         disabled={isCurrent || isElsewhere}
-                        className="flex-shrink-0"
+                        className="flex-shrink-0 mt-1"
                         title={
                           isCurrent ? 'Одоогийн бодлого' :
                           isElsewhere ? 'Аль хэдийн тестэд байна' : 'Энэ бодлогоор солих'
