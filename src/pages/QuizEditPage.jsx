@@ -32,7 +32,7 @@ const PROBLEM_TYPE_COLORS = { 0: '#6c757d', 1: '#0d6efd', 4: '#198754' };
 const rawText = (text, maxLen = 160) => {
   if (!text) return '';
   return text
-    .replace(/\$\$[\s\S]*?\$\$|\$[^$\n]*?\$/g, '')
+    .replace(/\$\$/g, '').replace(/\$/g, '')
     .replace(/<[^>]+>/g, '')
     .replace(/\s+/g, ' ')
     .trim()
