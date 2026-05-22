@@ -144,6 +144,10 @@ const QuizzesPage = () => {
               <i className="bi bi-grid-3x3-gap me-1"></i>
               Ангиллаар үзэх
             </Button>
+            <Button variant="outline-success" size="sm" onClick={() => navigate('/quiz/generate-curriculum')}>
+              <i className="bi bi-book me-1"></i>
+              Curriculum-с үүсгэх
+            </Button>
             <Button variant="primary" size="sm" onClick={handleCreateNew} disabled={isCreatingNew}>
               {isCreatingNew ? <Spinner as="span" animation="border" size="sm" /> : (
                 <><i className="bi bi-patch-plus me-1"></i>Шинэ тест</>

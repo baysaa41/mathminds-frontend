@@ -1,14 +1,15 @@
 // src/pages/DjangoCommandsPage.jsx
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Container, Row, Col, Card, Accordion, Badge } from 'react-bootstrap';
-import { Terminal, Copy, Check, ArrowLeft } from 'lucide-react';
+import { Container, Row, Col, Card, Badge, Form, InputGroup, Button } from 'react-bootstrap';
+import { Terminal, Copy, Check, Search, X, ChevronDown, ChevronRight } from 'lucide-react';
 
 const DJANGO_COMMANDS = [
   {
     category: 'Бодлого & Контент',
     color: '#0d6efd',
+    icon: '📚',
     commands: [
       {
         name: 'import_problems',
@@ -69,7 +70,7 @@ const DJANGO_COMMANDS = [
         usage: 'python manage.py import_quiz_answers <excel_file> --quiz-uuid <uuid>',
         flags: [
           '--quiz-uuid <uuid> — Quiz-ийн UUID',
-          '--quiz-title <текст> — Quiz нэрээр хайх (uuid-тай харилцан хамааралтай)',
+          '--quiz-title <текст> — Quiz нэрээр хайх',
           '--list-quizzes — Байгаа quiz-уудын жагсаалт харуулаад гарах',
           '--dry-run — Хадгалахгүй, зөвхөн харуулах',
           '--skip-existing — Хариулт бүртгэгдсэн сурагчийг алгасах (default: устгаж дахин оруулна)',
@@ -121,11 +122,42 @@ const DJANGO_COMMANDS = [
           '--dry-run — Хадгалахгүй, тоог харуулах',
         ],
       },
+      {
+        name: 'delete_quiz_import',
+        help: 'import_quiz_answers-аар үүссэн хэрэглэгч, хариулт, дэд бүлгүүдийг устгах',
+        usage: 'python manage.py delete_quiz_import --quiz-uuid <uuid> --club <id>',
+        flags: [
+          '--quiz-uuid <uuid> — Quiz-ийн UUID (эсвэл --quiz-title)',
+          '--quiz-title <текст> — Quiz нэрийн хэсэг',
+          '--club <id|reg_code> — Клубын ID эсвэл reg_code',
+          '--username-prefix <угтвар> — Устгах хэрэглэгчийн prefix (default: exam_)',
+          '--subgroups <нэр...> — Устгах дэд бүлгийн нэрүүд',
+          '--keep-users — Хэрэглэгчийн бүртгэлийг устгахгүй',
+          '--keep-answers — Answers/AnswerSheets устгахгүй',
+          '--dry-run — Зөвхөн юу устгагдах болохыг харуулах',
+        ],
+        note: 'Устгах дараалал: 1) Answers/AnswerSheets → 2) Клуб гишүүнчлэл → 3) Дэд бүлгүүд → 4) Хэрэглэгч.',
+        examples: [
+          'python manage.py delete_quiz_import --quiz-uuid <uuid> --club 5 --dry-run',
+          'python manage.py delete_quiz_import --quiz-uuid <uuid> --club 5 --username-prefix khanbogd_',
+        ],
+      },
+      {
+        name: 'fix_duplicate_mc_answers',
+        help: 'Давхардсан MC хариулт засч, answer sheet-уудын оноог дахин тооцоолох',
+        usage: 'python manage.py fix_duplicate_mc_answers',
+        flags: [
+          '--dry-run — Тайлан гаргах, хадгалахгүй',
+          '--quiz-id <id> — Тодорхой quiz-ийн answer sheet-уудыг засах',
+          '--sheet-id <id> — Тодорхой answer sheet засах',
+        ],
+      },
     ],
   },
   {
     category: 'AI Боловсруулалт',
     color: '#6f42c1',
+    icon: '🤖',
     commands: [
       {
         name: 'categorize_problems_gemini',
@@ -155,6 +187,29 @@ const DJANGO_COMMANDS = [
           '--force — Дахин ангилах',
           '--dry-run — Хадгалахгүй',
           '--category-only / --level-only',
+        ],
+      },
+      {
+        name: 'tag_content',
+        help: 'AI-р curriculum_topic нь null байгаа Problems/Articles-г автоматаар таглах (Celery queue)',
+        usage: 'python manage.py tag_content',
+        flags: [
+          '--model <Problems|Articles> — Зөвхөн нэг моделийг боловсруулах (default: хоёулаа)',
+          '--apply — Celery queue-д биш шууд синхрон ажиллуулах',
+        ],
+      },
+      {
+        name: 'tag_batch_problems',
+        help: 'Quiz нэрийн загварт тохирох бодлогуудыг keyword-ээр таглах',
+        usage: 'python manage.py tag_batch_problems --quiz-title "ЭЕШ%Багц%" --keyword "ЭЕШ жишиг"',
+        flags: [
+          '--quiz-title <загвар> — SQL LIKE загвар (%=wildcard). Жишээ: "ЭЕШ%%Багц%%"',
+          '--keyword <нэр> — Таглах keyword (заавал)',
+          '--dry-run — DB-д өөрчлөлт хийхгүй, зөвхөн тоог харуулах',
+        ],
+        examples: [
+          'python manage.py tag_batch_problems --quiz-title "ЭЕШ%Багц%" --keyword "ЭЕШ жишиг"',
+          'python manage.py tag_batch_problems --quiz-title "ЭЕШ%Багц%" --dry-run',
         ],
       },
       {
@@ -263,6 +318,7 @@ const DJANGO_COMMANDS = [
   {
     category: 'Хичээлийн хөтөлбөр',
     color: '#198754',
+    icon: '📋',
     commands: [
       {
         name: 'generate_curriculum',
@@ -286,6 +342,15 @@ const DJANGO_COMMANDS = [
           '--batch-size <N> — Нэг дуудалтад хэдэн файл (default: 5)',
           '--frontend-url <url> — Quiz холбоосонд ашиглах',
         ],
+      },
+      {
+        name: 'create_placement_tests',
+        help: 'Хичээл тус бүрт оношлох тест үүсгэх (math/physics/chemistry/biology)',
+        usage: 'python manage.py create_placement_tests',
+        flags: [
+          '--force — Байгаа оношлох тестийг устгаж дахин үүсгэх',
+        ],
+        note: 'Нэг subject-д 15 бодлого: 5 хялбар + 5 дунд + 5 хэцүү (level ID-аар тодорхойлно). Байгаа оношлох тестийг алгасна.',
       },
       {
         name: 'generate_book',
@@ -318,8 +383,47 @@ const DJANGO_COMMANDS = [
     ],
   },
   {
+    category: 'Клуб',
+    color: '#20c997',
+    icon: '🏫',
+    commands: [
+      {
+        name: 'backfill_daily_quiz',
+        help: 'Клубт нийтлэгдсэн хуучин бодлогоор өдрийн дасгал (ClubDailyQuiz) backfill хийх',
+        usage: 'python manage.py backfill_daily_quiz',
+        flags: [
+          '--club <id> — Зөвхөн тодорхой клубын ID',
+          '--dry-run — Юу хийхийг зөвхөн хэвлэнэ, DB-д бичихгүй',
+        ],
+        note: 'Idempotent — аль хэдийн үүссэн item-уудыг алгасна.',
+      },
+      {
+        name: 'import_assignment_answers',
+        help: 'Excel файлаас клубын даалгаврын хариулт оруулах',
+        usage: 'python manage.py import_assignment_answers <excel_file> --assignment <id>',
+        flags: [
+          '--assignment <id> — Даалгаврын ID (заавал)',
+          '--list-assignments — Байгаа даалгавруудын жагсаалт',
+          '--list-assignments --club <id> — Клубаар шүүх',
+          '--dry-run — Хадгалахгүй',
+          '--create-users — Username-ээр хайж, байхгүй бол шинээр үүсгэх',
+          '--username-prefix <угтвар> — Шинэ хэрэглэгчийн prefix (default: exam_)',
+          '--group-by <class|school|school-class> — Дэд бүлэг үүсгэх аргаар',
+          '--sheet <нэр> — Excel sheet нэр',
+        ],
+        note: 'Excel формат: Овог | Нэр | Сургууль | Анги | 1 | 2 | ... | 36 | 37-a | 37-b | ... MC баганад A/B/C/D/E, дэд асуулт баганад тоон/текст хариулт.',
+        examples: [
+          'python manage.py import_assignment_answers exam.xlsx --assignment 12 --dry-run',
+          'python manage.py import_assignment_answers exam.xlsx --assignment 12 --create-users --group-by school-class',
+          'python manage.py import_assignment_answers --list-assignments --club 5',
+        ],
+      },
+    ],
+  },
+  {
     category: 'Хэрэглэгч & Гишүүнчлэл',
     color: '#0dcaf0',
+    icon: '👤',
     commands: [
       {
         name: 'check_memberships',
@@ -355,6 +459,26 @@ const DJANGO_COMMANDS = [
         ],
       },
       {
+        name: 'import_excel_teachers',
+        help: 'Excel файлаас багш нарын жагсаалт уншиж хэрэглэгч үүсгэн клубд нэмэх',
+        usage: 'python manage.py import_excel_teachers --file teachers.xlsx',
+        flags: [
+          '--file <зам> — Excel файлын зам (.xlsx) (заавал)',
+          '--club <id> — Клубын ID (заавал биш)',
+          '--password <нууц үг> — Нийтлэг нууц үг (өгөхгүй бол username-г ашиглана)',
+          '--sheet <нэр|индекс> — Sheet нэр эсвэл индекс (default: 0)',
+          '--skip-rows <N> — Толгой мөрийн тоо (default: 1)',
+          '--last-name-col <N> — Овог байгаа баганын индекс (default: 0 = A)',
+          '--first-name-col <N> — Нэр байгаа баганын индекс (default: 1 = B)',
+          '--dry-run — Өөрчлөлт хийлгүй урьдчилан харах',
+        ],
+        note: 'Хэрэглэгчийн нэр: t{pk} формат (жишээ: t42, t43, ...). Excel: A багана = Овог, B багана = Нэр.',
+        examples: [
+          'python manage.py import_excel_teachers --file teachers.xlsx --dry-run',
+          'python manage.py import_excel_teachers --file teachers.xlsx --club 5 --password abc123',
+        ],
+      },
+      {
         name: 'sync_ai_teachers',
         help: 'ai_teachers.md файлаас AI багш нарыг үүсгэх/шинэчлэх',
         usage: 'python manage.py sync_ai_teachers',
@@ -376,6 +500,7 @@ const DJANGO_COMMANDS = [
   {
     category: 'ЭЕШ Мок Тест',
     color: '#fd7e14',
+    icon: '🎯',
     commands: [
       {
         name: 'tag_eesh_problems',
@@ -463,7 +588,7 @@ const DJANGO_COMMANDS = [
           '--no-confirm — Баталгаажуулалгүйгээр шууд хадгалах',
           '--seed <N> — Random seed',
         ],
-        note: 'Интерактив горим: [y] хадгал · [r] дахин үүсгэх · [s] алгасах · [q] гарах. Бодлогуудын автор: baysa.',
+        note: 'Интерактив горим: [y] хадгал · [r] дахин үүсгэх · [s] алгасах · [q] гарах.',
         examples: [
           'python manage.py create_eesh_problems --category ALGEBRA --type mc --count 3',
           'python manage.py create_eesh_problems --category GEOMETRY --type fill --count 2 --level 3',
@@ -472,10 +597,10 @@ const DJANGO_COMMANDS = [
       },
       {
         name: 'fill_eesh_quiz',
-        help: 'ЭЕШ темплэйт тест үүсгэж, бодлогуудыг Claude API-р нэг нэгээр солих (дурын үед зогсоож, үргэлжлүүлнэ)',
+        help: 'ЭЕШ темплэйт тест үүсгэж, бодлогуудыг Claude API-р нэг нэгээр солих',
         usage: 'python manage.py fill_eesh_quiz --create --year 2026 --variant A',
         flags: [
-          '--create — Шинэ темплэйт тест үүсгэх (байгаа бодлогуудаар)',
+          '--create — Шинэ темплэйт тест үүсгэх',
           '--year <он> — Блюпринтийн он (default: 2026)',
           '--variant <A|B|...> — Хувилбарын нэр (default: A)',
           '--quiz-id <id> — Дүүргэх / үргэлжлүүлэх quiz ID',
@@ -497,6 +622,7 @@ const DJANGO_COMMANDS = [
   {
     category: 'Төлбөр & Мессеж',
     color: '#ffc107',
+    icon: '💳',
     commands: [
       {
         name: 'sync_qpay_payments',
@@ -528,6 +654,8 @@ const DJANGO_COMMANDS = [
   },
 ];
 
+// ── Туслах компонентууд ──────────────────────────────────────────────────────
+
 function CopyButton({ text }) {
   const [copied, setCopied] = useState(false);
   const handleCopy = () => {
@@ -537,7 +665,7 @@ function CopyButton({ text }) {
   };
   return (
     <button
-      className="btn btn-sm btn-outline-secondary py-0 px-1 ms-2"
+      className="btn btn-sm btn-outline-secondary py-0 px-1 ms-2 flex-shrink-0"
       onClick={handleCopy}
       title="Хуулах"
       style={{ fontSize: '0.75rem' }}
@@ -547,105 +675,208 @@ function CopyButton({ text }) {
   );
 }
 
-function DjangoCommandsPage() {
-  const totalCommands = DJANGO_COMMANDS.reduce((sum, cat) => sum + cat.commands.length, 0);
+function CommandCard({ cmd, color }) {
+  const [open, setOpen] = useState(false);
+  const hasDetail = cmd.flags.length > 0 || cmd.note || cmd.examples?.length;
 
   return (
-    <Container className="py-4">
-      <Row className="mb-4">
+    <Card className="mb-2 border-0" style={{ background: '#f8f9fa' }}>
+      <Card.Body className="py-2 px-3">
+        {/* Header row */}
+        <div
+          className="d-flex align-items-start justify-content-between gap-2"
+          style={{ cursor: hasDetail ? 'pointer' : 'default' }}
+          onClick={() => hasDetail && setOpen(o => !o)}
+        >
+          <div className="flex-grow-1 min-w-0">
+            <code className="fw-bold me-2" style={{ color, fontSize: '0.9rem' }}>
+              {cmd.name}
+            </code>
+            <span className="text-muted small">{cmd.help}</span>
+          </div>
+          {hasDetail && (
+            <span className="text-muted flex-shrink-0" style={{ marginTop: 2 }}>
+              {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+            </span>
+          )}
+        </div>
+
+        {/* Usage */}
+        <div className="mt-1 d-flex align-items-center">
+          <code
+            className="small px-2 py-1 rounded text-nowrap overflow-auto"
+            style={{ background: '#212529', color: '#f8f9fa', maxWidth: '100%' }}
+          >
+            {cmd.usage}
+          </code>
+          <CopyButton text={cmd.usage} />
+        </div>
+
+        {/* Expandable detail */}
+        {open && hasDetail && (
+          <div className="mt-2">
+            {cmd.flags.length > 0 && (
+              <div className="mb-1">
+                {cmd.flags.map((flag, i) => {
+                  const [flagName, ...rest] = flag.split(' — ');
+                  return (
+                    <div key={i} className="small text-muted ps-2 py-0" style={{ lineHeight: 1.6 }}>
+                      <code className="small" style={{ color: '#6f42c1' }}>{flagName.trim()}</code>
+                      {rest.length > 0 && <span className="ms-1">{rest.join(' — ')}</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {cmd.note && (
+              <div className="mt-1 small px-2 py-1 rounded" style={{ background: '#fff3cd', color: '#856404' }}>
+                ⚠ {cmd.note}
+              </div>
+            )}
+            {cmd.examples?.length > 0 && (
+              <div className="mt-2">
+                <div className="small fw-medium text-muted ps-1 mb-1">Жишээ:</div>
+                {cmd.examples.map((ex, i) => (
+                  <div key={i} className="mb-1 d-flex align-items-center ps-1">
+                    <code
+                      className="small px-2 py-1 rounded text-nowrap overflow-auto"
+                      style={{ background: '#212529', color: '#f8f9fa' }}
+                    >
+                      {ex}
+                    </code>
+                    <CopyButton text={ex} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </Card.Body>
+    </Card>
+  );
+}
+
+// ── Үндсэн хуудас ────────────────────────────────────────────────────────────
+
+function DjangoCommandsPage() {
+  const [search, setSearch] = useState('');
+  const [openCats, setOpenCats] = useState(() => {
+    const init = {};
+    DJANGO_COMMANDS.forEach((_, i) => { init[i] = true; });
+    return init;
+  });
+
+  const toggleCat = (i) => setOpenCats(prev => ({ ...prev, [i]: !prev[i] }));
+
+  const q = search.trim().toLowerCase();
+
+  const filtered = useMemo(() => {
+    if (!q) return DJANGO_COMMANDS;
+    return DJANGO_COMMANDS.map(cat => ({
+      ...cat,
+      commands: cat.commands.filter(cmd =>
+        cmd.name.toLowerCase().includes(q) ||
+        cmd.help.toLowerCase().includes(q) ||
+        cmd.flags.some(f => f.toLowerCase().includes(q))
+      ),
+    })).filter(cat => cat.commands.length > 0);
+  }, [q]);
+
+  const totalCommands = DJANGO_COMMANDS.reduce((s, c) => s + c.commands.length, 0);
+  const filteredTotal = filtered.reduce((s, c) => s + c.commands.length, 0);
+
+  return (
+    <Container className="py-4" style={{ maxWidth: 860 }}>
+      {/* Header */}
+      <Row className="mb-3">
         <Col>
           <div className="d-flex align-items-center justify-content-between mb-3">
-            <div className="d-flex align-items-center">
-              <Terminal size={32} style={{ color: '#20c997' }} className="me-2" />
-              <h1 className="mb-0">Django Management Commands</h1>
-              <Badge bg="secondary" className="ms-3 fs-6">
-                {totalCommands} комманд
-              </Badge>
+            <div className="d-flex align-items-center gap-2 flex-wrap">
+              <Terminal size={28} style={{ color: '#20c997' }} />
+              <h1 className="mb-0 h4">Django Management Commands</h1>
+              <Badge bg="secondary" className="fs-6">{totalCommands} команд</Badge>
             </div>
             <Link to="/admin" className="btn btn-outline-secondary btn-sm">
-              ‹ Admin Dashboard
+              ‹ Admin
             </Link>
           </div>
-          <Card className="shadow-sm">
-            <Card.Body>
-              <p className="text-muted mb-2">
+
+          {/* Info card */}
+          <Card className="shadow-sm mb-3 border-0" style={{ background: '#f0fff4' }}>
+            <Card.Body className="py-2 px-3">
+              <p className="text-muted mb-1 small">
                 Бүх коммандууд <code>cd backend</code> хавтаснаас ажиллана.
               </p>
               <p className="text-muted mb-0 small">
-                <code>--dry-run</code> flag нь өөрчлөлт хийхгүйгээр үр дүнг харуулна.
-                Анх удаа ажиллуулахдаа заавал <code>--dry-run</code> ашиглаарай.
+                <code>--dry-run</code> — өөрчлөлт хийхгүйгээр урьдчилан харах. Анх удаа ажиллуулахдаа заавал ашиглаарай.
               </p>
             </Card.Body>
           </Card>
+
+          {/* Search */}
+          <InputGroup>
+            <InputGroup.Text style={{ background: '#fff' }}>
+              <Search size={15} className="text-muted" />
+            </InputGroup.Text>
+            <Form.Control
+              placeholder="Команд хайх..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{ borderLeft: 'none' }}
+            />
+            {search && (
+              <Button variant="outline-secondary" onClick={() => setSearch('')} title="Арилгах">
+                <X size={14} />
+              </Button>
+            )}
+          </InputGroup>
+          {q && (
+            <div className="text-muted small mt-1">
+              {filteredTotal} команд олдлоо
+            </div>
+          )}
         </Col>
       </Row>
 
-      <Accordion defaultActiveKey="0">
-        {DJANGO_COMMANDS.map((cat, catIdx) => (
-          <Accordion.Item eventKey={String(catIdx)} key={catIdx}>
-            <Accordion.Header>
-              <span
-                className="d-inline-block rounded-circle me-2"
-                style={{ width: 14, height: 14, backgroundColor: cat.color }}
-              />
-              <strong>{cat.category}</strong>
-              <Badge bg="light" text="dark" className="ms-2">
-                {cat.commands.length}
-              </Badge>
-            </Accordion.Header>
-            <Accordion.Body className="p-2">
-              {cat.commands.map((cmd, cmdIdx) => (
-                <Card key={cmdIdx} className="mb-2 border-0 bg-light">
-                  <Card.Body className="py-2 px-3">
-                    <div className="d-flex align-items-start justify-content-between">
-                      <div>
-                        <code className="fw-bold" style={{ color: cat.color }}>
-                          {cmd.name}
-                        </code>
-                        <span className="text-muted ms-2 small">{cmd.help}</span>
-                      </div>
-                    </div>
-                    <div className="mt-1 d-flex align-items-center">
-                      <code className="small bg-dark text-light px-2 py-1 rounded">
-                        {cmd.usage}
-                      </code>
-                      <CopyButton text={cmd.usage} />
-                    </div>
-                    {cmd.flags.length > 0 && (
-                      <div className="mt-1">
-                        {cmd.flags.map((flag, fIdx) => (
-                          <div key={fIdx} className="small text-muted ps-2">
-                            <code className="small">{flag.split(' — ')[0]}</code>
-                            {flag.includes(' — ') && (
-                              <span className="ms-1">{flag.split(' — ')[1]}</span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {cmd.note && (
-                      <div className="mt-2 small px-2 py-1 rounded" style={{ background: '#fff3cd', color: '#856404' }}>
-                        ⚠ {cmd.note}
-                      </div>
-                    )}
-                    {cmd.examples && cmd.examples.length > 0 && (
-                      <div className="mt-2">
-                        <div className="small text-muted ps-2 mb-1">Жишээ:</div>
-                        {cmd.examples.map((ex, eIdx) => (
-                          <div key={eIdx} className="mt-1 d-flex align-items-center ps-2">
-                            <code className="small bg-dark text-light px-2 py-1 rounded">{ex}</code>
-                            <CopyButton text={ex} />
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </Card.Body>
-                </Card>
+      {/* Categories */}
+      {filtered.map((cat, catIdx) => (
+        <div key={catIdx} className="mb-3">
+          <div
+            className="d-flex align-items-center gap-2 mb-2 px-1 py-1 rounded"
+            style={{ cursor: 'pointer', userSelect: 'none' }}
+            onClick={() => toggleCat(catIdx)}
+          >
+            <span
+              className="d-inline-block rounded-circle flex-shrink-0"
+              style={{ width: 12, height: 12, background: cat.color }}
+            />
+            <span className="fw-semibold" style={{ color: cat.color }}>
+              {cat.icon} {cat.category}
+            </span>
+            <Badge bg="light" text="dark" className="ms-1">
+              {cat.commands.length}
+            </Badge>
+            <span className="text-muted ms-auto">
+              {openCats[catIdx] !== false ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+            </span>
+          </div>
+
+          {openCats[catIdx] !== false && (
+            <div className="ps-2">
+              {cat.commands.map((cmd, i) => (
+                <CommandCard key={i} cmd={cmd} color={cat.color} />
               ))}
-            </Accordion.Body>
-          </Accordion.Item>
-        ))}
-      </Accordion>
+            </div>
+          )}
+        </div>
+      ))}
+
+      {filtered.length === 0 && (
+        <div className="text-center text-muted py-5">
+          <Search size={32} className="mb-2 opacity-25" />
+          <div>"{search}" хайлтанд тохирох команд олдсонгүй</div>
+        </div>
+      )}
     </Container>
   );
 }

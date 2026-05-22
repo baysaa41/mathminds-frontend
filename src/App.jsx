@@ -62,6 +62,7 @@ const QuizTakePage = lazy(() => import('./pages/QuizTakePage.jsx'));
 const QuizResultPage = lazy(() => import('./pages/QuizResultPage.jsx'));
 const QuizStudentAnswersPage = lazy(() => import('./pages/QuizStudentAnswersPage.jsx'));
 const QuizLeaderboardPage = lazy(() => import('./pages/QuizLeaderboardPage.jsx'));
+const QuizGenerateCurriculumPage = lazy(() => import('./pages/QuizGenerateCurriculumPage.jsx'));
 
 // Profile
 const ProfilePage = lazy(() => import('./pages/ProfilePage.jsx'));
@@ -196,6 +197,7 @@ function App() {
           <Route path="quiz/:quizUuid/result/:sheetId" element={<QuizResultPage />} />
           <Route path="quiz/:uuid/student-answers" element={<QuizStudentAnswersPage />} />
           <Route path="quiz/:uuid/leaderboard" element={<QuizLeaderboardPage />} />
+          <Route path="quiz/generate-curriculum" element={<QuizGenerateCurriculumPage />} />
 
           {/* Профайл */}
           <Route path="profile" element={<MyProfileRedirect />} />
