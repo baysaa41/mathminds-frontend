@@ -19,12 +19,12 @@ const getPostTitle = (post) => {
     if (!post.content || typeof post.content !== 'string') {
       if (post.ai_image_description) {
         const desc = post.ai_image_description;
-        return desc.length > 60 ? desc.substring(0, 60) + '...' : desc;
+        return desc.length > 120 ? desc.substring(0, 120) + '...' : desc;
       }
       return '🖼 Зурган пост';
     }
 
-    const maxLength = 60;
+    const maxLength = 80;
     let originalContent = post.content;
 
     // PSTricks зургийг устгана
@@ -41,21 +41,24 @@ const getPostTitle = (post) => {
     text = text.replace(/\$[^$\n]+\$/g, '');
     text = text.replace(/\\\([\s\S]*?\\\)/g, '');
 
+    // URL-уудыг устгана (title дотор хагас URL байвал эвдэрсэн линк үүснэ)
+    const hasUrl = /https?:\/\/\S+/.test(text);
+    text = text.replace(/https?:\/\/\S+/g, '').trim();
+
     // Шинэ мөр болон олон хоосон зайг цэвэрлэнэ
     text = text.replace(/\n/g, ' ');
     text = text.replace(/\s+/g, ' ').trim();
 
     // Хэрвээ LaTeX цэвэрлэсний дараа уншигдах текст үлдсэн бол харуулна
     if (text.length > 0) {
-      if (text.length <= maxLength) {
-        return text;
-      }
-      return text.substring(0, maxLength) + '...';
+      return text.length <= maxLength ? text : text.substring(0, maxLength) + '...';
     }
 
-    // Хэрвээ зөвхөн LaTeX код л байвал анхны агуулгаас товчлон харуулна
-    const rawPreview = originalContent.substring(0, maxLength).replace(/\n/g, ' ').trim();
-    return rawPreview + (originalContent.length > maxLength ? '...' : '');
+    // Зөвхөн URL л байсан бол
+    if (hasUrl) return '🔗 Линктэй пост';
+
+    // Хэрвээ зөвхөн LaTeX код л байвал математикийн пост гэж харуулна
+    return '📐 Математикийн пост';
   }
 
   // Холбоотой контент (бодлого, томьёо, өгүүлэл, тест)
@@ -186,7 +189,10 @@ const TrendingPostsWidget = () => {
               <ListGroup.Item
                 key={post.id}
                 action
-                onClick={() => handlePostClick(post)}
+                onClick={(e) => {
+                  if (e.target.closest('a')) return;
+                  handlePostClick(post);
+                }}
                 className="cursor-pointer"
               >
                 <div className="d-flex align-items-start gap-2">

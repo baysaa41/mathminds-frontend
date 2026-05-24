@@ -530,6 +530,11 @@ export const deleteFileItem = async (id) => {
   return apiClient.delete(`/api/club-files/${id}/`).then(r => r.data);
 };
 
+export const reactivateClub = async (clubId) => {
+  const response = await apiClient.post(`/api/clubs/${clubId}/reactivate/`);
+  return response.data;
+};
+
 /**
  * Алдааны мессежийг форматлах helper функц
  */

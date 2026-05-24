@@ -79,6 +79,11 @@ const ClubInfoPage = ({ forceInfo = false }) => {
 
           {/* Badges */}
           <div className="mb-3">
+            {club.is_active === false && (
+              <Badge bg="secondary" className="me-2">
+                Идэвхгүй
+              </Badge>
+            )}
             {club.is_official && (
               <Badge bg="success" className="me-2">
                 <ShieldCheck size={14} className="me-1" />

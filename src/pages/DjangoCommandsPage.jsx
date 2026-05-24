@@ -169,6 +169,27 @@ const DJANGO_COMMANDS = [
     ],
   },
   {
+    category: 'Клуб',
+    color: '#20c997',
+    icon: '🏫',
+    commands: [
+      {
+        name: 'deactivate_inactive_clubs',
+        help: 'Сүүлийн 30 хоногт пост нийтлээгүй идэвхтэй клубуудыг is_active=False болгох',
+        usage: 'python manage.py deactivate_inactive_clubs',
+        flags: [
+          '--days <N> — Идэвхгүй байсан хоногийн тоо (default: 30)',
+          '--dry-run — Өөрчлөлт хийхгүй, зөвхөн жагсаалт харуулах',
+        ],
+        note: 'is_official=True клубуудад хамаарахгүй. Celery beat: Даваа 08:30 UB-д автоматаар ажиллана.',
+        examples: [
+          'python manage.py deactivate_inactive_clubs --dry-run',
+          'python manage.py deactivate_inactive_clubs --days 14',
+        ],
+      },
+    ],
+  },
+  {
     category: 'AI Боловсруулалт',
     color: '#6f42c1',
     icon: '🤖',

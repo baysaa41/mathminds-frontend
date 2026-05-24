@@ -50,6 +50,7 @@ const ClubDetail = () => {
     name: '',
     description: '',
     monthly_price_silver: 0,
+    is_active: true,
   });
 
   useEffect(() => {
@@ -89,6 +90,7 @@ const ClubDetail = () => {
             name: data.name,
             description: data.description || '',
             monthly_price_silver: data.monthly_price_silver || 0,
+            is_active: data.is_active !== false,
           });
           setShowEditModal(true);
         },
@@ -213,10 +215,17 @@ const ClubDetail = () => {
         name: editForm.name.trim(),
         description: editForm.description.trim(),
         monthly_price_silver: club.club_type === 'STUDY' ? editForm.monthly_price_silver : 0,
+        is_active: editForm.is_active,
       });
-      showToast('Клубын мэдээлэл амжилттай шинэчлэгдлээ', 'success');
       setShowEditModal(false);
-      fetchClubDetails(); // Refresh club data
+      if (!editForm.is_active) {
+        // Идэвхгүй болгосон бол GET нь 404 буцаана, тул жагсаалт руу шилжинэ
+        showToast('Клуб идэвхгүй болгогдлоо', 'success');
+        navigate('/clubs');
+      } else {
+        showToast('Клубын мэдээлэл амжилттай шинэчлэгдлээ', 'success');
+        fetchClubDetails();
+      }
     } catch (err) {
       showToast(formatErrorMessage(err), 'danger');
     }
@@ -301,6 +310,7 @@ const ClubDetail = () => {
           name: club.name,
           description: club.description || '',
           monthly_price_silver: club.monthly_price_silver || 0,
+          is_active: club.is_active !== false,
         });
         setShowEditModal(true);
       },
@@ -440,6 +450,23 @@ const ClubDetail = () => {
                 onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
               />
             </Form.Group>
+            {/* Идэвхтэй эсэх */}
+            <Form.Group className="mb-3">
+              <Form.Check
+                type="switch"
+                id="club-is-active-switch"
+                label={editForm.is_active ? 'Идэвхтэй' : 'Идэвхгүй'}
+                checked={editForm.is_active}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setEditForm(prev => ({ ...prev, is_active: checked }));
+                }}
+              />
+              <Form.Text className="text-muted">
+                Идэвхгүй бол клуб гишүүдэд харагдахгүй болно.
+              </Form.Text>
+            </Form.Group>
+
             {/* Сарын төлбөр (зөвхөн STUDY клубт) */}
             {club && club.club_type === 'STUDY' && (
               <Form.Group className="mb-3">

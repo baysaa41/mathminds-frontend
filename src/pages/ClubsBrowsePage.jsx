@@ -21,8 +21,9 @@ import ListGroup from 'react-bootstrap/ListGroup';
 
 import {
   Users, PlusCircle, LogIn, ShieldCheck, Award,
-  Lock, Unlock, BookOpen, User,
+  Lock, Unlock, BookOpen, User, Power,
 } from 'lucide-react';
+import { reactivateClub } from '../services/clubsService';
 
 // -------------------------------------------------------------------
 const VIEW_TYPES = {
@@ -53,6 +54,7 @@ function ClubsBrowsePage() {
   const [view, setView]                   = useState(searchParams.get('view') || 'all');
   const [clubTypeFilter, setClubTypeFilter] = useState(searchParams.get('type') || '');
   const [searchInput, setSearchInput]     = useState(searchParams.get('search') || '');
+  const [activeFilter, setActiveFilter]   = useState('active'); // 'all' | 'active' | 'inactive'
   const [showJoinModal, setShowJoinModal] = useState(false);
 
   // Dynamic endpoint based on view
@@ -74,10 +76,19 @@ function ClubsBrowsePage() {
     if (clubTypeFilter) p.club_type = clubTypeFilter;
     if (searchInput)    p.search    = searchInput;
     if (view === 'mine' && user?.username) p.username = user.username;
+    if (view === 'mine' || activeFilter === 'inactive') {
+      p.include_inactive = '1';
+    }
     return p;
-  }, [clubTypeFilter, searchInput, view, user?.username]);
+  }, [clubTypeFilter, searchInput, view, user?.username, activeFilter]);
 
   // Re-fetch when view or type filter changes
+  useEffect(() => {
+    setActiveFilter('active');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view]);
+
+  // Re-fetch when any filter changes
   useEffect(() => {
     const params = buildParams();
     const urlParams = { view };
@@ -85,7 +96,7 @@ function ClubsBrowsePage() {
     setSearchParams(urlParams, { replace: true });
     fetchData(params);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view, clubTypeFilter]);
+  }, [view, clubTypeFilter, activeFilter]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -102,7 +113,7 @@ function ClubsBrowsePage() {
   };
 
   // Sort: official → promoted → бусад (Бүх клубууд view-д)
-  const sortedClubs = view === 'all'
+  const sortedClubs = (view === 'all'
     ? [...clubs].sort((a, b) => {
         if (a.is_official  && !b.is_official)  return -1;
         if (!a.is_official && b.is_official)   return  1;
@@ -110,9 +121,12 @@ function ClubsBrowsePage() {
         if (!a.is_promoted && b.is_promoted)   return  1;
         return 0;
       })
-    : clubs;
+    : clubs)
+    .filter(c =>
+      activeFilter === 'inactive' ? c.is_active === false : c.is_active !== false
+    );
 
-  const hasActiveFilters = clubTypeFilter || searchInput;
+  const hasActiveFilters = clubTypeFilter || searchInput || activeFilter !== 'active';
 
   return (
     <div className="d-flex flex-column vh-100">
@@ -162,6 +176,28 @@ function ClubsBrowsePage() {
               </ListGroup>
               <hr className="my-2" />
 
+              {/* Идэвхтэй/Идэвхгүй фильтр */}
+              <h6 className="text-uppercase text-muted small fw-bold mb-2">
+                <i className="bi bi-toggle-on me-1"></i>Төлөв
+              </h6>
+              <ListGroup variant="flush" className="mb-3">
+                {[
+                  { value: 'active',   label: 'Идэвхтэй' },
+                  { value: 'inactive', label: 'Идэвхгүй' },
+                ].map(f => (
+                  <ListGroup.Item
+                    key={f.value}
+                    action
+                    active={activeFilter === f.value}
+                    onClick={() => setActiveFilter(f.value)}
+                    className="py-2 px-3 small"
+                  >
+                    {f.label}
+                  </ListGroup.Item>
+                ))}
+              </ListGroup>
+              <hr className="my-2" />
+
               {/* Club type filter */}
               <h6 className="text-uppercase text-muted small fw-bold mb-2">
                 <i className="bi bi-funnel me-1"></i>Клубын төрөл
@@ -193,7 +229,7 @@ function ClubsBrowsePage() {
                 Клубт элсэх
               </Button>
 
-              {user && user.membership_tier !== 'FREE' && (
+              {user && (
                 <Button
                   variant="primary"
                   size="sm"
@@ -213,6 +249,7 @@ function ClubsBrowsePage() {
                   onClick={() => {
                     setClubTypeFilter('');
                     setSearchInput('');
+                    setActiveFilter('active');
                   }}
                 >
                   <i className="bi bi-x-circle me-1"></i>Шүүлтүүр цэвэрлэх
@@ -284,7 +321,7 @@ function ClubsBrowsePage() {
                   >
                     <LogIn size={14} className="me-1" />Клубт элсэх
                   </Button>
-                  {user && user.membership_tier !== 'FREE' && (
+                  {user && (
                     <Button
                       variant="primary"
                       size="sm"
@@ -321,7 +358,13 @@ function ClubsBrowsePage() {
                 <Row className="g-3">
                   {sortedClubs.map((club) => (
                     <Col key={club.id} lg={6} xl={4}>
-                      <ClubCard club={club} view={view} navigate={navigate} />
+                      <ClubCard
+                        club={club}
+                        view={view}
+                        navigate={navigate}
+                        onReactivated={() => fetchData(buildParams())}
+                        currentUserId={user?.id}
+                      />
                     </Col>
                   ))}
                 </Row>
@@ -356,10 +399,17 @@ function ClubsBrowsePage() {
 }
 
 // -------------------------------------------------------------------
-function ClubCard({ club, view, navigate }) {
+function ClubCard({ club, view, navigate, onReactivated, currentUserId }) {
   const typeInfo = CLUB_TYPE_INFO[club.club_type] || CLUB_TYPE_INFO.PUBLIC;
+  const [reactivating, setReactivating] = useState(false);
+  const isInactive = club.is_active === false;
+
+  const canReactivate = isInactive && (
+    club.role === 'teacher' || club.creator === currentUserId
+  );
 
   const getBorderColor = () => {
+    if (isInactive)      return '#adb5bd';
     if (club.is_official) return '#198754';
     if (club.is_promoted) return '#ffc107';
     if (view === 'mine') {
@@ -369,6 +419,7 @@ function ClubCard({ club, view, navigate }) {
   };
 
   const getBgColor = () => {
+    if (isInactive)      return '#f4f5f6';
     if (club.is_official) return '#f0fdf4';
     if (club.is_promoted) return '#fffdf0';
     if (view === 'mine') {
@@ -377,45 +428,62 @@ function ClubCard({ club, view, navigate }) {
     return '#f8f9fa';
   };
 
+  const handleReactivate = async (e) => {
+    e.stopPropagation();
+    setReactivating(true);
+    try {
+      await reactivateClub(club.id);
+      onReactivated?.();
+    } catch {
+      // silent
+    } finally {
+      setReactivating(false);
+    }
+  };
+
   return (
     <Card
       className="h-100 shadow-sm"
       style={{
-        cursor: 'pointer',
+        cursor: isInactive ? 'default' : 'pointer',
         borderLeft: `4px solid ${getBorderColor()}`,
         backgroundColor: getBgColor(),
+        opacity: isInactive ? 0.75 : 1,
       }}
-      onClick={() => navigate(`/clubs/${club.id}`)}
+      onClick={() => !isInactive && navigate(`/clubs/${club.id}`)}
     >
       <Card.Body className="d-flex flex-column">
         {/* Badges */}
         <div className="d-flex gap-1 flex-wrap mb-2">
-          {club.is_official && (
+          {isInactive && <Badge bg="secondary">Идэвхгүй</Badge>}
+          {!isInactive && club.is_official && (
             <Badge bg="success">
               <ShieldCheck size={12} className="me-1" />Mathminds
             </Badge>
           )}
-          {club.is_promoted && !club.is_official && (
+          {!isInactive && club.is_promoted && !club.is_official && (
             <Badge bg="warning" text="dark">
               <Award size={12} className="me-1" />Онцлох
             </Badge>
           )}
-          {view === 'mine' && !club.is_official && !club.is_promoted && (
+          {view === 'mine' && !club.is_official && !club.is_promoted && !isInactive && (
             club.role === 'teacher'
               ? <Badge bg="success">Багш</Badge>
               : <Badge bg="primary">Гишүүн</Badge>
           )}
-          <Badge bg={typeInfo.variant}>
-            <typeInfo.Icon size={12} className="me-1" />
-            {typeInfo.label}
-          </Badge>
+          {!isInactive && (
+            <Badge bg={typeInfo.variant}>
+              <typeInfo.Icon size={12} className="me-1" />
+              {typeInfo.label}
+            </Badge>
+          )}
           <Badge bg="secondary" pill className="ms-auto">
             <Users size={12} className="me-1" />{club.member_count || 0}
           </Badge>
         </div>
 
         {/* Name */}
-        <div className="fw-semibold mb-2" style={{ fontSize: '0.95rem' }}>
+        <div className="fw-semibold mb-2" style={{ fontSize: '0.95rem', color: isInactive ? '#6c757d' : undefined }}>
           {club.name}
         </div>
 
@@ -427,10 +495,24 @@ function ClubCard({ club, view, navigate }) {
           {club.description || 'Тайлбаргүй'}
         </div>
 
-        {/* Creator */}
-        <div className="text-muted small mt-2 pt-2 border-top">
-          <User size={14} className="me-1" />
-          {club.creator_name}
+        {/* Creator / Reactivate */}
+        <div className="mt-2 pt-2 border-top d-flex align-items-center justify-content-between">
+          <span className="text-muted small">
+            <User size={14} className="me-1" />
+            {club.creator_name}
+          </span>
+          {canReactivate && (
+            <Button
+              variant="outline-success"
+              size="sm"
+              onClick={handleReactivate}
+              disabled={reactivating}
+              style={{ fontSize: '0.75rem', padding: '2px 8px' }}
+            >
+              <Power size={12} className="me-1" />
+              {reactivating ? '...' : 'Идэвхжүүлэх'}
+            </Button>
+          )}
         </div>
       </Card.Body>
     </Card>

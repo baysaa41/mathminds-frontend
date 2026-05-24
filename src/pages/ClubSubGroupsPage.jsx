@@ -57,15 +57,15 @@ const displayName = (u) =>
 
 // ── Дэд бүлэг үүсгэх/засах modal ──────────────────────────────
 const SubGroupFormModal = ({ show, onHide, clubId, subgroup, onSaved }) => {
-  const [form, setForm] = useState({ name: '', description: '', color: 'primary', order: 0 });
+  const [form, setForm] = useState({ name: '', description: '', color: 'primary', order: 0, is_active: true });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
 
   useEffect(() => {
     if (show) {
       setForm(subgroup
-        ? { name: subgroup.name, description: subgroup.description, color: subgroup.color, order: subgroup.order }
-        : { name: '', description: '', color: 'primary', order: 0 }
+        ? { name: subgroup.name, description: subgroup.description, color: subgroup.color, order: subgroup.order, is_active: subgroup.is_active !== false }
+        : { name: '', description: '', color: 'primary', order: 0, is_active: true }
       );
       setErr('');
     }
@@ -121,10 +121,20 @@ const SubGroupFormModal = ({ show, onHide, clubId, subgroup, onSaved }) => {
             ))}
           </div>
         </Form.Group>
-        <Form.Group>
+        <Form.Group className="mb-3">
           <Form.Label className="small fw-medium">Эрэмбэ</Form.Label>
           <Form.Control type="number" size="sm" style={{ width: 90 }} value={form.order}
             onChange={e => setForm(f => ({ ...f, order: parseInt(e.target.value) || 0 }))} />
+        </Form.Group>
+        <Form.Group>
+          <Form.Check
+            type="switch"
+            id="subgroup-is-active-switch"
+            label={form.is_active ? 'Идэвхтэй' : 'Идэвхгүй'}
+            checked={form.is_active}
+            onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))}
+          />
+          <Form.Text className="text-muted small">Идэвхгүй дэд бүлэг харагдахгүй болно.</Form.Text>
         </Form.Group>
         {err && <div className="text-danger small mt-2">{err}</div>}
       </Modal.Body>
@@ -654,7 +664,7 @@ const ClubSubGroupsPage = () => {
     if (!clubId) return;
     try {
       setLoading(true);
-      const res = await apiClient.get('/api/club-subgroups/', { params: { club: clubId } });
+      const res = await apiClient.get('/api/club-subgroups/', { params: { club: clubId, include_inactive: '1' } });
       const list = res.data.results || res.data || [];
       setSubgroups(list);
       // Сонгосон бүлгийг дахин татах
@@ -870,7 +880,12 @@ const ClubSubGroupsPage = () => {
                     <span className={`badge bg-${g.color} flex-shrink-0`}
                       style={{ width: 10, height: 10, borderRadius: '50%', padding: 0 }}>&nbsp;</span>
                     <div className="text-truncate">
-                      <div className="small fw-semibold">{g.name}</div>
+                      <div className="small fw-semibold">
+                        {g.name}
+                        {g.is_active === false && (
+                          <Badge bg="secondary" className="ms-1" style={{ fontSize: '0.6rem' }}>идэвхгүй</Badge>
+                        )}
+                      </div>
                       {g.description && (
                         <div className="text-truncate" style={{ fontSize: '0.7rem', opacity: 0.75 }}>
                           {g.description}
@@ -896,6 +911,9 @@ const ClubSubGroupsPage = () => {
                 <Card.Header className="bg-white d-flex align-items-center justify-content-between">
                   <div className="d-flex align-items-center gap-2">
                     <Badge bg={selected.color} className="fs-6 px-3 py-1">{selected.name}</Badge>
+                    {selected.is_active === false && (
+                      <Badge bg="secondary">Идэвхгүй</Badge>
+                    )}
                     {selected.description && (
                       <span className="text-muted small">{selected.description}</span>
                     )}
