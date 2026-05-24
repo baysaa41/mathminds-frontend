@@ -34,8 +34,8 @@ export default function QuizGenerateCurriculumPage() {
   const [startWeek, setStartWeek] = useState(1);
   const [endWeek, setEndWeek] = useState(4);
   const [levelId, setLevelId] = useState('');
-  const [mcCount, setMcCount] = useState(3);
-  const [fitbCount, setFitbCount] = useState(2);
+  const [mcCount, setMcCount] = useState(5);
+  const [fitbCount, setFitbCount] = useState(3);
   const [quizTitle, setQuizTitle] = useState('');
 
   const [generating, setGenerating] = useState(false);
@@ -196,7 +196,7 @@ export default function QuizGenerateCurriculumPage() {
                   <Form.Control
                     type="number"
                     min={0}
-                    max={15}
+                    max={36}
                     value={mcCount}
                     onChange={e => setMcCount(Number(e.target.value))}
                   />
@@ -208,7 +208,7 @@ export default function QuizGenerateCurriculumPage() {
                   <Form.Control
                     type="number"
                     min={0}
-                    max={15}
+                    max={40}
                     value={fitbCount}
                     onChange={e => setFitbCount(Number(e.target.value))}
                   />
@@ -216,7 +216,7 @@ export default function QuizGenerateCurriculumPage() {
               </Col>
             </Row>
             <div className="mb-3 small text-muted">
-              Нийт: {mcCount + fitbCount} бодлого (хамгийн ихдээ 20)
+              Нийт: {mcCount + fitbCount} бодлого (хамгийн ихдээ 40)
             </div>
 
             <Form.Group className="mb-4">
@@ -251,7 +251,7 @@ export default function QuizGenerateCurriculumPage() {
             <Button
               type="submit"
               variant="primary"
-              disabled={generating || !programId || mcCount + fitbCount === 0 || mcCount + fitbCount > 20}
+              disabled={generating || !programId || mcCount + fitbCount === 0 || mcCount + fitbCount > 40}
               className="w-100 d-flex align-items-center justify-content-center gap-2"
             >
               {generating ? (

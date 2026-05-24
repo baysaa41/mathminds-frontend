@@ -17,6 +17,7 @@ import {
   Mail,
   Bot,
   Languages,
+  Sparkles,
 } from 'lucide-react';
 import authService from '../services/authService';
 
@@ -151,6 +152,25 @@ function DashboardPage() {
               <Link to="/admin/curriculum" className="btn btn-primary">
                 <BookOpen size={18} className="me-2" />
                 Удирдах
+              </Link>
+            </Card.Body>
+          </Card>
+        </Col>
+
+        {/* Curriculum тест үүсгэх */}
+        <Col md={6} lg={4}>
+          <Card className="h-100 shadow-sm" style={{ borderColor: '#8b5cf6' }}>
+            <Card.Body className="d-flex flex-column">
+              <div className="mb-3">
+                <Sparkles size={40} style={{ color: '#8b5cf6' }} />
+              </div>
+              <Card.Title>AI-р Тест Үүсгэх</Card.Title>
+              <Card.Text className="text-muted flex-grow-1">
+                Curriculum хөтөлбөрийн дагуу долоо хоног, хүндрэлийн түвшин сонгон сонгох болон нөхөх бодлоготой тест үүсгэнэ.
+              </Card.Text>
+              <Link to="/quiz/generate-curriculum" className="btn" style={{ backgroundColor: '#8b5cf6', color: '#fff' }}>
+                <Sparkles size={18} className="me-2" />
+                Тест үүсгэх
               </Link>
             </Card.Body>
           </Card>
