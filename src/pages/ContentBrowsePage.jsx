@@ -312,9 +312,9 @@ function ContentBrowsePage() {
       return (
         <>
           {subjectBadge}
-          {item.math_category && (
-            <Badge className="small" style={{ backgroundColor: item.math_category.color || '#6c757d' }}>
-              {item.math_category.name_mn}
+          {item.category && (
+            <Badge className="small" style={{ backgroundColor: item.category.color || '#6c757d' }}>
+              {item.category.name_mn}
             </Badge>
           )}
           {item.level_name && <Badge bg="secondary" className="small">{item.level_name}</Badge>}

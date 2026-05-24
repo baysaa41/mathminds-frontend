@@ -10,7 +10,7 @@ import Form from 'react-bootstrap/Form';
 import Modal from 'react-bootstrap/Modal';
 import {
   PlayCircle, CheckCircle, Clock, Award,
-  Users, BarChart3, Trophy,
+  Users, BarChart3, Trophy, FileSpreadsheet,
 } from 'lucide-react';
 import AppBreadcrumb from '../components/common/AppBreadcrumb';
 import {
@@ -18,6 +18,7 @@ import {
   startAssignment, gradeSubmission,
 } from '../services/clubsService';
 import apiClient from '../api/axiosConfig';
+import AssignmentAnswersImport from '../components/clubs/AssignmentAnswersImport';
 
 const STATUS_LABELS = {
   not_started: { label: 'Эхлээгүй', bg: 'secondary' },
@@ -283,6 +284,30 @@ const AssignmentDetailPage = () => {
                   )}
                 </div>
               </Card.Body>
+            </Card>
+          )}
+
+          {/* Excel import/export */}
+          {assignment.quiz && (
+            <Card className="shadow-sm mb-3">
+              <Card.Header
+                className="bg-white border-bottom py-2 d-flex align-items-center gap-2"
+                role="button"
+                onClick={() => document.getElementById('excel-section')?.classList.toggle('d-none')}
+                style={{ cursor: 'pointer' }}
+              >
+                <FileSpreadsheet size={16} className="text-success" />
+                <span className="fw-semibold small">Excel-ээр хариулт оруулах / татах</span>
+                <span className="text-muted small ms-auto">(дарж нэмэх/нуух)</span>
+              </Card.Header>
+              <div id="excel-section" className="d-none">
+                <Card.Body className="p-0">
+                  <AssignmentAnswersImport
+                    assignmentId={assignmentId}
+                    clubId={clubData?.id}
+                  />
+                </Card.Body>
+              </div>
             </Card>
           )}
 

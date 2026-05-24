@@ -61,12 +61,12 @@ const ProblemMeta = ({ problem }) => (
         AI summary байхгүй
       </span>
     )}
-    {problem.math_category && (
+    {problem.category && (
       <span
         className="badge ms-1"
-        style={{ backgroundColor: problem.math_category.color || '#6c757d', fontSize: '0.68rem' }}
+        style={{ backgroundColor: problem.category.color || '#6c757d', fontSize: '0.68rem' }}
       >
-        {problem.math_category.name_mn || problem.math_category.name}
+        {problem.category.name_mn || problem.category.name}
       </span>
     )}
   </div>
@@ -287,7 +287,7 @@ const QuizEditPage = () => {
         if (p.id !== problemId) return p;
         const updates = {};
         if (data.ai_summary) updates.ai_summary = data.ai_summary;
-        if (data.math_category) updates.math_category = data.math_category;
+        if (data.category) updates.category = data.category;
         return { ...p, ...updates };
       })
     );
@@ -516,7 +516,7 @@ const QuizEditPage = () => {
 
   const handleOpenReplaceModal = (index) => {
     const prob = selectedProblems[index];
-    const catId = prob?.math_category?.id ?? '';
+    const catId = prob?.category?.id ?? '';
     const typeFilter = prob?.type != null ? String(prob.type) : '';
     setReplacingIndex(index);
     setReplaceQuery('');

@@ -12,6 +12,30 @@ const DJANGO_COMMANDS = [
     icon: '📚',
     commands: [
       {
+        name: 'auto_tag_problems',
+        help: 'Haiku AI-р бодлогын subject / category / curriculum_topic / level автоматаар таглах',
+        usage: 'python manage.py auto_tag_problems',
+        flags: [
+          '--no-subject — subject таглахгүй',
+          '--no-category — category таглахгүй',
+          '--no-topic — curriculum_topic таглахгүй (зөвхөн math)',
+          '--no-level — level таглахгүй',
+          '--filter-subject <math|physics|chemistry|biology> — Зөвхөн тухайн subject-тай бодлогуудыг боловсруулах',
+          '--force — Аль хэдийн тагласан бодлогуудыг дахин таглах',
+          '--dry-run — Хадгалахгүй, зөвхөн харуулах',
+          '--limit <N> — Хамгийн их бодлогын тоо (0 = хязгааргүй)',
+          '--batch-size <N> — Зэрэг явуулах хүсэлтийн тоо (default: 20)',
+          '--delay <сек> — Batch хоорондын хугацаа (default: 1.0)',
+          '--confidence <0-1> — Хамгийн бага итгэлцэл (default: 0.6)',
+        ],
+        note: 'subject=null болсон бодлогуудыг admin-д "Subject-гүй (null)" шүүлтээр харж, гараар устгаж болно.',
+        examples: [
+          'python manage.py auto_tag_problems --limit 100 --dry-run',
+          'python manage.py auto_tag_problems --filter-subject math --force',
+          'python manage.py auto_tag_problems --no-topic --no-level',
+        ],
+      },
+      {
         name: 'import_problems',
         help: 'JSON файлаас бодлого импортлох',
         usage: 'python manage.py import_problems <file.json>',
@@ -142,16 +166,6 @@ const DJANGO_COMMANDS = [
           'python manage.py delete_quiz_import --quiz-uuid <uuid> --club 5 --username-prefix khanbogd_',
         ],
       },
-      {
-        name: 'fix_duplicate_mc_answers',
-        help: 'Давхардсан MC хариулт засч, answer sheet-уудын оноог дахин тооцоолох',
-        usage: 'python manage.py fix_duplicate_mc_answers',
-        flags: [
-          '--dry-run — Тайлан гаргах, хадгалахгүй',
-          '--quiz-id <id> — Тодорхой quiz-ийн answer sheet-уудыг засах',
-          '--sheet-id <id> — Тодорхой answer sheet засах',
-        ],
-      },
     ],
   },
   {
@@ -159,36 +173,6 @@ const DJANGO_COMMANDS = [
     color: '#6f42c1',
     icon: '🤖',
     commands: [
-      {
-        name: 'categorize_problems_gemini',
-        help: 'Gemini AI-р бодлогуудыг категори/хүндрэлээр ангилах',
-        usage: 'python manage.py categorize_problems_gemini',
-        flags: [
-          '--limit <N> — Хэдэн бодлого (default: 10)',
-          '--all — Бүх категоригүй бодлого',
-          '--problem-id <id> — Тодорхой бодлого',
-          '--quiz-uuid <uuid> — Quiz-ийн бүх бодлого',
-          '--force — Дахин ангилах',
-          '--dry-run — Хадгалахгүй',
-          '--category-only — Зөвхөн категори',
-          '--level-only — Зөвхөн level',
-          '--model <нэр> — Gemini model (default: gemini-2.0-flash)',
-        ],
-      },
-      {
-        name: 'categorize_problems',
-        help: 'OpenAI-р бодлогуудыг категори/хүндрэлээр ангилах',
-        usage: 'python manage.py categorize_problems',
-        flags: [
-          '--limit <N> — Хэдэн бодлого (default: 10)',
-          '--all — Бүх категоригүй',
-          '--problem-id <id> — Тодорхой бодлого',
-          '--quiz-uuid <uuid> — Quiz',
-          '--force — Дахин ангилах',
-          '--dry-run — Хадгалахгүй',
-          '--category-only / --level-only',
-        ],
-      },
       {
         name: 'tag_content',
         help: 'AI-р curriculum_topic нь null байгаа Problems/Articles-г автоматаар таглах (Celery queue)',
@@ -265,54 +249,6 @@ const DJANGO_COMMANDS = [
           '--delay <сек> — Хүсэлт хоорондын хугацаа',
         ],
       },
-      {
-        name: 'map_categories',
-        help: 'Хуучин Categories-аас MathCategory тодорхойлох',
-        usage: 'python manage.py map_categories',
-        flags: [
-          '--dry-run — Хадгалахгүй',
-          '--limit <N> — Хэдэн бодлого (0 = бүгд)',
-          '--force — Дахин тодорхойлох',
-        ],
-      },
-      {
-        name: 'train_classifier',
-        help: 'ML ангилагчуудыг сургах (subject + math category)',
-        usage: 'python manage.py train_classifier',
-        flags: [
-          '--min-confidence <0-1> — Зөвхөн энэ confidence-аас дээш labeled бодлогуудыг ашиглах',
-          '--subject-only — Зөвхөн subject модель сургах',
-          '--math-only — Зөвхөн math category модель сургах',
-        ],
-      },
-      {
-        name: 'classify_offline',
-        help: 'Offline ML + Gemini fallback-аар бодлого ангилах (subject + math category)',
-        usage: 'python manage.py classify_offline',
-        flags: [
-          '--limit <N> — Хэдэн бодлого (default: 50)',
-          '--all — Бүх ангилагдаагүй бодлого',
-          '--problem-id <id> — Тодорхой бодлого',
-          '--quiz-uuid <uuid> — Quiz-ийн бүх бодлого',
-          '--force — Дахин ангилах',
-          '--dry-run — Хадгалахгүй',
-          '--no-fallback — Gemini хэрэглэхгүй (зөвхөн ML)',
-          '--threshold <0-1> — Confidence threshold (default: 0.6)',
-          '--model <нэр> — Gemini model (default: gemini-2.0-flash)',
-          '--subject-only — Зөвхөн subject ангилах',
-          '--math-only — Зөвхөн math category ангилах',
-        ],
-      },
-      {
-        name: 'fix_subject_labels',
-        help: 'Буруу subject label-тай бодлогуудыг тусгай нэр томьёогоор олж засах',
-        usage: 'python manage.py fix_subject_labels',
-        flags: [
-          '--dry-run — Хадгалахгүй, тоолох',
-          '--subject <chemistry|physics|biology> — Тодорхой subject',
-          '--verbose — Жишээ бодлогуудыг харуулах',
-        ],
-      },
     ],
   },
   {
@@ -342,6 +278,13 @@ const DJANGO_COMMANDS = [
           '--batch-size <N> — Нэг дуудалтад хэдэн файл (default: 5)',
           '--frontend-url <url> — Quiz холбоосонд ашиглах',
         ],
+      },
+      {
+        name: 'setup_categories',
+        help: '2026 ЭЕШ Blueprint-д үндэслэн бүх subject-ийн категориудыг DB-д нэмэх/шинэчлэх',
+        usage: 'python manage.py setup_categories',
+        flags: [],
+        note: 'math (6), physics (6), chemistry (4), biology (4) — нийт 20 категори. Хуучин Blueprint-д нийцэхгүй категориудыг автоматаар устгана.',
       },
       {
         name: 'create_placement_tests',
@@ -383,44 +326,6 @@ const DJANGO_COMMANDS = [
     ],
   },
   {
-    category: 'Клуб',
-    color: '#20c997',
-    icon: '🏫',
-    commands: [
-      {
-        name: 'backfill_daily_quiz',
-        help: 'Клубт нийтлэгдсэн хуучин бодлогоор өдрийн дасгал (ClubDailyQuiz) backfill хийх',
-        usage: 'python manage.py backfill_daily_quiz',
-        flags: [
-          '--club <id> — Зөвхөн тодорхой клубын ID',
-          '--dry-run — Юу хийхийг зөвхөн хэвлэнэ, DB-д бичихгүй',
-        ],
-        note: 'Idempotent — аль хэдийн үүссэн item-уудыг алгасна.',
-      },
-      {
-        name: 'import_assignment_answers',
-        help: 'Excel файлаас клубын даалгаврын хариулт оруулах',
-        usage: 'python manage.py import_assignment_answers <excel_file> --assignment <id>',
-        flags: [
-          '--assignment <id> — Даалгаврын ID (заавал)',
-          '--list-assignments — Байгаа даалгавруудын жагсаалт',
-          '--list-assignments --club <id> — Клубаар шүүх',
-          '--dry-run — Хадгалахгүй',
-          '--create-users — Username-ээр хайж, байхгүй бол шинээр үүсгэх',
-          '--username-prefix <угтвар> — Шинэ хэрэглэгчийн prefix (default: exam_)',
-          '--group-by <class|school|school-class> — Дэд бүлэг үүсгэх аргаар',
-          '--sheet <нэр> — Excel sheet нэр',
-        ],
-        note: 'Excel формат: Овог | Нэр | Сургууль | Анги | 1 | 2 | ... | 36 | 37-a | 37-b | ... MC баганад A/B/C/D/E, дэд асуулт баганад тоон/текст хариулт.',
-        examples: [
-          'python manage.py import_assignment_answers exam.xlsx --assignment 12 --dry-run',
-          'python manage.py import_assignment_answers exam.xlsx --assignment 12 --create-users --group-by school-class',
-          'python manage.py import_assignment_answers --list-assignments --club 5',
-        ],
-      },
-    ],
-  },
-  {
     category: 'Хэрэглэгч & Гишүүнчлэл',
     color: '#0dcaf0',
     icon: '👤',
@@ -448,34 +353,6 @@ const DJANGO_COMMANDS = [
           '--tier <түвшин> — Түвшингээр шүүх',
           '--dry-run — Туршилт горим',
           '--include-expired — Дууссан гишүүнчлэлийг ч сунгах',
-        ],
-      },
-      {
-        name: 'import_mmo_teachers',
-        help: 'MMO-оос сургуулийн багш нарыг импортлох (60000 зоос)',
-        usage: 'python manage.py import_mmo_teachers',
-        flags: [
-          '--dry-run — Хадгалахгүй',
-        ],
-      },
-      {
-        name: 'import_excel_teachers',
-        help: 'Excel файлаас багш нарын жагсаалт уншиж хэрэглэгч үүсгэн клубд нэмэх',
-        usage: 'python manage.py import_excel_teachers --file teachers.xlsx',
-        flags: [
-          '--file <зам> — Excel файлын зам (.xlsx) (заавал)',
-          '--club <id> — Клубын ID (заавал биш)',
-          '--password <нууц үг> — Нийтлэг нууц үг (өгөхгүй бол username-г ашиглана)',
-          '--sheet <нэр|индекс> — Sheet нэр эсвэл индекс (default: 0)',
-          '--skip-rows <N> — Толгой мөрийн тоо (default: 1)',
-          '--last-name-col <N> — Овог байгаа баганын индекс (default: 0 = A)',
-          '--first-name-col <N> — Нэр байгаа баганын индекс (default: 1 = B)',
-          '--dry-run — Өөрчлөлт хийлгүй урьдчилан харах',
-        ],
-        note: 'Хэрэглэгчийн нэр: t{pk} формат (жишээ: t42, t43, ...). Excel: A багана = Овог, B багана = Нэр.',
-        examples: [
-          'python manage.py import_excel_teachers --file teachers.xlsx --dry-run',
-          'python manage.py import_excel_teachers --file teachers.xlsx --club 5 --password abc123',
         ],
       },
       {
@@ -533,23 +410,24 @@ const DJANGO_COMMANDS = [
       },
       {
         name: 'generate_eesh_quiz',
-        help: 'ЭЕШ блюпринт дагуу 36 сонгох + 4 нөхөх quiz автоматаар үүсгэх',
-        usage: 'python manage.py generate_eesh_quiz --year 2026 --variant A',
+        help: 'ЭЕШ блюпринт дагуу quiz автоматаар үүсгэх (math/physics/chemistry/biology)',
+        usage: 'python manage.py generate_eesh_quiz --subject math --year 2026 --variant A',
         flags: [
-          '--year <он> — Блюпринтийн он: 2025 эсвэл 2026 (default: 2026)',
+          '--subject <math|physics|chemistry|biology> — Хичээл (default: math)',
+          '--year <он> — Блюпринтийн он (default: 2026)',
           '--variant <A|B|...> — Хувилбарын нэр (default: A)',
           '--exclude-quizzes <id,...> — Давтагдахаас хассах quiz ID-ууд',
-          '--source <eesh-batch|all> — eesh-batch: Багц-аас үүсгэсэн, all: бүх pool (default: all)',
+          '--source <eesh-batch|all> — eesh-batch: Багц-аас үүсгэсэн (зөвхөн math), all: бүх pool (default: all)',
           '--seed <N> — Random seed (нэг дүнг давтах)',
           '--public — Нийтэд нээлттэй байдлаар үүсгэх (default: хаалттай)',
           '--dry-run — Quiz хадгалахгүй, pool статистик харуулах',
         ],
-        note: '2025 vs 2026 ялгаа: ALGEBRA 11→12, PROBABILITY 7→6. Одоо даруй ажиллана — таглалт заавал биш (fallback ажиллана).',
+        note: 'math: 40 бодлого (36+4) | physics: 50 (46+4) | chemistry: 44 (40+4) | biology: 50 (46+4). Pool дутагдалтай бол auto_tag_problems командаар бодлогуудыг эхлээд таглана уу.',
         examples: [
           'python manage.py generate_eesh_quiz --year 2026 --variant A --dry-run',
-          'python manage.py generate_eesh_quiz --year 2026 --variant A --public',
+          'python manage.py generate_eesh_quiz --subject physics --year 2026 --variant A --dry-run',
+          'python manage.py generate_eesh_quiz --subject chemistry --year 2026 --variant A --public',
           'python manage.py generate_eesh_quiz --year 2026 --variant B --exclude-quizzes 192,331 --public',
-          'python manage.py generate_eesh_quiz --year 2025 --variant A --public',
         ],
       },
       {
@@ -620,7 +498,7 @@ const DJANGO_COMMANDS = [
     ],
   },
   {
-    category: 'Төлбөр & Мессеж',
+    category: 'Төлбөр',
     color: '#ffc107',
     icon: '💳',
     commands: [
@@ -631,23 +509,6 @@ const DJANGO_COMMANDS = [
         flags: [
           '--start <огноо> — Эхлэх огноо (заавал)',
           '--end <огноо> — Дуусах огноо (default: өнөөдөр)',
-        ],
-      },
-      {
-        name: 'migrate_private_messages',
-        help: 'Хуучин private Post-уудыг шинэ Conversation системд шилжүүлэх',
-        usage: 'python manage.py migrate_private_messages',
-        flags: [
-          '--commit — Жинхэнэ шилжүүлэх (default: dry-run)',
-          '--delete-old — Хуучин post-уудыг устгах',
-        ],
-      },
-      {
-        name: 'cleanup_duplicate_messages',
-        help: 'Давхардсан мессежүүдийг устгах',
-        usage: 'python manage.py cleanup_duplicate_messages',
-        flags: [
-          '--commit — Жинхэнэ устгах (default: dry-run)',
         ],
       },
     ],
