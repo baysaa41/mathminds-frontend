@@ -326,7 +326,7 @@ const ProblemDetailPage = () => {
         <div className="mb-4">
           <h5 className="fw-semibold mb-3">Сонголтууд:</h5>
           <div className="list-group">
-            {problem.choices.map((choice, index) => {
+            {[...problem.choices].sort((a, b) => (a.label || '').localeCompare(b.label || '')).map((choice, index) => {
               const isCorrect = choice.default_score > 0;
               return (
                 <div
