@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { MathJaxContext } from 'better-react-mathjax'
 import { mathJaxConfig } from '../mathjax.config.js'
 import apiClient from '../api/axiosConfig.js'
@@ -32,6 +32,15 @@ const PROBLEM_TYPES = [
   { value: '4', label: 'Нөхөх тест' },
 ]
 
+const PROBLEM_LEVELS = [
+  { value: '1', label: 'Сэргээн санах' },
+  { value: '2', label: 'Ойлгох' },
+  { value: '3', label: 'Хэрэглэх' },
+  { value: '4', label: 'Задлан шинжлэх' },
+  { value: '5', label: 'Үнэлэх' },
+  { value: '6', label: 'Бүтээх' },
+]
+
 const getProblemTypeLabel = (type) => {
   const types = { 0: 'Уламжлалт', 1: 'Сонгох тест', 4: 'Нөхөх тест' }
   return types[type] || 'Тодорхойгүй'
@@ -54,6 +63,7 @@ function ProblemsBrowsePage() {
   // Filters
   const [searchInput, setSearchInput] = useState(searchParams.get('search') || '')
   const [selectedTypes, setSelectedTypes] = useState([])
+  const [selectedLevels, setSelectedLevels] = useState([])
   const [myOnly, setMyOnly] = useState(false)
 
   const {
@@ -70,16 +80,19 @@ function ProblemsBrowsePage() {
     else if (selectedCategory) params.category = selectedCategory.id
     if (searchInput) params.search = searchInput
     if (selectedTypes.length > 0) params.type = selectedTypes.join(',')
+    if (selectedLevels.length > 0) params.level = selectedLevels.join(',')
     return params
-  }, [myOnly, user?.id, selectedTopic, selectedCategory, searchInput, selectedTypes])
+  }, [myOnly, user?.id, selectedTopic, selectedCategory, searchInput, selectedTypes, selectedLevels])
 
   // Initialize from URL params
   useEffect(() => {
     const categoryParam = searchParams.get('category')
     const topicParam = searchParams.get('topic')
     const typeParam = searchParams.get('type')
+    const levelParam = searchParams.get('level')
 
     if (typeParam) setSelectedTypes(typeParam.split(','))
+    if (levelParam) setSelectedLevels(levelParam.split(','))
 
     fetchCategories().then((cats) => {
       if (categoryParam) {
@@ -110,10 +123,11 @@ function ProblemsBrowsePage() {
     if (selectedTopic) urlParams.topic = selectedTopic.id
     if (searchInput) urlParams.search = searchInput
     if (selectedTypes.length > 0) urlParams.type = selectedTypes.join(',')
+    if (selectedLevels.length > 0) urlParams.level = selectedLevels.join(',')
     setSearchParams(urlParams, { replace: true })
     fetchData(params)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCategory, selectedTopic, selectedTypes, myOnly])
+  }, [selectedCategory, selectedTopic, selectedTypes, selectedLevels, myOnly])
 
   const fetchCategories = async () => {
     setCategoriesLoading(true)
@@ -161,6 +175,12 @@ function ProblemsBrowsePage() {
     )
   }
 
+  const handleLevelChange = (levelValue) => {
+    setSelectedLevels((prev) =>
+      prev.includes(levelValue) ? prev.filter((l) => l !== levelValue) : [...prev, levelValue],
+    )
+  }
+
   const handleSearch = (e) => {
     e.preventDefault()
     fetchData(buildParams())
@@ -176,12 +196,13 @@ function ProblemsBrowsePage() {
     setSelectedTopic(null)
     setTopics([])
     setSelectedTypes([])
+    setSelectedLevels([])
     setSearchInput('')
     setMyOnly(false)
     setSearchParams({}, { replace: true })
   }
 
-  const hasActiveFilters = selectedCategory || selectedTypes.length > 0 || searchInput || myOnly
+  const hasActiveFilters = selectedCategory || selectedTypes.length > 0 || selectedLevels.length > 0 || searchInput || myOnly
 
   return (
     <MathJaxContext config={mathJaxConfig}>
@@ -273,6 +294,19 @@ function ProblemsBrowsePage() {
                 )}
 
                 <h6 className="text-uppercase text-muted small fw-bold mb-2 mt-3">
+                  <i className="bi bi-bar-chart me-1"></i>Түвшин
+                </h6>
+                {PROBLEM_LEVELS.map((level) => (
+                  <Form.Check
+                    key={level.value} type="checkbox"
+                    id={`browse-level-${level.value}`} label={level.label}
+                    checked={selectedLevels.includes(level.value)}
+                    onChange={() => handleLevelChange(level.value)}
+                    className="mb-1 small"
+                  />
+                ))}
+
+                <h6 className="text-uppercase text-muted small fw-bold mb-2 mt-3">
                   <i className="bi bi-funnel me-1"></i>Төрөл
                 </h6>
                 {PROBLEM_TYPES.map((type) => (
@@ -328,6 +362,11 @@ function ProblemsBrowsePage() {
                       ))}
                     </div>
                   )}
+                  <div className="d-flex gap-2 overflow-auto pb-2 mt-2">
+                    {PROBLEM_LEVELS.map((level) => (
+                      <Button key={level.value} variant={selectedLevels.includes(level.value) ? 'warning' : 'outline-warning'} size="sm" onClick={() => handleLevelChange(level.value)} className="text-nowrap">{level.label}</Button>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Problem Cards */}

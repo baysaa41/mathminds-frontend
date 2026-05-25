@@ -99,6 +99,15 @@ const PROBLEM_TYPES = [
   { value: '4', label: 'Нөхөх тест' },
 ]
 
+const PROBLEM_LEVELS = [
+  { value: '1', label: 'Сэргээн санах' },
+  { value: '2', label: 'Ойлгох' },
+  { value: '3', label: 'Хэрэглэх' },
+  { value: '4', label: 'Задлан шинжлэх' },
+  { value: '5', label: 'Үнэлэх' },
+  { value: '6', label: 'Бүтээх' },
+]
+
 const SUBJECTS = [
   { value: 'math', label: 'Математик', icon: 'bi-calculator', color: '#0d6efd' },
   { value: 'physics', label: 'Физик', icon: 'bi-lightning', color: '#fd7e14' },
@@ -139,6 +148,7 @@ function ContentBrowsePage() {
   const [searchInput, setSearchInput] = useState(searchParams.get('search') || '')
   const [myOnly, setMyOnly] = useState(false)
   const [selectedProblemTypes, setSelectedProblemTypes] = useState([])
+  const [selectedProblemLevels, setSelectedProblemLevels] = useState([])
   const [selectedSubject, setSelectedSubject] = useState(null)
   const [mathCategories, setMathCategories] = useState([])
   const [selectedMathCategory, setSelectedMathCategory] = useState(null)
@@ -160,10 +170,11 @@ function ContentBrowsePage() {
     if (selectedSubject) params.subject = selectedSubject
     if (contentType === 'problems') {
       if (selectedProblemTypes.length > 0) params.type = selectedProblemTypes.join(',')
+      if (selectedProblemLevels.length > 0) params.level = selectedProblemLevels.join(',')
       if (selectedMathCategory) params.math_category = selectedMathCategory.id
     }
     return params
-  }, [myOnly, user?.id, selectedTopic, selectedCategory, searchInput, contentType, selectedProblemTypes, selectedSubject, selectedMathCategory])
+  }, [myOnly, user?.id, selectedTopic, selectedCategory, searchInput, contentType, selectedProblemTypes, selectedProblemLevels, selectedSubject, selectedMathCategory])
 
   // Initialize categories on mount
   useEffect(() => {
@@ -179,6 +190,7 @@ function ContentBrowsePage() {
     setSelectedTopic(null)
     setTopics([])
     setSelectedProblemTypes([])
+    setSelectedProblemLevels([])
     setSelectedSubject(null)
     setSelectedMathCategory(null)
     setSearchInput('')
@@ -196,12 +208,13 @@ function ContentBrowsePage() {
     if (selectedTopic) urlParams.topic = selectedTopic.id
     if (searchInput) urlParams.search = searchInput
     if (selectedProblemTypes.length > 0) urlParams.problemType = selectedProblemTypes.join(',')
+    if (selectedProblemLevels.length > 0) urlParams.problemLevel = selectedProblemLevels.join(',')
     if (selectedSubject) urlParams.subject = selectedSubject
     if (selectedMathCategory) urlParams.mathCategory = selectedMathCategory.id
     setSearchParams(urlParams, { replace: true })
     fetchData(params)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCategory, selectedTopic, myOnly, selectedProblemTypes, selectedSubject, selectedMathCategory])
+  }, [selectedCategory, selectedTopic, myOnly, selectedProblemTypes, selectedProblemLevels, selectedSubject, selectedMathCategory])
 
   const fetchCategories = async () => {
     setCategoriesLoading(true)
@@ -261,6 +274,12 @@ function ContentBrowsePage() {
     )
   }
 
+  const handleProblemLevelChange = (val) => {
+    setSelectedProblemLevels((prev) =>
+      prev.includes(val) ? prev.filter((l) => l !== val) : [...prev, val]
+    )
+  }
+
   const handleSearch = (e) => {
     e.preventDefault()
     fetchData(buildParams())
@@ -276,6 +295,7 @@ function ContentBrowsePage() {
     setSelectedTopic(null)
     setTopics([])
     setSelectedProblemTypes([])
+    setSelectedProblemLevels([])
     setSelectedSubject(null)
     setSelectedMathCategory(null)
     setSearchInput('')
@@ -296,7 +316,7 @@ function ContentBrowsePage() {
     }
   }
 
-  const hasActiveFilters = selectedCategory || searchInput || myOnly || selectedProblemTypes.length > 0 || selectedSubject || selectedMathCategory
+  const hasActiveFilters = selectedCategory || searchInput || myOnly || selectedProblemTypes.length > 0 || selectedProblemLevels.length > 0 || selectedSubject || selectedMathCategory
 
   const renderItemBadges = (item) => {
     const subjectBadge = item.subject && item.subject !== 'math' ? (
@@ -547,6 +567,21 @@ function ContentBrowsePage() {
                         className="mb-1 small"
                       />
                     ))}
+
+                    <h6 className="text-uppercase text-muted small fw-bold mb-2 mt-3">
+                      <i className="bi bi-bar-chart me-1"></i>Түвшин
+                    </h6>
+                    {PROBLEM_LEVELS.map((lv) => (
+                      <Form.Check
+                        key={lv.value}
+                        type="checkbox"
+                        id={`plevel-${lv.value}`}
+                        label={lv.label}
+                        checked={selectedProblemLevels.includes(lv.value)}
+                        onChange={() => handleProblemLevelChange(lv.value)}
+                        className="mb-1 small"
+                      />
+                    ))}
                   </>
                 )}
 
@@ -684,6 +719,23 @@ function ContentBrowsePage() {
                           style={selectedMathCategory?.id === mc.id ? { backgroundColor: mc.color, borderColor: mc.color } : {}}
                         >
                           {mc.name_mn || mc.name}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Level chips (problems) */}
+                  {contentType === 'problems' && (
+                    <div className="d-flex gap-1 overflow-auto pb-2 mb-2">
+                      {PROBLEM_LEVELS.map((lv) => (
+                        <Button
+                          key={lv.value}
+                          variant={selectedProblemLevels.includes(lv.value) ? 'warning' : 'outline-warning'}
+                          size="sm"
+                          onClick={() => handleProblemLevelChange(lv.value)}
+                          className="text-nowrap"
+                        >
+                          {lv.label}
                         </Button>
                       ))}
                     </div>
