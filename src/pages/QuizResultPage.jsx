@@ -617,25 +617,21 @@ const QuizResultPage = () => {
                           return (
                             <div key={choice.label}
                               className={`d-flex align-items-center gap-2 p-2 rounded border small ${chipCls}`}>
-                              <span className="fw-bold text-secondary flex-shrink-0"
-                                style={{ minWidth: 36 }}>
-                                ({choice.label})
+                              <span className={`flex-shrink-0 fw-bold ${blankOk ? 'text-success' : stuAns ? 'text-danger' : 'text-muted'}`}>
+                                {stuAns ? (blankOk ? '✓' : '✗') : '—'}
                               </span>
-                              <div className="flex-grow-1 d-flex gap-3 flex-wrap">
-                                <span>
-                                  Сурагч:{' '}
-                                  <code className={blankOk ? 'text-success' : stuAns ? 'text-danger' : 'text-muted'}>
-                                    {stuAns?.value || '—'}
-                                  </code>
-                                </span>
-                                {(!blankOk) && (
-                                  <span className="text-success">
-                                    Зөв: <code>{choice.value}</code>
+                              <div className="flex-grow-1 d-flex gap-2 flex-wrap align-items-center">
+                                <code className={blankOk ? 'text-success' : stuAns ? 'text-danger' : 'text-muted'}>
+                                  {choice.label}={stuAns?.value || '—'}
+                                </code>
+                                {!blankOk && (
+                                  <span className="text-success small">
+                                    → <code>{choice.label}={choice.value}</code>
                                   </span>
                                 )}
                               </div>
-                              <span className={`flex-shrink-0 fw-bold ${blankOk ? 'text-success' : stuAns ? 'text-danger' : 'text-muted'}`}>
-                                {stuAns ? (blankOk ? '✓' : '✗') : '—'}
+                              <span className="text-muted flex-shrink-0" style={{ fontSize: '0.75rem' }}>
+                                {(stuAns?.user_point || 0)}/{choice.default_score || 0}п
                               </span>
                             </div>
                           );

@@ -29,6 +29,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
+import DrawingPanel from './DrawingPanel';
 
 export default function AppHeader() {
   const { user, logout } = useAuth();
@@ -36,6 +37,7 @@ export default function AppHeader() {
   const location = useLocation();
 
   const [showSidebar, setShowSidebar] = useState(false);
+  const [showDrawPanel, setShowDrawPanel] = useState(false);
   const [privateMessagesCount, setPrivateMessagesCount] = useState(0);
 
   useEffect(() => {
@@ -53,11 +55,7 @@ export default function AppHeader() {
 
   const handleLogout = () => { logout(); navigate('/login'); };
 
-  const handleOpenDraw = () => {
-    navigate('/draw', {
-      state: { pageUrl: location.pathname },
-    });
-  };
+  const handleOpenDraw = () => setShowDrawPanel(true);
 
   const close = () => setShowSidebar(false);
 
@@ -159,7 +157,7 @@ export default function AppHeader() {
                         <ShoppingCart size={16} className="me-2" />Миний худалдан авалт
                       </Dropdown.Item>
                       <Dropdown.Item onClick={handleOpenDraw}>
-                        <PenLine size={16} className="me-2" />Зурах
+                        <PenLine size={16} className="me-2" />Самбар
                       </Dropdown.Item>
                       {user.is_staff && (
                         <>
@@ -269,6 +267,12 @@ export default function AppHeader() {
           </Nav>
         </Offcanvas.Body>
       </Offcanvas>
+
+      <DrawingPanel
+        show={showDrawPanel}
+        onHide={() => setShowDrawPanel(false)}
+        pageUrl={location.pathname}
+      />
     </>
   );
 }

@@ -19,7 +19,7 @@ export default function DrawPage() {
 
   const [excalidrawAPI, setExcalidrawAPI] = useState(null);
   const [drawing, setDrawing] = useState(null);
-  const [initialData, setInitialData] = useState(undefined);
+  const [initialData, setInitialData] = useState({ appState: { currentItemStrokeWidth: 1 } });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -46,6 +46,7 @@ export default function DrawPage() {
         setInitialData({
           elements: existing.drawing_data.elements || [],
           appState: {
+            currentItemStrokeWidth: 1,
             zenModeEnabled: false,
             viewModeEnabled: false,
             viewBackgroundColor: existing.drawing_data.appState?.viewBackgroundColor || '#ffffff',
@@ -140,7 +141,7 @@ export default function DrawPage() {
           className="fw-semibold text-truncate flex-grow-1"
           style={{ fontSize: '0.9rem', minWidth: 0 }}
         >
-          {pageTitle || pageUrl || 'Зургийн тэмдэглэл'}
+          {pageTitle || pageUrl || 'Самбар'}
         </span>
 
         {error && <span className="text-danger small flex-shrink-0">{error}</span>}

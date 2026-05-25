@@ -95,17 +95,11 @@ const ProblemBodyPreview = React.memo(({ problem }) => (
       </div>
     )}
     {problem.type === 4 && problem.choices?.length > 0 && (
-      <div className="mb-2">
-        {[...problem.choices].sort((a, b) => a.label.localeCompare(b.label)).map((choice) => (
-          <div key={choice.id} className="d-flex align-items-center gap-2 mb-1" style={{ fontSize: '0.88rem' }}>
-            <span className="badge bg-secondary flex-shrink-0" style={{ minWidth: 36 }}>
-              <LivePreview content={choice.label} />
-            </span>
-            <span className="border-bottom border-2 border-secondary d-inline-block text-muted"
-              style={{ minWidth: 80 }}>
-            </span>
-          </div>
-        ))}
+      <div className="mb-2 text-muted" style={{ fontSize: '0.88rem' }}>
+        {[...problem.choices]
+          .sort((a, b) => a.label.localeCompare(b.label))
+          .map(c => `${c.label}=${c.value}`)
+          .join(', ')}
       </div>
     )}
     <ProblemMeta problem={problem} />
