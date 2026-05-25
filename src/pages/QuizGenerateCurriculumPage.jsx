@@ -95,15 +95,9 @@ export default function QuizGenerateCurriculumPage() {
   }, [programId]);
 
   // customScores array-г mcCount/fitbCount өөрчлөгдөхөд тохируулах
+  // prev[i]-г дахин ашиглахгүй — MC/FITB байрлал өөрчлөгдөхөд буруу оноо шилжих тул
   useEffect(() => {
-    setCustomScores(prev => {
-      const total = mcCount + fitbCount;
-      const next = Array(total).fill(0).map((_, i) => {
-        if (prev[i] !== undefined) return prev[i];
-        return i < mcCount ? 2 : 7;
-      });
-      return next;
-    });
+    setCustomScores(defaultScores(mcCount, fitbCount));
   }, [mcCount, fitbCount]);
 
   const toggleWeek = (weekNum) => {
