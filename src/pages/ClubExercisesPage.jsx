@@ -33,7 +33,7 @@ function AnswerInput({ problem, value, onChange, disabled, blankResults }) {
   if (problem.type === 1) {
     return (
       <div className="mb-3 d-flex flex-wrap gap-2">
-        {(problem.choices || []).map(c => {
+        {[...(problem.choices || [])].sort((a, b) => (a.label || '').localeCompare(b.label || '')).map(c => {
           const selected = value === c.label;
           return (
             <button

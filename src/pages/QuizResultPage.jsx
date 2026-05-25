@@ -562,7 +562,7 @@ const QuizResultPage = () => {
                         </div>
                       )}
                       <div className="d-flex flex-column gap-1">
-                        {problem.choices?.map((choice) => {
+                        {[...(problem.choices || [])].sort((a, b) => (a.label || '').localeCompare(b.label || '')).map((choice) => {
                           const isChosen  = mcStudentLabel === choice.label;
                           const isCorrectC = (choice.default_score || 0) > 0;
                           let chipCls = 'bg-light border';

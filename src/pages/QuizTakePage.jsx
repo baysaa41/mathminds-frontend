@@ -587,7 +587,7 @@ const QuizTakePage = () => {
           currentProblem.choices.length > 0 ? (
             // Multiple choice - Radio buttons
             <Form>
-              {currentProblem.choices.map((choice) => (
+              {[...currentProblem.choices].sort((a, b) => (a.label || '').localeCompare(b.label || '')).map((choice) => (
                 <Form.Check
                   key={choice.id}
                   type="radio"
