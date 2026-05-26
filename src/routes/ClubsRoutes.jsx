@@ -12,6 +12,7 @@ import ClubMediaPage from '../pages/ClubMediaPage';
 import ClubAssignmentsPage from '../pages/ClubAssignmentsPage';
 import AssignmentDetailPage from '../pages/AssignmentDetailPage';
 import AssignmentLeaderboardPage from '../pages/AssignmentLeaderboardPage';
+const AssignmentFlexibleImportPage = React.lazy(() => import('../pages/AssignmentFlexibleImportPage'));
 import ClubLessonsPage from '../pages/ClubLessonsPage';
 import ClubExercisesPage from '../pages/ClubExercisesPage';
 import ClubExamsPage from '../pages/ClubExamsPage';
@@ -47,6 +48,7 @@ const ClubsRoutes = () => {
         <Route path="assignments" element={<ClubAssignmentsPage />} />
         <Route path="assignments/:assignmentId" element={<AssignmentDetailPage />} />
         <Route path="assignments/:assignmentId/leaderboard" element={<AssignmentLeaderboardPage />} />
+        <Route path="assignments/:assignmentId/flexible-import" element={<AssignmentFlexibleImportPage />} />
         <Route path="report/:username" element={<StudentReportPage />} />
         <Route path="exams" element={<ClubExamsPage />} />
         <Route path="subgroups" element={<ClubSubGroupsPage />} />

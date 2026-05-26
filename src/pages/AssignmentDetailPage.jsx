@@ -298,7 +298,15 @@ const AssignmentDetailPage = () => {
               >
                 <FileSpreadsheet size={16} className="text-success" />
                 <span className="fw-semibold small">Excel-ээр хариулт оруулах / татах</span>
-                <span className="text-muted small ms-auto">(дарж нэмэх/нуух)</span>
+                <Button
+                  variant="outline-primary"
+                  size="sm"
+                  className="ms-auto py-0 px-2"
+                  style={{ fontSize: 11 }}
+                  onClick={e => { e.stopPropagation(); navigate(`/clubs/${clubData?.id}/assignments/${assignmentId}/flexible-import`); }}
+                >
+                  <FileSpreadsheet size={11} className="me-1" />Ханбогд / Remark оруулах
+                </Button>
               </Card.Header>
               <div id="excel-section" className="d-none">
                 <Card.Body className="p-0">

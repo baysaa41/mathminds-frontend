@@ -711,7 +711,7 @@ const ClubExercisesPage = () => {
       if (!map[key]) map[key] = { info: it.subgroup, items: [] };
       map[key].items.push(it);
     }
-    return Object.values(map).sort((a, b) => a.info.id - b.info.id);
+    return Object.values(map).sort((a, b) => a.info.name.localeCompare(b.info.name, 'mn'));
   }, [items]);
   const hasTabs = subgroups.length > 0;
 
