@@ -54,6 +54,8 @@ apiClient.interceptors.request.use(
       'convert_to_mc',
       'improve',
       'generate_weekly_article',
+      'explain-wrong-choice',
+      'hint-solution',
     ];
     const LONG_AI_ENDPOINTS = [
       'solver/turn',

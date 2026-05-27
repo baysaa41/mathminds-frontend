@@ -160,6 +160,13 @@ const FormulaDetailPage = () => {
           </div>
         </div>
         <div className="ms-auto d-flex align-items-center gap-2">
+          {(isAuthor || user?.is_staff) && (
+            <Link to={`/formula/${id}/edit`}>
+              <Button variant="outline-primary" size="sm" title="Засварлах">
+                <i className="bi bi-pencil me-1"></i>Засварлах
+              </Button>
+            </Link>
+          )}
           {/* Үсэг томруулах/жижигрүүлэх */}
           <Button
             variant="link"

@@ -197,7 +197,7 @@ function applyLatexFilters(text) {
     { re: /^(Бодлого[\s.:]*(\d+)?[.:]?\s*)/gm,                color: '#198754', bg: '#e8f5e9', icon: '💡' },
     { re: /^(Шийдэл[.:]?\s*)/gm,                              color: '#0d6efd', bg: '#e8f0fe', icon: '✏️' },
     { re: /^(Бодолт[.:]?\s*)/gm,                              color: '#0d6efd', bg: '#e8f0fe', icon: '✏️' },
-    { re: /^(Хариу[.:]?\s*)/gm,                               color: '#6f42c1', bg: '#f3eefe', icon: '✅' },
+    { re: /^(Хариу(?![а-яёөүА-ЯЁӨҮ])[.:]?\s*)/gm,             color: '#6f42c1', bg: '#f3eefe', icon: '✅' },
   ];
   for (const ib of inlineBlocks) {
     html = html.replace(ib.re, (match) =>

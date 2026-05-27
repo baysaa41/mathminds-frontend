@@ -70,6 +70,24 @@ const SummaryCards = ({ summary }) => {
           </div>
           <div className="text-muted" style={{ fontSize: '0.75rem' }}>Амжилтын хувь</div>
         </div>
+        {summary.success_rate != null && (
+          <div className="col-12 mt-2">
+            <div className="d-inline-flex align-items-center gap-2 px-3 py-2 rounded-3 border"
+              style={{ background: '#f8f9fa' }}>
+              <span className="fw-bold" style={{ fontSize: '1.4rem', color: rateColor }}>
+                {summary.success_rate}
+              </span>
+              <div>
+                <div className="fw-semibold" style={{ fontSize: '0.8rem', lineHeight: 1.2 }}>
+                  ЭЕШ хэмжээст оноо
+                </div>
+                <div className="text-muted" style={{ fontSize: '0.7rem' }}>
+                  Даалгаврын дундажаар тооцсон (0–100)
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       {summary.total > 0 && (
         <div className="mt-3">
@@ -95,6 +113,7 @@ const AssignmentsTable = ({ assignments, isTeacherOrAdmin, navigate }) => (
         <tr>
           <th style={{ minWidth: 200 }}>Даалгавар</th>
           <th className="text-center" style={{ width: 100 }}>Оноо</th>
+          <th className="text-center" style={{ width: 88 }}>ЭЕШ оноо</th>
           <th className="text-center" style={{ width: 110 }}>Төлөв</th>
           <th className="text-center" style={{ width: 90 }}>Хугацаа</th>
           <th className="text-center" style={{ width: 110 }}>Огноо</th>
@@ -104,7 +123,7 @@ const AssignmentsTable = ({ assignments, isTeacherOrAdmin, navigate }) => (
       <tbody>
         {assignments.length === 0 ? (
           <tr>
-            <td colSpan={isTeacherOrAdmin ? 6 : 5} className="text-center text-muted py-4">
+            <td colSpan={isTeacherOrAdmin ? 7 : 6} className="text-center text-muted py-4">
               Энэ хугацаанд гүйцэтгэсэн даалгавар байхгүй
             </td>
           </tr>
@@ -113,6 +132,8 @@ const AssignmentsTable = ({ assignments, isTeacherOrAdmin, navigate }) => (
           const hasResult = a.answer_sheet_id && ['submitted', 'graded'].includes(a.status);
           const pct = a.score != null && a.max_score
             ? Math.min(100, Math.round(a.score / a.max_score * 100)) : null;
+          const eeshColor = pct == null ? '#6c757d'
+            : pct >= 80 ? '#198754' : pct >= 50 ? '#fd7e14' : '#dc3545';
 
           return (
             <tr key={a.assignment_id}>
@@ -130,13 +151,16 @@ const AssignmentsTable = ({ assignments, isTeacherOrAdmin, navigate }) => (
                   <>
                     {a.score}
                     <span className="text-muted fw-normal">/{a.max_score}</span>
-                    {pct != null && (
-                      <span className="ms-1 text-muted fw-normal" style={{ fontSize: '0.7rem' }}>
-                        ({pct}%)
-                      </span>
-                    )}
                   </>
                 ) : <span className="text-muted fw-normal">—</span>}
+              </td>
+              <td className="text-center">
+                {pct != null ? (
+                  <span className="fw-bold" style={{ color: eeshColor, fontSize: '0.95rem' }}>
+                    {pct}
+                    <span className="text-muted fw-normal" style={{ fontSize: '0.7rem' }}>/100</span>
+                  </span>
+                ) : <span className="text-muted">—</span>}
               </td>
               <td className="text-center">
                 <Badge bg={si.bg} style={{ fontSize: '0.68rem' }}>{si.label}</Badge>

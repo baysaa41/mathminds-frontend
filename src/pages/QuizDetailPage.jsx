@@ -261,9 +261,16 @@ const QuizDetailPage = () => {
         <Col lg={4} xl={3}>
           {/* Гарчиг */}
           <div className="mb-3">
-            <h1 className="h4 fw-bold mathjax-content mb-1">
-              <LivePreview content={quiz.title || 'Гарчиггүй тест'} />
-            </h1>
+            <div className="d-flex align-items-start gap-2">
+              <h1 className="h4 fw-bold mathjax-content mb-1 flex-grow-1">
+                <LivePreview content={quiz.title || 'Гарчиггүй тест'} />
+              </h1>
+              {canEdit && (
+                <Button variant="outline-primary" size="sm" onClick={handleEditClick} title="Засварлах" className="flex-shrink-0">
+                  <i className="bi bi-pencil me-1"></i>Засварлах
+                </Button>
+              )}
+            </div>
             <div className="text-muted small">
               Зохиогч: <UserName user={quiz.author} />
             </div>

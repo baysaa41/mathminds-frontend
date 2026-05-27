@@ -54,33 +54,37 @@ const ConversationViewPage = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    let cancelled = false;
     const load = async () => {
       try {
-        const [conv, msgData] = await Promise.all([
-          getConversation(conversationUuid),
-          getConversationMessages(conversationUuid),
-        ]);
+        const conv = await getConversation(conversationUuid);
+        if (cancelled) return;
         setConversation(conv);
+
+        // Logged-in participant → redirect immediately, no need to load messages
+        if (user) {
+          const isParticipant =
+            conv.user1?.id === user.id || conv.user2?.id === user.id;
+          if (isParticipant) {
+            const dest = isAiConv(conv) ? '/ai-chat/messages' : '/messages';
+            navigate(dest, { replace: true, state: { conversationUuid } });
+            return;
+          }
+        }
+
+        // Public read-only view — also load messages
+        const msgData = await getConversationMessages(conversationUuid);
+        if (cancelled) return;
         setMessages(msgData.messages || []);
       } catch {
-        setError('Харилцан яриа олдсонгүй эсвэл устгагдсан байна.');
+        if (!cancelled) setError('Харилцан яриа олдсонгүй эсвэл устгагдсан байна.');
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     load();
-  }, [conversationUuid]);
-
-  // Нэвтэрсэн гишүүн бол /messages эсвэл /ai-chat руу redirect
-  useEffect(() => {
-    if (!conversation || !user) return;
-    const isParticipant =
-      conversation.user1?.id === user.id || conversation.user2?.id === user.id;
-    if (isParticipant) {
-      const dest = isAiConv(conversation) ? '/ai-chat/messages' : '/messages';
-      navigate(dest, { replace: true, state: { conversationUuid } });
-    }
-  }, [conversation, user, navigate, conversationUuid]);
+    return () => { cancelled = true; };
+  }, [conversationUuid, user, navigate]);
 
   if (loading) {
     return (

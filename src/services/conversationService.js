@@ -89,6 +89,9 @@ export const sendMessage = async ({
   content,
   attachments = [],
   replyToUuid,
+  examPrepProblemId,
+  examPrepHint = false,
+  examSuggestTopicChange = false,
 }) => {
   const formData = new FormData();
 
@@ -104,6 +107,15 @@ export const sendMessage = async ({
   if (replyToUuid) {
     formData.append('reply_to_uuid', replyToUuid);
   }
+  if (examPrepProblemId) {
+    formData.append('exam_prep_problem_id', examPrepProblemId);
+  }
+  if (examPrepHint) {
+    formData.append('exam_prep_hint', '1');
+  }
+  if (examSuggestTopicChange) {
+    formData.append('exam_suggest_topic_change', '1');
+  }
 
   // Хавсралтууд нэмэх
   attachments.forEach((file) => {
@@ -116,6 +128,80 @@ export const sendMessage = async ({
     },
   });
 
+  return response.data;
+};
+
+/**
+ * ЭЕШ бэлдэхэд зориулсан санал болгосон бодлогууд
+ * @param {string} subject - Хичээл (math/physics/chemistry/biology)
+ * @param {number} limit - Бодлогын тоо
+ */
+export const getEeshProblems = async (subject = 'math', limit = 20, categoryIds = [], keywordIds = []) => {
+  let url = `/api/integral/eesh-problems/?subject=${subject}&limit=${limit}`;
+  if (categoryIds.length > 0) {
+    url += `&category_ids=${categoryIds.join(',')}`;
+  }
+  if (keywordIds.length > 0) {
+    url += `&keyword_ids=${keywordIds.join(',')}`;
+  }
+  const response = await apiClient.get(url);
+  return response.data;
+};
+
+export const getEeshTopics = async (categoryId) => {
+  const response = await apiClient.get(`/api/integral/eesh-topics/?category_id=${categoryId}`);
+  return response.data;
+};
+
+/**
+ * ЭЕШ бэлдэх: AI багш чатад бодлого илгээнэ
+ */
+/**
+ * ЭЕШ — Өөр бодлого: алгоритмын дагуу сэдэв сонгож бодлого авах
+ */
+export const getEeshDifferentProblem = async (currentProblemId, subject = 'math') => {
+  const response = await apiClient.post('/api/integral/eesh-different-problem/', {
+    current_problem_id: currentProblemId,
+    subject,
+  });
+  return response.data;
+};
+
+/**
+ * ЭЕШ бэлдэх: бодлогын зөвлөгөө + бодолт авах (Modal-д харуулахад)
+ * @param {number} problemId
+ */
+export const getProblemHintSolution = async (problemId) => {
+  const response = await apiClient.get(`/api/integral/problems/${problemId}/hint-solution/`);
+  return response.data;
+};
+
+/**
+ * Буруу хариулт яагаад буруу болохыг тайлбарлах
+ * @param {number} problemId
+ * @param {string} choiceLabel - e.g. "А"
+ */
+export const explainWrongChoice = async (problemId, choiceLabel) => {
+  const response = await apiClient.post(
+    `/api/integral/problems/${problemId}/explain-wrong-choice/`,
+    { choice_label: choiceLabel }
+  );
+  return response.data;
+};
+
+export const sendExamProblem = async (conversationUuid, problemId) => {
+  const response = await apiClient.post(
+    `/api/minds/conversations/${conversationUuid}/send-exam-problem/`,
+    { problem_id: problemId }
+  );
+  return response.data;
+};
+
+/**
+ * ЭЕШ бэлдэх: сурагчийн assignment-ын категори тус бүрийн амжилтын статистик
+ */
+export const getEeshStats = async () => {
+  const response = await apiClient.get('/api/integral/eesh-stats/');
   return response.data;
 };
 
@@ -177,5 +263,19 @@ export const archiveConversation = async (conversationUuid) => {
  */
 export const unarchiveConversation = async (conversationUuid) => {
   const response = await apiClient.post(`/api/minds/conversations/${conversationUuid}/unarchive/`);
+  return response.data;
+};
+
+/** AI мессежэд like/dislike үнэлгээ өгөх. rating = 'like' | 'dislike' | null */
+export const rateMessage = async (messageUuid, rating, examPrepProblemId = null) => {
+  const body = { rating };
+  if (examPrepProblemId) body.exam_prep_problem_id = examPrepProblemId;
+  const response = await apiClient.post(`/api/minds/messages/${messageUuid}/rate/`, body);
+  return response.data;
+};
+
+/** Сонголтын тайлбарт like/dislike үнэлгээ өгөх. rating = 'like' | 'dislike' | null */
+export const rateAnswerChoice = async (choiceId, rating) => {
+  const response = await apiClient.post(`/api/integral/choices/${choiceId}/rate/`, { rating });
   return response.data;
 };

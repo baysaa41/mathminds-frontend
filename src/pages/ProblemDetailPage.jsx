@@ -237,10 +237,15 @@ const ProblemDetailPage = () => {
       )}
 
       {/* Гарчиг ба Засварлах товч */}
-      <div className="mb-3">
-        <h1 className="h3 fw-bold mb-2">
+      <div className="d-flex align-items-start gap-2 mb-2">
+        <h1 className="h3 fw-bold mb-0 flex-grow-1">
           <LivePreview content={problem.title || `Бодлого #${id}`} />
         </h1>
+        {canEdit && (
+          <Button variant="outline-primary" size="sm" onClick={handleEditClick} title="Засварлах" className="flex-shrink-0">
+            <i className="bi bi-pencil me-1"></i>Засварлах
+          </Button>
+        )}
       </div>
 
       {/* Мэдээллийн badges + үсэг хэмжээ */}

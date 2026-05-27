@@ -1,12 +1,13 @@
 // frontend/src/pages/MessagesPage.jsx
 // Шинэ Message API ашигласан мессежийн хуудас
 
-import { useState, useEffect, useRef, memo, useCallback } from 'react';
+import { useState, useEffect, useRef, memo, useCallback, Fragment } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import UserAvatar from '../components/UserAvatar';
 import UserName from '../components/UserName';
 import LivePreview from '../components/LivePreview';
+import { MathJax } from 'better-react-mathjax';
 import NewConversationModal from '../components/NewConversationModal';
 
 // ViewerJS for image viewing
@@ -33,6 +34,9 @@ import {
   Zap,
   Copy,
   CornerUpLeft,
+  BookOpen,
+  ThumbsUp,
+  ThumbsDown,
 } from 'lucide-react';
 
 // Services
@@ -46,6 +50,15 @@ import {
   unarchiveConversation,
   deleteConversation,
   pollConversation,
+  getEeshProblems,
+  getEeshStats,
+  getEeshTopics,
+  getEeshDifferentProblem,
+  sendExamProblem,
+  getProblemHintSolution,
+  explainWrongChoice,
+  rateMessage,
+  rateAnswerChoice,
 } from '../services/conversationService';
 
 import './PrivateMessagesPage.css';
@@ -84,7 +97,7 @@ const openImageViewer = (e) => {
 
 // React.memo: message prop өөрчлөгдөөгүй бол re-render хийхгүй
 // → MathJax/LivePreview зөвхөн шинэ мессеж дээр л ажиллана
-const MessageBubble = memo(function MessageBubble({ message, currentUserId, onReuse, isTypewriting, onTypewritingDone, onTypewritingStart }) {
+const MessageBubble = memo(function MessageBubble({ message, currentUserId, onReuse, isTypewriting, onTypewritingDone, onTypewritingStart, rating, onRate }) {
   const isSent = message.author?.id === currentUserId;
   const [copied, setCopied] = useState(false);
   const bubbleRef = useRef(null);
@@ -162,7 +175,7 @@ const MessageBubble = memo(function MessageBubble({ message, currentUserId, onRe
             ))}
           </div>
         )}
-        <div className="message-time d-flex align-items-center gap-1">
+        <div className="message-time d-flex align-items-center gap-1 flex-wrap">
           <span>
             {formatTime(message.created_at)}
             {message.is_edited && <span className="ms-1">(засварласан)</span>}
@@ -185,6 +198,26 @@ const MessageBubble = memo(function MessageBubble({ message, currentUserId, onRe
                   <CornerUpLeft size={12} />
                 </button>
               )}
+            </span>
+          )}
+          {!isSent && onRate && (
+            <span className="ms-1 d-inline-flex gap-1 ai-rating-btns">
+              <button
+                className={`btn btn-link btn-sm p-0 ${rating === 'like' ? 'text-success' : 'text-muted'}`}
+                onClick={() => onRate(rating === 'like' ? null : 'like')}
+                title="Таалагдсан"
+                style={{ lineHeight: 1 }}
+              >
+                <ThumbsUp size={12} fill={rating === 'like' ? 'currentColor' : 'none'} />
+              </button>
+              <button
+                className={`btn btn-link btn-sm p-0 ${rating === 'dislike' ? 'text-danger' : 'text-muted'}`}
+                onClick={() => onRate(rating === 'dislike' ? null : 'dislike')}
+                title="Таалагдаагүй"
+                style={{ lineHeight: 1 }}
+              >
+                <ThumbsDown size={12} fill={rating === 'dislike' ? 'currentColor' : 'none'} />
+              </button>
             </span>
           )}
         </div>
@@ -219,8 +252,55 @@ const MessagesPage = ({ aiOnly = false }) => {
   const [archivingConv, setArchivingConv] = useState(null);
   const [deletingConv, setDeletingConv] = useState(null);
 
+  // Like/Dislike үнэлгээ — AI мессеж болон сонголтын тайлбар
+  const [messageRatings, setMessageRatings] = useState({}); // { [uuid]: 'like'|'dislike'|null }
+  const [choiceRatings, setChoiceRatings] = useState({});   // { [choiceId]: 'like'|'dislike'|null }
+
+  // ЭЕШ статистик modal
+  const [showEeshModal, setShowEeshModal] = useState(false);
+  const [eeshStats, setEeshStats] = useState(null);
+  const [eeshStatsLoading, setEeshStatsLoading] = useState(false);
+  const [examSelectedCategoryIds, setExamSelectedCategoryIds] = useState(new Set());
+  // Two-step modal: category → topic
+  const [eeshModalStep, setEeshModalStep] = useState('category'); // 'category' | 'topic'
+  const [examSelectedCategoryId, setExamSelectedCategoryId] = useState(null); // single cat for topic step
+  const [eeshTopics, setEeshTopics] = useState([]);
+  const [eeshTopicsLoading, setEeshTopicsLoading] = useState(false);
+  const [examSelectedTopicIds, setExamSelectedTopicIds] = useState(new Set());
+
+  // ЭЕШ бэлдэх горим
+  const [examPrepMode, setExamPrepMode] = useState(false);
+  const [examProblems, setExamProblems] = useState([]);
+  const [examProblemIndex, setExamProblemIndex] = useState(0);
+  const [examCurrentProblem, setExamCurrentProblem] = useState(null);
+  const [examAnswered, setExamAnswered] = useState(false);
+  const [examLastCorrect, setExamLastCorrect] = useState(null); // null | true | false
+  const [examSending, setExamSending] = useState(false);
+  // Буруу хариулт сонгосны дараа тайлбар
+  const [wrongChoiceExplanation, setWrongChoiceExplanation] = useState(null); // null | string
+  const [wrongChoiceId, setWrongChoiceId] = useState(null);   // буруу сонгосон choice-ийн id
+  const [wrongChoiceLoading, setWrongChoiceLoading] = useState(false);
+  const [wrongChoiceFailed, setWrongChoiceFailed] = useState(false); // AI алдаа гарсан
+  // Бодолт харсны дараа дараагийн бодлого руу шилжих
+  const [examSolutionViewed, setExamSolutionViewed] = useState(false);
+  // Hint / Solution modal
+  const [hintModal, setHintModal] = useState(null); // null | {loading, hint}
+  const [solutionModal, setSolutionModal] = useState(null); // null | {loading, solution, explanation}
+  // Polling loop-д closure асуудалгүйгээр detect хийх ref
+  const examNeedsAiReplyRef = useRef(false);
+  const [examAiReplied, setExamAiReplied] = useState(true); // false = AI хариулт хүлээж байна
+
+  // AI харилцагчийн ID — ConversationSerializer user1/user2-д is_ai_teacher оруулдаг тул
+  // энд тооцоолж, poll болон render аль алиндаа ашиглана.
+  const aiUserId = selectedConversation?.user1?.is_ai_teacher
+    ? selectedConversation.user1.id
+    : selectedConversation?.user2?.is_ai_teacher
+    ? selectedConversation.user2.id
+    : null;
+
   // Refs
   const messagesEndRef = useRef(null);
+  const examChoicesRef = useRef(null);
   const fileInputRef = useRef(null);
   const emojiPickerRef = useRef(null);
   const lastMessageIdRef = useRef(0);
@@ -327,6 +407,10 @@ const MessagesPage = ({ aiOnly = false }) => {
         const msgs = data.messages || [];
         setMessages(msgs);
         if (msgs.length) lastMessageIdRef.current = msgs[msgs.length - 1].id || 0;
+        // Хадгалагдсан үнэлгээнүүдийг state-д ачаалах
+        const initRatings = {};
+        msgs.forEach((m) => { if (m.my_rating) initRatings[m.uuid] = m.my_rating; });
+        setMessageRatings(initRatings);
 
         // Refresh conversations to update unread count
         // (backend automatically marks messages as read when fetching)
@@ -343,6 +427,319 @@ const MessagesPage = ({ aiOnly = false }) => {
 
     fetchMessages();
   }, [selectedConversation]);
+
+  // ЭЕШ горим: conversation солигдоход reset
+  useEffect(() => {
+    setShowEeshModal(false);
+    setEeshStats(null);
+    setExamPrepMode(false);
+    setExamProblems([]);
+    setExamProblemIndex(0);
+    setExamCurrentProblem(null);
+    setExamAnswered(false);
+    setExamLastCorrect(null);
+    setWrongChoiceExplanation(null);
+    setWrongChoiceLoading(false);
+    setWrongChoiceFailed(false);
+    setExamSolutionViewed(false);
+    setHintModal(null);
+    setSolutionModal(null);
+    setExamSelectedCategoryIds(new Set());
+    setExamSelectedCategoryId(null);
+    setExamSelectedTopicIds(new Set());
+    setEeshTopics([]);
+    setEeshModalStep('category');
+    setMessageRatings({});
+    setChoiceRatings({});
+    setExamAiReplied(true);
+    examNeedsAiReplyRef.current = false;
+  }, [selectedConversation?.uuid]);
+
+
+  // AI мессежэд like/dislike
+  const handleRateMessage = useCallback(async (messageUuid, rating) => {
+    const prev = messageRatings[messageUuid] ?? null;
+    setMessageRatings((s) => ({ ...s, [messageUuid]: rating }));
+    try {
+      // Exam prep mode + dislike → бодлогын choices/answer шалгаж засах
+      const problemId = (examPrepMode && rating === 'dislike')
+        ? (examCurrentProblem?.id ?? examProblems[examProblemIndex]?.id ?? null)
+        : null;
+      await rateMessage(messageUuid, rating, problemId);
+    } catch {
+      setMessageRatings((s) => ({ ...s, [messageUuid]: prev }));
+    }
+  }, [messageRatings, examPrepMode, examCurrentProblem, examProblems, examProblemIndex]);
+
+  // Сонголтын тайлбарт like/dislike
+  const handleRateChoice = useCallback(async (choiceId, rating) => {
+    const prev = choiceRatings[choiceId] ?? null;
+    setChoiceRatings((s) => ({ ...s, [choiceId]: rating }));
+    try {
+      await rateAnswerChoice(choiceId, rating);
+    } catch {
+      setChoiceRatings((s) => ({ ...s, [choiceId]: prev }));
+    }
+  }, [choiceRatings]);
+
+  // ЭЕШ товч дарахад: статистик татаж modal нээх
+  const handleEeshButtonClick = async () => {
+    setShowEeshModal(true);
+    setEeshModalStep('category');
+    setExamSelectedCategoryId(null);
+    setEeshTopics([]);
+    setExamSelectedTopicIds(new Set());
+    if (eeshStats) return;
+    setEeshStatsLoading(true);
+    try {
+      const data = await getEeshStats();
+      setEeshStats(data);
+    } catch (e) {
+      console.error('ЭЕШ статистик татахад алдаа:', e);
+      setEeshStats({ has_data: false, category_stats: [] });
+    } finally {
+      setEeshStatsLoading(false);
+    }
+  };
+
+  // Category сонгоход topic step руу шилжих
+  const handleSelectCategoryForTopics = async (cat) => {
+    setExamSelectedCategoryId(cat.id);
+    setExamSelectedTopicIds(new Set());
+    setEeshModalStep('topic');
+    setEeshTopicsLoading(true);
+    try {
+      const data = await getEeshTopics(cat.id);
+      setEeshTopics(data.topics || []);
+    } catch (e) {
+      console.error('Сэдэв татахад алдаа:', e);
+      setEeshTopics([]);
+    } finally {
+      setEeshTopicsLoading(false);
+    }
+  };
+
+  // Бодлогыг чатад AI мессежээр илгээх
+  const sendProblemToChat = async (problems, index) => {
+    const prob = problems[index];
+    if (!prob || !selectedConversation) return;
+    setExamSending(true);
+    try {
+      const problemMsg = await sendExamProblem(selectedConversation.uuid, prob.id);
+      // Бодлогын мессежийг шууд messages-д нэм (polling хүлээхгүй)
+      if (problemMsg?.id) {
+        setMessages((prev) => {
+          const exists = prev.some((m) => m.id === problemMsg.id);
+          return exists ? prev : [...prev, problemMsg];
+        });
+        if (problemMsg.id) lastMessageIdRef.current = Math.max(lastMessageIdRef.current, problemMsg.id);
+      }
+      setExamCurrentProblem(prob);
+      setExamProblemIndex(index);
+      setExamAnswered(false);
+      setExamLastCorrect(null);
+      setWrongChoiceExplanation(null);
+      setWrongChoiceLoading(false);
+      setWrongChoiceFailed(false);
+      setExamSolutionViewed(false);
+      setHintModal(null);
+      setSolutionModal(null);
+      setExamAiReplied(true);
+      examNeedsAiReplyRef.current = false;
+    } catch (e) {
+      console.error('Бодлого илгээхэд алдаа:', e);
+    } finally {
+      setExamSending(false);
+    }
+  };
+
+  // "Бодлого бодох" дарахад: бодлогуудыг татаж эхний бодлогыг илгээнэ
+  const handleStartExamPrep = async () => {
+    setShowEeshModal(false);
+    setExamPrepMode(true);
+    setExamAnswered(false);
+    // Two-step modal: single category + optional topic keywords
+    const catIds = examSelectedCategoryId ? [examSelectedCategoryId] : [...examSelectedCategoryIds];
+    const kwIds = [...examSelectedTopicIds];
+    let problems = examProblems;
+    if (!problems.length || catIds.length > 0 || kwIds.length > 0) {
+      try {
+        const data = await getEeshProblems('math', 20, catIds, kwIds);
+        problems = data.problems || [];
+        setExamProblems(problems);
+      } catch (e) {
+        console.error('ЭЕШ бодлого татахад алдаа:', e);
+        return;
+      }
+    }
+    await sendProblemToChat(problems, 0);
+  };
+
+  // Дараагийн бодлого илгээх (ижил категорийг давуу эрхтэй)
+  const handleNextProblem = async () => {
+    if (!examAiReplied || typewriterMsgId) return;
+    const nextIndex = examProblemIndex + 1;
+    if (nextIndex >= examProblems.length) return;
+    await sendProblemToChat(examProblems, nextIndex);
+  };
+
+  // Одоогийн бодлогыг алгасаж дараагийн рүү шилжих
+  const handleSkipProblem = async () => {
+    if (examSending || typewriterMsgId) return;
+    const nextIndex = examProblemIndex + 1;
+    if (nextIndex >= examProblems.length) return;
+    await sendProblemToChat(examProblems, nextIndex);
+  };
+
+  // Өөр (өөр сэдвийн) бодлого — алгоритмын дагуу сонгох, олдохгүй бол AI зохионо
+  const handleDifferentProblem = async () => {
+    const currentProblem = examProblems[examProblemIndex];
+    if (!currentProblem || !selectedConversation || examSending || !examAiReplied || typewriterMsgId) return;
+    setExamSending(true);
+    try {
+      const data = await getEeshDifferentProblem(currentProblem.id, 'math');
+      if (!data?.problem) return;
+      const newProblem = data.problem;
+      const insertIndex = examProblemIndex + 1;
+      const newList = [
+        ...examProblems.slice(0, insertIndex),
+        newProblem,
+        ...examProblems.slice(insertIndex),
+      ];
+      setExamProblems(newList);
+      // sendProblemToChat нь setExamSending(true/false) дотроо хийдэг тул finally-д false хийхгүй
+      await sendProblemToChat(newList, insertIndex);
+    } catch (e) {
+      console.error('Өөр бодлого авахад алдаа:', e);
+      setExamSending(false);
+    }
+  };
+
+  // Зөвлөгөө (Hint) modal нээх
+  const handleOpenHint = async () => {
+    if (!examCurrentProblem) return;
+    setHintModal({ loading: true, hint: null });
+    try {
+      const data = await getProblemHintSolution(examCurrentProblem.id);
+      setHintModal({ loading: false, hint: data.hint || null });
+    } catch (e) {
+      console.error('Hint татахад алдаа:', e);
+      setHintModal({ loading: false, hint: null });
+    }
+  };
+
+  // Бодолт (Solution) modal нээх
+  const handleOpenSolution = async () => {
+    if (!examCurrentProblem) return;
+    setSolutionModal({ loading: true, solution: null, explanation: null, note: null, choices: null });
+    try {
+      const data = await getProblemHintSolution(examCurrentProblem.id);
+      setSolutionModal({
+        loading: false,
+        solution: data.solution || null,
+        explanation: data.explanation || null,
+        note: data.note || null,
+        choices: data.choices || null,
+      });
+    } catch (e) {
+      console.error('Бодолт татахад алдаа:', e);
+      setSolutionModal({ loading: false, solution: null, explanation: null, note: null, choices: null });
+    }
+  };
+
+  // Бодолт харсны дараа дараагийн бодлого руу шилжих
+  const handleSolutionViewed = () => {
+    setSolutionModal(null);
+    setExamSolutionViewed(true);
+  };
+
+  // MC сонголт дарах үед хариулт шууд илгээх
+  const handleSendChoiceAnswer = async (choiceLabel) => {
+    if (!selectedConversation || !examCurrentProblem || examAnswered || sending) return;
+    const problemRef = examCurrentProblem;
+
+    // Хариулт зөв эсэхийг frontend-д тооцоолох (backend-тэй ижил логик)
+    let isCorrect = null;
+    if (problemRef.choices?.length) {
+      const matched = problemRef.choices.find(
+        (c) => (c.label || '').trim().toUpperCase() === choiceLabel.trim().toUpperCase()
+      );
+      if (matched !== undefined) isCorrect = matched.default_score > 0;
+    }
+
+    // Ижил категорийн бодлогын тоог тоолох (0-ээс эхлэн)
+    const sameCatCount = examProblems
+      .slice(0, examProblemIndex + 1)
+      .filter((p) => p.category_id === problemRef.category_id).length;
+    const suggestTopicChange = isCorrect === true && sameCatCount >= 5;
+
+    setExamLastCorrect(isCorrect);
+    if (isCorrect === true) {
+      setExamAnswered(true);
+      setExamCurrentProblem(null);
+      setWrongChoiceExplanation(null);
+      setWrongChoiceFailed(false);
+      setExamAiReplied(false);
+      examNeedsAiReplyRef.current = true;
+    } else {
+      // Буруу: хариулт сонгох товч хэвээр, алдааны тайлбар авах
+      setWrongChoiceExplanation(null);
+      setWrongChoiceId(null);
+      setWrongChoiceFailed(false);
+      if (problemRef.choices?.length) {
+        const choiceObj = problemRef.choices?.find(
+          (c) => (c.label || '').trim().toUpperCase() === choiceLabel.trim().toUpperCase()
+        );
+        if (choiceObj?.id) setWrongChoiceId(choiceObj.id);
+        setWrongChoiceLoading(true);
+        explainWrongChoice(problemRef.id, choiceLabel)
+          .then((data) => {
+            if (data.explanation) {
+              setWrongChoiceExplanation(data.explanation);
+            } else {
+              setWrongChoiceFailed(true);
+            }
+          })
+          .catch((err) => { console.error('explainWrongChoice алдаа:', err); setWrongChoiceFailed(true); })
+          .finally(() => setWrongChoiceLoading(false));
+      }
+    }
+
+    const tempId = 'temp-' + Date.now();
+    setMessages((prev) => [
+      ...prev,
+      {
+        uuid: tempId,
+        author: user,
+        content: choiceLabel,
+        created_at: new Date().toISOString(),
+        attachments: [],
+        _isOptimistic: true,
+      },
+    ]);
+    if (isAiConv(selectedConversation)) setAiTyping(true);
+
+    try {
+      setSending(true);
+      const sentMessage = await sendMessage({
+        conversationUuid: selectedConversation.uuid,
+        content: choiceLabel,
+        attachments: [],
+        examPrepProblemId: problemRef.id,
+        examSuggestTopicChange: suggestTopicChange,
+      });
+      setMessages((prev) => prev.map((m) => (m.uuid === tempId ? sentMessage : m)));
+      if (sentMessage.id) lastMessageIdRef.current = Math.max(lastMessageIdRef.current, sentMessage.id);
+    } catch (err) {
+      setMessages((prev) => prev.filter((m) => m.uuid !== tempId));
+      setExamAnswered(false);
+      setExamCurrentProblem(problemRef);
+      console.error('Хариулт илгээхэд алдаа:', err);
+    } finally {
+      setSending(false);
+      if (textareaRef.current) textareaRef.current.value = '';
+    }
+  };
 
   // Auto-poll: шинэ мессеж + AI typing status
   // Зөвхөн AI харилцагчтай харилцаанд л polling хийнэ.
@@ -385,10 +782,15 @@ const MessagesPage = ({ aiOnly = false }) => {
           const last = data.messages[data.messages.length - 1]
           if (last.id) lastMessageIdRef.current = last.id
           // AI мессеж ирвэл typewriter эффект эхлүүлнэ
-          const aiMsg = [...data.messages].reverse().find((m) => m.author?.is_ai_teacher)
+          const aiMsg = [...data.messages].reverse().find((m) => aiUserId && m.author?.id === aiUserId)
           if (aiMsg?.uuid) {
             setTypewriterStarted(false)
             setTypewriterMsgId(aiMsg.uuid)
+            // Зөв хариулсны дараа багшийн хариулт ирсэн → товч харуулна
+            if (examNeedsAiReplyRef.current) {
+              examNeedsAiReplyRef.current = false
+              setExamAiReplied(true)
+            }
           }
         }
         // AI бичиж байх үед 500ms, эс бөгөөс 2000ms
@@ -564,6 +966,10 @@ const MessagesPage = ({ aiOnly = false }) => {
     // AI харилцагчтай бол мессеж илгээмэгц "Бодож байна" шууд харуулна
     if (isAiConv(selectedConversation)) setAiTyping(true)
 
+    // ЭЕШ бэлдэх горим: идэвхтэй бодлого байвал хариулсан гэж тэмдэглэх
+    const activeProblem = examPrepMode && !examAnswered && examCurrentProblem;
+    if (activeProblem) setExamAnswered(true);
+
     try {
       setSending(true)
 
@@ -571,8 +977,8 @@ const MessagesPage = ({ aiOnly = false }) => {
         conversationUuid: selectedConversation.uuid,
         content: inputText,
         attachments: uploadedImages,
+        examPrepProblemId: activeProblem ? activeProblem.id : undefined,
       })
-
       // Optimistic-г бодит мессежээр солих; ID шинэчлэх
       setMessages((prev) => prev.map((m) => (m.uuid === tempId ? sentMessage : m)))
       if (sentMessage.id) lastMessageIdRef.current = Math.max(lastMessageIdRef.current, sentMessage.id)
@@ -865,6 +1271,16 @@ const MessagesPage = ({ aiOnly = false }) => {
                   </div>
                 </div>
                 <div className="d-flex align-items-center gap-2">
+                  {isAiConv(selectedConversation) && (
+                    <button
+                      className={`btn btn-sm ${examPrepMode ? 'btn-warning' : 'btn-outline-warning'}`}
+                      onClick={handleEeshButtonClick}
+                      title="ЭЕШ бэлдэх — статистик харах"
+                    >
+                      <BookOpen size={16} />
+                      <span className="d-none d-md-inline ms-1">ЭЕШ</span>
+                    </button>
+                  )}
                   <div className="text-secondary small d-flex align-items-center gap-1">
                     <AlertTriangle size={14} />
                     <span className="d-none d-md-inline">Нийтэд нээлттэй</span>
@@ -925,28 +1341,97 @@ const MessagesPage = ({ aiOnly = false }) => {
                 <div className="d-flex justify-content-center p-4">
                   <Spinner animation="border" size="sm" />
                 </div>
-              ) : (
-                messages.map((message) => (
-                  <MessageBubble
-                    key={message.uuid}
-                    message={message}
-                    currentUserId={user?.id}
-                    onReuse={handleReuse}
-                    isTypewriting={message.uuid === typewriterMsgId}
-                    onTypewritingDone={() => { setTypewriterMsgId(null); setTypewriterStarted(false); }}
-                    onTypewritingStart={() => setTypewriterStarted(true)}
-                  />
-                ))
-              )}
-              {/* AI typing indicator */}
-              {(aiTyping || (typewriterMsgId && !typewriterStarted)) && (
+              ) : (() => {
+                // Зөв хариулсны дараа / бодолт харсны дараа → Үргэлжлүүлэх / Сэдэв сонгох / Болих
+                const showExamNext = examPrepMode && (
+                  (examAnswered && examLastCorrect === true && examAiReplied && !typewriterMsgId)
+                  || examSolutionViewed
+                );
+                // Бодлого харагдаж байх үед, хариулаагүй → Алгасах / Болих
+                const showSkip = examPrepMode && !examAnswered && !examSolutionViewed
+                  && !examSending && !typewriterMsgId && examProblems.length > 0;
+                const lastAiMsgUuid = (showExamNext || showSkip)
+                  ? [...messages].reverse().find((m) => aiUserId && m.author?.id === aiUserId)?.uuid
+                  : null;
+                const stopExam = () => {
+                  setExamPrepMode(false);
+                  setExamProblems([]);
+                  setExamProblemIndex(0);
+                  setExamCurrentProblem(null);
+                  setExamAnswered(false);
+                  setExamLastCorrect(null);
+                  setExamSolutionViewed(false);
+                };
+                return messages.map((message) => (
+                  <Fragment key={message.uuid}>
+                    <MessageBubble
+                      message={message}
+                      currentUserId={user?.id}
+                      onReuse={handleReuse}
+                      isTypewriting={message.uuid === typewriterMsgId}
+                      onTypewritingDone={() => { setTypewriterMsgId(null); setTypewriterStarted(false); }}
+                      onTypewritingStart={() => setTypewriterStarted(true)}
+                      rating={messageRatings[message.uuid] ?? message.my_rating ?? null}
+                      onRate={isAiConv(selectedConversation) ? (r) => handleRateMessage(message.uuid, r) : null}
+                    />
+                    {message.uuid === lastAiMsgUuid && showExamNext && (
+                      <div className="d-flex gap-2 flex-wrap px-3 pb-3 pt-1" style={{ marginLeft: '2.5rem' }}>
+                        <button
+                          type="button"
+                          className="btn btn-success btn-sm"
+                          onClick={handleNextProblem}
+                          disabled={examSending || !examAiReplied || !!typewriterMsgId || examProblemIndex >= examProblems.length - 1}
+                        >
+                          {examSending ? <Spinner animation="border" size="sm" className="me-1" /> : <Check size={14} className="me-1" />}
+                          Дараагийн бодлого
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-outline-primary btn-sm"
+                          onClick={() => { stopExam(); handleEeshButtonClick(); }}
+                          disabled={examSending}
+                        >
+                          Сэдэв сонгох
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-outline-secondary btn-sm"
+                          onClick={stopExam}
+                          disabled={examSending}
+                        >
+                          Болих
+                        </button>
+                      </div>
+                    )}
+                    {message.uuid === lastAiMsgUuid && showSkip && (
+                      <div className="d-flex gap-2 flex-wrap px-3 pb-3 pt-1" style={{ marginLeft: '2.5rem' }}>
+                        <button
+                          type="button"
+                          className="btn btn-outline-warning btn-sm"
+                          onClick={handleSkipProblem}
+                          disabled={examSending || !!typewriterMsgId || examProblemIndex >= examProblems.length - 1}
+                        >
+                          {examSending ? <Spinner animation="border" size="sm" className="me-1" /> : null}
+                          Алгасах
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-outline-secondary btn-sm"
+                          onClick={stopExam}
+                          disabled={examSending}
+                        >
+                          Болих
+                        </button>
+                      </div>
+                    )}
+                  </Fragment>
+                ));
+              })()}
+              {/* AI typing indicator — typewriter эхэлсэн бол нуугдана */}
+              {(aiTyping || !examAiReplied) && !typewriterMsgId && (
                 <div className="message received ai-thinking-row">
                   <div className="message-bubble ai-thinking-bubble">
-                    <span className="ai-thinking-icon">🧠</span>
-                    <span className="ai-thinking-text">Бодож байна</span>
-                    <span className="typing-dot" />
-                    <span className="typing-dot" />
-                    <span className="typing-dot" />
+                    <Spinner animation="border" size="sm" style={{ width: '14px', height: '14px', borderWidth: '2px' }} />
                   </div>
                 </div>
               )}
@@ -955,6 +1440,128 @@ const MessagesPage = ({ aiOnly = false }) => {
 
             {/* Message Input */}
             <div className="chat-input-area">
+              {/* ЭЕШ: дараагийн бодлого ачаалж байна */}
+              {examPrepMode && examSending && (
+                <div className="border-top py-3 d-flex justify-content-center align-items-center gap-2 text-muted" style={{ background: '#f8f9fa', fontSize: '0.85rem' }}>
+                  <Spinner animation="border" size="sm" />
+                  <span>Бодлого ачаалж байна...</span>
+                </div>
+              )}
+              {/* ЭЕШ: бодлогын өгүүлбэр + хариулт сонголт + товчнууд — нэг блокт */}
+              {examPrepMode && examCurrentProblem && !examAnswered && !examSolutionViewed && !examSending && (
+                <div className="exam-problem-block border-top" style={{ background: '#f8f9fa' }}>
+                  {/* Өгүүлбэр */}
+                  <div className="px-3 pt-2 pb-1" style={{ fontSize: '1.05rem', maxHeight: '200px', overflowY: 'auto' }}>
+                    <div className="d-flex align-items-center gap-2 mb-1">
+                      <span className="fw-semibold text-muted small flex-grow-1">
+                        {examCurrentProblem.title || `#${examCurrentProblem.id}`}
+                      </span>
+                      {user?.is_staff && (
+                        <a
+                          href={`/problem/${examCurrentProblem.uuid}/edit`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-muted"
+                          style={{ fontSize: '0.72rem' }}
+                          title="Бодлого засах"
+                        >
+                          ✏️
+                        </a>
+                      )}
+                    </div>
+                    <LivePreview content={examCurrentProblem.statement} />
+                  </div>
+                  {/* Хариулт сонголт + hint/solution товчнууд — нэг мөрт */}
+                  <div ref={examChoicesRef} className="px-2 pb-2 d-flex align-items-center gap-2 flex-wrap">
+                    {examCurrentProblem.choices?.map((c) => (
+                      <button
+                        key={c.label}
+                        type="button"
+                        className="btn btn-outline-primary btn-sm exam-choice-btn"
+                        onClick={async () => {
+                          if (textareaRef.current) textareaRef.current.value = c.label;
+                          await handleSendChoiceAnswer(c.label);
+                        }}
+                        disabled={sending}
+                      >
+                        <strong>{c.label})</strong> <MathJax dynamic inline>{c.value}</MathJax>
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      className="btn btn-outline-warning btn-sm ms-auto"
+                      onClick={handleOpenHint}
+                      disabled={sending || aiTyping}
+                      title="Зөвлөгөө авах"
+                    >
+                      💡 Hint
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary btn-sm"
+                      onClick={handleOpenSolution}
+                      disabled={sending || aiTyping}
+                      title="Бодолт харах"
+                    >
+                      📖 Бодолт
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-outline-danger btn-sm"
+                      onClick={handleSkipProblem}
+                      disabled={sending || examSending || !!typewriterMsgId || examProblemIndex >= examProblems.length - 1}
+                      title="Алгасах"
+                    >
+                      ⏭
+                    </button>
+                  </div>
+                  {/* Буруу хариулт сонгосны дараа алдааны тайлбар */}
+                  {(wrongChoiceLoading || wrongChoiceExplanation || wrongChoiceFailed) && (
+                    <div className="px-3 pb-2">
+                      <div
+                        className="wrong-choice-explanation border-start border-danger ps-2"
+                        style={{ fontSize: '0.82rem', color: '#b00020' }}
+                      >
+                        {wrongChoiceLoading ? (
+                          <span className="text-muted">
+                            <span className="spinner-border spinner-border-sm me-1" role="status" />
+                            Тайлбарлаж байна...
+                          </span>
+                        ) : wrongChoiceFailed ? (
+                          <span className="text-muted fst-italic">AI багш тайлбар үүсгэж чадсангүй. Бодолтыг харна уу.</span>
+                        ) : (
+                          <>
+                            <LivePreview content={wrongChoiceExplanation} />
+                            {wrongChoiceId && (
+                              <div className="mt-1 d-flex gap-2">
+                                <button
+                                  className={`btn btn-link btn-sm p-0 ${choiceRatings[wrongChoiceId] === 'like' ? 'text-success' : 'text-muted'}`}
+                                  onClick={() => handleRateChoice(wrongChoiceId, choiceRatings[wrongChoiceId] === 'like' ? null : 'like')}
+                                  style={{ fontSize: '0.75rem' }}
+                                  title="Таалагдсан"
+                                >
+                                  <ThumbsUp size={12} fill={choiceRatings[wrongChoiceId] === 'like' ? 'currentColor' : 'none'} className="me-1" />
+                                  Таалагдсан
+                                </button>
+                                <button
+                                  className={`btn btn-link btn-sm p-0 ${choiceRatings[wrongChoiceId] === 'dislike' ? 'text-danger' : 'text-muted'}`}
+                                  onClick={() => handleRateChoice(wrongChoiceId, choiceRatings[wrongChoiceId] === 'dislike' ? null : 'dislike')}
+                                  style={{ fontSize: '0.75rem' }}
+                                  title="Таалагдаагүй"
+                                >
+                                  <ThumbsDown size={12} fill={choiceRatings[wrongChoiceId] === 'dislike' ? 'currentColor' : 'none'} className="me-1" />
+                                  Таалагдаагүй
+                                </button>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Image Previews */}
               {uploadedImages.length > 0 && (
                 <div className="uploaded-images-preview">
@@ -1060,6 +1667,306 @@ const MessagesPage = ({ aiOnly = false }) => {
         onHide={() => setShowNewConversationModal(false)}
         onConversationCreated={handleConversationCreated}
       />
+
+      {/* ЭЕШ статистик Modal */}
+      {showEeshModal && (
+        <div
+          className="modal show d-block"
+          style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowEeshModal(false); }}
+        >
+          <div className="modal-dialog modal-dialog-scrollable modal-md" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-content">
+              <div className="modal-header border-bottom-0 pb-1">
+                <h5 className="modal-title d-flex align-items-center gap-2">
+                  <BookOpen size={20} className="text-warning" />
+                  {eeshModalStep === 'category' ? 'ЭЕШ бэлдэх — чиглэл сонгох' : 'Сэдэв сонгох'}
+                </h5>
+                <button type="button" className="btn-close" onClick={() => setShowEeshModal(false)} />
+              </div>
+
+              {/* Step indicator */}
+              <div className="px-3 pb-1 d-flex align-items-center gap-1" style={{ fontSize: '0.75rem' }}>
+                <span className={eeshModalStep === 'category' ? 'fw-bold text-warning' : 'text-muted'}>
+                  1. Чиглэл
+                </span>
+                <span className="text-muted mx-1">›</span>
+                <span className={eeshModalStep === 'topic' ? 'fw-bold text-warning' : 'text-muted'}>
+                  2. Сэдэв
+                </span>
+              </div>
+
+              <div className="modal-body pt-1">
+                {eeshStatsLoading ? (
+                  <div className="text-center py-4">
+                    <Spinner animation="border" size="sm" className="me-2" />
+                    <span className="text-muted">Статистик татаж байна...</span>
+                  </div>
+                ) : eeshModalStep === 'category' ? (
+                  /* ── Step 1: Category selection ── */
+                  <>
+                    {eeshStats?.has_data ? (
+                      <>
+                        {/* Summary — зөвхөн дадлагатай үед */}
+                        <div className="d-flex gap-3 mb-3 p-2 bg-light rounded">
+                          <div className="text-center flex-fill">
+                            <div className="fw-bold">{eeshStats.total_problems}</div>
+                            <div className="text-muted" style={{ fontSize: '0.72rem' }}>Нийт</div>
+                          </div>
+                          <div className="text-center flex-fill">
+                            <div className="fw-bold text-success">{eeshStats.total_correct}</div>
+                            <div className="text-muted" style={{ fontSize: '0.72rem' }}>Зөв</div>
+                          </div>
+                          <div className="text-center flex-fill">
+                            <div className={`fw-bold ${eeshStats.overall_rate >= 0.7 ? 'text-success' : eeshStats.overall_rate >= 0.4 ? 'text-warning' : 'text-danger'}`}>
+                              {Math.round((eeshStats.overall_rate || 0) * 100)}%
+                            </div>
+                            <div className="text-muted" style={{ fontSize: '0.72rem' }}>Амжилт</div>
+                          </div>
+                        </div>
+                      </>
+                    ) : null}
+                    <p className="text-muted small mb-2">Дадлага хийх чиглэл сонгох:</p>
+
+                    {/* Category list — practiced + unpracticed categories */}
+                    <div className="d-flex flex-column gap-1">
+                      {(eeshStats?.category_stats || []).map((cat) => {
+                        const practiced = cat.total > 0;
+                        const pct = Math.round((cat.success_rate || 0) * 100);
+                        const barColor = pct >= 70 ? '#198754' : pct >= 40 ? '#ffc107' : '#dc3545';
+                        return (
+                          <button
+                            key={cat.id}
+                            type="button"
+                            className="btn btn-outline-secondary btn-sm text-start d-flex align-items-center gap-2 w-100"
+                            style={{ borderRadius: '8px', padding: '6px 10px' }}
+                            onClick={() => handleSelectCategoryForTopics(cat)}
+                          >
+                            <span
+                              style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', backgroundColor: cat.color || '#6c757d', flexShrink: 0 }}
+                            />
+                            <span className="flex-grow-1 small fw-medium">{cat.name_mn || cat.name}</span>
+                            {practiced ? (
+                              <>
+                                <span className="small text-muted">{cat.correct}/{cat.total}</span>
+                                <div className="progress flex-shrink-0" style={{ width: 60, height: 6, borderRadius: 3 }}>
+                                  <div className="progress-bar" style={{ width: `${pct}%`, backgroundColor: barColor }} />
+                                </div>
+                                <span className="small" style={{ minWidth: 28, textAlign: 'right', color: barColor }}>{pct}%</span>
+                              </>
+                            ) : (
+                              <span className="small text-muted fst-italic">Бодоогүй</span>
+                            )}
+                            <span className="text-muted small">›</span>
+                          </button>
+                        );
+                      })}
+                      {/* "Any category" option */}
+                      <button
+                        type="button"
+                        className="btn btn-outline-warning btn-sm text-start d-flex align-items-center gap-2 w-100 mt-1"
+                        style={{ borderRadius: '8px', padding: '6px 10px' }}
+                        onClick={handleStartExamPrep}
+                      >
+                        <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', backgroundColor: '#ffc107', flexShrink: 0 }} />
+                        <span className="flex-grow-1 small fw-medium">Автоматаар сонгох</span>
+                        <span className="text-muted small">(сул сэдвийг тэргүүлнэ)</span>
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  /* ── Step 2: Topic selection within chosen category ── */
+                  <>
+                    {(() => {
+                      const cat = eeshStats?.category_stats?.find(c => c.id === examSelectedCategoryId);
+                      return cat ? (
+                        <div className="d-flex align-items-center gap-2 mb-2 p-2 bg-light rounded">
+                          <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', backgroundColor: cat.color || '#6c757d' }} />
+                          <span className="fw-medium small">{cat.name_mn || cat.name}</span>
+                          {cat.total > 0 ? (
+                            <span className="text-muted small ms-auto">{Math.round((cat.success_rate || 0) * 100)}%</span>
+                          ) : (
+                            <span className="text-muted small ms-auto fst-italic">Бодоогүй</span>
+                          )}
+                        </div>
+                      ) : null;
+                    })()}
+
+                    {eeshTopicsLoading ? (
+                      <div className="text-center py-3">
+                        <Spinner animation="border" size="sm" />
+                        <span className="text-muted ms-2 small">Сэдвүүд татаж байна...</span>
+                      </div>
+                    ) : eeshTopics.length === 0 ? (
+                      <div className="text-center py-3">
+                        <p className="text-muted small mb-0">Энэ чиглэлд нэмэлт сэдвийн мэдээлэл байхгүй.</p>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-muted small mb-2">
+                          Дадлага хийх сэдэв сонгох
+                          <span className="ms-1" style={{ fontSize: '0.72rem' }}>(олон сонгож болно)</span>
+                        </p>
+                        <div className="d-flex flex-wrap gap-1">
+                          {eeshTopics.map((topic) => {
+                            const selected = examSelectedTopicIds.has(topic.id);
+                            return (
+                              <button
+                                key={topic.id}
+                                type="button"
+                                className={`btn btn-sm ${selected ? 'btn-primary' : 'btn-outline-secondary'}`}
+                                style={{ fontSize: '0.78rem', padding: '3px 10px', borderRadius: '20px' }}
+                                onClick={() => setExamSelectedTopicIds(prev => {
+                                  const next = new Set(prev);
+                                  if (next.has(topic.id)) next.delete(topic.id);
+                                  else next.add(topic.id);
+                                  return next;
+                                })}
+                              >
+                                {topic.name}
+                                <span className="ms-1 opacity-50" style={{ fontSize: '0.68rem' }}>{topic.problem_count}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
+
+              <div className="modal-footer border-top-0 pt-0 justify-content-between">
+                {eeshModalStep === 'topic' ? (
+                  <>
+                    <button className="btn btn-outline-secondary btn-sm" onClick={() => setEeshModalStep('category')}>
+                      ‹ Буцах
+                    </button>
+                    <button className="btn btn-warning btn-sm" onClick={handleStartExamPrep}>
+                      <BookOpen size={15} className="me-1" />
+                      Бодлого бодох
+                      {examSelectedTopicIds.size > 0 && (
+                        <span className="badge bg-white text-warning ms-1" style={{ fontSize: '0.7rem' }}>
+                          {examSelectedTopicIds.size}
+                        </span>
+                      )}
+                    </button>
+                  </>
+                ) : (
+                  <button className="btn btn-outline-secondary btn-sm ms-auto" onClick={() => setShowEeshModal(false)}>
+                    Хаах
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Hint Modal ── */}
+      {hintModal !== null && (
+        <div className="modal d-block" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => setHintModal(null)}>
+          <div className="modal-dialog modal-dialog-centered" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-content">
+              <div className="modal-header py-2">
+                <h6 className="modal-title mb-0">💡 Зөвлөгөө</h6>
+                <button type="button" className="btn-close btn-sm" onClick={() => setHintModal(null)} />
+              </div>
+              <div className="modal-body" style={{ minHeight: '80px' }}>
+                {hintModal.loading ? (
+                  <div className="text-center py-3"><Spinner animation="border" size="sm" /></div>
+                ) : hintModal.hint ? (
+                  <LivePreview content={hintModal.hint} />
+                ) : (
+                  <p className="text-muted mb-0">Зөвлөгөө байхгүй байна.</p>
+                )}
+              </div>
+              <div className="modal-footer py-2">
+                <button className="btn btn-secondary btn-sm" onClick={() => setHintModal(null)}>Хаах</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Solution Modal ── */}
+      {solutionModal !== null && (
+        <div className="modal d-block" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={handleSolutionViewed}>
+          <div className="modal-dialog modal-dialog-centered modal-lg" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-content">
+              <div className="modal-header py-2">
+                <h6 className="modal-title mb-0">📖 Бодолт</h6>
+                <button type="button" className="btn-close btn-sm" onClick={handleSolutionViewed} />
+              </div>
+              <div className="modal-body" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+                {solutionModal.loading ? (
+                  <div className="text-center py-3"><Spinner animation="border" size="sm" /></div>
+                ) : (solutionModal.choices?.some((c) => c.description) || solutionModal.solution || solutionModal.explanation) ? (
+                  <>
+                    {solutionModal.choices?.some((c) => c.description) && (
+                      <div className="mb-3">
+                        {solutionModal.choices.filter((c) => c.description).map((c) => (
+                          <div key={c.label} className="mb-3">
+                            <div className="fw-semibold small mb-1">
+                              <span className={c.default_score > 0 ? 'text-success' : 'text-danger'}>
+                                {c.default_score > 0 ? '✓' : '✗'} {c.label})
+                              </span>{' '}
+                              <span className="text-muted">{c.value}</span>
+                            </div>
+                            <LivePreview content={c.description} />
+                            {c.id && (
+                              <div className="mt-1 d-flex gap-2">
+                                <button
+                                  className={`btn btn-link btn-sm p-0 ${choiceRatings[c.id] === 'like' ? 'text-success' : 'text-muted'}`}
+                                  onClick={() => handleRateChoice(c.id, choiceRatings[c.id] === 'like' ? null : 'like')}
+                                  title="Таалагдсан"
+                                  style={{ fontSize: '0.75rem' }}
+                                >
+                                  <ThumbsUp size={13} fill={choiceRatings[c.id] === 'like' ? 'currentColor' : 'none'} className="me-1" />
+                                  Таалагдсан
+                                </button>
+                                <button
+                                  className={`btn btn-link btn-sm p-0 ${choiceRatings[c.id] === 'dislike' ? 'text-danger' : 'text-muted'}`}
+                                  onClick={() => handleRateChoice(c.id, choiceRatings[c.id] === 'dislike' ? null : 'dislike')}
+                                  title="Таалагдаагүй"
+                                  style={{ fontSize: '0.75rem' }}
+                                >
+                                  <ThumbsDown size={13} fill={choiceRatings[c.id] === 'dislike' ? 'currentColor' : 'none'} className="me-1" />
+                                  Таалагдаагүй
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {solutionModal.solution && (
+                      <div className={solutionModal.choices?.some((c) => c.description) ? 'mt-3 pt-3 border-top' : ''}>
+                        <div className="text-muted small fw-semibold mb-1">Бодолт</div>
+                        <LivePreview content={solutionModal.solution} />
+                      </div>
+                    )}
+                    {solutionModal.explanation && (
+                      <div className="mt-3 pt-3 border-top">
+                        <div className="text-muted small fw-semibold mb-1">Тайлбар</div>
+                        <LivePreview content={solutionModal.explanation} />
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-muted mb-0">Бодолт байхгүй байна.</p>
+                )}
+              </div>
+              <div className="modal-footer py-2 d-flex justify-content-between">
+                <button className="btn btn-secondary btn-sm" onClick={handleSolutionViewed}>Хаах</button>
+                <button className="btn btn-success btn-sm" onClick={handleSolutionViewed}>
+                  <Check size={14} className="me-1" />
+                  Дараагийн бодлого
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

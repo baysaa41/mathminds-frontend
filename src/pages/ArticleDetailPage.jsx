@@ -153,6 +153,11 @@ const ArticleDetailPage = () => {
           </h1>
         </MathJax>
         <div className="ms-auto d-flex align-items-center gap-1 flex-shrink-0">
+          {canEdit && (
+            <Button variant="outline-primary" size="sm" onClick={handleEditClick} title="Засварлах" className="me-1">
+              <i className="bi bi-pencil me-1"></i>Засварлах
+            </Button>
+          )}
           <Button
             variant="link"
             className="text-decoration-none p-1 text-muted"
