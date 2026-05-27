@@ -572,6 +572,11 @@ const MessagesPage = ({ aiOnly = false }) => {
         return;
       }
     }
+    if (!problems.length) {
+      setExamPrepMode(false);
+      alert('Бодлого олдсонгүй. Өөр сэдэв эсвэл категори сонгоно уу.');
+      return;
+    }
     await sendProblemToChat(problems, 0);
   };
 
@@ -1456,6 +1461,38 @@ const MessagesPage = ({ aiOnly = false }) => {
                       <span className="fw-semibold text-muted small flex-grow-1">
                         {examCurrentProblem.title || `#${examCurrentProblem.id}`}
                       </span>
+                      {examCurrentProblem.level_name && (() => {
+                        const mnName = examCurrentProblem.level_name.replace(/\s*\(.*?\)/, '').trim();
+                        const levelColors = { 1: '#198754', 2: '#0dcaf0', 3: '#0d6efd', 4: '#ffc107', 5: '#fd7e14', 6: '#dc3545' };
+                        const levelTextColors = { 4: '#000', 5: '#fff' };
+                        const bg = levelColors[examCurrentProblem.level_id] || '#6c757d';
+                        const color = levelTextColors[examCurrentProblem.level_id] || '#fff';
+                        return (
+                          <span
+                            className="badge"
+                            style={{ fontSize: '0.65rem', background: bg, color }}
+                            title={examCurrentProblem.level_name}
+                          >
+                            {mnName}
+                          </span>
+                        );
+                      })()}
+                      {examCurrentProblem.topic_name && (
+                        <span
+                          className="badge"
+                          style={{ fontSize: '0.65rem', background: '#6c757d', color: '#fff' }}
+                        >
+                          {examCurrentProblem.topic_name}
+                        </span>
+                      )}
+                      {examCurrentProblem.is_eesh && (
+                        <span
+                          className="badge"
+                          style={{ fontSize: '0.65rem', background: '#e8a700', color: '#000' }}
+                        >
+                          ЭЕШ жишиг
+                        </span>
+                      )}
                       {user?.is_staff && (
                         <a
                           href={`/problem/${examCurrentProblem.uuid}/edit`}
@@ -1705,27 +1742,49 @@ const MessagesPage = ({ aiOnly = false }) => {
                 ) : eeshModalStep === 'category' ? (
                   /* ── Step 1: Category selection ── */
                   <>
-                    {eeshStats?.has_data ? (
-                      <>
-                        {/* Summary — зөвхөн дадлагатай үед */}
-                        <div className="d-flex gap-3 mb-3 p-2 bg-light rounded">
-                          <div className="text-center flex-fill">
-                            <div className="fw-bold">{eeshStats.total_problems}</div>
-                            <div className="text-muted" style={{ fontSize: '0.72rem' }}>Нийт</div>
-                          </div>
-                          <div className="text-center flex-fill">
-                            <div className="fw-bold text-success">{eeshStats.total_correct}</div>
-                            <div className="text-muted" style={{ fontSize: '0.72rem' }}>Зөв</div>
-                          </div>
-                          <div className="text-center flex-fill">
-                            <div className={`fw-bold ${eeshStats.overall_rate >= 0.7 ? 'text-success' : eeshStats.overall_rate >= 0.4 ? 'text-warning' : 'text-danger'}`}>
-                              {Math.round((eeshStats.overall_rate || 0) * 100)}%
+                    {/* Дасгалын статистик — үргэлж харуулна */}
+                    {eeshStats && (() => {
+                      const rate = eeshStats.overall_rate || 0;
+                      const rateColor = rate >= 0.7 ? 'text-success' : rate >= 0.4 ? 'text-warning' : 'text-danger';
+                      const avg = eeshStats.assignment_avg;
+                      const lvl = eeshStats.suggested_levels;
+                      return (
+                        <div className="mb-3">
+                          <div className="d-flex gap-2 p-2 bg-light rounded">
+                            <div className="text-center flex-fill">
+                              <div className="fw-bold">{eeshStats.total_problems}</div>
+                              <div className="text-muted" style={{ fontSize: '0.7rem' }}>Нийт</div>
                             </div>
-                            <div className="text-muted" style={{ fontSize: '0.72rem' }}>Амжилт</div>
+                            <div className="text-center flex-fill">
+                              <div className="fw-bold text-success">{eeshStats.total_correct}</div>
+                              <div className="text-muted" style={{ fontSize: '0.7rem' }}>Зөв</div>
+                            </div>
+                            <div className="text-center flex-fill">
+                              <div className={`fw-bold ${rateColor}`}>
+                                {eeshStats.has_data ? `${Math.round(rate * 100)}%` : '—'}
+                              </div>
+                              <div className="text-muted" style={{ fontSize: '0.7rem' }}>Амжилт</div>
+                            </div>
+                            {avg !== null && avg !== undefined && (
+                              <div className="text-center flex-fill border-start ps-2">
+                                <div className={`fw-bold ${avg < 20 ? 'text-danger' : avg < 25 ? 'text-warning' : avg < 50 ? 'text-primary' : 'text-success'}`}>
+                                  {avg}%
+                                </div>
+                                <div className="text-muted" style={{ fontSize: '0.7rem' }}>Даалгавар</div>
+                              </div>
+                            )}
                           </div>
+                          {lvl && (
+                            <div className="mt-1 px-1" style={{ fontSize: '0.7rem' }}>
+                              {lvl.length === 1
+                                ? <span className="text-danger">⚠ Зөвхөн <strong>Сэргээн санах</strong> түвшний бодлого санал болгоно</span>
+                                : <span className="text-warning">⚠ <strong>Сэргээн санах + Ойлгох</strong> түвшний бодлого санал болгоно</span>
+                              }
+                            </div>
+                          )}
                         </div>
-                      </>
-                    ) : null}
+                      );
+                    })()}
                     <p className="text-muted small mb-2">Дадлага хийх чиглэл сонгох:</p>
 
                     {/* Category list — practiced + unpracticed categories */}
@@ -1770,7 +1829,11 @@ const MessagesPage = ({ aiOnly = false }) => {
                       >
                         <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', backgroundColor: '#ffc107', flexShrink: 0 }} />
                         <span className="flex-grow-1 small fw-medium">Автоматаар сонгох</span>
-                        <span className="text-muted small">(сул сэдвийг тэргүүлнэ)</span>
+                        <span className="text-muted small">
+                          {eeshStats?.auto_category_name
+                            ? `(${eeshStats.auto_category_name} гэх мэт)`
+                            : '(сул сэдвийг тэргүүлнэ)'}
+                        </span>
                       </button>
                     </div>
                   </>
