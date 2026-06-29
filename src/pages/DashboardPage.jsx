@@ -294,6 +294,29 @@ function DashboardPage() {
           </Card>
         </Col>
 
+        {/* ЭЕШ дүн */}
+        <Col md={6} lg={4}>
+          <Card className="h-100 shadow-sm" style={{ borderColor: '#0d6efd' }}>
+            <Card.Body className="d-flex flex-column">
+              <div className="mb-3">
+                <span style={{ fontSize: 40, lineHeight: 1 }}>🏆</span>
+              </div>
+              <Card.Title>ЭЕШ 2026 дүн</Card.Title>
+              <Card.Text className="text-muted flex-grow-1">
+                list.eec.mn-аас татсан элсэлтийн ерөнхий шалгалтын дүн мэдээ.
+              </Card.Text>
+              <div className="d-flex gap-2">
+                <Link to="/admin/eec-results" className="btn btn-primary btn-sm">
+                  Жагсаалт
+                </Link>
+                <Link to="/admin/eec-stats" className="btn btn-outline-primary btn-sm">
+                  Статистик
+                </Link>
+              </div>
+            </Card.Body>
+          </Card>
+        </Col>
+
         {/* Email Campaigns */}
         <Col md={6} lg={4}>
           <Card className="h-100 shadow-sm" style={{ borderColor: '#6610f2' }}>

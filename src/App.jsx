@@ -111,6 +111,8 @@ const SalesStatsPage = lazy(() => import('./pages/SalesStatsPage.jsx'));
 const CurriculumAdminPage = lazy(() => import('./pages/CurriculumAdminPage.jsx'));
 const DjangoCommandsPage = lazy(() => import('./pages/DjangoCommandsPage.jsx'));
 const MathTermsPage = lazy(() => import('./pages/MathTermsPage.jsx'));
+const EECResultsPage = lazy(() => import('./pages/EECResultsPage.jsx'));
+const EECStatsPage = lazy(() => import('./pages/EECStatsPage.jsx'));
 
 // Email Campaigns
 const EmailCampaignsPage = lazy(() => import('./pages/EmailCampaignsPage.jsx'));
@@ -469,6 +471,26 @@ function App() {
           element={
             <AdminRoute>
               <MathTermsPage />
+            </AdminRoute>
+          }
+        />
+
+        {/* ЭЕШ дүн - Staff only */}
+        <Route
+          path="/admin/eec-results"
+          element={
+            <AdminRoute>
+              <EECResultsPage />
+            </AdminRoute>
+          }
+        />
+
+        {/* ЭЕШ статистик - Staff only */}
+        <Route
+          path="/admin/eec-stats"
+          element={
+            <AdminRoute>
+              <EECStatsPage />
             </AdminRoute>
           }
         />
