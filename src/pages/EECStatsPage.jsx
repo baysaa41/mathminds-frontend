@@ -1,8 +1,9 @@
 // frontend/src/pages/EECStatsPage.jsx
 
 import React, { useEffect, useState } from 'react';
-import { Container, Card, Table, Spinner, Form, Row, Col, Badge } from 'react-bootstrap';
+import { Container, Card, Table, Spinner, Form, Row, Col, Badge, Button } from 'react-bootstrap';
 import { ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import apiClient from '../api/axiosConfig';
 
 const BULEG_LIST = [
@@ -104,7 +105,12 @@ export default function EECStatsPage() {
 
   return (
     <Container fluid className="py-4" style={{ maxWidth: 1000 }}>
-      <h4 className="fw-bold mb-3">ЭЕШ 2026 — Аймгуудын дундаж оноо</h4>
+      <div className="d-flex align-items-center justify-content-between mb-3">
+        <h4 className="fw-bold mb-0">ЭЕШ 2026 — Аймгуудын дундаж оноо</h4>
+        <Button as={Link} to="/admin/eec-results" variant="outline-secondary" size="sm">
+          ЭЕШ дүнгүүд →
+        </Button>
+      </div>
 
       {/* Шүүлтүүр */}
       <Card className="border-0 shadow-sm mb-3">

@@ -119,7 +119,7 @@ export default function EECResultsPage() {
           <Col xs={6} md={3}>
             <Card className="border-0 shadow-sm text-center py-2">
               <div className="fs-4 fw-bold text-primary">{uniqueStudents.toLocaleString()}</div>
-              <div className="small text-muted">Өвөрмөц оюутан</div>
+              <div className="small text-muted">Сурагч</div>
               <div className="text-muted" style={{ fontSize: 11 }}>бүртгэлийн дугаараар</div>
             </Card>
           </Col>
@@ -230,7 +230,12 @@ export default function EECResultsPage() {
                     <tr key={row.id}>
                       <td className="px-3 text-muted small">{rowNum}</td>
                       <td className="text-muted small">{rank}</td>
-                      <td className="font-monospace fw-semibold">{reg}</td>
+                      <td
+                        className="font-monospace fw-semibold text-primary"
+                        style={{ cursor: 'pointer' }}
+                        title="Дарж хайх"
+                        onClick={() => { setInputVal(reg); setSearch(reg); }}
+                      >{reg}</td>
                       <td className="small">{row.aimag}</td>
                       <td className="small text-muted">{row.buleg}</td>
                       <td className="text-center fw-bold">{aOnoo}</td>
