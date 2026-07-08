@@ -110,6 +110,7 @@ const AllUsersPage = lazy(() => import('./pages/AllUsersPage.jsx'));
 const SalesStatsPage = lazy(() => import('./pages/SalesStatsPage.jsx'));
 const CurriculumAdminPage = lazy(() => import('./pages/CurriculumAdminPage.jsx'));
 const DjangoCommandsPage = lazy(() => import('./pages/DjangoCommandsPage.jsx'));
+const AIModelsPage = lazy(() => import('./pages/AIModelsPage.jsx'));
 const MathTermsPage = lazy(() => import('./pages/MathTermsPage.jsx'));
 const EECResultsPage = lazy(() => import('./pages/EECResultsPage.jsx'));
 const EECStatsPage = lazy(() => import('./pages/EECStatsPage.jsx'));
@@ -461,6 +462,16 @@ function App() {
               <MathJaxContext version={3} config={mathJaxConfig}>
                 <AdminConversationPage />
               </MathJaxContext>
+            </AdminRoute>
+          }
+        />
+
+        {/* AI Загварууд - Staff only */}
+        <Route
+          path="/admin/ai-models"
+          element={
+            <AdminRoute>
+              <AIModelsPage />
             </AdminRoute>
           }
         />

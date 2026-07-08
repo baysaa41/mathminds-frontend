@@ -18,6 +18,7 @@ import {
   Bot,
   Languages,
   Sparkles,
+  Cpu,
 } from 'lucide-react';
 import authService from '../services/authService';
 
@@ -265,6 +266,25 @@ function DashboardPage() {
               </Card.Text>
               <Link to="/admin/ai-conversations" className="btn" style={{ backgroundColor: '#0ea5e9', color: '#fff' }}>
                 <Bot size={18} className="me-2" />
+                Харах
+              </Link>
+            </Card.Body>
+          </Card>
+        </Col>
+
+        {/* AI Загварууд */}
+        <Col md={6} lg={4}>
+          <Card className="h-100 shadow-sm" style={{ borderColor: '#8b5cf6' }}>
+            <Card.Body className="d-flex flex-column">
+              <div className="mb-3">
+                <Cpu size={40} style={{ color: '#8b5cf6' }} />
+              </div>
+              <Card.Title>AI Загварууд</Card.Title>
+              <Card.Text className="text-muted flex-grow-1">
+                DeepSeek, Gemini, Claude, ChatGPT — систем ямар AI загвар хаана ашигладгийн тайлбар.
+              </Card.Text>
+              <Link to="/admin/ai-models" className="btn" style={{ backgroundColor: '#8b5cf6', color: '#fff' }}>
+                <Cpu size={18} className="me-2" />
                 Харах
               </Link>
             </Card.Body>
