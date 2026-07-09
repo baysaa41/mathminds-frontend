@@ -183,6 +183,26 @@ const safeTruncate = (text, maxLen) => {
 // -------------------------------------------------------------------
 // ----------------- PostContent (Туслах компонент) ------------------
 // -------------------------------------------------------------------
+const AIChatExcerptCard = ({ excerpt }) => {
+  const messages = excerpt?.messages_snapshot || [];
+  if (!messages.length) {
+    return <div className="text-muted fst-italic">[Чатын агуулга олдсонгүй]</div>;
+  }
+  return (
+    <div className="border rounded p-2" style={{ background: '#f8f9fa' }}>
+      {messages.map((m, idx) => (
+        <div key={idx} className={`d-flex gap-2 mb-2 ${idx === messages.length - 1 ? 'mb-0' : ''}`}>
+          <span style={{ flexShrink: 0 }}>{m.is_ai ? '🤖' : '🧑'}</span>
+          <div className="small">
+            <div className="fw-bold">{m.author_name}</div>
+            <LivePreview content={m.content} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 const PostContent = ({ post }) => {
   const navigate = useNavigate();
 
@@ -194,6 +214,10 @@ const PostContent = ({ post }) => {
     post.content_type === 'reply'
   ) {
     return null;
+  }
+
+  if (post.content_type === 'ai_chat') {
+    return <AIChatExcerptCard excerpt={post.related_chat_excerpt} />;
   }
 
   const relatedItem =
@@ -573,6 +597,29 @@ const PostCard = ({ post, onPostDeleted, depth = 0, compact = false, onCardClick
     }
   };
 
+  // AI чат постын нууц/нийтийн төлөв солих
+  const [togglingVisibility, setTogglingVisibility] = useState(false);
+  const handleToggleVisibility = async (e) => {
+    e.stopPropagation();
+    setTogglingVisibility(true);
+    try {
+      const response = await apiClient.post(`/api/minds/posts/${currentPost.uuid}/toggle-visibility/`);
+      setCurrentPost((prev) => ({
+        ...prev,
+        private_recipients: response.data.is_private ? [user] : [],
+      }));
+      showNotification(
+        response.data.is_private ? 'Пост зөвхөн танд харагдана.' : 'Пост олон нийтэд нээгдлээ.',
+        'success'
+      );
+    } catch (err) {
+      console.error('Failed to toggle post visibility:', err);
+      showNotification('Төлөв солиход алдаа гарлаа.', 'danger');
+    } finally {
+      setTogglingVisibility(false);
+    }
+  };
+
   // Navigation
   const navigateToPost = (e) => {
     if (e.target.closest('a, button, .dropdown-toggle, .dropdown-item, .post-content-card')) {
@@ -923,6 +970,35 @@ const PostCard = ({ post, onPostDeleted, depth = 0, compact = false, onCardClick
               <Badge bg={currentPost.subgroup.color || 'secondary'} className="small">
                 {currentPost.subgroup.name}
               </Badge>
+            )}
+          </div>
+        )}
+
+        {/* AI чат постын нууц/нийтийн заалт */}
+        {currentPost.content_type === 'ai_chat' && (
+          <div className="small px-3 pt-2 pb-1 border-bottom d-flex align-items-center gap-2" style={{ background: '#f8f9fa' }}>
+            <Badge bg="info">AI чат</Badge>
+            {currentPost.private_recipients && currentPost.private_recipients.length > 0 ? (
+              <span className="text-muted">🔒 Зөвхөн танд харагдана</span>
+            ) : (
+              <span className="text-muted">🌐 Олон нийтэд</span>
+            )}
+            {currentPost.author?.id === user?.id && (
+              <Button
+                variant="link"
+                size="sm"
+                className="p-0 ms-auto"
+                onClick={handleToggleVisibility}
+                disabled={togglingVisibility}
+              >
+                {togglingVisibility ? (
+                  <Spinner animation="border" size="sm" />
+                ) : currentPost.private_recipients && currentPost.private_recipients.length > 0 ? (
+                  'Олон нийтэд нээх'
+                ) : (
+                  'Нуух'
+                )}
+              </Button>
             )}
           </div>
         )}

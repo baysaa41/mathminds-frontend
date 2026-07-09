@@ -9,6 +9,7 @@ import UserName from '../components/UserName';
 import LivePreview from '../components/LivePreview';
 import { MathJax } from 'better-react-mathjax';
 import NewConversationModal from '../components/NewConversationModal';
+import ShareChatModal from '../components/ShareChatModal';
 
 // ViewerJS for image viewing
 import Viewer from 'viewerjs';
@@ -37,6 +38,7 @@ import {
   BookOpen,
   ThumbsUp,
   ThumbsDown,
+  Share2,
 } from 'lucide-react';
 
 // Services
@@ -97,7 +99,7 @@ const openImageViewer = (e) => {
 
 // React.memo: message prop өөрчлөгдөөгүй бол re-render хийхгүй
 // → MathJax/LivePreview зөвхөн шинэ мессеж дээр л ажиллана
-const MessageBubble = memo(function MessageBubble({ message, currentUserId, onReuse, isTypewriting, onTypewritingDone, onTypewritingStart, rating, onRate }) {
+const MessageBubble = memo(function MessageBubble({ message, currentUserId, onReuse, isTypewriting, onTypewritingDone, onTypewritingStart, rating, onRate, selectMode, isSelected, onToggleSelect }) {
   const isSent = message.author?.id === currentUserId;
   const [copied, setCopied] = useState(false);
   const bubbleRef = useRef(null);
@@ -147,8 +149,24 @@ const MessageBubble = memo(function MessageBubble({ message, currentUserId, onRe
     });
   };
 
+  const selectable = selectMode && !!message.content;
+
   return (
-    <div className={`message ${isSent ? 'sent' : 'received'}`}>
+    <div
+      className={`message ${isSent ? 'sent' : 'received'}`}
+      style={selectMode ? { display: 'flex', alignItems: 'flex-start', gap: '0.4rem', cursor: selectable ? 'pointer' : 'default', opacity: selectable ? 1 : 0.5 } : undefined}
+      onClick={selectable ? onToggleSelect : undefined}
+    >
+      {selectMode && (
+        <input
+          type="checkbox"
+          checked={!!isSelected}
+          disabled={!selectable}
+          onChange={onToggleSelect}
+          onClick={(e) => e.stopPropagation()}
+          style={{ marginTop: '0.9rem', flexShrink: 0 }}
+        />
+      )}
       <div className="message-bubble">
         <div className="message-content" ref={bubbleRef}>
           {visibleContent !== null ? (
@@ -180,7 +198,7 @@ const MessageBubble = memo(function MessageBubble({ message, currentUserId, onRe
             {formatTime(message.created_at)}
             {message.is_edited && <span className="ms-1">(засварласан)</span>}
           </span>
-          {message.content && (
+          {message.content && !selectMode && (
             <span className="message-actions">
               <button
                 className="btn btn-link btn-sm p-0 text-muted"
@@ -200,7 +218,7 @@ const MessageBubble = memo(function MessageBubble({ message, currentUserId, onRe
               )}
             </span>
           )}
-          {!isSent && onRate && (
+          {!isSent && onRate && !selectMode && (
             <span className="ms-1 d-inline-flex gap-1 ai-rating-btns">
               <button
                 className={`btn btn-link btn-sm p-0 ${rating === 'like' ? 'text-success' : 'text-muted'}`}
@@ -245,6 +263,9 @@ const MessagesPage = ({ aiOnly = false }) => {
   const [typewriterMsgId, setTypewriterMsgId] = useState(null);
   const [typewriterStarted, setTypewriterStarted] = useState(false);
   const [uploadedImages, setUploadedImages] = useState([]);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedUuids, setSelectedUuids] = useState(() => new Set());
+  const [showShareModal, setShowShareModal] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [showNewConversationModal, setShowNewConversationModal] = useState(false);
@@ -398,6 +419,10 @@ const MessagesPage = ({ aiOnly = false }) => {
 
     // Conversation солигдохыг textarea цэвэрлэх
     if (textareaRef.current) textareaRef.current.value = '';
+
+    // Conversation солигдоход сонголтын горимыг цэвэрлэх
+    setSelectMode(false);
+    setSelectedUuids(new Set());
 
     const fetchMessages = async () => {
       try {
@@ -1056,6 +1081,36 @@ const MessagesPage = ({ aiOnly = false }) => {
     }
   };
 
+  // AI чат: мессеж сонгох горим
+  const MAX_SHARE_MESSAGES = 10;
+
+  const toggleSelectMode = () => {
+    setSelectMode((prev) => !prev);
+    setSelectedUuids(new Set());
+  };
+
+  const toggleSelectMessage = (msgUuid) => {
+    setSelectedUuids((prev) => {
+      const next = new Set(prev);
+      if (next.has(msgUuid)) {
+        next.delete(msgUuid);
+      } else {
+        if (next.size >= MAX_SHARE_MESSAGES) {
+          alert(`Дээд тал нь ${MAX_SHARE_MESSAGES} мессеж сонгож болно.`);
+          return prev;
+        }
+        next.add(msgUuid);
+      }
+      return next;
+    });
+  };
+
+  const handleShareSuccess = () => {
+    setShowShareModal(false);
+    setSelectMode(false);
+    setSelectedUuids(new Set());
+  };
+
   // Delete conversation
   const handleDelete = async (conv) => {
     const isAi = isAiConv(conv);
@@ -1286,6 +1341,16 @@ const MessagesPage = ({ aiOnly = false }) => {
                       <span className="d-none d-md-inline ms-1">ЭЕШ</span>
                     </button>
                   )}
+                  {isAiConv(selectedConversation) && (
+                    <button
+                      className={`btn btn-sm ${selectMode ? 'btn-primary' : 'btn-outline-primary'}`}
+                      onClick={toggleSelectMode}
+                      title="Мессеж сонгож feed-д нийтлэх"
+                    >
+                      <Share2 size={16} />
+                      <span className="d-none d-md-inline ms-1">Хуваалцах</span>
+                    </button>
+                  )}
                   <div className="text-secondary small d-flex align-items-center gap-1">
                     <AlertTriangle size={14} />
                     <span className="d-none d-md-inline">Нийтэд нээлттэй</span>
@@ -1378,6 +1443,9 @@ const MessagesPage = ({ aiOnly = false }) => {
                       onTypewritingStart={() => setTypewriterStarted(true)}
                       rating={messageRatings[message.uuid] ?? message.my_rating ?? null}
                       onRate={isAiConv(selectedConversation) ? (r) => handleRateMessage(message.uuid, r) : null}
+                      selectMode={selectMode}
+                      isSelected={selectedUuids.has(message.uuid)}
+                      onToggleSelect={() => toggleSelectMessage(message.uuid)}
                     />
                     {message.uuid === lastAiMsgUuid && showExamNext && (
                       <div className="d-flex gap-2 flex-wrap px-3 pb-3 pt-1" style={{ marginLeft: '2.5rem' }}>
@@ -1442,6 +1510,25 @@ const MessagesPage = ({ aiOnly = false }) => {
               )}
               <div ref={messagesEndRef} />
             </div>
+
+            {/* Мессеж сонгох горим: сонгосон тоо + Нийтлэх */}
+            {selectMode && (
+              <div className="border-top px-3 py-2 d-flex justify-content-between align-items-center" style={{ background: '#f8f9fa' }}>
+                <span className="text-muted small">{selectedUuids.size} мессеж сонгосон (дээд тал нь {MAX_SHARE_MESSAGES})</span>
+                <div className="d-flex gap-2">
+                  <button className="btn btn-sm btn-outline-secondary" onClick={toggleSelectMode}>
+                    Цуцлах
+                  </button>
+                  <button
+                    className="btn btn-sm btn-primary"
+                    disabled={selectedUuids.size === 0}
+                    onClick={() => setShowShareModal(true)}
+                  >
+                    Нийтлэх
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Message Input */}
             <div className="chat-input-area">
@@ -1704,6 +1791,21 @@ const MessagesPage = ({ aiOnly = false }) => {
         onHide={() => setShowNewConversationModal(false)}
         onConversationCreated={handleConversationCreated}
       />
+
+      {/* AI чат хуваалцах Modal */}
+      {showShareModal && selectedConversation && (
+        <ShareChatModal
+          conversationUuid={selectedConversation.uuid}
+          selectedMessages={messages
+            .filter((m) => selectedUuids.has(m.uuid))
+            .map((m) => ({ uuid: m.uuid, content: m.content, isAi: m.author?.id !== user?.id }))}
+          onClose={() => setShowShareModal(false)}
+          onShared={(post) => {
+            handleShareSuccess();
+            navigate(`/post/${post.uuid}`);
+          }}
+        />
+      )}
 
       {/* ЭЕШ статистик Modal */}
       {showEeshModal && (
