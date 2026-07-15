@@ -41,22 +41,16 @@ const AI_PROVIDERS = [
     summary: 'Зурагтай (multimodal) контентод голчлон ашиглагдана — зураг унших, PDF/баримт таних.',
     models: [
       {
-        name: 'gemini-2.0-flash',
-        role: 'Multimodal хариу — зурагтай постын AI тайлбар',
+        name: 'gemini-flash-latest',
+        role: 'Multimodal хариу — зурагтай постын AI тайлбар, баримт/зураг таних',
         usedFor: [
           'minds/views.py — ai_help action: зурагтай пост дээрх AI тайлбар (_call_gemini_multimodal)',
           'describe_image_for_teacher() — зургийн агуулгыг АИ-аар тайлбарлах',
-        ],
-      },
-      {
-        name: 'gemini-2.5-flash',
-        role: 'Баримт/зураг таних (management commands)',
-        usedFor: [
           'import_egmo — олимпиадын PDF импорт',
           'import_tex_problems — LaTeX файл задлах',
           'Баримтаас Бодлого Импортлох хуудас (/admin/doc-import)',
         ],
-        note: 'call_ai_teacher()-ийн model параметрт заавал дамжуулж сонгодог (default биш).',
+        note: 'call_ai_teacher()-ийн model параметрт заавал дамжуулж сонгодог (default биш). Хуучин gemini-2.0-flash/gemini-2.5-flash Google-аас хасагдсан тул gemini-flash-latest (alias) руу шилжсэн.',
       },
     ],
   },

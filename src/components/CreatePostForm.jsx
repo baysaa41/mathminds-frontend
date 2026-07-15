@@ -146,13 +146,14 @@ const CreatePostForm = ({ onPostCreated, clubId = null, clubName = null }) => {
   /**
    * Формыг илгээх
    */
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (e, contentOverride) => {
+    e?.preventDefault();
     setLoading(true);
     setError(null);
 
+    const finalContent = contentOverride ?? content;
     const formData = new FormData();
-    formData.append('content', content);
+    formData.append('content', finalContent);
 
     // Клубын пост бол club ID нэмэх
     // clubId prop (ClubFeed-с) эсвэл selectedClubId (dropdown-с сонгосон)
@@ -186,6 +187,7 @@ const CreatePostForm = ({ onPostCreated, clubId = null, clubName = null }) => {
       setSelectedSubgroupId('');
       clearAllImages();
       setPrefillData(null);
+      return response.data;
     } catch (err) {
       const errorData = err.response?.data;
       if (typeof errorData === 'object' && errorData !== null) {
@@ -194,6 +196,7 @@ const CreatePostForm = ({ onPostCreated, clubId = null, clubName = null }) => {
       } else {
         setError('Пост үүсгэхэд алдаа гарлаа.');
       }
+      return null;
     } finally {
       setLoading(false);
     }
@@ -302,8 +305,7 @@ const CreatePostForm = ({ onPostCreated, clubId = null, clubName = null }) => {
 
   // --- Үндсэн Render ---
   return (
-    <>
-      <Form onSubmit={handleSubmit} className="p-3 border rounded bg-white shadow-sm mb-3 mx-3">
+    <Form onSubmit={handleSubmit} className="p-3 border rounded bg-white shadow-sm mb-3 mx-3">
         {error && <Alert variant="danger">{error}</Alert>}
 
         {/* Клуб сонгох dropdown (зөвхөн clubId prop байхгүй үед) */}
@@ -413,14 +415,13 @@ const CreatePostForm = ({ onPostCreated, clubId = null, clubName = null }) => {
             ))}
           </div>
         )}
-        <div className="text-end mt-3">
+        <div className="text-end mt-3 d-flex justify-content-end gap-2">
           <Button type="submit" disabled={loading}>
             {loading && <Spinner as="span" size="sm" className="me-1" />}
             Нийтлэх
           </Button>
         </div>
-      </Form>
-    </>
+    </Form>
   );
 };
 

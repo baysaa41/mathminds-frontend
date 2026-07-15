@@ -219,7 +219,11 @@ function ContentBrowsePage() {
   const fetchCategories = async () => {
     setCategoriesLoading(true)
     try {
-      const res = await apiClient.get(API_ENDPOINTS.INTEGRAL.CATEGORIES)
+      // Энэ sidebar зөвхөн Article-ийн агуулгын төрөл (Мэдээ/ЭЕШ/Олимпиад г.м)-д зориулагдсан —
+      // математикийн Category-г холихгүйн тулд subject=content-оор шүүнэ.
+      const res = await apiClient.get(API_ENDPOINTS.INTEGRAL.CATEGORIES, {
+        params: { subject: 'content' },
+      })
       setCategories(res.data)
     } catch {
       /* ignore */
@@ -244,7 +248,10 @@ function ContentBrowsePage() {
 
   const fetchMathCategories = async () => {
     try {
-      const res = await apiClient.get(API_ENDPOINTS.INTEGRAL.MATH_CATEGORIES)
+      // Зөвхөн бодит Problems-той ангиллыг харуулна (агуулгын төрлийн ангиллыг хасна)
+      const res = await apiClient.get(API_ENDPOINTS.INTEGRAL.MATH_CATEGORIES, {
+        params: { has_problems: true },
+      })
       setMathCategories(res.data)
     } catch {
       /* ignore */
@@ -353,7 +360,18 @@ function ContentBrowsePage() {
         </>
       )
     }
-    if (contentType === 'articles') return subjectBadge
+    if (contentType === 'articles') {
+      return (
+        <>
+          {subjectBadge}
+          {item.category && (
+            <Badge className="small" style={{ backgroundColor: item.category.color || '#6c757d' }}>
+              {item.category.name_mn}
+            </Badge>
+          )}
+        </>
+      )
+    }
     return null
   }
 

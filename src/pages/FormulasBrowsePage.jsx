@@ -27,6 +27,13 @@ import Navbar from 'react-bootstrap/Navbar'
 import ListGroup from 'react-bootstrap/ListGroup'
 import Breadcrumb from 'react-bootstrap/Breadcrumb'
 
+const SUBJECTS = [
+  { value: 'math', label: 'Математик', icon: 'bi-calculator', color: '#0d6efd' },
+  { value: 'physics', label: 'Физик', icon: 'bi-lightning', color: '#fd7e14' },
+  { value: 'chemistry', label: 'Хими', icon: 'bi-droplet-half', color: '#20c997' },
+  { value: 'biology', label: 'Биологи', icon: 'bi-tree', color: '#198754' },
+]
+
 function FormulasBrowsePage() {
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -44,6 +51,7 @@ function FormulasBrowsePage() {
   // Filters
   const [searchInput, setSearchInput] = useState(searchParams.get('search') || '')
   const [myOnly, setMyOnly] = useState(false)
+  const [selectedSubject, setSelectedSubject] = useState(searchParams.get('subject') || null)
 
   const {
     data: formulas, loading, loadingMore, hasMore,
@@ -57,9 +65,10 @@ function FormulasBrowsePage() {
     if (myOnly && user?.id) params.author = user.id
     if (selectedTopic) params.topic = selectedTopic.id
     else if (selectedCategory) params.category = selectedCategory.id
+    if (selectedSubject) params.subject = selectedSubject
     if (searchInput) params.search = searchInput
     return params
-  }, [myOnly, user?.id, selectedTopic, selectedCategory, searchInput])
+  }, [myOnly, user?.id, selectedTopic, selectedCategory, selectedSubject, searchInput])
 
   // Initialize from URL params
   useEffect(() => {
@@ -93,11 +102,12 @@ function FormulasBrowsePage() {
     const urlParams = {}
     if (selectedCategory) urlParams.category = selectedCategory.id
     if (selectedTopic) urlParams.topic = selectedTopic.id
+    if (selectedSubject) urlParams.subject = selectedSubject
     if (searchInput) urlParams.search = searchInput
     setSearchParams(urlParams, { replace: true })
     fetchData(params)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCategory, selectedTopic, myOnly])
+  }, [selectedCategory, selectedTopic, selectedSubject, myOnly])
 
   const fetchCategories = async () => {
     setCategoriesLoading(true)
@@ -153,12 +163,13 @@ function FormulasBrowsePage() {
     setSelectedCategory(null)
     setSelectedTopic(null)
     setTopics([])
+    setSelectedSubject(null)
     setSearchInput('')
     setMyOnly(false)
     setSearchParams({}, { replace: true })
   }
 
-  const hasActiveFilters = selectedCategory || searchInput || myOnly
+  const hasActiveFilters = selectedCategory || selectedSubject || searchInput || myOnly
 
   return (
     <MathJaxContext config={mathJaxConfig}>
@@ -208,6 +219,36 @@ function FormulasBrowsePage() {
                     <hr className="my-2" />
                   </>
                 )}
+
+                <h6 className="text-uppercase text-muted small fw-bold mb-2">
+                  <i className="bi bi-book me-1"></i>Хичээл
+                </h6>
+                <div className="d-flex flex-wrap gap-1 mb-3">
+                  <Button
+                    variant={!selectedSubject ? 'primary' : 'outline-secondary'}
+                    size="sm"
+                    onClick={() => setSelectedSubject(null)}
+                    className="px-2 py-1"
+                    style={{ fontSize: '0.78rem' }}
+                  >
+                    Бүгд
+                  </Button>
+                  {SUBJECTS.map((s) => (
+                    <Button
+                      key={s.value}
+                      variant={selectedSubject === s.value ? 'primary' : 'outline-secondary'}
+                      size="sm"
+                      onClick={() => setSelectedSubject(selectedSubject === s.value ? null : s.value)}
+                      className="px-2 py-1"
+                      style={{
+                        fontSize: '0.78rem',
+                        ...(selectedSubject === s.value ? { backgroundColor: s.color, borderColor: s.color } : {}),
+                      }}
+                    >
+                      <i className={`bi ${s.icon} me-1`}></i>{s.label}
+                    </Button>
+                  ))}
+                </div>
 
                 <h6 className="text-uppercase text-muted small fw-bold mb-2">
                   <i className="bi bi-folder me-1"></i>Ангилал
@@ -280,6 +321,12 @@ function FormulasBrowsePage() {
                     <Form.Check type="checkbox" id="my-only-mobile" label="Зөвхөн миний" checked={myOnly} onChange={(e) => setMyOnly(e.target.checked)} className="mb-2 small" />
                   )}
                   <div className="d-flex gap-2 overflow-auto pb-2">
+                    <Button variant={!selectedSubject ? 'primary' : 'outline-secondary'} size="sm" onClick={() => setSelectedSubject(null)} className="text-nowrap">Бүгд</Button>
+                    {SUBJECTS.map((s) => (
+                      <Button key={s.value} variant={selectedSubject === s.value ? 'primary' : 'outline-secondary'} size="sm" onClick={() => setSelectedSubject(selectedSubject === s.value ? null : s.value)} className="text-nowrap">{s.label}</Button>
+                    ))}
+                  </div>
+                  <div className="d-flex gap-2 overflow-auto pb-2 mt-2">
                     <Button variant={!selectedCategory ? 'primary' : 'outline-primary'} size="sm" onClick={() => handleCategoryClick(null)} className="text-nowrap">Бүгд</Button>
                     {categories.map((cat) => (
                       <Button key={cat.id} variant={selectedCategory?.id === cat.id ? 'primary' : 'outline-primary'} size="sm" onClick={() => handleCategoryClick(cat)} className="text-nowrap">{cat.name}</Button>
@@ -310,6 +357,14 @@ function FormulasBrowsePage() {
                         <Card className="h-100 shadow-sm" style={{ cursor: 'pointer' }} onClick={() => navigate(`/formula/${formula.uuid}`)}>
                           <Card.Body className="d-flex flex-column">
                             <div className="d-flex gap-1 flex-wrap mb-2">
+                              {formula.subject && formula.subject !== 'math' && (
+                                <Badge
+                                  className="small"
+                                  style={{ backgroundColor: SUBJECTS.find((s) => s.value === formula.subject)?.color || '#6c757d' }}
+                                >
+                                  {SUBJECTS.find((s) => s.value === formula.subject)?.label || formula.subject}
+                                </Badge>
+                              )}
                               {formula.topic_name && <Badge bg="info" className="small">{formula.topic_name}</Badge>}
                               {formula.is_public ? (
                                 <Badge bg="success" className="small">Нийтэд харагдана</Badge>

@@ -32,6 +32,43 @@ export const getPrograms = async () => {
 };
 
 /**
+ * Тухайн хөтөлбөрт зориулсан AI багшийг авах (байхгүй бол шинээр үүсгэнэ)
+ * POST /api/curriculum/programs/:id/teacher/
+ */
+export const getProgramTeacher = async (programId) => {
+  const response = await apiClient.post(`/api/curriculum/programs/${programId}/teacher/`);
+  return response.data;
+};
+
+/**
+ * Хөтөлбөрийн сэдэв бүрийн явц (mastery, одоогийн долоо хоног, шалгах тестүүд)
+ * GET /api/curriculum/programs/:id/progress/
+ */
+export const getProgramProgress = async (programId) => {
+  const response = await apiClient.get(`/api/curriculum/programs/${programId}/progress/`);
+  return response.data;
+};
+
+/**
+ * Нэг сэдвийг шалгах тестийг авах (байхгүй бол AI-аар шинээр үүсгэнэ)
+ * POST /api/curriculum/weekly-topics/:id/check-quiz/
+ */
+export const getTopicCheckQuiz = async (weeklyTopicId) => {
+  const response = await apiClient.post(`/api/curriculum/weekly-topics/${weeklyTopicId}/check-quiz/`);
+  return response.data;
+};
+
+/**
+ * Хөтөлбөрийн бүх сэдвийг хамарсан нэгтгэсэн шалгах тестийг авах
+ * (байхгүй бол AI-аар шинээр үүсгэнэ)
+ * POST /api/curriculum/programs/:id/review-quiz/
+ */
+export const getProgramReviewQuiz = async (programId) => {
+  const response = await apiClient.post(`/api/curriculum/programs/${programId}/review-quiz/`);
+  return response.data;
+};
+
+/**
  * Бүх клубуудын жагсаалт авах (ClubsList.jsx-д зориулагдсан)
  * GET /api/clubs/
  */
@@ -592,6 +629,11 @@ const clubsService = {
   getClubs,
   getMyClubs,
   getClubDetail,
+  getPrograms,
+  getProgramTeacher,
+  getProgramProgress,
+  getTopicCheckQuiz,
+  getProgramReviewQuiz,
   createClub,
   updateClub,
   joinClub,

@@ -42,6 +42,13 @@ import {
   Calculator,
 } from 'lucide-react';
 
+const SUBJECTS = [
+  { value: 'math', label: 'Математик' },
+  { value: 'physics', label: 'Физик' },
+  { value: 'chemistry', label: 'Хими' },
+  { value: 'biology', label: 'Биологи' },
+];
+
 // --- Томьёо Засварлах Хуудас ---
 const FormulaEditPage = () => {
   const { uuid: id } = useParams();
@@ -220,6 +227,7 @@ const FormulaEditPage = () => {
       title: formula.title,
       content: formula.content,
       topic: formula.topic || null,
+      subject: formula.subject || 'math',
       is_public: formula.is_public ?? false,
     };
 
@@ -370,9 +378,9 @@ const FormulaEditPage = () => {
         {/* Үндсэн Карт */}
         <Card>
           <Card.Body className="p-4">
-            {/* Гарчиг, Сэдэв */}
+            {/* Гарчиг, Хичээл, Сэдэв */}
             <Row>
-              <Col md={8}>
+              <Col md={6}>
                 <Form.Group className="mb-3">
                   <Form.Label htmlFor="id_title" className="fw-semibold">
                     <FileText size={16} className="me-2" />
@@ -387,7 +395,27 @@ const FormulaEditPage = () => {
                   />
                 </Form.Group>
               </Col>
-              <Col md={4}>
+              <Col md={3}>
+                <Form.Group className="mb-3">
+                  <Form.Label htmlFor="id_subject" className="fw-semibold">
+                    <Calculator size={16} className="me-2" />
+                    Хичээл
+                  </Form.Label>
+                  <Form.Select
+                    name="subject"
+                    id="id_subject"
+                    value={formula.subject || 'math'}
+                    onChange={handleFormulaChange}
+                  >
+                    {SUBJECTS.map((s) => (
+                      <option key={s.value} value={s.value}>
+                        {s.label}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={3}>
                 <Form.Group className="mb-3">
                   <Form.Label htmlFor="id_topic" className="fw-semibold">
                     <Layers size={16} className="me-2" />

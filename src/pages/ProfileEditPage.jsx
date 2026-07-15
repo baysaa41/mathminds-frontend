@@ -48,6 +48,55 @@ function ProfileEditPage() {
       .catch(() => {});
   }, []);
 
+  // Миний хөтөлбөрүүд (зөвхөн өөрийн профайл дээр)
+  const [myPrograms, setMyPrograms] = useState([]);
+  const [allPrograms, setAllPrograms] = useState([]);
+  const [programToAdd, setProgramToAdd] = useState('');
+  const [programsLoading, setProgramsLoading] = useState(false);
+  const [programError, setProgramError] = useState(null);
+
+  const loadMyPrograms = useCallback(() => {
+    apiClient.get('/api/curriculum/my-programs/')
+      .then(r => setMyPrograms(r.data || []))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (isEditingOther) return;
+    loadMyPrograms();
+    apiClient.get('/api/curriculum/programs/')
+      .then(r => setAllPrograms(r.data || []))
+      .catch(() => {});
+  }, [isEditingOther, loadMyPrograms]);
+
+  const handleAddProgram = async () => {
+    if (!programToAdd) return;
+    setProgramsLoading(true);
+    setProgramError(null);
+    try {
+      await apiClient.post('/api/curriculum/my-programs/', { program_id: programToAdd });
+      setProgramToAdd('');
+      loadMyPrograms();
+    } catch {
+      setProgramError('Хөтөлбөр нэмэхэд алдаа гарлаа.');
+    } finally {
+      setProgramsLoading(false);
+    }
+  };
+
+  const handleCancelProgram = async (programId) => {
+    setProgramsLoading(true);
+    setProgramError(null);
+    try {
+      await apiClient.delete('/api/curriculum/my-programs/', { data: { program_id: programId } });
+      loadMyPrograms();
+    } catch {
+      setProgramError('Хөтөлбөр цуцлахад алдаа гарлаа.');
+    } finally {
+      setProgramsLoading(false);
+    }
+  };
+
   // Username солих (зөвхөн өөрийн профайл засах үед)
   const [newUsername, setNewUsername] = useState('');
   const [usernameAvailable, setUsernameAvailable] = useState(null);
@@ -560,6 +609,57 @@ function ProfileEditPage() {
                 ))}
               </Form.Select>
             </Form.Group>
+
+            {/* Миний хөтөлбөрүүд */}
+            {!isEditingOther && (
+              <Form.Group className="mb-3" controlId="myPrograms">
+                <Form.Label>Миний хөтөлбөрүүд</Form.Label>
+                {programError && <Alert variant="danger" className="py-2 small">{programError}</Alert>}
+                {myPrograms.length > 0 ? (
+                  <div className="d-flex flex-column gap-2 mb-2">
+                    {myPrograms.map(e => (
+                      <div key={e.id} className="d-flex align-items-center justify-content-between border rounded px-3 py-2">
+                        <span>
+                          <span className="fw-semibold">{e.program.name}</span>
+                          <span className="text-muted small ms-2">{e.program.grade}-р анги</span>
+                        </span>
+                        <Button
+                          variant="outline-danger"
+                          size="sm"
+                          disabled={programsLoading}
+                          onClick={() => handleCancelProgram(e.program.id)}
+                        >
+                          Цуцлах
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-muted small mb-2">Одоогоор хөтөлбөр сонгоогүй байна.</div>
+                )}
+                <div className="d-flex gap-2">
+                  <Form.Select
+                    value={programToAdd}
+                    onChange={e => setProgramToAdd(e.target.value)}
+                    disabled={programsLoading}
+                  >
+                    <option value="">— Хөтөлбөр сонгох —</option>
+                    {allPrograms
+                      .filter(p => !myPrograms.some(e => e.program.id === p.id))
+                      .map(p => (
+                        <option key={p.id} value={p.id}>{p.grade}-р анги — {p.name}</option>
+                      ))}
+                  </Form.Select>
+                  <Button
+                    variant="outline-primary"
+                    disabled={!programToAdd || programsLoading}
+                    onClick={handleAddProgram}
+                  >
+                    Нэмэх
+                  </Button>
+                </div>
+              </Form.Group>
+            )}
 
             {/* Профайл зураг upload */}
             <Form.Group className="mb-4" controlId="profilePicture">

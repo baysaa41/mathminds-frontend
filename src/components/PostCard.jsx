@@ -183,22 +183,40 @@ const safeTruncate = (text, maxLen) => {
 // -------------------------------------------------------------------
 // ----------------- PostContent (Туслах компонент) ------------------
 // -------------------------------------------------------------------
-const AIChatExcerptCard = ({ excerpt }) => {
+const AIChatExcerptCard = ({ post, excerpt }) => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const messages = excerpt?.messages_snapshot || [];
-  if (!messages.length) {
-    return <div className="text-muted fst-italic">[Чатын агуулга олдсонгүй]</div>;
-  }
+  const canContinue = excerpt?.conversation_uuid && post?.author?.id === user?.id;
+
   return (
     <div className="border rounded p-2" style={{ background: '#f8f9fa' }}>
-      {messages.map((m, idx) => (
-        <div key={idx} className={`d-flex gap-2 mb-2 ${idx === messages.length - 1 ? 'mb-0' : ''}`}>
-          <span style={{ flexShrink: 0 }}>{m.is_ai ? '🤖' : '🧑'}</span>
-          <div className="small">
-            <div className="fw-bold">{m.author_name}</div>
-            <LivePreview content={m.content} />
+      {!messages.length ? (
+        <div className="text-muted fst-italic">[Чатын агуулга олдсонгүй]</div>
+      ) : (
+        messages.map((m, idx) => (
+          <div key={idx} className={`d-flex gap-2 mb-2 ${idx === messages.length - 1 && !canContinue ? 'mb-0' : ''}`}>
+            <span style={{ flexShrink: 0 }}>{m.is_ai ? '🤖' : '🧑'}</span>
+            <div className="small">
+              <div className="fw-bold">{m.author_name}</div>
+              <LivePreview content={m.content} />
+            </div>
           </div>
-        </div>
-      ))}
+        ))
+      )}
+      {canContinue && (
+        <Button
+          variant="link"
+          size="sm"
+          className="p-0"
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate('/ai-chat/messages', { state: { conversationUuid: excerpt.conversation_uuid } });
+          }}
+        >
+          Үргэлжлүүлэх ярилцах
+        </Button>
+      )}
     </div>
   );
 };
@@ -217,7 +235,7 @@ const PostContent = ({ post }) => {
   }
 
   if (post.content_type === 'ai_chat') {
-    return <AIChatExcerptCard excerpt={post.related_chat_excerpt} />;
+    return <AIChatExcerptCard post={post} excerpt={post.related_chat_excerpt} />;
   }
 
   const relatedItem =

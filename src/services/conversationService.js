@@ -198,21 +198,6 @@ export const sendExamProblem = async (conversationUuid, problemId) => {
 };
 
 /**
- * AI чатаас сонгосон мессежүүдийг feed-д Post болгож нийтлэх
- * @param {string} conversationUuid
- * @param {string[]} messageUuids - 1-10 мессежийн uuid, эрэмбийн дагуу
- * @param {string} comment - Заавал биш тайлбар
- * @param {boolean} isPrivate - true бол зөвхөн зохиогчид харагдана (default)
- */
-export const shareMessagesToFeed = async (conversationUuid, messageUuids, comment, isPrivate) => {
-  const response = await apiClient.post(
-    `/api/minds/conversations/${conversationUuid}/share/`,
-    { message_uuids: messageUuids, comment, is_private: isPrivate }
-  );
-  return response.data;
-};
-
-/**
  * ЭЕШ бэлдэх: сурагчийн assignment-ын категори тус бүрийн амжилтын статистик
  */
 export const getEeshStats = async () => {

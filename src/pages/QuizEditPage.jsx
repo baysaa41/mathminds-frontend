@@ -216,7 +216,9 @@ const QuizEditPage = () => {
 
     const fetchMathCategories = async () => {
       try {
-        const res = await apiClient.get('/api/integral/math-categories/');
+        const res = await apiClient.get('/api/integral/math-categories/', {
+          params: { has_problems: true },
+        });
         setMathCategories(Array.isArray(res.data) ? res.data : []);
       } catch { /* категори байхгүй ч үргэлжлүүлнэ */ }
     };

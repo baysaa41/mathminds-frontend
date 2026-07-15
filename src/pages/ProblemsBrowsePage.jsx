@@ -132,7 +132,11 @@ function ProblemsBrowsePage() {
   const fetchCategories = async () => {
     setCategoriesLoading(true)
     try {
-      const res = await apiClient.get(API_ENDPOINTS.INTEGRAL.CATEGORIES)
+      // Зөвхөн бодит Problems-той ангиллыг харуулна (жишээ нь 'Мэдээ' зэрэг Article-ийн
+      // агуулгын төрлийн ангиллыг хасна — бодлого тэдгээрт байхгүй тул шүүлтүүрт хэрэггүй)
+      const res = await apiClient.get(API_ENDPOINTS.INTEGRAL.CATEGORIES, {
+        params: { has_problems: true },
+      })
       setCategories(res.data)
       return res.data
     } catch {

@@ -38,8 +38,8 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 const MODELS = [
   { value: 'deepseek-chat',     label: 'DeepSeek Chat',     color: '#4d6bfe' },
   { value: 'deepseek-reasoner', label: 'DeepSeek Reasoner', color: '#4d6bfe' },
-  { value: 'gemini-2.5-flash',  label: 'Gemini 2.5 Flash',  color: '#4285f4' },
-  { value: 'gemini-2.5-pro',    label: 'Gemini 2.5 Pro',    color: '#4285f4' },
+  { value: 'gemini-flash-latest', label: 'Gemini Flash', color: '#4285f4' },
+  { value: 'gemini-pro-latest',   label: 'Gemini Pro',   color: '#4285f4' },
   { value: 'gpt-4o',            label: 'GPT-4o',            color: '#10a37f' },
 ];
 
@@ -214,7 +214,7 @@ export default function SolverPage() {
   const [problem,     setProblem]     = useState('');
   const [messages,    setMessages]    = useState([]);
   const [input,       setInput]       = useState('');
-  const [model,       setModel]       = useState('gemini-2.5-flash');
+  const [model,       setModel]       = useState('gemini-flash-latest');
   const [loading,     setLoading]     = useState(false);
   const [error,       setError]       = useState('');
   const [showProblem, setShowProblem] = useState(true);

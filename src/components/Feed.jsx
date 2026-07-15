@@ -4,6 +4,7 @@
 import { useEffect, useCallback } from 'react';
 import PostCard from './PostCard';
 import CreatePostForm from './CreatePostForm';
+import MyProgramCard from './MyProgramCard';
 
 // ✅ Custom Hooks
 import usePaginatedFetch from '../hooks/usePagenatedFetch.js';
@@ -58,6 +59,9 @@ const Feed = () => {
 
   return (
     <div>
+      {/* ✅ Сонгосон хөтөлбөрийн дагуу суралцах карт (хөтөлбөр бүрд AI багштай ярилцах товч) */}
+      <MyProgramCard />
+
       {/* ✅ Шинэ пост үүсгэх форм - refresh функцийг дамжуулна */}
       <CreatePostForm onPostCreated={refresh} />
 

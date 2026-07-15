@@ -104,7 +104,9 @@ function ArticlesBrowsePage() {
   const fetchCategories = async () => {
     setCategoriesLoading(true)
     try {
-      const res = await apiClient.get(API_ENDPOINTS.INTEGRAL.CATEGORIES)
+      const res = await apiClient.get(API_ENDPOINTS.INTEGRAL.CATEGORIES, {
+        params: { subject: 'content' },
+      })
       setCategories(res.data)
       return res.data
     } catch {

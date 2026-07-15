@@ -111,6 +111,16 @@ const ArticleDetailPage = () => {
   const canEdit =
     user && article && (isStaff || (article.author && user.id === article.author.id));
 
+  // Сэдэв / анги / хөтөлбөр мөрийг бүрдүүлэх
+  const topicPrograms = article.curriculum_topic?.programs || [];
+  const metaParts = [];
+  if (article.category) metaParts.push(article.category.name_mn || article.category.name);
+  if (article.curriculum_topic) metaParts.push(`Сэдэв: ${article.curriculum_topic.name}`);
+  if (article.grade_level) metaParts.push(`${article.grade_level}-р анги`);
+  if (topicPrograms.length > 0) {
+    metaParts.push(`Хөтөлбөр: ${topicPrograms.map((p) => p.name).join(', ')}`);
+  }
+
   const handleEditClick = () => {
     // (!!!) --- СЭРГЭЭСЭН ХЭСЭГ --- (!!!)
     // (!!!) "articleId"-г "id" болгож өөрчилсөн
@@ -189,6 +199,11 @@ const ArticleDetailPage = () => {
             {article.abstract}
           </div>
         </MathJax>
+      )}
+
+      {/* Сэдэв, анги, хөтөлбөр */}
+      {metaParts.length > 0 && (
+        <div className="text-muted small mb-3">{metaParts.join(' · ')}</div>
       )}
 
       {/* Зохиогч, огноо */}

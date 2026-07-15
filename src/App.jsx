@@ -34,7 +34,6 @@ const SolverPage = lazy(() => import('./pages/SolverPage.jsx'));
 const AISolverPage = lazy(() => import('./pages/AISolverPage.jsx'));
 
 // AI Chat
-const AIChatPage = lazy(() => import('./pages/AIChatPage.jsx'));
 
 // Problems
 const ProblemDetailPage = lazy(() => import('./pages/ProblemDetailPage.jsx'));
@@ -143,7 +142,14 @@ function App() {
         <Route path="/callback" element={<CallbackPage />} />
 
         {/* Нийтэд нээлттэй харилцан яриа харах */}
-        <Route path="/messages/conversation/:conversationUuid" element={<ConversationViewPage />} />
+        <Route
+          path="/messages/conversation/:conversationUuid"
+          element={
+            <MathJaxContext version={3} config={mathJaxConfig}>
+              <ConversationViewPage />
+            </MathJaxContext>
+          }
+        />
 
         {/* Info Pages - /info/* руу redirect */}
         <Route path="/about" element={<Navigate to="/info/about" replace />} />
@@ -229,16 +235,6 @@ function App() {
             }
           />
         </Route>
-
-        {/* AI Багш нар - Танилцуулга хуудас */}
-        <Route
-          path="/ai-chat"
-          element={
-            <ProtectedRoute>
-              <AIChatPage />
-            </ProtectedRoute>
-          }
-        />
 
         {/* AI Багш нартай чат - Fullscreen */}
         <Route

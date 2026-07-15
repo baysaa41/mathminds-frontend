@@ -24,7 +24,6 @@ import {
   Calculator,
   Info,
   MessageCircle,
-  BotMessageSquare,
   PenLine,
   ChevronLeft,
   ChevronRight,
@@ -150,9 +149,6 @@ export default function AppHeader() {
                           <Badge bg="danger" pill>{privateMessagesCount}</Badge>
                         )}
                       </Dropdown.Item>
-                      <Dropdown.Item as={Link} to="/ai-chat">
-                        <BotMessageSquare size={16} className="me-2" />AI Багш нар
-                      </Dropdown.Item>
                       <Dropdown.Item as={Link} to="/my-purchases">
                         <ShoppingCart size={16} className="me-2" />Миний худалдан авалт
                       </Dropdown.Item>
@@ -224,9 +220,6 @@ export default function AppHeader() {
                   {privateMessagesCount > 0 && (
                     <Badge bg="danger" pill>{privateMessagesCount}</Badge>
                   )}
-                </Nav.Link>
-                <Nav.Link as={Link} to="/ai-chat" onClick={close}>
-                  <BotMessageSquare size={18} className="me-2" />AI Багш нар
                 </Nav.Link>
                 <Nav.Link as={Link} to="/products" onClick={close}>
                   <ShoppingCart size={18} className="me-2" />Дэлгүүр

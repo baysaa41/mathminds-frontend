@@ -167,17 +167,33 @@ function applyLatexFilters(text) {
     }
     return `<ul>${items}</ul>`;
   });
-  // Тусгай блокууд (\begin{definition}{Нэр}...\end{definition})
+  // \begin{description}\item[Нэр] тайлбар...\end{description} — нэр томьёоны жагсаалт
+  // (MathJax "description"-ийг математик орчин гэж ойлгодоггүй тул "Unknown environment"
+  // алдаа өгдөг байсан, иймд HTML болгож хөрвүүлнэ)
+  html = html.replace(/\\begin\{description\}([\s\S]*?)\\end\{description\}/g, (_, body) => {
+    const items = body.split(/\\item\s*/).map((s) => s.trim()).filter(Boolean);
+    const dl = items.map((item) => {
+      const m = item.match(/^\[([^\]]*)\]\s*([\s\S]*)$/);
+      return m
+        ? `<dt style="font-weight:600;">${m[1].trim()}</dt><dd>${m[2].trim()}</dd>`
+        : `<dd>${item}</dd>`;
+    }).join('');
+    return `<dl>${dl}</dl>`;
+  });
+  // Тусгай блокууд (\begin{definition}{Нэр}...\end{definition} эсвэл \begin{definition}...\end{definition})
   const blockTypes = [
     { env: 'definition', label: 'Тодорхойлолт', color: '#0d6efd', bg: '#e8f0fe', icon: '📘' },
     { env: 'theorem',    label: 'Теорем',       color: '#6f42c1', bg: '#f3eefe', icon: '📐' },
     { env: 'formula',    label: 'Томьёо',       color: '#d63384', bg: '#fce4f0', icon: '📝' },
     { env: 'example',    label: 'Жишээ',        color: '#198754', bg: '#e8f5e9', icon: '💡' },
     { env: 'note',       label: 'Тэмдэглэл',   color: '#fd7e14', bg: '#fff3e0', icon: '📌' },
+    { env: 'proof',      label: 'Нотолгоо',     color: '#495057', bg: '#f1f3f5', icon: '🔍' },
+    { env: 'exercise',   label: 'Дасгал',       color: '#198754', bg: '#e8f5e9', icon: '✏️' },
   ];
   for (const bt of blockTypes) {
+    // {Нэр} аргумент заавал биш — байвал ашиглана, байхгүй бол label-аа ганцаараа харуулна
     const re = new RegExp(
-      `\\\\begin\\{${bt.env}\\}\\{([^}]*)\\}([\\s\\S]*?)\\\\end\\{${bt.env}\\}`,
+      `\\\\begin\\{${bt.env}\\}(?:\\{([^}]*)\\})?([\\s\\S]*?)\\\\end\\{${bt.env}\\}`,
       'g'
     );
     html = html.replace(re, (_, name, body) => {
@@ -205,11 +221,11 @@ function applyLatexFilters(text) {
     );
   }
 
-  // Heading командууд (\section, \subsection, ...)
-  html = html.replace(/\\section\{([^}]*)\}/g,        '<h2 class="article-section mt-4 mb-2">$1</h2>');
-  html = html.replace(/\\subsection\{([^}]*)\}/g,     '<h3 class="article-subsection mt-3 mb-2">$1</h3>');
-  html = html.replace(/\\subsubsection\{([^}]*)\}/g,  '<h4 class="article-subsubsection mt-3 mb-1">$1</h4>');
-  html = html.replace(/\\paragraph\{([^}]*)\}/g,      '<h5 class="article-paragraph mt-2 mb-1">$1</h5>');
+  // Heading командууд (\section, \subsection, ... — одтой хувилбарыг ч дэмжинэ: \subsection*{})
+  html = html.replace(/\\section\*?\{([^}]*)\}/g,        '<h2 class="article-section mt-4 mb-2">$1</h2>');
+  html = html.replace(/\\subsection\*?\{([^}]*)\}/g,     '<h3 class="article-subsection mt-3 mb-2">$1</h3>');
+  html = html.replace(/\\subsubsection\*?\{([^}]*)\}/g,  '<h4 class="article-subsubsection mt-3 mb-1">$1</h4>');
+  html = html.replace(/\\paragraph\*?\{([^}]*)\}/g,      '<h5 class="article-paragraph mt-2 mb-1">$1</h5>');
 
   html = html.replace(/\\emph{(.*?)}/g, '<em>$1</em>');
   html = html.replace(/\\textbf{(.*?)}/g, '<strong>$1</strong>');
