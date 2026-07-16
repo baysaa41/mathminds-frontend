@@ -42,6 +42,7 @@ import {
   PlusCircle,
   Home,
   BookOpen,
+  GraduationCap,
   Wand2,
   Sparkles,
   ImagePlus,
@@ -49,6 +50,15 @@ import {
 } from 'lucide-react';
 
 // (!!!) MathJax тохиргоог Layout.jsx-с авдаг болсон тул эндээс хассан.
+
+// --- Хичээл (Subject) сонголтууд: backend integral/models.py-н SUBJECT_CHOICES-тэй тохирсон ---
+const SUBJECT_CHOICES = [
+  { value: 'math', label: 'Математик' },
+  { value: 'physics', label: 'Физик' },
+  { value: 'chemistry', label: 'Хими' },
+  { value: 'biology', label: 'Биологи' },
+  { value: 'content', label: 'Контент төрөл' },
+];
 
 // --- Debounce Hook ---
 const useDebounce = (value, delay) => {
@@ -458,6 +468,7 @@ const ProblemEditPage = () => {
     const payload = {
       title: problem.title,
       statement: problem.statement,
+      subject: problem.subject || 'math',
       level: problem.level || null,
       type: problem.type || 0,
       answer: problem.answer || '',
@@ -669,7 +680,7 @@ const ProblemEditPage = () => {
           <Card.Body className="p-4">
             {/* Гарчиг, Түвшин */}
             <Row>
-              <Col md={8}>
+              <Col md={6}>
                 <Form.Group className="mb-1">
                   <Form.Label htmlFor="id_title" className="fw-semibold">
                     <FileText size={16} className="me-2" />
@@ -715,7 +726,27 @@ const ProblemEditPage = () => {
                   </div>
                 )}
               </Col>
-              <Col md={4}>
+              <Col md={3}>
+                <Form.Group className="mb-3">
+                  <Form.Label htmlFor="id_subject" className="fw-semibold">
+                    <GraduationCap size={16} className="me-2" />
+                    Хичээл
+                  </Form.Label>
+                  <Form.Select
+                    name="subject"
+                    id="id_subject"
+                    value={problem.subject || 'math'}
+                    onChange={handleProblemChange}
+                  >
+                    {SUBJECT_CHOICES.map((s) => (
+                      <option key={s.value} value={s.value}>
+                        {s.label}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={3}>
                 <Form.Group className="mb-3">
                   <Form.Label htmlFor="id_level" className="fw-semibold">
                     <Layers size={16} className="me-2" />
