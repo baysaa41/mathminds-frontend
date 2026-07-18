@@ -24,6 +24,7 @@ import ToastContainer from 'react-bootstrap/ToastContainer';
 import Dropdown from 'react-bootstrap/Dropdown';
 import Badge from 'react-bootstrap/Badge';
 import Modal from 'react-bootstrap/Modal';
+import Accordion from 'react-bootstrap/Accordion';
 
 // -------------------------------------------------------------------
 // ----------------- PostImageGallery (Туслах компонент) -----------------
@@ -178,6 +179,33 @@ const safeTruncate = (text, maxLen) => {
     if (end !== undefined) return text.substring(0, end + (text[end] === '$' ? 1 : 2)) + '...';
   }
   return text.substring(0, maxLen) + '...';
+};
+
+// -------------------------------------------------------------------
+// -------------- EmbeddedProblemsList (Туслах компонент) ------------
+// -------------------------------------------------------------------
+const EmbeddedProblemsList = ({ problems }) => {
+  if (!problems || problems.length === 0) return null;
+
+  return (
+    <Accordion className="mt-3" alwaysOpen>
+      {problems.map((p, idx) => (
+        <Accordion.Item eventKey={String(idx)} key={p.id}>
+          <Accordion.Header>Жишээ {idx + 1}</Accordion.Header>
+          <Accordion.Body>
+            <div className="mathjax-content mb-2" style={{ whiteSpace: 'pre-wrap' }}>
+              <LivePreview content={p.statement || p.title} />
+            </div>
+            <div className="text-end">
+              <Link to={`/problem/${p.uuid}`} target="_blank" rel="noopener noreferrer" className="small">
+                Дэлгэрэнгүй харах →
+              </Link>
+            </div>
+          </Accordion.Body>
+        </Accordion.Item>
+      ))}
+    </Accordion>
+  );
 };
 
 // -------------------------------------------------------------------
@@ -1134,6 +1162,9 @@ const PostCard = ({ post, onPostDeleted, depth = 0, compact = false, onCardClick
 
               {/* Зургийн Галерей */}
               <PostImageGallery images={originalPost.images} />
+
+              {/* Постонд хавсаргасан бодлогууд (Жишээ 1, 2, ...) */}
+              <EmbeddedProblemsList problems={originalPost.embedded_problems} />
 
               {/* Холбоотой контент */}
               {originalPost.content_type !== 'post' && originalPost.content_type !== 'reply' && (

@@ -63,10 +63,11 @@ export default function AppHeader() {
       <Navbar
         bg="white"
         expand="lg"
+        expanded={false}
         className="border-bottom shadow-sm py-2 sticky-top"
         style={{ zIndex: 1000 }}
       >
-        <Container fluid>
+        <Container>
           {/* Brand */}
           <Navbar.Brand
             as={Link}
@@ -227,6 +228,9 @@ export default function AppHeader() {
                 <Nav.Link as={Link} to="/my-purchases" onClick={close}>
                   <i className="bi bi-bag-check me-2"></i>Миний худалдан авалт
                 </Nav.Link>
+                <Nav.Link onClick={() => { close(); handleOpenDraw(); }}>
+                  <PenLine size={18} className="me-2" />Самбар
+                </Nav.Link>
                 {user.is_staff && (
                   <>
                     <div className="mt-3 mb-1 px-3 text-muted small">Admin</div>
@@ -257,6 +261,18 @@ export default function AppHeader() {
             <Nav.Link as={Link} to="/privacy" onClick={close}>
               <i className="bi bi-shield-check me-2"></i>Нууцлалын бодлого
             </Nav.Link>
+
+            {user && (
+              <>
+                <hr className="my-2" />
+                <Nav.Link
+                  onClick={() => { close(); handleLogout(); }}
+                  className="text-danger"
+                >
+                  <i className="bi bi-box-arrow-right me-2"></i>Гарах
+                </Nav.Link>
+              </>
+            )}
           </Nav>
         </Offcanvas.Body>
       </Offcanvas>

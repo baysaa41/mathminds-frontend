@@ -105,6 +105,7 @@ const ClubCurriculumPage = () => {
   const handleSetWeek = async (programId, weekNum) => {
     try {
       await setWeek(clubData.id, { program_id: programId, current_week: weekNum });
+      showToast?.(`${weekNum}-р долоо хоног руу амжилттай шилжлээ`, 'success');
       clubActions?.onUpdate?.();
     } catch (err) {
       showToast?.(err.response?.data?.detail || 'Долоо хоног өөрчлөхөд алдаа гарлаа', 'danger');

@@ -1,0 +1,97 @@
+// frontend/src/pages/ProgramDetailPage.jsx
+import { useState } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import Container from 'react-bootstrap/Container';
+import Breadcrumb from 'react-bootstrap/Breadcrumb';
+import Card from 'react-bootstrap/Card';
+import Button from 'react-bootstrap/Button';
+import Spinner from 'react-bootstrap/Spinner';
+import Alert from 'react-bootstrap/Alert';
+import Badge from 'react-bootstrap/Badge';
+import { GraduationCap, Bot } from 'lucide-react';
+import useProgramProgress from '../hooks/useProgramProgress';
+import ProgramProgressPanel from '../components/ProgramProgressPanel';
+import { getProgramTeacher } from '../services/clubsService';
+import { createConversation } from '../services/conversationService';
+
+/**
+ * Хөтөлбөрийн тусдаа хуудас: суралцах (сэдэв бүрийн шалгах тест),
+ * үр дүн (mastery явц) болон AI багштай чат эхлүүлэх бүгд эндээс хийгдэнэ.
+ */
+const ProgramDetailPage = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [chatting, setChatting] = useState(false);
+  const [chatError, setChatError] = useState(null);
+
+  const {
+    loading,
+    error,
+    data,
+    generatingTopicId,
+    generatingReview,
+    requestTopicQuiz,
+    requestReviewQuiz,
+  } = useProgramProgress(id);
+
+  const goToQuiz = (quiz) => {
+    if (quiz) navigate(`/quiz/${quiz.quiz_uuid}`);
+  };
+
+  const handleChatWithTeacher = async () => {
+    setChatting(true);
+    setChatError(null);
+    try {
+      const teacher = await getProgramTeacher(id);
+      const conversation = await createConversation(teacher.username);
+      navigate(`/messages/conversation/${conversation.uuid}`);
+    } catch {
+      setChatError('AI багштай холбогдоход алдаа гарлаа.');
+    } finally {
+      setChatting(false);
+    }
+  };
+
+  return (
+    <Container className="py-4" style={{ maxWidth: '760px' }}>
+      <Breadcrumb listProps={{ className: 'mb-3' }}>
+        <Breadcrumb.Item linkAs={Link} linkProps={{ to: '/' }}>
+          Нүүр
+        </Breadcrumb.Item>
+        <Breadcrumb.Item active>{data?.program?.name || 'Хөтөлбөр'}</Breadcrumb.Item>
+      </Breadcrumb>
+
+      <Card className="border-0 shadow-sm mb-3">
+        <Card.Body className="d-flex justify-content-between align-items-start flex-wrap gap-2">
+          <h4 className="d-flex align-items-center gap-2 mb-0">
+            <GraduationCap size={22} className="text-primary" />
+            {data?.program?.name || (loading ? 'Ачааллаж байна...' : 'Хөтөлбөр')}
+            {data?.program?.grade && <Badge bg="secondary">{data.program.grade}-р анги</Badge>}
+          </h4>
+          <Button variant="outline-primary" onClick={handleChatWithTeacher} disabled={chatting}>
+            {chatting ? (
+              <Spinner as="span" size="sm" className="me-1" />
+            ) : (
+              <Bot size={16} className="me-1" />
+            )}
+            AI багштай ярилцах
+          </Button>
+        </Card.Body>
+      </Card>
+
+      {chatError && <Alert variant="danger" className="py-2 small">{chatError}</Alert>}
+
+      <ProgramProgressPanel
+        loading={loading}
+        error={error}
+        data={data}
+        generatingTopicId={generatingTopicId}
+        generatingReview={generatingReview}
+        onTopicQuiz={async (topicId) => goToQuiz(await requestTopicQuiz(topicId))}
+        onReviewQuiz={async () => goToQuiz(await requestReviewQuiz())}
+      />
+    </Container>
+  );
+};
+
+export default ProgramDetailPage;

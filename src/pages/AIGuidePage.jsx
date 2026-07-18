@@ -479,8 +479,8 @@ const AIGuidePage = () => {
               томьёо буруу харагдвал засварлах хуудаснаас засаарай.
             </li>
             <li className="mb-2">
-              <strong>AI бодолт = &quot;Mathminds_AI&quot;.</strong> AI-ийн үүсгэсэн бодолтын
-              зохиогч нь &quot;Mathminds_AI&quot; гэж тэмдэглэгдэнэ.
+              <strong>AI бодолт = &quot;mathminds&quot;.</strong> AI-ийн үүсгэсэн бодолтын
+              зохиогч нь &quot;mathminds&quot; гэж тэмдэглэгдэнэ.
             </li>
             <li>
               <strong>Хязгаарлалт.</strong> AI нь зураг, графикийг &quot;уншиж&quot; чаддаггүй

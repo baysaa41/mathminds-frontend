@@ -9,7 +9,8 @@ import TrendingPostsWidget from './TrendingPostsWidget';
 import ExerciseDatesWidget from './ExerciseDatesWidget';
 import SearchWidget from './SearchWidget';
 import MyClubsWidget from './MyClubsWidget';
-import { ChevronLeft } from 'lucide-react';
+import MyProgramCard from './MyProgramCard';
+import { X } from 'lucide-react';
 
 function fmtTime(secs) {
   if (!secs) return null;
@@ -74,7 +75,19 @@ function ProblemNavList({ items, currentIdx, userAnswers, times, onSelect }) {
   );
 }
 
-const RightSidebar = ({ clubData = null, problemNavData = null }) => {
+const HideButton = ({ onHide }) => (
+  <button
+    type="button"
+    onClick={onHide}
+    className="btn btn-sm btn-light border d-flex align-items-center justify-content-center align-self-end text-muted mb-2 btn-icon-hover"
+    title="Хажуу самбарыг нуух"
+    style={{ width: 28, height: 28, padding: 0 }}
+  >
+    <X size={14} />
+  </button>
+);
+
+const RightSidebar = ({ clubData = null, problemNavData = null, onHide = null }) => {
   const location = useLocation();
   const isClubsPage = location.pathname.startsWith('/clubs');
   const isExercisesPage = /^\/clubs\/(\d+)\/exercises$/.test(location.pathname);
@@ -86,6 +99,7 @@ const RightSidebar = ({ clubData = null, problemNavData = null }) => {
   if (isExercisesPage) {
     return (
       <Stack gap={3}>
+        {onHide && <HideButton onHide={onHide} />}
         {problemNavData && (
           <ProblemNavList
             items={problemNavData.items}
@@ -103,6 +117,7 @@ const RightSidebar = ({ clubData = null, problemNavData = null }) => {
   if (isExercisesReportPage) {
     return (
       <Stack gap={3}>
+        {onHide && <HideButton onHide={onHide} />}
         {clubData && <ClubMenuWidget club={clubData} />}
         {exercisesClubId && <ExerciseDatesWidget clubId={exercisesClubId} autoSelect={false} />}
       </Stack>
@@ -111,8 +126,10 @@ const RightSidebar = ({ clubData = null, problemNavData = null }) => {
 
   return (
     <Stack gap={3}>
+      {onHide && <HideButton onHide={onHide} />}
       {!clubData && <SearchWidget />}
       {!clubData && <MyClubsWidget />}
+      {!clubData && <MyProgramCard />}
       {clubData && <ClubMenuWidget club={clubData} />}
       {clubData && <ClubMeetingsWidget club={clubData} isTeacherOrAdmin={false} />}
       {clubData && clubData.club_type === 'STUDY' && <ClubPaymentInfoWidget club={clubData} />}
