@@ -19,6 +19,7 @@ import {
   Languages,
   Sparkles,
   Cpu,
+  Brain,
 } from 'lucide-react';
 import authService from '../services/authService';
 
@@ -285,6 +286,25 @@ function DashboardPage() {
               </Card.Text>
               <Link to="/admin/ai-models" className="btn" style={{ backgroundColor: '#8b5cf6', color: '#fff' }}>
                 <Cpu size={18} className="me-2" />
+                Харах
+              </Link>
+            </Card.Body>
+          </Card>
+        </Col>
+
+        {/* AI Сургалтын Систем */}
+        <Col md={6} lg={4}>
+          <Card className="h-100 shadow-sm" style={{ borderColor: '#6366f1' }}>
+            <Card.Body className="d-flex flex-column">
+              <div className="mb-3">
+                <Brain size={40} style={{ color: '#6366f1' }} />
+              </div>
+              <Card.Title>AI Сургалтын Систем</Card.Title>
+              <Card.Text className="text-muted flex-grow-1">
+                Mastery, SM-2 давталт, StudyPlan, AI шалгах, AI хайлт — адаптив сургалтын 5 модуль хэрхэн ажилладгийн тайлбар.
+              </Card.Text>
+              <Link to="/admin/ai-learning-system" className="btn" style={{ backgroundColor: '#6366f1', color: '#fff' }}>
+                <Brain size={18} className="me-2" />
                 Харах
               </Link>
             </Card.Body>
