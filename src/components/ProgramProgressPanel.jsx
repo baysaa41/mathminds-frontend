@@ -2,8 +2,8 @@
 import Button from 'react-bootstrap/Button';
 import Spinner from 'react-bootstrap/Spinner';
 import Alert from 'react-bootstrap/Alert';
-import ProgressBar from 'react-bootstrap/ProgressBar';
 import Badge from 'react-bootstrap/Badge';
+import { Star } from 'lucide-react';
 
 /**
  * Хөтөлбөрийн сэдэв бүрийн явц (mastery) + AI-аар шалгах тест үүсгэх/бодох
@@ -19,6 +19,7 @@ const ProgramProgressPanel = ({
   generatingReview,
   onTopicQuiz,
   onReviewQuiz,
+  onTopicClick,
 }) => {
   if (loading) {
     return (
@@ -66,53 +67,63 @@ const ProgramProgressPanel = ({
       ) : (
         <div className="d-flex flex-column gap-2">
           {data.topics.map((t) => {
-            // Прогресс бар = гүйцэтгэл (бодсон эсэх), mastery биш — бодсон бол 100%.
-            // Өнгө нь mastery-г илэрхийлнэ, зөв хариулсан тоог доор тусад нь харуулна.
             const masteryPct = Math.round((t.mastery_score || 0) * 100);
-            const variant = masteryPct >= 70 ? 'success' : masteryPct >= 40 ? 'warning' : 'danger';
+            const starCount = Math.round(masteryPct / 20);
             return (
               <div
                 key={t.id}
                 className={`p-2 border rounded ${t.is_current ? 'border-primary bg-light' : ''}`}
               >
                 <div className="d-flex justify-content-between align-items-start gap-2">
-                  <div className="flex-grow-1">
+                  <div
+                    className="flex-grow-1"
+                    role={onTopicClick ? 'button' : undefined}
+                    onClick={onTopicClick ? () => onTopicClick(t.id) : undefined}
+                    style={onTopicClick ? { cursor: 'pointer' } : undefined}
+                  >
                     <div className="small fw-semibold">
                       {t.week_num}. {t.topic}
                       {t.is_current && (
                         <Badge bg="primary" className="ms-2">Одоо</Badge>
                       )}
+                      {t.is_club_current && (
+                        <Badge bg="info" className="ms-2">Клуб яг одоо</Badge>
+                      )}
                     </div>
-                    {t.problems_attempted > 0 ? (
-                      <div className="mt-1" style={{ maxWidth: '280px' }}>
-                        <ProgressBar
-                          now={100}
-                          variant={variant}
-                          label="100%"
-                          style={{ height: '14px', fontSize: '0.65rem' }}
+                    <div className="d-flex align-items-center gap-1 mt-1">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star
+                          key={i}
+                          size={13}
+                          className={i < starCount ? 'text-warning' : 'text-muted'}
+                          fill={i < starCount ? 'currentColor' : 'none'}
                         />
-                        <div className="text-muted" style={{ fontSize: '0.7rem' }}>
+                      ))}
+                      {t.problems_attempted > 0 ? (
+                        <span className="text-muted small ms-1">
                           {t.problems_correct}/{t.problems_attempted} зөв
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-muted small mt-1">Хараахан бодоогүй</div>
-                    )}
+                        </span>
+                      ) : (
+                        <span className="text-muted small ms-1">Хараахан бодоогүй</span>
+                      )}
+                    </div>
                   </div>
-                  <Button
-                    variant={t.has_check_quiz ? 'outline-success' : 'outline-primary'}
-                    size="sm"
-                    onClick={() => onTopicQuiz(t.id)}
-                    disabled={generatingTopicId === t.id}
-                  >
-                    {generatingTopicId === t.id ? (
-                      <Spinner as="span" size="sm" />
-                    ) : t.has_check_quiz ? (
-                      'Тест бодох'
-                    ) : (
-                      'Тест үүсгэх'
-                    )}
-                  </Button>
+                  {onTopicQuiz && (
+                    <Button
+                      variant={t.has_check_quiz ? 'outline-success' : 'outline-primary'}
+                      size="sm"
+                      onClick={() => onTopicQuiz(t.id)}
+                      disabled={generatingTopicId === t.id}
+                    >
+                      {generatingTopicId === t.id ? (
+                        <Spinner as="span" size="sm" />
+                      ) : t.has_check_quiz ? (
+                        'Тест бодох'
+                      ) : (
+                        'Тест үүсгэх'
+                      )}
+                    </Button>
+                  )}
                 </div>
               </div>
             );

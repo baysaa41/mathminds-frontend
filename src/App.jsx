@@ -63,6 +63,7 @@ const QuizStudentAnswersPage = lazy(() => import('./pages/QuizStudentAnswersPage
 const QuizLeaderboardPage = lazy(() => import('./pages/QuizLeaderboardPage.jsx'));
 const QuizGenerateCurriculumPage = lazy(() => import('./pages/QuizGenerateCurriculumPage.jsx'));
 const ProgramDetailPage = lazy(() => import('./pages/ProgramDetailPage.jsx'));
+const TopicLearnPage = lazy(() => import('./pages/TopicLearnPage.jsx'));
 
 // Profile
 const ProfilePage = lazy(() => import('./pages/ProfilePage.jsx'));
@@ -212,6 +213,7 @@ function App() {
 
           {/* Хөтөлбөрийн дэлгэрэнгүй хуудас */}
           <Route path="programs/:id" element={<ProgramDetailPage />} />
+          <Route path="programs/:programId/topics/:topicId" element={<TopicLearnPage />} />
 
           {/* Профайл */}
           <Route path="profile" element={<MyProfileRedirect />} />

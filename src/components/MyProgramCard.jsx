@@ -9,11 +9,14 @@ import { GraduationCap, Plus } from 'lucide-react';
 import apiClient from '../api/axiosConfig';
 
 /**
- * Сурагчийн сонгосон хөтөлбөрүүдийн жагсаалт widget (sidebar).
- * - Профайл дээр сонгосон бүх идэвхтэй хөтөлбөрийг жагсааж, дарахад
- *   тухайн хөтөлбөрийн тусдаа хуудас (/programs/:id) руу шилжинэ —
+ * Сурагчийн ӨӨРӨӨ сонгосон хөтөлбөрүүдийн жагсаалт widget (sidebar) — клубын
+ * гишүүнчлэлээр автоматаар холбогдсон хөтөлбөрүүдийг ЗОРИУДААР харуулахгүй
+ * (`?self_only=true`, `curriculum/views.py:MyProgramsView`) — тэдгээрт клубын
+ * хөтөлбөрийн цэснээс (ClubCurriculumPage) хандана.
+ * - Дарахад тухайн хөтөлбөрийн тусдаа хуудас (/programs/:id) руу шилжинэ —
  *   суралцах, үр дүн, AI багштай чатлах бүгд тэндээс эхэлнэ.
- * - Хөтөлбөр нэмэх/цуцлах нь профайл засах хуудаснаас хийгдэнэ.
+ * - Хөтөлбөр нэмэх/цуцлах нь профайл засах хуудаснаас хийгдэнэ (тэнд бүх
+ *   хөтөлбөр, клубтой холбоотойг оруулаад, харагдана — өөрчлөгдөөгүй).
  * MyClubsWidget/TrendingPostsWidget-тэй ижил Card.Header + ListGroup дизайн ашиглана.
  */
 const MyProgramCard = () => {
@@ -29,7 +32,9 @@ const MyProgramCard = () => {
     setLoading(true);
     setError(null);
     try {
-      const { data } = await apiClient.get('/api/curriculum/my-programs/');
+      const { data } = await apiClient.get('/api/curriculum/my-programs/', {
+        params: { self_only: true },
+      });
       const enrollments = data || [];
       setEnrolledPrograms(enrollments.map((e) => ({ ...e, week: null, topics: [] })));
       enrollments.forEach((e) => fetchCurrentWeek(e.program.id));

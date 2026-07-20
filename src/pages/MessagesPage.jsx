@@ -10,6 +10,7 @@ import LivePreview from '../components/LivePreview';
 import { MathJax } from 'better-react-mathjax';
 import NewConversationModal from '../components/NewConversationModal';
 import ProgramProgressModal from '../components/ProgramProgressModal';
+import useChatSocket from '../hooks/useChatSocket';
 
 // ViewerJS for image viewing
 import Viewer from 'viewerjs';
@@ -51,7 +52,6 @@ import {
   archiveConversation,
   unarchiveConversation,
   deleteConversation,
-  pollConversation,
   getEeshProblems,
   getEeshStats,
   getEeshTopics,
@@ -751,75 +751,52 @@ const MessagesPage = ({ aiOnly = false }) => {
     }
   };
 
-  // Auto-poll: шинэ мессеж + AI typing status
-  // Зөвхөн AI харилцагчтай харилцаанд л polling хийнэ.
-  // Хүн-хүний чатад polling огт хэрэггүй.
-  useEffect(() => {
-    if (!selectedConversation) return
-    const isAiConversation =
-      selectedConversation.user1?.is_ai_teacher || selectedConversation.user2?.is_ai_teacher
-    if (!isAiConversation) return
-
-    let timeoutId
-    let abortController
-    let cancelled = false
-
-    const poll = async () => {
-      if (cancelled) return
-      abortController = new AbortController()
-      try {
-        const data = await pollConversation(
-          selectedConversation.uuid,
-          lastMessageIdRef.current,
-          abortController.signal,
-        )
-        if (cancelled) return
-        const isTyping = data.ai_typing || false
-        setAiTyping(isTyping)
-        if (data.messages?.length > 0) {
-          setMessages((prev) => {
-            const optimistic = prev.filter((m) => m._isOptimistic)
-            const realMessages = prev.filter((m) => !m._isOptimistic)
-            const existingIds = new Set(realMessages.map((m) => m.id).filter(Boolean))
-            const brandNew = data.messages.filter((m) => !existingIds.has(m.id))
-            // Optimistic мессежүүдийг хадгалж, poll-д ирсэн мессежтэй давхардаагүй эсэхийг шалгана
-            const pollIds = new Set(brandNew.map((m) => m.id))
-            const safeOptimistic = optimistic.filter(
-              (m) => !pollIds.has(m.id)
-            )
-            return [...realMessages, ...safeOptimistic, ...brandNew]
-          })
-          const last = data.messages[data.messages.length - 1]
-          if (last.id) lastMessageIdRef.current = last.id
-          // AI мессеж ирвэл typewriter эффект эхлүүлнэ
-          const aiMsg = [...data.messages].reverse().find((m) => aiUserId && m.author?.id === aiUserId)
-          if (aiMsg?.uuid) {
-            setTypewriterStarted(false)
-            setTypewriterMsgId(aiMsg.uuid)
-            // Зөв хариулсны дараа багшийн хариулт ирсэн → товч харуулна
-            if (examNeedsAiReplyRef.current) {
-              examNeedsAiReplyRef.current = false
-              setExamAiReplied(true)
-            }
-          }
-        }
-        // AI бичиж байх үед 500ms, эс бөгөөс 2000ms
-        if (!cancelled) timeoutId = setTimeout(poll, isTyping ? 500 : 2000)
-      } catch (err) {
-        if (cancelled || err?.name === 'AbortError' || err?.name === 'CanceledError') return
-        if (!cancelled) timeoutId = setTimeout(poll, 2000)
+  // Realtime: шинэ мессеж + AI typing status WebSocket-оор (poll-ийг орлосон).
+  // Хүн-хүний чатад ч, AI чатад ч адилхан ажиллана — хуучин зөвхөн AI-д
+  // хязгаарлагдаж байсан polling-ээс ялгаатай.
+  useChatSocket(selectedConversation?.uuid, {
+    active: !!selectedConversation,
+    onEvent: (evt) => {
+      if (evt.type === 'typing') {
+        setAiTyping(!!evt.typing)
+        return
       }
-    }
+      if (evt.type === 'error') {
+        setAiTyping(false)
+        return
+      }
+      if (evt.type !== 'message' || !evt.message) return
 
-    // Анхны poll 1 секундын дараа эхэлнэ
-    timeoutId = setTimeout(poll, 1000)
-
-    return () => {
-      cancelled = true
-      clearTimeout(timeoutId)
-      abortController?.abort()
-    }
-  }, [selectedConversation])
+      const incoming = evt.message
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === incoming.id)) return prev
+        // Өөрийн илгээсэн мессеж REST-ийн хариунаас өмнө WS-ээр эргэж ирж
+        // болзошгүй тул — ижил зохиогч+агуулгатай хүлээгдэж буй optimistic
+        // мессежийг олоод шууд сольж, давхардуулахгүй.
+        const optimisticIdx = prev.findIndex(
+          (m) => m._isOptimistic && m.author?.id === incoming.author?.id && m.content === incoming.content
+        )
+        if (optimisticIdx !== -1) {
+          const next = [...prev]
+          next[optimisticIdx] = incoming
+          return next
+        }
+        return [...prev, incoming]
+      })
+      if (incoming.id) lastMessageIdRef.current = Math.max(lastMessageIdRef.current, incoming.id)
+      // AI мессеж ирвэл typewriter эффект эхлүүлнэ
+      if (aiUserId && incoming.author?.id === aiUserId) {
+        setAiTyping(false)
+        setTypewriterStarted(false)
+        setTypewriterMsgId(incoming.uuid)
+        // Зөв хариулсны дараа багшийн хариулт ирсэн → товч харуулна
+        if (examNeedsAiReplyRef.current) {
+          examNeedsAiReplyRef.current = false
+          setExamAiReplied(true)
+        }
+      }
+    },
+  })
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -1286,7 +1263,9 @@ const MessagesPage = ({ aiOnly = false }) => {
                     style={{ cursor: 'pointer' }}
                     onClick={() => navigate(`/profile/${otherUser?.username}`)}
                   >
-                    @{otherUser?.username}
+                    {otherUser?.is_ai_teacher && otherUser?.ai_model_label
+                      ? otherUser.ai_model_label
+                      : `@${otherUser?.username}`}
                   </div>
                 </div>
                 <div className="d-flex align-items-center gap-2">

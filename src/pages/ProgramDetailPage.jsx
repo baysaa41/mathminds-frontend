@@ -1,6 +1,6 @@
 // frontend/src/pages/ProgramDetailPage.jsx
 import { useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import Container from 'react-bootstrap/Container';
 import Breadcrumb from 'react-bootstrap/Breadcrumb';
 import Card from 'react-bootstrap/Card';
@@ -8,19 +8,24 @@ import Button from 'react-bootstrap/Button';
 import Spinner from 'react-bootstrap/Spinner';
 import Alert from 'react-bootstrap/Alert';
 import Badge from 'react-bootstrap/Badge';
-import { GraduationCap, Bot } from 'lucide-react';
+import { GraduationCap, Bot, Users } from 'lucide-react';
 import useProgramProgress from '../hooks/useProgramProgress';
 import ProgramProgressPanel from '../components/ProgramProgressPanel';
-import { getProgramTeacher } from '../services/clubsService';
-import { createConversation } from '../services/conversationService';
+import { remindProgramTopics } from '../services/clubsService';
 
 /**
- * Хөтөлбөрийн тусдаа хуудас: суралцах (сэдэв бүрийн шалгах тест),
- * үр дүн (mastery явц) болон AI багштай чат эхлүүлэх бүгд эндээс хийгдэнэ.
+ * Хөтөлбөрийн тусдаа хуудас — "Клубын хөтөлбөр" болон "Миний хөтөлбөр" хоёулаа
+ * эндээс ирнэ (хуваалцсан "хөтөлбөрийн үндсэн хуудас"): суралцах (сэдэв бүрийн
+ * шалгах тест), үр дүн (mastery явц) болон AI багштай чат эхлүүлэх бүгд эндээс
+ * хийгдэнэ. `?club=<id>` query байвал клубын контекстээс ирснийг илтгэнэ — клубын
+ * зааж буй долоо хоногийг (club_week) мэдээллийн зорилгоор нэмж харуулна, сурагчийн
+ * өөрийн явцыг (чөлөөт хурд) хязгаарлахгүй.
  */
 const ProgramDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const clubId = searchParams.get('club');
   const [chatting, setChatting] = useState(false);
   const [chatError, setChatError] = useState(null);
 
@@ -28,9 +33,7 @@ const ProgramDetailPage = () => {
     loading,
     error,
     data,
-    generatingTopicId,
     generatingReview,
-    requestTopicQuiz,
     requestReviewQuiz,
   } = useProgramProgress(id);
 
@@ -38,13 +41,17 @@ const ProgramDetailPage = () => {
     if (quiz) navigate(`/quiz/${quiz.quiz_uuid}`);
   };
 
+  const goToTopic = (topicId) => {
+    const suffix = clubId ? `?club=${clubId}` : '';
+    navigate(`/programs/${id}/topics/${topicId}${suffix}`);
+  };
+
   const handleChatWithTeacher = async () => {
     setChatting(true);
     setChatError(null);
     try {
-      const teacher = await getProgramTeacher(id);
-      const conversation = await createConversation(teacher.username);
-      navigate(`/messages/conversation/${conversation.uuid}`);
+      const result = await remindProgramTopics(id);
+      navigate(`/messages/conversation/${result.conversation_uuid}`);
     } catch {
       setChatError('AI багштай холбогдоход алдаа гарлаа.');
     } finally {
@@ -58,6 +65,11 @@ const ProgramDetailPage = () => {
         <Breadcrumb.Item linkAs={Link} linkProps={{ to: '/' }}>
           Нүүр
         </Breadcrumb.Item>
+        {clubId && (
+          <Breadcrumb.Item linkAs={Link} linkProps={{ to: `/clubs/${clubId}/curriculum` }}>
+            Клуб
+          </Breadcrumb.Item>
+        )}
         <Breadcrumb.Item active>{data?.program?.name || 'Хөтөлбөр'}</Breadcrumb.Item>
       </Breadcrumb>
 
@@ -81,13 +93,20 @@ const ProgramDetailPage = () => {
 
       {chatError && <Alert variant="danger" className="py-2 small">{chatError}</Alert>}
 
+      {data?.club_week && data.club_week !== data.my_week && (
+        <Alert variant="light" className="py-2 small border d-flex align-items-center gap-2">
+          <Users size={14} className="text-muted" />
+          Клуб яг одоо <strong>{data.club_week}-р долоо хоногийг</strong> хичээллэж байна. Та өөрийн
+          хурдаараа урагшлах/ноцрох боломжтой — энэ таны хувийн явцад нөлөөлөхгүй.
+        </Alert>
+      )}
+
       <ProgramProgressPanel
         loading={loading}
         error={error}
         data={data}
-        generatingTopicId={generatingTopicId}
+        onTopicClick={goToTopic}
         generatingReview={generatingReview}
-        onTopicQuiz={async (topicId) => goToQuiz(await requestTopicQuiz(topicId))}
         onReviewQuiz={async () => goToQuiz(await requestReviewQuiz())}
       />
     </Container>

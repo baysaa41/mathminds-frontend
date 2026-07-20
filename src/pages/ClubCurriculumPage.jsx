@@ -8,7 +8,7 @@ import Spinner from 'react-bootstrap/Spinner';
 import ListGroup from 'react-bootstrap/ListGroup';
 import Form from 'react-bootstrap/Form';
 import Accordion from 'react-bootstrap/Accordion';
-import { CalendarDays, GraduationCap, Sparkles, Plus, X, RotateCcw, FileText, Send, Target, Wand2 } from 'lucide-react';
+import { CalendarDays, GraduationCap, Sparkles, Plus, X, RotateCcw, FileText, Send, Target, Wand2, ArrowRight } from 'lucide-react';
 import Modal from 'react-bootstrap/Modal';
 import { generateWeeklyArticle, getWeeklyTopics, getPrograms, addProgram, removeProgram, setWeek } from '../services/clubsService';
 import apiClient from '../api/axiosConfig';
@@ -201,14 +201,22 @@ const ClubCurriculumPage = () => {
                         {p.academic_year && <span className="small text-muted">{p.academic_year}</span>}
                         {p.hours_per_week && <span className="small text-muted">{p.hours_per_week} цаг/7хон</span>}
                       </div>
-                      <Button
-                        variant="outline-danger"
-                        size="sm"
-                        onClick={() => handleRemoveProgram(p.id, p.name)}
-                        title="Хөтөлбөр хасах"
-                      >
-                        <X size={14} />
-                      </Button>
+                      <div className="d-flex align-items-center gap-1">
+                        <Link
+                          to={`/programs/${p.id}?club=${clubData.id}`}
+                          className="btn btn-outline-primary btn-sm d-flex align-items-center gap-1"
+                        >
+                          Хөтөлбөрийг үзэх <ArrowRight size={12} />
+                        </Link>
+                        <Button
+                          variant="outline-danger"
+                          size="sm"
+                          onClick={() => handleRemoveProgram(p.id, p.name)}
+                          title="Хөтөлбөр хасах"
+                        >
+                          <X size={14} />
+                        </Button>
+                      </div>
                     </div>
                     <div className="d-flex align-items-center gap-2 flex-wrap">
                       <span className="small text-muted">
@@ -304,12 +312,23 @@ const ClubCurriculumPage = () => {
         <Card className="shadow-sm mb-3 border-primary border-opacity-25">
           <Card.Body>
             {programsInfo.map(p => (
-              <div key={p.id} className="d-flex align-items-center gap-2 mb-2 flex-wrap">
-                <GraduationCap size={16} className="text-primary" />
-                <span className="fw-semibold">{p.name}</span>
-                <Badge bg="secondary" className="small">{p.grade}-р анги</Badge>
-                <Badge bg="primary" className="small">{p.current_week}-р долоо хоног</Badge>
-                {p.hours_per_week && <span className="small text-muted">· {p.hours_per_week} цаг/7 хоног</span>}
+              <div key={p.id} className="d-flex align-items-center justify-content-between gap-2 mb-2 flex-wrap">
+                <div className="d-flex align-items-center gap-2 flex-wrap">
+                  <GraduationCap size={16} className="text-primary" />
+                  <span className="fw-semibold">{p.name}</span>
+                  <Badge bg="secondary" className="small">{p.grade}-р анги</Badge>
+                  <Badge bg="primary" className="small">Клуб: {p.current_week}-р долоо хоног</Badge>
+                  {p.my_week != null && p.my_week !== p.current_week && (
+                    <Badge bg="success" className="small">Миний хурд: {p.my_week}-р долоо хоног</Badge>
+                  )}
+                  {p.hours_per_week && <span className="small text-muted">· {p.hours_per_week} цаг/7 хоног</span>}
+                </div>
+                <Link
+                  to={`/programs/${p.id}?club=${clubData.id}`}
+                  className="btn btn-outline-primary btn-sm d-flex align-items-center gap-1"
+                >
+                  Хөтөлбөрийг үзэх <ArrowRight size={12} />
+                </Link>
               </div>
             ))}
           </Card.Body>
@@ -353,7 +372,16 @@ const ClubCurriculumPage = () => {
                           <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap">
                             <div className="d-flex align-items-center gap-2 flex-wrap">
                               {w.topic ? (
-                                <span className={`small ${w.is_past ? 'text-muted' : ''}`}>{w.topic}</span>
+                                w.id ? (
+                                  <Link
+                                    to={`/programs/${w.program_id}/topics/${w.id}?club=${clubData.id}`}
+                                    className={`small text-decoration-none ${w.is_past ? 'text-muted' : ''}`}
+                                  >
+                                    {w.topic}
+                                  </Link>
+                                ) : (
+                                  <span className={`small ${w.is_past ? 'text-muted' : ''}`}>{w.topic}</span>
+                                )
                               ) : (
                                 <span className="small text-muted fst-italic">Сэдэв байхгүй</span>
                               )}
