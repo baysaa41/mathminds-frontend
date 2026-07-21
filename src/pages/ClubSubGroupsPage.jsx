@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import apiClient from '../api/axiosConfig';
 import EmptyState from '../components/common/EmptyState';
+import { resolveResourceHref } from '../utils/resourceLink';
 
 const RESOURCE_TYPE_LABELS = {
   article: 'Өгүүлэл', problem: 'Бодлого', pdf: 'PDF',
@@ -635,6 +636,7 @@ const ClubSubGroupsPage = () => {
   const [autoObjectivesModal, setAutoObjectivesModal] = useState(false);
   const [removingId, setRemovingId] = useState(null);
   const [exporting, setExporting] = useState(false);
+  const [showInactive, setShowInactive] = useState(false);
 
   // Клубын бүх гишүүд (нэмэх modal-д ашиглана)
   const clubMembers = clubData?.members || [];
@@ -664,7 +666,9 @@ const ClubSubGroupsPage = () => {
     if (!clubId) return;
     try {
       setLoading(true);
-      const res = await apiClient.get('/api/club-subgroups/', { params: { club: clubId, include_inactive: '1' } });
+      const params = { club: clubId };
+      if (showInactive) params.include_inactive = '1';
+      const res = await apiClient.get('/api/club-subgroups/', { params });
       const list = res.data.results || res.data || [];
       setSubgroups(list);
       // Сонгосон бүлгийг дахин татах
@@ -677,7 +681,7 @@ const ClubSubGroupsPage = () => {
     } catch { /* ignore */ }
     finally { setLoading(false); }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clubId]);
+  }, [clubId, showInactive]);
 
   // Дэлгэрэнгүй (members-тэй) татах
   const fetchDetail = useCallback(async (id) => {
@@ -848,18 +852,24 @@ const ClubSubGroupsPage = () => {
             </Badge>
           )}
         </h5>
-        {isTeacherOrAdmin && (
-          <Stack direction="horizontal" gap={2}>
-            <Button variant="outline-primary" size="sm"
-              onClick={() => setAutoGroupModal(true)}>
-              <Wand2 size={14} className="me-1" />Дүнгээр хуваах
-            </Button>
-            <Button variant="primary" size="sm"
-              onClick={() => { setEditTarget(null); setFormModal(true); }}>
-              <Plus size={14} className="me-1" />Бүлэг нэмэх
-            </Button>
-          </Stack>
-        )}
+        <Stack direction="horizontal" gap={3}>
+          <Form.Check type="switch" id="show-inactive-subgroups" label="Идэвхгүйг харуулах"
+            className="small text-nowrap"
+            checked={showInactive}
+            onChange={e => setShowInactive(e.target.checked)} />
+          {isTeacherOrAdmin && (
+            <Stack direction="horizontal" gap={2}>
+              <Button variant="outline-primary" size="sm"
+                onClick={() => setAutoGroupModal(true)}>
+                <Wand2 size={14} className="me-1" />Дүнгээр хуваах
+              </Button>
+              <Button variant="primary" size="sm"
+                onClick={() => { setEditTarget(null); setFormModal(true); }}>
+                <Plus size={14} className="me-1" />Бүлэг нэмэх
+              </Button>
+            </Stack>
+          )}
+        </Stack>
       </div>
 
       {loading ? (
@@ -908,45 +918,49 @@ const ClubSubGroupsPage = () => {
             {selected ? (
               <Card>
                 {/* Гарчиг */}
-                <Card.Header className="bg-white d-flex align-items-center justify-content-between">
-                  <div className="d-flex align-items-center gap-2">
-                    <Badge bg={selected.color} className="fs-6 px-3 py-1">{selected.name}</Badge>
-                    {selected.is_active === false && (
-                      <Badge bg="secondary">Идэвхгүй</Badge>
-                    )}
-                    {selected.description && (
-                      <span className="text-muted small">{selected.description}</span>
+                <Card.Header className="bg-white">
+                  <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div className="d-flex align-items-center gap-2">
+                      <Badge bg={selected.color} className="fs-6 px-3 py-1">{selected.name}</Badge>
+                      {selected.is_active === false && (
+                        <Badge bg="secondary">Идэвхгүй</Badge>
+                      )}
+                    </div>
+                    {isTeacherOrAdmin && (
+                      <Stack direction="horizontal" gap={1}>
+                        <Button variant="outline-primary" size="sm"
+                          onClick={() => navigate(`/clubs/${clubId}/group-report?subgroup_id=${selected.id}`)}
+                          title="Веб тайлан харах">
+                          Веб тайлан
+                        </Button>
+                        <Button variant="outline-success" size="sm"
+                          onClick={handleExportSubgroup}
+                          disabled={exporting}
+                          title="Excel татах">
+                          {exporting
+                            ? <Spinner animation="border" size="sm" />
+                            : <FileDown size={14} className="me-1" />}
+                          Тайлан
+                        </Button>
+                        <Button variant="outline-primary" size="sm"
+                          onClick={() => setAddMembersModal(true)}>
+                          <UserPlus size={14} className="me-1" />Нэмэх
+                        </Button>
+                        <Button variant="outline-secondary" size="sm"
+                          onClick={() => { setEditTarget(selected); setFormModal(true); }}>
+                          <Pencil size={14} />
+                        </Button>
+                        <Button variant="outline-danger" size="sm"
+                          onClick={() => handleDelete(selected)}>
+                          <Trash2 size={14} />
+                        </Button>
+                      </Stack>
                     )}
                   </div>
-                  {isTeacherOrAdmin && (
-                    <Stack direction="horizontal" gap={1}>
-                      <Button variant="outline-primary" size="sm"
-                        onClick={() => navigate(`/clubs/${clubId}/group-report?subgroup_id=${selected.id}`)}
-                        title="Веб тайлан харах">
-                        Веб тайлан
-                      </Button>
-                      <Button variant="outline-success" size="sm"
-                        onClick={handleExportSubgroup}
-                        disabled={exporting}
-                        title="Excel татах">
-                        {exporting
-                          ? <Spinner animation="border" size="sm" />
-                          : <FileDown size={14} className="me-1" />}
-                        Тайлан
-                      </Button>
-                      <Button variant="outline-primary" size="sm"
-                        onClick={() => setAddMembersModal(true)}>
-                        <UserPlus size={14} className="me-1" />Нэмэх
-                      </Button>
-                      <Button variant="outline-secondary" size="sm"
-                        onClick={() => { setEditTarget(selected); setFormModal(true); }}>
-                        <Pencil size={14} />
-                      </Button>
-                      <Button variant="outline-danger" size="sm"
-                        onClick={() => handleDelete(selected)}>
-                        <Trash2 size={14} />
-                      </Button>
-                    </Stack>
+                  {selected.description && (
+                    <div className="text-muted small mt-1" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                      {selected.description}
+                    </div>
                   )}
                 </Card.Header>
 
@@ -1169,16 +1183,21 @@ const ClubSubGroupsPage = () => {
                                       )}
                                       {w.resources?.length > 0 && (
                                         <div className="mt-1 d-flex flex-wrap gap-1">
-                                          {w.resources.map(r => (
-                                            <Link key={r.id} to={r.url} className="text-decoration-none">
-                                              <Badge bg={RESOURCE_TYPE_COLORS[r.resource_type] || 'info'}
-                                                className="small fw-normal d-inline-flex align-items-center gap-1">
-                                                <FileText size={10} />
-                                                <span className="fw-semibold">{RESOURCE_TYPE_LABELS[r.resource_type] || r.resource_type}:</span>
-                                                {r.title.length > 40 ? r.title.slice(0, 40) + '...' : r.title}
-                                              </Badge>
-                                            </Link>
-                                          ))}
+                                          {w.resources.map(r => {
+                                            const { to, external } = resolveResourceHref(r.url);
+                                            const LinkTag = external ? 'a' : Link;
+                                            const linkProp = external ? { href: to, target: '_blank', rel: 'noopener noreferrer' } : { to };
+                                            return (
+                                              <LinkTag key={r.id} {...linkProp} className="text-decoration-none">
+                                                <Badge bg={RESOURCE_TYPE_COLORS[r.resource_type] || 'info'}
+                                                  className="small fw-normal d-inline-flex align-items-center gap-1">
+                                                  <FileText size={10} />
+                                                  <span className="fw-semibold">{RESOURCE_TYPE_LABELS[r.resource_type] || r.resource_type}:</span>
+                                                  {r.title.length > 40 ? r.title.slice(0, 40) + '...' : r.title}
+                                                </Badge>
+                                              </LinkTag>
+                                            );
+                                          })}
                                         </div>
                                       )}
                                     </div>

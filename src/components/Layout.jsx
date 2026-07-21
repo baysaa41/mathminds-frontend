@@ -16,7 +16,7 @@ import Col from 'react-bootstrap/Col';
 import Offcanvas from 'react-bootstrap/Offcanvas';
 import { ChevronRight, PanelRight } from 'lucide-react';
 
-const SIDEBAR_HIDDEN_KEY = 'rightSidebarHidden';
+const SIDEBAR_HIDDEN_KEY = 'rightSidebarHidden_v2'; // v2: default нь collapsed болсон тул хуучин утгыг үл тооцно
 const LG_BREAKPOINT = 992; // Bootstrap 'lg' — доор нь баганууд аль хэдийн stack хийгддэг тул hide/show toggle шаардлагагүй
 
 const Layout = () => {
@@ -26,7 +26,7 @@ const Layout = () => {
   const mainScrollRef = useRef(null);
 
   const [sidebarHidden, setSidebarHidden] = useState(
-    () => localStorage.getItem(SIDEBAR_HIDDEN_KEY) === '1'
+    () => localStorage.getItem(SIDEBAR_HIDDEN_KEY) !== '0'
   );
   const toggleSidebar = (hidden) => {
     setSidebarHidden(hidden);
@@ -110,7 +110,7 @@ const Layout = () => {
         <AppHeader />
 
         {/* Main Content Area */}
-        <Container fluid={forcedFullWidth} className="flex-grow-1">
+        <Container className="flex-grow-1">
           <Row className="g-0 h-100">
             <Col lg={noSidebarColumn ? 12 : 9} xl={noSidebarColumn ? 12 : 8}
               className={noSidebarColumn ? '' : 'border-end'}>

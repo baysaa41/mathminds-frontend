@@ -12,6 +12,7 @@ import {
   MessageCircle, Send, Check, X as XIcon, Search,
 } from 'lucide-react';
 import * as svc from '../services/curriculumAdminService';
+import { resolveResourceHref } from '../utils/resourceLink';
 
 // ─── ТУСЛАХ КОМПОНЕНТУУД ─────────────────────────────────────────────────────
 
@@ -1087,14 +1088,19 @@ function WeeklyTopicsTab({ programs }) {
                   {/* Article resource badges */}
                   {t.resources?.filter(r => r.resource_type === 'article').length > 0 && (
                     <div className="px-3 pb-1 d-flex flex-wrap gap-1">
-                      {t.resources.filter(r => r.resource_type === 'article').map(r => (
-                        <Link key={r.id} to={r.url} className="text-decoration-none">
-                          <Badge bg="info" className="small fw-normal d-inline-flex align-items-center gap-1">
-                            <FileText size={10} />
-                            {r.title.length > 50 ? r.title.slice(0, 50) + '...' : r.title}
-                          </Badge>
-                        </Link>
-                      ))}
+                      {t.resources.filter(r => r.resource_type === 'article').map(r => {
+                        const { to, external } = resolveResourceHref(r.url);
+                        const LinkTag = external ? 'a' : Link;
+                        const linkProp = external ? { href: to, target: '_blank', rel: 'noopener noreferrer' } : { to };
+                        return (
+                          <LinkTag key={r.id} {...linkProp} className="text-decoration-none">
+                            <Badge bg="info" className="small fw-normal d-inline-flex align-items-center gap-1">
+                              <FileText size={10} />
+                              {r.title.length > 50 ? r.title.slice(0, 50) + '...' : r.title}
+                            </Badge>
+                          </LinkTag>
+                        );
+                      })}
                     </div>
                   )}
 

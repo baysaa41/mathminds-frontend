@@ -41,12 +41,13 @@ const scoreColor = (score, maxScore) => {
 
 // CSV export
 const exportCSV = (assignments, members) => {
-  const header = ['Нэр', 'Username', ...assignments.map(a => a.title), 'Нийт'];
+  const header = ['Нэр', 'Username', ...assignments.map(a => a.title), 'Нийт', 'ЭЕШ (Х.Оноо)'];
   const rows = members.map(m => [
     displayName(m.student),
     m.student.username,
     ...m.scores.map(s => (s != null ? s : '')),
     m.total,
+    m.student.eec_result?.weighted_score ?? '',
   ]);
   const csv = [header, ...rows].map(r => r.join(',')).join('\n');
   const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -65,6 +66,7 @@ const ClubScoresPage = () => {
   const [data, setData] = useState(null); // { assignments, members }
   const [search, setSearch] = useState('');
   const [subgroupFilter, setSubgroupFilter] = useState('');
+  const [eecUnmatchedOnly, setEecUnmatchedOnly] = useState(false);
 
   useEffect(() => {
     if (!clubId) return;
@@ -105,8 +107,16 @@ const ClubScoresPage = () => {
     if (subgroupFilter) {
       rows = rows.filter(m => (m.subgroups || []).some(sg => String(sg.id) === subgroupFilter));
     }
+    if (eecUnmatchedOnly) {
+      rows = rows.filter(m => !m.student.eec_result);
+    }
     return rows;
-  }, [data, search, subgroupFilter]);
+  }, [data, search, subgroupFilter, eecUnmatchedOnly]);
+
+  const eecUnmatchedCount = useMemo(() => {
+    if (!data) return 0;
+    return data.members.filter(m => !m.student.eec_result).length;
+  }, [data]);
 
   // Column averages
   const colAvgs = useMemo(() => {
@@ -147,6 +157,16 @@ const ClubScoresPage = () => {
           )}
           <Form.Control size="sm" placeholder="Нэрээр хайх..." style={{ width: 160 }}
             value={search} onChange={e => setSearch(e.target.value)} />
+          {eecUnmatchedCount > 0 && (
+            <Form.Check
+              type="checkbox"
+              id="eec-unmatched-only"
+              label={`ЭЕШ холбогдоогүй (${eecUnmatchedCount})`}
+              checked={eecUnmatchedOnly}
+              onChange={e => setEecUnmatchedOnly(e.target.checked)}
+              className="small text-nowrap"
+            />
+          )}
           <Button variant="outline-secondary" size="sm"
             onClick={() => exportCSV(assignments, filtered)} title="CSV татах">
             <Download size={14} className="me-1" />CSV
@@ -187,6 +207,10 @@ const ClubScoresPage = () => {
                   <th className="text-center" style={{ minWidth: 60, background: '#f8f9fa' }}>
                     Нийт
                   </th>
+                  <th className="text-center" style={{ minWidth: 80, background: '#f8f9fa' }}
+                    title="Улсын ЭЕШ-ийн жинхэнэ дүн (Х.Оноо), клубын хичээлтэй тохирох бүлгээс">
+                    ЭЕШ
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -209,6 +233,14 @@ const ClubScoresPage = () => {
                       const active = filtered.filter(m => m.count > 0);
                       return active.length > 0
                         ? (active.reduce((s, m) => s + m.total, 0) / active.length).toFixed(1)
+                        : '—';
+                    })()}
+                  </td>
+                  <td className="text-center">
+                    {(() => {
+                      const withEec = filtered.filter(m => m.student.eec_result?.weighted_score != null);
+                      return withEec.length > 0
+                        ? Math.round(withEec.reduce((s, m) => s + m.student.eec_result.weighted_score, 0) / withEec.length)
                         : '—';
                     })()}
                   </td>
@@ -251,6 +283,28 @@ const ClubScoresPage = () => {
                     })}
                     <td className="text-center fw-bold text-primary">
                       {m.count > 0 ? m.total : <span className="text-muted fw-normal">—</span>}
+                    </td>
+                    <td className="text-center">
+                      {m.student.eec_result ? (
+                        <>
+                          <div className="fw-semibold" style={{ fontSize: '0.78rem' }}>
+                            {m.student.eec_result.weighted_score != null ? Math.round(m.student.eec_result.weighted_score) : '—'}
+                          </div>
+                          {m.student.eec_result.score != null && (
+                            <div className="text-muted" style={{ fontSize: '0.62rem' }}>
+                              {m.student.eec_result.score} оноо
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <span
+                          className="text-muted"
+                          style={{ opacity: 0.4 }}
+                          title={m.student.eec_register ? 'ЭЕШ дүн олдсонгүй' : 'Регистрийн дугаар оноогоогүй'}
+                        >
+                          {m.student.eec_register ? '—' : '⋯'}
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}

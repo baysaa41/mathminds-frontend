@@ -12,6 +12,7 @@ import { CalendarDays, GraduationCap, Sparkles, Plus, X, RotateCcw, FileText, Se
 import Modal from 'react-bootstrap/Modal';
 import { generateWeeklyArticle, getWeeklyTopics, getPrograms, addProgram, removeProgram, setWeek } from '../services/clubsService';
 import apiClient from '../api/axiosConfig';
+import { resolveResourceHref } from '../utils/resourceLink';
 
 const RESOURCE_TYPE_LABELS = {
   article: 'Өгүүлэл',
@@ -445,10 +446,13 @@ const ClubCurriculumPage = () => {
                               {w.resources.map(r => {
                                 const bgColor = RESOURCE_TYPE_COLORS[r.resource_type] || 'info';
                                 const typeLabel = RESOURCE_TYPE_LABELS[r.resource_type] || r.resource_type;
+                                const { to, external } = resolveResourceHref(r.url);
+                                const LinkTag = external ? 'a' : Link;
+                                const linkProp = external ? { href: to, target: '_blank', rel: 'noopener noreferrer' } : { to };
                                 return (
-                                  <Link
+                                  <LinkTag
                                     key={r.id}
-                                    to={r.url}
+                                    {...linkProp}
                                     className="text-decoration-none"
                                   >
                                     <Badge bg={bgColor} className="small fw-normal d-inline-flex align-items-center gap-1">
@@ -456,7 +460,7 @@ const ClubCurriculumPage = () => {
                                       <span className="fw-semibold">{typeLabel}:</span>
                                       {r.title.length > 40 ? r.title.slice(0, 40) + '...' : r.title}
                                     </Badge>
-                                  </Link>
+                                  </LinkTag>
                                 );
                               })}
                             </div>

@@ -71,8 +71,8 @@ const SubgroupReportPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
-  const [sortField, setSortField] = useState('full_name');
-  const [sortDir, setSortDir] = useState(1);
+  const [sortField, setSortField] = useState('eec_scaled_score');
+  const [sortDir, setSortDir] = useState(-1);
   const [exporting, setExporting] = useState(false);
   const [subgroups, setSubgroups] = useState([]);
   const [showTeachers, setShowTeachers] = useState(false);
@@ -137,13 +137,17 @@ const SubgroupReportPage = () => {
     if (!sorted.length) return null;
     const withSuccess = sorted.filter(m => m.success_rate != null);
     const withProb = sorted.filter(m => m.prob_rate != null);
+    const withEec = sorted.filter(m => m.eec_scaled_score != null);
     const avgSuccess = withSuccess.length
       ? (withSuccess.reduce((s, m) => s + m.success_rate, 0) / withSuccess.length).toFixed(1)
       : null;
     const avgProb = withProb.length
       ? (withProb.reduce((s, m) => s + m.prob_rate, 0) / withProb.length).toFixed(1)
       : null;
-    return { total: sorted.length, avgSuccess, avgProb };
+    const avgEec = withEec.length
+      ? (withEec.reduce((s, m) => s + m.eec_scaled_score, 0) / withEec.length).toFixed(1)
+      : null;
+    return { total: sorted.length, avgSuccess, avgProb, avgEec };
   }, [sorted]);
 
   const assignmentRanking = useMemo(() => {
@@ -283,6 +287,12 @@ const SubgroupReportPage = () => {
                   <div className="text-muted" style={{ fontSize: '0.72rem' }}>Бодлогын амжилт</div>
                 </div>
               )}
+              {summary.avgEec != null && (
+                <div className="text-center">
+                  <div className="fw-bold fs-5" style={{ color: '#0d6efd' }}>{summary.avgEec}</div>
+                  <div className="text-muted" style={{ fontSize: '0.72rem' }}>Дундаж ЭЕШ Х.оноо</div>
+                </div>
+              )}
               <div className="ms-auto">
                 <Button variant="outline-success" size="sm" onClick={handleExcelDownload} disabled={exporting}>
                   {exporting ? <Spinner animation="border" size="sm" className="me-1" /> : <Download size={14} className="me-1" />}
@@ -337,9 +347,7 @@ const SubgroupReportPage = () => {
                     Амжилт% {sortField === 'success_rate' ? (sortDir === 1 ? '↑' : '↓') : <span style={{ opacity: 0.3 }}>↕</span>}
                   </th>
                   <th className="text-center" style={{ minWidth: 72 }}>Бодлого</th>
-                  <th className="text-center" style={{ minWidth: 84, cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('prob_rate')}>
-                    Бодлогын% {sortField === 'prob_rate' ? (sortDir === 1 ? '↑' : '↓') : <span style={{ opacity: 0.3 }}>↕</span>}
-                  </th>
+                  <th className="text-center" style={{ minWidth: 72 }}>Дасгал</th>
                   {assignments.map(a => (
                     <th key={a.id} className="text-center" colSpan={2}
                       style={{ minWidth: 110 }} title={a.title}>
@@ -347,6 +355,11 @@ const SubgroupReportPage = () => {
                       <div className="text-muted fw-normal" style={{ fontSize: '0.65rem' }}>/{a.max_score ?? '?'}</div>
                     </th>
                   ))}
+                  <th className="text-center" colSpan={2} style={{ minWidth: 100, cursor: 'pointer', userSelect: 'none' }}
+                    onClick={() => handleSort('eec_scaled_score')}>
+                    ЭЕШ {sortField === 'eec_scaled_score' ? (sortDir === 1 ? '↑' : '↓') : <span style={{ opacity: 0.3 }}>↕</span>}
+                    <div className="text-muted fw-normal" style={{ fontSize: '0.65rem' }}>(А/Х)</div>
+                  </th>
                 </tr>
                 <tr className="table-secondary" style={{ fontSize: '0.7rem' }}>
                   <td /><td style={{ position: 'sticky', left: 0, zIndex: 2, background: '#e9ecef', boxShadow: '2px 0 4px rgba(0,0,0,0.07)' }} />
@@ -359,14 +372,31 @@ const SubgroupReportPage = () => {
                           return vals.length ? (vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(1) : '—';
                         })()}
                       </td>
-                      <td className="text-center text-muted" style={{ fontSize: '0.65rem' }}>Зөв/Буруу</td>
+                      <td className="text-center fw-semibold" style={{ color: '#0d6efd' }}>
+                        {(() => {
+                          const vals = sorted.map(m => m.results.find(r => r.assignment_id === a.id)?.scaled_score).filter(v => v != null);
+                          return vals.length ? (vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(1) : '—';
+                        })()}
+                      </td>
                     </React.Fragment>
                   ))}
+                  <td className="text-center fw-semibold" style={{ color: '#0d6efd' }}>
+                    {(() => {
+                      const vals = sorted.map(m => m.eec_score).filter(v => v != null);
+                      return vals.length ? (vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(1) : '—';
+                    })()}
+                  </td>
+                  <td className="text-center fw-semibold" style={{ color: '#0d6efd' }}>
+                    {(() => {
+                      const vals = sorted.map(m => m.eec_scaled_score).filter(v => v != null);
+                      return vals.length ? (vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(1) : '—';
+                    })()}
+                  </td>
                 </tr>
               </thead>
               <tbody>
                 {sorted.length === 0 ? (
-                  <tr><td colSpan={7 + assignments.length * 2} className="text-center text-muted py-3">Гишүүн олдсонгүй</td></tr>
+                  <tr><td colSpan={9 + assignments.length * 2} className="text-center text-muted py-3">Гишүүн олдсонгүй</td></tr>
                 ) : sorted.map((member, idx) => (
                   <tr key={member.username}>
                     <td className="text-center text-muted">{idx + 1}</td>
@@ -377,9 +407,7 @@ const SubgroupReportPage = () => {
                       {member.success_rate != null ? <span style={rateColor(member.success_rate)}>{member.success_rate}%</span> : <span className="text-muted">—</span>}
                     </td>
                     <td className="text-center">{member.answered_problems}/{member.total_problems}</td>
-                    <td className="text-center fw-semibold">
-                      {member.prob_rate != null ? <span style={rateColor(member.prob_rate)}>{member.prob_rate}%</span> : <span className="text-muted">—</span>}
-                    </td>
+                    <td className="text-center fw-semibold">{member.exercises?.answered ?? 0}</td>
                     {assignments.map(a => {
                       const result = member.results.find(r => r.assignment_id === a.id);
                       const score = result?.score ?? null;
@@ -403,14 +431,18 @@ const SubgroupReportPage = () => {
                               </div>
                             )}
                           </td>
-                          <td className="text-center" style={{ fontSize: '0.72rem' }}>
-                            {result ? (
-                              <><span style={{ color: '#065f46' }}>{result.correct}</span><span className="text-muted mx-1">/</span><span style={{ color: '#991b1b' }}>{result.wrong}</span></>
-                            ) : <span className="text-muted">—</span>}
+                          <td className="text-center fw-semibold" style={{ fontSize: '0.72rem', color: '#0d6efd' }}>
+                            {result?.scaled_score ?? <span className="text-muted fw-normal">—</span>}
                           </td>
                         </React.Fragment>
                       );
                     })}
+                    <td className="text-center fw-semibold">
+                      {member.eec_score ?? <span className="text-muted fw-normal">—</span>}
+                    </td>
+                    <td className="text-center fw-semibold" style={{ color: '#0d6efd' }}>
+                      {member.eec_scaled_score ?? <span className="text-muted fw-normal">—</span>}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -425,7 +457,7 @@ const SubgroupReportPage = () => {
                   <span style={{ color }}>{label}</span>
                 </span>
               ))}
-              <span className="text-muted small ms-3">Зөв/Буруу = даалгавар дахь зөв/буруу бодлогын тоо</span>
+              <span className="text-muted small ms-3">Хэмжээст = quiz-ийн score_table-аар хөрвүүлсэн хэмжээст оноо</span>
             </div>
           </div>
         </div>
@@ -464,7 +496,7 @@ const SubgroupReportPage = () => {
                     <th style={{ minWidth: 180 }}>Нэр</th>
                     <th className="text-center" style={{ width: 70 }}>Анги</th>
                     <th className="text-center" style={{ minWidth: 110 }}>Оноо</th>
-                    <th className="text-center" style={{ width: 80 }}>Зөв/Буруу</th>
+                    <th className="text-center" style={{ width: 90 }}>Хэмжээст</th>
                     <th className="text-center" style={{ width: 90 }}>Хугацаа</th>
                     <th className="text-center" style={{ width: 100 }}>Төлөв</th>
                   </tr>
@@ -491,8 +523,8 @@ const SubgroupReportPage = () => {
                             <>{score}{maxS ? <span className="fw-normal text-muted">/{maxS}</span> : null}{pct != null ? <span className="ms-1 fw-normal" style={{ fontSize: '0.72rem' }}>({pct}%)</span> : null}</>
                           ) : <span className="text-muted">—</span>}
                         </td>
-                        <td className="text-center" style={{ fontSize: '0.78rem' }}>
-                          {r ? <><span style={{ color: '#065f46' }}>{r.correct}</span><span className="text-muted mx-1">/</span><span style={{ color: '#991b1b' }}>{r.wrong}</span></> : <span className="text-muted">—</span>}
+                        <td className="text-center fw-semibold" style={{ color: '#0d6efd' }}>
+                          {r?.scaled_score ?? <span className="text-muted fw-normal">—</span>}
                         </td>
                         <td className="text-center text-muted" style={{ fontSize: '0.78rem' }}>
                           {timeStr ? <span className="d-flex align-items-center justify-content-center gap-1"><Clock size={11} />{timeStr}</span> : '—'}

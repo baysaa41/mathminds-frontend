@@ -13,6 +13,7 @@ import { FileText, ListChecks, GraduationCap, ArrowLeft, ArrowRight, BookOpen, T
 import { getWeeklyTopicLearn, getTopicCheckQuiz } from '../services/clubsService';
 import ObjectiveLessonPanel from '../components/ObjectiveLessonPanel';
 import TopicPracticeChat from '../components/TopicPracticeChat';
+import { resolveResourceHref } from '../utils/resourceLink';
 
 const RESOURCE_TYPE_LABELS = {
   article: 'Өгүүлэл',
@@ -174,17 +175,22 @@ const TopicLearnPage = () => {
             <div className="mb-3 pb-3 border-bottom">
               <div className="text-muted small mb-1">Холбоотой өгүүлэл</div>
               <div className="d-flex flex-wrap gap-2">
-                {articleResources.map((r) => (
-                  <Link
-                    key={r.id}
-                    to={r.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-decoration-none d-flex align-items-center gap-1 small"
-                  >
-                    <BookOpen size={14} /> {r.title}
-                  </Link>
-                ))}
+                {articleResources.map((r) => {
+                  const { to, external } = resolveResourceHref(r.url);
+                  const LinkTag = external ? 'a' : Link;
+                  const linkProp = external ? { href: to } : { to };
+                  return (
+                    <LinkTag
+                      key={r.id}
+                      {...linkProp}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-decoration-none d-flex align-items-center gap-1 small"
+                    >
+                      <BookOpen size={14} /> {r.title}
+                    </LinkTag>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -239,13 +245,18 @@ const TopicLearnPage = () => {
             <h6 className="mb-0 fw-bold"><FileText size={16} className="me-2" />Эх сурвалж</h6>
           </Card.Header>
           <Card.Body className="d-flex flex-wrap gap-2">
-            {resources.map((r) => (
-              <Link key={r.id} to={r.url} className="text-decoration-none">
-                <Badge bg={RESOURCE_TYPE_COLORS[r.resource_type] || 'info'} className="fw-normal">
-                  {RESOURCE_TYPE_LABELS[r.resource_type] || r.resource_type}: {r.title}
-                </Badge>
-              </Link>
-            ))}
+            {resources.map((r) => {
+              const { to, external } = resolveResourceHref(r.url);
+              const LinkTag = external ? 'a' : Link;
+              const linkProp = external ? { href: to, target: '_blank', rel: 'noopener noreferrer' } : { to };
+              return (
+                <LinkTag key={r.id} {...linkProp} className="text-decoration-none">
+                  <Badge bg={RESOURCE_TYPE_COLORS[r.resource_type] || 'info'} className="fw-normal">
+                    {RESOURCE_TYPE_LABELS[r.resource_type] || r.resource_type}: {r.title}
+                  </Badge>
+                </LinkTag>
+              );
+            })}
           </Card.Body>
         </Card>
       )}

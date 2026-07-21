@@ -13,7 +13,7 @@ import {
   Col,
   InputGroup,
 } from 'react-bootstrap';
-import { Users, Search } from 'lucide-react';
+import { Users, Search, Save } from 'lucide-react';
 import apiClient from '../api/axiosConfig';
 
 function AllUsersPage() {
@@ -29,11 +29,27 @@ function AllUsersPage() {
   const [search, setSearch] = useState('');
   const [membershipFilter, setMembershipFilter] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
+  const [clubFilter, setClubFilter] = useState('');
+  const [clubs, setClubs] = useState([]);
+
+  // ЭЕШ регистр засах
+  const [eecInputs, setEecInputs] = useState({});
+  const [savingEec, setSavingEec] = useState({});
+
+  useEffect(() => {
+    apiClient
+      .get('/api/clubs/?include_inactive=1')
+      .then((res) => {
+        const list = res.data.results || res.data || [];
+        setClubs([...list].sort((a, b) => a.name.localeCompare(b.name)));
+      })
+      .catch((err) => console.error('Failed to load clubs:', err));
+  }, []);
 
   useEffect(() => {
     loadUsers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, pageSize, membershipFilter, roleFilter]);
+  }, [currentPage, pageSize, membershipFilter, roleFilter, clubFilter]);
 
   // Search with debounce
   useEffect(() => {
@@ -56,6 +72,7 @@ function AllUsersPage() {
       if (search) params.append('search', search);
       if (membershipFilter) params.append('membership', membershipFilter);
       if (roleFilter) params.append('role', roleFilter);
+      if (clubFilter) params.append('club', clubFilter);
 
       const response = await apiClient.get(`/users/api/all-users/?${params}`);
       setUsers(response.data.results || []);
@@ -66,6 +83,24 @@ function AllUsersPage() {
       setError('Хэрэглэгчдийн мэдээлэл татахад алдаа гарлаа.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEecSave = async (user) => {
+    const value = (eecInputs[user.id] !== undefined ? eecInputs[user.id] : (user.eec_register || '')).trim();
+    setSavingEec((prev) => ({ ...prev, [user.id]: true }));
+    try {
+      const response = await apiClient.post('/users/api/all-users/set-eec-register/', {
+        user_id: user.id,
+        eec_register: value,
+      });
+      setUsers((prev) =>
+        prev.map((u) => (u.id === user.id ? { ...u, eec_register: response.data.eec_register } : u))
+      );
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Регистрийн дугаар хадгалахад алдаа гарлаа.');
+    } finally {
+      setSavingEec((prev) => ({ ...prev, [user.id]: false }));
     }
   };
 
@@ -146,7 +181,7 @@ function AllUsersPage() {
   };
 
   return (
-    <Container className="py-4">
+    <Container fluid className="py-4">
       <Row className="mb-4">
         <Col>
           <div className="d-flex align-items-center gap-3 mb-2">
@@ -217,6 +252,22 @@ function AllUsersPage() {
                 <option value={100}>100 / хуудас</option>
               </Form.Select>
             </Col>
+            <Col md={3}>
+              <Form.Select
+                value={clubFilter}
+                onChange={(e) => {
+                  setClubFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+              >
+                <option value="">Бүх клуб</option>
+                {clubs.map((club) => (
+                  <option key={club.id} value={club.id}>
+                    {club.name}
+                  </option>
+                ))}
+              </Form.Select>
+            </Col>
           </Row>
         </Card.Body>
       </Card>
@@ -252,6 +303,7 @@ function AllUsersPage() {
                       <th>Үүрэг</th>
                       <th>Сүүлд нэвтэрсэн</th>
                       <th>Бүртгэл</th>
+                      <th>ЭЕШ регистр</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -296,6 +348,31 @@ function AllUsersPage() {
                         </td>
                         <td>
                           <small className="text-muted">{formatDate(user.date_joined)}</small>
+                        </td>
+                        <td>
+                          <InputGroup size="sm" style={{ minWidth: 160 }}>
+                            <Form.Control
+                              type="text"
+                              placeholder="Регистр"
+                              value={eecInputs[user.id] !== undefined ? eecInputs[user.id] : (user.eec_register || '')}
+                              onChange={(e) =>
+                                setEecInputs((prev) => ({ ...prev, [user.id]: e.target.value }))
+                              }
+                              disabled={savingEec[user.id]}
+                            />
+                            <button
+                              className="btn btn-sm btn-outline-secondary"
+                              onClick={() => handleEecSave(user)}
+                              disabled={savingEec[user.id]}
+                              title="Регистр хадгалах"
+                            >
+                              {savingEec[user.id] ? (
+                                <Spinner animation="border" size="sm" />
+                              ) : (
+                                <Save size={14} />
+                              )}
+                            </button>
+                          </InputGroup>
                         </td>
                       </tr>
                     ))}

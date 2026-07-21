@@ -12,6 +12,22 @@ import NewConversationModal from '../components/NewConversationModal';
 import ProgramProgressModal from '../components/ProgramProgressModal';
 import useChatSocket from '../hooks/useChatSocket';
 
+// Chat UI Kit — bubble/sidebar/input-ийн бүтэц (business logic хэвээр)
+import {
+  MainContainer,
+  ChatContainer,
+  ConversationList,
+  Conversation,
+  Sidebar,
+  ConversationHeader,
+  MessageList,
+  Message,
+  TypingIndicator,
+  InputToolbox,
+  Avatar as ChatAvatar,
+} from '@chatscope/chat-ui-kit-react';
+import '@chatscope/chat-ui-kit-styles/dist/default/styles.min.css';
+
 // ViewerJS for image viewing
 import Viewer from 'viewerjs';
 import 'viewerjs/dist/viewer.css';
@@ -22,9 +38,9 @@ import Alert from 'react-bootstrap/Alert';
 import Badge from 'react-bootstrap/Badge';
 import {
   MessageCircle,
-  Send,
   ArrowLeft,
   Image,
+  Send,
   X,
   AlertTriangle,
   Smile,
@@ -150,8 +166,8 @@ const MessageBubble = memo(function MessageBubble({ message, currentUserId, onRe
   };
 
   return (
-    <div className={`message ${isSent ? 'sent' : 'received'}`}>
-      <div className="message-bubble">
+    <Message model={{ direction: isSent ? 'outgoing' : 'incoming', position: 'single' }}>
+      <Message.CustomContent>
         <div className="message-content" ref={bubbleRef}>
           {visibleContent !== null ? (
             <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
@@ -223,8 +239,8 @@ const MessageBubble = memo(function MessageBubble({ message, currentUserId, onRe
             </span>
           )}
         </div>
-      </div>
-    </div>
+      </Message.CustomContent>
+    </Message>
   );
 });
 
@@ -247,6 +263,7 @@ const MessagesPage = ({ aiOnly = false }) => {
   const [typewriterMsgId, setTypewriterMsgId] = useState(null);
   const [typewriterStarted, setTypewriterStarted] = useState(false);
   const [uploadedImages, setUploadedImages] = useState([]);
+  const [input, setInput] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [showNewConversationModal, setShowNewConversationModal] = useState(false);
@@ -304,16 +321,14 @@ const MessagesPage = ({ aiOnly = false }) => {
     : null;
 
   // Refs
-  const messagesEndRef = useRef(null);
   const examChoicesRef = useRef(null);
   const fileInputRef = useRef(null);
   const emojiPickerRef = useRef(null);
   const lastMessageIdRef = useRef(0);
-  const textareaRef = useRef(null);
 
   // Stable callback — memo'd MessageBubble re-render хийгдэхгүй
   const handleReuse = useCallback((text) => {
-    if (textareaRef.current) textareaRef.current.value = text;
+    setInput(text);
   }, []);
 
   // Fetch conversations
@@ -401,8 +416,8 @@ const MessagesPage = ({ aiOnly = false }) => {
       return;
     }
 
-    // Conversation солигдохыг textarea цэвэрлэх
-    if (textareaRef.current) textareaRef.current.value = '';
+    // Conversation солигдохыг input цэвэрлэх
+    setInput('');
 
     const fetchMessages = async () => {
       try {
@@ -747,7 +762,7 @@ const MessagesPage = ({ aiOnly = false }) => {
       console.error('Хариулт илгээхэд алдаа:', err);
     } finally {
       setSending(false);
-      if (textareaRef.current) textareaRef.current.value = '';
+      setInput('');
     }
   };
 
@@ -798,16 +813,7 @@ const MessagesPage = ({ aiOnly = false }) => {
     },
   })
 
-  // Scroll to bottom when messages change
-  useEffect(() => {
-    if (messages.length > 0 && !loadingMessages) {
-      // Use setTimeout to ensure DOM is fully rendered
-      const timer = setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [messages, loadingMessages]);
+  // Scroll to bottom — MessageList-ийн autoScrollToBottom prop хариуцна.
 
 
   // Close emoji picker when clicking outside
@@ -843,7 +849,7 @@ const MessagesPage = ({ aiOnly = false }) => {
 
   // Add emoji to message
   const addEmoji = (emoji) => {
-    if (textareaRef.current) textareaRef.current.value += emoji;
+    setInput((prev) => prev + emoji);
     setShowEmojiPicker(false);
   };
 
@@ -920,10 +926,8 @@ const MessagesPage = ({ aiOnly = false }) => {
   };
 
   // Send message
-  const handleSendMessage = async (e) => {
-    e.preventDefault()
-
-    const inputText = (textareaRef.current?.value || '').trim()
+  const handleSendMessage = async () => {
+    const inputText = input.trim()
     if (!inputText && uploadedImages.length === 0) return
     if (!selectedConversation) return
 
@@ -946,7 +950,7 @@ const MessagesPage = ({ aiOnly = false }) => {
         _isOptimistic: true,
       },
     ])
-    if (textareaRef.current) textareaRef.current.value = ''
+    setInput('')
     setUploadedImages([])
     if (fileInputRef.current) fileInputRef.current.value = ''
 
@@ -977,7 +981,7 @@ const MessagesPage = ({ aiOnly = false }) => {
       if (showArchived) setShowArchived(false)
     } catch (err) {
       setMessages((prev) => prev.filter((m) => m.uuid !== tempId))
-      if (textareaRef.current) textareaRef.current.value = inputText
+      setInput(inputText)
       console.error('Error sending message:', err)
       const errorData = err.response?.data
       const errorMsg = typeof errorData === 'string' ? errorData : JSON.stringify(errorData)
@@ -986,14 +990,6 @@ const MessagesPage = ({ aiOnly = false }) => {
       setSending(false)
     }
   }
-
-  // Handle Enter key to send
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage(e);
-    }
-  };
 
   // Archive conversation
   const handleArchive = async (conv) => {
@@ -1122,9 +1118,12 @@ const MessagesPage = ({ aiOnly = false }) => {
   const otherUser = selectedConversation ? getOtherUser(selectedConversation) : null;
 
   return (
-    <div className="private-messages-container">
+    <MainContainer responsive className="private-messages-container">
       {/* Conversations List */}
-      <div className={`conversations-sidebar ${selectedConversation ? 'd-none d-md-flex' : ''}`}>
+      <Sidebar
+        position="left"
+        className={`conversations-sidebar ${selectedConversation ? 'd-none d-md-flex' : ''}`}
+      >
         <div className="conversations-header">
           <div className="d-flex align-items-center gap-2">
             <MessageCircle size={20} />
@@ -1179,48 +1178,34 @@ const MessagesPage = ({ aiOnly = false }) => {
           </div>
         </div>
 
-        <div className="conversations-list">
+        <ConversationList>
           {conversations
             .filter((c) => showArchived ? c.is_archived_by_user : !c.is_archived_by_user)
             .map((conversation) => {
             const partner = getOtherUser(conversation);
             const lastMsg = conversation.last_message;
             const unreadCount = conversation.unread_count || 0;
+            const preview = lastMsg?.content
+              ?.replace(/\$[^$]+\$/g, '[math]')
+              ?.replace(/\\\([^)]+\\\)/g, '[math]')
+              ?.substring(0, 50);
 
             return (
-              <div
+              <Conversation
                 key={conversation.uuid}
-                className={`conversation-item ${selectedConversation?.uuid === conversation.uuid ? 'active' : ''}`}
+                name={conversation.title || <UserName user={partner} showLink={false} />}
+                info={lastMsg ? `${preview}${lastMsg.content?.length > 50 ? '...' : ''}` : undefined}
+                lastActivityTime={lastMsg ? formatTime(lastMsg.created_at) : undefined}
+                unreadCnt={unreadCount}
+                active={selectedConversation?.uuid === conversation.uuid}
                 onClick={() => setSelectedConversation(conversation)}
               >
-                <div className="conversation-avatar">
+                <ChatAvatar size="fluid">
                   <UserAvatar user={partner} size={48} />
-                </div>
-                <div className="conversation-info">
-                  <div className="conversation-name">
-                    {conversation.title || <UserName user={partner} showLink={false} />}
-                  </div>
-                  {lastMsg && (
-                    <div className="conversation-preview">
-                      {lastMsg.content
-                        ?.replace(/\$[^$]+\$/g, '[math]')
-                        ?.replace(/\\\([^)]+\\\)/g, '[math]')
-                        ?.substring(0, 50)}
-                      {lastMsg.content?.length > 50 ? '...' : ''}
-                    </div>
-                  )}
-                </div>
-                <div className="conversation-meta">
-                  {lastMsg && (
-                    <div className="conversation-time">{formatTime(lastMsg.created_at)}</div>
-                  )}
-                  {unreadCount > 0 && (
-                    <Badge bg="danger" pill className="mt-1">
-                      {unreadCount}
-                    </Badge>
-                  )}
+                </ChatAvatar>
+                <Conversation.Operations visible>
                   <button
-                    className="btn btn-sm btn-link text-danger p-0 mt-1"
+                    className="btn btn-sm btn-link text-danger p-0"
                     title="Устгах"
                     disabled={deletingConv === conversation.uuid}
                     onClick={(e) => { e.stopPropagation(); handleDelete(conversation); }}
@@ -1231,43 +1216,56 @@ const MessagesPage = ({ aiOnly = false }) => {
                       <Trash2 size={14} />
                     )}
                   </button>
-                </div>
-              </div>
+                </Conversation.Operations>
+              </Conversation>
             );
           })}
-        </div>
-      </div>
+        </ConversationList>
+      </Sidebar>
 
       {/* Chat Area */}
       <div className={`chat-area ${!selectedConversation ? 'd-none d-md-flex' : ''}`}>
         {selectedConversation ? (
           <>
+            {/* ChatContainer нь зөвхөн ConversationHeader/MessageList/MessageInput/
+                InputToolbox төрлийн children-г таньдаг (бусдыг шүүж хаядаг) тул
+                hidden file input-ыг гадна нь байрлуулна. */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleImageSelect}
+              accept="image/*"
+              multiple
+              style={{ display: 'none' }}
+            />
+            <ChatContainer>
             {/* Chat Header */}
-            <div className="chat-header">
-              <button
-                className="btn btn-link d-md-none p-0 me-2"
-                onClick={() => setSelectedConversation(null)}
-              >
-                <ArrowLeft size={20} />
-              </button>
-              <div className="d-flex align-items-center gap-2 flex-grow-1">
-                <div className="chat-avatar">
-                  <UserAvatar user={otherUser} size={40} />
-                </div>
-                <div className="flex-grow-1">
-                  <div className="fw-bold">
-                    {selectedConversation.title || <UserName user={otherUser} showLink={false} />}
-                  </div>
-                  <div
-                    className="text-muted small"
+            <ConversationHeader>
+              <ConversationHeader.Back>
+                <button
+                  className="btn btn-link d-md-none p-0"
+                  onClick={() => setSelectedConversation(null)}
+                >
+                  <ArrowLeft size={20} />
+                </button>
+              </ConversationHeader.Back>
+              <ChatAvatar size="fluid">
+                <UserAvatar user={otherUser} size={40} />
+              </ChatAvatar>
+              <ConversationHeader.Content
+                userName={selectedConversation.title || <UserName user={otherUser} showLink={false} />}
+                info={
+                  <span
                     style={{ cursor: 'pointer' }}
                     onClick={() => navigate(`/profile/${otherUser?.username}`)}
                   >
                     {otherUser?.is_ai_teacher && otherUser?.ai_model_label
                       ? otherUser.ai_model_label
                       : `@${otherUser?.username}`}
-                  </div>
-                </div>
+                  </span>
+                }
+              />
+              <ConversationHeader.Actions>
                 <div className="d-flex align-items-center gap-2">
                   {otherUser?.ai_program && (
                     <button
@@ -1340,11 +1338,19 @@ const MessagesPage = ({ aiOnly = false }) => {
                     )}
                   </button>
                 </div>
-              </div>
-            </div>
+              </ConversationHeader.Actions>
+            </ConversationHeader>
 
             {/* Messages */}
-            <div className="chat-messages">
+            <MessageList
+              typingIndicator={
+                (aiTyping || !examAiReplied) && !typewriterMsgId ? (
+                  <TypingIndicator content="Бодож байна..." />
+                ) : undefined
+              }
+              autoScrollToBottom
+              autoScrollToBottomOnMount
+            >
               {loadingMessages ? (
                 <div className="d-flex justify-content-center p-4">
                   <Spinner animation="border" size="sm" />
@@ -1435,19 +1441,10 @@ const MessagesPage = ({ aiOnly = false }) => {
                   </Fragment>
                 ));
               })()}
-              {/* AI typing indicator — typewriter эхэлсэн бол нуугдана */}
-              {(aiTyping || !examAiReplied) && !typewriterMsgId && (
-                <div className="message received ai-thinking-row">
-                  <div className="message-bubble ai-thinking-bubble">
-                    <Spinner animation="border" size="sm" style={{ width: '14px', height: '14px', borderWidth: '2px' }} />
-                  </div>
-                </div>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
+            </MessageList>
 
             {/* Message Input */}
-            <div className="chat-input-area">
+            <InputToolbox className="chat-input-area">
               {/* ЭЕШ: дараагийн бодлого ачаалж байна */}
               {examPrepMode && examSending && (
                 <div className="border-top py-3 d-flex justify-content-center align-items-center gap-2 text-muted" style={{ background: '#f8f9fa', fontSize: '0.85rem' }}>
@@ -1518,10 +1515,7 @@ const MessagesPage = ({ aiOnly = false }) => {
                         key={c.label}
                         type="button"
                         className="btn btn-outline-primary btn-sm exam-choice-btn"
-                        onClick={async () => {
-                          if (textareaRef.current) textareaRef.current.value = c.label;
-                          await handleSendChoiceAnswer(c.label);
-                        }}
+                        onClick={() => handleSendChoiceAnswer(c.label)}
                         disabled={sending}
                       >
                         <strong>{c.label})</strong> <MathJax dynamic inline>{c.value}</MathJax>
@@ -1624,74 +1618,80 @@ const MessagesPage = ({ aiOnly = false }) => {
                 </div>
               )}
 
-              {/* Input Form */}
-              <form onSubmit={handleSendMessage} className="message-input-form">
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleImageSelect}
-                  accept="image/*"
-                  multiple
-                  style={{ display: 'none' }}
-                />
+            </InputToolbox>
+            </ChatContainer>
 
-                <div className="input-buttons">
+            {/* Зураг оруулах + Emoji + мессеж бичих талбар + илгээх — бүгд НЭГ мөрт
+                (chatscope-ийн MessageInput нь өөрийн мөрөндөө нэмэлт товч
+                зөвшөөрдөггүй тул энэ мөрийг өөрсдөө барьж, ChatContainer-ийн
+                гадна байрлуулав — эс тэгвээс ChatContainer танихгүй
+                элементийг шүүж хаяна, file input-той адил асуудал гарна). */}
+            <form
+              className="message-input-form"
+              onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }}
+            >
+              <div className="input-buttons">
+                <button
+                  type="button"
+                  className="btn btn-light image-upload-btn"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={sending}
+                  title="Зураг оруулах"
+                >
+                  <Image size={20} />
+                </button>
+
+                <div className="emoji-picker-container" ref={emojiPickerRef}>
                   <button
                     type="button"
-                    className="btn btn-light image-upload-btn"
-                    onClick={() => fileInputRef.current?.click()}
+                    className="btn btn-light emoji-btn"
+                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                     disabled={sending}
-                    title="Зураг оруулах"
+                    title="Emoji нэмэх"
                   >
-                    <Image size={20} />
+                    <Smile size={20} />
                   </button>
 
-                  <div className="emoji-picker-container" ref={emojiPickerRef}>
-                    <button
-                      type="button"
-                      className="btn btn-light emoji-btn"
-                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                      disabled={sending}
-                      title="Emoji нэмэх"
-                    >
-                      <Smile size={20} />
-                    </button>
-
-                    {showEmojiPicker && (
-                      <div className="emoji-picker">
-                        {commonEmojis.map((emoji, index) => (
-                          <button
-                            key={index}
-                            type="button"
-                            className="emoji-item"
-                            onClick={() => addEmoji(emoji)}
-                          >
-                            {emoji}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  {showEmojiPicker && (
+                    <div className="emoji-picker">
+                      {commonEmojis.map((emoji, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          className="emoji-item"
+                          onClick={() => addEmoji(emoji)}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
+              </div>
 
-                <textarea
-                  ref={textareaRef}
-                  className="form-control message-textarea"
-                  placeholder="Мессеж бичих..."
-                  onKeyPress={handleKeyPress}
-                  disabled={sending}
-                  rows={1}
-                />
+              <textarea
+                className="form-control message-textarea"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                placeholder="Мессеж бичих..."
+                disabled={sending}
+                rows={1}
+              />
 
-                <button
-                  type="submit"
-                  className="btn btn-primary send-btn"
-                  disabled={sending}
-                >
-                  {sending ? <Spinner animation="border" size="sm" /> : <Send size={20} />}
-                </button>
-              </form>
-            </div>
+              <button
+                type="submit"
+                className="btn btn-primary send-btn"
+                disabled={sending || (!input.trim() && uploadedImages.length === 0)}
+              >
+                {sending ? <Spinner animation="border" size="sm" /> : <Send size={20} />}
+              </button>
+            </form>
           </>
         ) : (
           <div className="d-none d-md-flex align-items-center justify-content-center flex-column h-100 text-muted">
@@ -2042,7 +2042,7 @@ const MessagesPage = ({ aiOnly = false }) => {
           </div>
         </div>
       )}
-    </div>
+    </MainContainer>
   );
 };
 

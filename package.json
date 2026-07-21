@@ -20,6 +20,8 @@
     "fix": "npm run format && npm run lint:fix"
   },
   "dependencies": {
+    "@chatscope/chat-ui-kit-react": "^2.1.1",
+    "@chatscope/chat-ui-kit-styles": "^1.4.0",
     "@excalidraw/excalidraw": "^0.18.1",
     "@hello-pangea/dnd": "^18.0.1",
     "@tanstack/react-query": "^5.90.7",
