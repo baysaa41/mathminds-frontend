@@ -9,7 +9,7 @@ import Spinner from 'react-bootstrap/Spinner';
 import Alert from 'react-bootstrap/Alert';
 import Badge from 'react-bootstrap/Badge';
 import Accordion from 'react-bootstrap/Accordion';
-import { FileText, ListChecks, GraduationCap, ArrowLeft, ArrowRight, BookOpen, Target, Check, Star } from 'lucide-react';
+import { FileText, ListChecks, GraduationCap, ArrowLeft, ArrowRight, BookOpen, Target, Check, Star, Search } from 'lucide-react';
 import { getWeeklyTopicLearn, getTopicCheckQuiz } from '../services/clubsService';
 import ObjectiveLessonPanel from '../components/ObjectiveLessonPanel';
 import TopicPracticeChat from '../components/TopicPracticeChat';
@@ -130,7 +130,18 @@ const TopicLearnPage = () => {
       <Card className="border-0 shadow-sm mb-3">
         <Card.Body>
           <div className="text-muted small">{topic.week_num}-р долоо хоног</div>
-          <h4 className="mb-1">{topic.topic}</h4>
+          <div className="d-flex align-items-center gap-2 mb-1">
+            <h4 className="mb-0">{topic.topic}</h4>
+            <a
+              href={`https://www.google.com/search?q=${encodeURIComponent(topic.topic)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-muted"
+              title="Google-ээс хайх"
+            >
+              <Search size={16} />
+            </a>
+          </div>
           <div className="d-flex align-items-center gap-1 mb-0">
             {Array.from({ length: 5 }).map((_, i) => (
               <Star
