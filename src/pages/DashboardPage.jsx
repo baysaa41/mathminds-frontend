@@ -20,6 +20,7 @@ import {
   Sparkles,
   Cpu,
   Brain,
+  GraduationCap,
 } from 'lucide-react';
 import authService from '../services/authService';
 
@@ -306,6 +307,29 @@ function DashboardPage() {
               <Link to="/admin/ai-learning-system" className="btn" style={{ backgroundColor: '#6366f1', color: '#fff' }}>
                 <Brain size={18} className="me-2" />
                 Харах
+              </Link>
+            </Card.Body>
+          </Card>
+        </Col>
+
+        {/* AI Багш нар */}
+        <Col md={6} lg={4}>
+          <Card className="h-100 shadow-sm" style={{ borderColor: '#0ea5e9' }}>
+            <Card.Body className="d-flex flex-column">
+              <div className="mb-3">
+                <GraduationCap size={40} style={{ color: '#0ea5e9' }} />
+              </div>
+              <Card.Title>AI Багш нар</Card.Title>
+              <Card.Text className="text-muted flex-grow-1">
+                Хичээл, түвшин тус бүрийн AI багшийн профайл, системийн промпт засах.
+              </Card.Text>
+              <Link
+                to="/admin/ai-teachers"
+                className="btn"
+                style={{ backgroundColor: '#0ea5e9', color: '#fff' }}
+              >
+                <GraduationCap size={18} className="me-2" />
+                Удирдах
               </Link>
             </Card.Body>
           </Card>
