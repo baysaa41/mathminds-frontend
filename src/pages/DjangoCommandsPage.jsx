@@ -147,6 +147,22 @@ const DJANGO_COMMANDS = [
         ],
       },
       {
+        name: 'delete_by_quiz',
+        help: 'Өгсөн quiz ID-тай холбоотой бүх бодлогыг устгана',
+        usage: 'python manage.py delete_by_quiz --quiz-id <id>',
+        flags: [],
+        note: 'delete_quiz_import-аас ялгаатай: энэ команд quiz-ийн БОДЛОГУУДЫГ устгадаг, харин delete_quiz_import нь import хийхэд үүссэн хэрэглэгч/хариулт/дэд бүлгийг устгадаг.',
+      },
+      {
+        name: 'fix_fill_answers',
+        help: 'Нөхөх тестийн хариултын label-ийн зөрүүг засах',
+        usage: 'python manage.py fix_fill_answers',
+        flags: [
+          '--quiz-id <id> — Тодорхой quiz (default: бүгд)',
+          '--dry-run — Хадгалахгүй',
+        ],
+      },
+      {
         name: 'delete_quiz_import',
         help: 'import_quiz_answers-аар үүссэн хэрэглэгч, хариулт, дэд бүлгүүдийг устгах',
         usage: 'python manage.py delete_quiz_import --quiz-uuid <uuid> --club <id>',
@@ -270,6 +286,54 @@ const DJANGO_COMMANDS = [
           '--delay <сек> — Хүсэлт хоорондын хугацаа',
         ],
       },
+      {
+        name: 'tag_weekly_topics',
+        help: 'Claude Haiku-р WeeklyTopic мөрүүдийг curriculum Topics-тай автоматаар холбох (queue)',
+        usage: 'python manage.py tag_weekly_topics',
+        flags: [
+          '--apply — Celery queue-д биш шууд синхрон ажиллуулах',
+          '--limit <N> — Хамгийн ихдээ N WeeklyTopic боловсруулах (тест хийхэд хэрэгтэй)',
+        ],
+        note: 'Ажиллуулахын өмнө claude-haiku-4-5-ийн тооцоолсон зардлыг ($) хэвлэнэ. Prompt caching ашигладаг тул давтан ажиллуулах хямд.',
+        examples: [
+          'python manage.py tag_weekly_topics --apply --limit 10',
+        ],
+      },
+      {
+        name: 'tag_problem_categories',
+        help: 'Category-гүй бодлогуудыг Claude Haiku-аар ангилж Problems.category-г бөглөх',
+        usage: 'python manage.py tag_problem_categories',
+        flags: [
+          '--limit <N> — Хэдэн бодлого (0 = бүгд)',
+          '--dry-run — Хадгалахгүй, зөвхөн харуулах',
+          '--delay <сек> — Хүсэлт хоорондын хугацаа',
+          '--min-confidence <0-1> — Хамгийн бага итгэлцэл',
+          '--verbose — Дэлгэрэнгүй гаралт',
+        ],
+      },
+      {
+        name: 'fix_duplicate_choices',
+        help: 'Label давхардсан AnswerChoice-той бодлогуудыг Claude API-аар шинжилж засах',
+        usage: 'python manage.py fix_duplicate_choices',
+        flags: [
+          '--problem-id <id> — Тодорхой нэг бодлогын ID',
+          '--apply — Бодитоор хадгалах (default: dry-run)',
+          '--min-confidence <high|medium|low> — Хамгийн бага итгэлцэл (default: medium)',
+        ],
+        note: 'claude-sonnet-4-6 ашигладаг (Haiku биш) — давхардсан label засах нь илүү нарийвчлал шаардсан ажил тул.',
+      },
+      {
+        name: 'generate_answer_notes',
+        help: 'MC бодлогын хариулт бүрийн тайлбарыг AnswerChoice.description-д Claude-аар хадгалах',
+        usage: 'python manage.py generate_answer_notes',
+        flags: [
+          '--limit <N> — Хэдэн бодлого (0 = бүгд)',
+          '--overwrite — Байгаа тайлбарыг дахин бичих',
+          '--dry-run — Хадгалахгүй',
+          '--delay <сек> — Хүсэлт хоорондын хугацаа',
+          '--verbose — Дэлгэрэнгүй гаралт',
+        ],
+      },
     ],
   },
   {
@@ -369,6 +433,32 @@ const DJANGO_COMMANDS = [
           '--update — Байгаа program-г шинэчлэх (weekly topics устгаж дахин үүсгэнэ)',
           '--dry-run — Хадгалахгүй',
         ],
+      },
+      {
+        name: 'backfill_student_programs',
+        help: 'Клубын/дэд бүлгийн гишүүн сурагч бүрт хувийн StudentProgram мөрийг урьдчилан үүсгэх',
+        usage: 'python manage.py backfill_student_programs',
+        flags: [
+          '--dry-run — Юу үүсгэхийг зөвхөн харуулах, хадгалахгүй',
+        ],
+      },
+      {
+        name: 'backfill_topic_category',
+        help: 'Topics.category-г холбогдсон Problems.category-ийн majority vote-оор бөглөх (AI ашиглахгүй)',
+        usage: 'python manage.py backfill_topic_category',
+        flags: [
+          '--apply — Бодитоор хадгалах (өгөхгүй бол зөвхөн dry-run)',
+        ],
+        note: 'TopicKeyword (Keywords-ээр дамжсан шууд бус холбоос)-г санаатайгаар ашигладаггүй — статистик bias гарсан тул. Зөвхөн Problems.curriculum_topic-аар шууд холбогдсон өгөгдлийг ашиглана.',
+      },
+      {
+        name: 'link_articles_to_curriculum_topics',
+        help: 'curriculum.Resource-ийн article URL-аас Article-г таньж curriculum_topic-ийг автоматаар холбох (AI ашиглахгүй)',
+        usage: 'python manage.py link_articles_to_curriculum_topics',
+        flags: [
+          '--apply — Бодитоор хадгалах (өгөхгүй бол зөвхөн dry-run)',
+        ],
+        note: 'WeeklyTopic.topic нэр integral.Topics.name-тай яг таарсан тохиолдолд л холбоно. Аль хэдийн тохирсон Article-ийг дахин бичихгүй.',
       },
     ],
   },
@@ -540,6 +630,36 @@ const DJANGO_COMMANDS = [
           'python manage.py fill_eesh_quiz --quiz-id 7159',
           'python manage.py fill_eesh_quiz --quiz-id 7159 --from-order 15',
           'python manage.py fill_eesh_quiz --quiz-id 7159 --no-confirm',
+        ],
+      },
+    ],
+  },
+  {
+    category: 'ЭЕШ Дүн',
+    color: '#6610f2',
+    icon: '📊',
+    commands: [
+      {
+        name: 'import_eec_results',
+        help: 'list.eec.mn-аас ЭЕШ дүнг татаж өгөгдлийн санд хадгалах',
+        usage: 'python manage.py import_eec_results --aid <N> --buleg <N>',
+        flags: [
+          '--aid <N> — Аймагийн дугаар (1–23)',
+          '--buleg <N> — Бүлгийн дугаар (1–10)',
+          '--all — Бүх аймаг/бүлгийг татах',
+          '--delay <сек> — Хүсэлт хоорондын хугацаа (default: 1.5)',
+          '--dry-run — Хадгалахгүй',
+        ],
+        note: 'EECResultsPage / EECStatsPage (/admin) хуудсуудад харагдах бодит ЭЕШ-ийн дүн — генерацлагдсан мок дүн биш.',
+      },
+      {
+        name: 'setup_eesh_keywords',
+        help: '"ЭЕШ жишиг" keyword үүсгэж, ЭЕШ жилийн бодлогуудыг таглах',
+        usage: 'python manage.py setup_eesh_keywords',
+        flags: [
+          '--generate — type=0 бодлогуудад MC сонголт async үүсгэх (Celery шаардлагатай)',
+          '--batch <N> — Нэг удаагийн batch хэмжээ (default: 50)',
+          '--dry-run — Хадгалахгүй, зөвхөн тоолох',
         ],
       },
     ],

@@ -6,8 +6,9 @@ import { Container, Row, Col, Card, Badge, Form, InputGroup, Button } from 'reac
 import { Cpu, Search, X, ChevronDown, ChevronRight } from 'lucide-react';
 
 // ── Дата ──────────────────────────────────────────────────────────────────
-// Эх сурвалж: backend/integral/utils_ai.py, solver_view.py, tasks.py зэрэг
-// (2026-07-08 байдлаар код шалгаж бүрдүүлсэн)
+// Эх сурвалж: backend/integral/utils_ai.py, solver_view.py, tasks.py,
+// study_plan.py, eesh_blueprint.py, curriculum/management/commands/tag_weekly_topics.py зэрэг
+// (2026-07-23 байдлаар код шалгаж бүрдүүлсэн)
 
 const AI_PROVIDERS = [
   {
@@ -29,6 +30,9 @@ const AI_PROVIDERS = [
           'Curriculum/долоо хоногийн агуулга, зорилт үүсгэх (auto_objectives, generate_curriculum)',
           'AI Solver: DeepSeek оролцогч (solver_deepseek_solve/respond/review)',
           'Постын AI туслах (зурагггүй текст пост) — ai_help',
+          'StudyPlan-ийн урам зоригийн товч тайлбар — study_plan_summary (integral/study_plan.py)',
+          'Ухаалаг хайлт — байгалийн хэлний асуулгыг keyword+анги+хичээл болгож задлах (smart_search, integral/views.py)',
+          'Даалгавар AI-аар шалгах — уламжлалт бодлогод санал score/feedback (ai_grade_submission, clubs/views.py)',
         ],
         note: 'Файл: integral/utils_ai.py — AI_MODEL = "deepseek-v4-flash". Хуучин баримтжуулалтад "deepseek-reasoner" гэж бичигдсэн байсан ч кодод deepseek-v4-flash байна.',
       },
@@ -71,8 +75,19 @@ const AI_PROVIDERS = [
           'generate_problem_answer_note — Хариултын тэмдэглэл',
           'analyze_report() — Сурагчийн тайлан дүгнэлт',
           'auto_tag_problems management command — subject/category/topic/level таглах',
+          'tag_weekly_topics management command / auto_tag_weekly_topic_curriculum — WeeklyTopic-ийг curriculum Topics-тай холбох (prompt caching ашигладаг)',
+          'tag_problem_categories management command — Category автомат таглах',
+          'generate_answer_notes management command — MC хариулт бүрийн тайлбар',
         ],
         note: 'Файл: integral/utils_ai.py — call_anthropic_json(). ANTHROPIC_API_KEY тохиргооноос уншина.',
+      },
+      {
+        name: 'claude-sonnet-4-6',
+        role: 'fix_duplicate_choices management command — давхардсан MC label засах',
+        usedFor: [
+          'fix_duplicate_choices — Label давхардсан AnswerChoice-той бодлогуудыг шинжилж засах',
+        ],
+        note: 'Файл: integral/eesh_blueprint.py — CLAUDE_MODEL. Энэ ажил илүү нарийвчлал шаардсан тул Haiku биш Sonnet ашигладаг цорын ганц газар.',
       },
     ],
   },
@@ -102,7 +117,11 @@ const FEATURE_MAP = [
   { feature: 'Клубын өдөр тутмын дасгал (hint, шалгах, тайлбар)', app: 'clubs', provider: 'DeepSeek', file: 'views_practice.py' },
   { feature: 'Долоо хоногийн хөтөлбөр/зорилт AI-аар үүсгэх', app: 'clubs / curriculum', provider: 'DeepSeek', file: 'views.py' },
   { feature: 'Постын AI туслах (ai_help)', app: 'minds', provider: 'DeepSeek (текст) / Gemini (зурагтай)', file: 'views.py' },
-  { feature: 'Баримт/PDF-ээс бодлого импорт', app: 'management commands', provider: 'Gemini 2.5 flash', file: 'import_egmo.py, import_tex_problems.py' },
+  { feature: 'Баримт/PDF-ээс бодлого импорт', app: 'management commands', provider: 'Gemini flash', file: 'import_egmo.py, import_tex_problems.py' },
+  { feature: 'Curriculum WeeklyTopic автомат таглах', app: 'integral / curriculum (Celery)', provider: 'Anthropic Claude', file: 'tasks.py, tag_weekly_topics.py' },
+  { feature: 'Хувийн StudyPlan AI тайлбар', app: 'integral', provider: 'DeepSeek', file: 'study_plan.py' },
+  { feature: 'Ухаалаг хайлт (smart-search)', app: 'integral', provider: 'DeepSeek', file: 'views.py' },
+  { feature: 'Даалгавар AI-аар шалгах', app: 'clubs', provider: 'DeepSeek', file: 'views.py (ai_grade_submission)' },
 ];
 
 // ── Туслах компонентууд ──────────────────────────────────────────────────────

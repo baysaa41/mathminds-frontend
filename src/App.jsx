@@ -23,7 +23,6 @@ const ConversationViewPage = lazy(() => import('./pages/ConversationViewPage.jsx
 // Articles
 const ArticleDetailPage = lazy(() => import('./pages/ArticleDetailPage.jsx'));
 const ArticleEditPage = lazy(() => import('./pages/ArticleEditPage.jsx'));
-const ArticlesPage = lazy(() => import('./pages/ArticlesPage.jsx'));
 const ArticlesBrowsePage = lazy(() => import('./pages/ArticlesBrowsePage.jsx'));
 
 // Posts
@@ -38,21 +37,18 @@ const AISolverPage = lazy(() => import('./pages/AISolverPage.jsx'));
 // Problems
 const ProblemDetailPage = lazy(() => import('./pages/ProblemDetailPage.jsx'));
 const ProblemEditPage = lazy(() => import('./pages/ProblemEditPage.jsx'));
-const ProblemsPage = lazy(() => import('./pages/ProblemsPage.jsx'));
 const ProblemsBrowsePage = lazy(() => import('./pages/ProblemsBrowsePage.jsx'));
 const SolutionEditPage = lazy(() => import('./pages/SolutionEditPage.jsx'));
 const SolutionDrawPage = lazy(() => import('./pages/SolutionDrawPage.jsx'));
 const DrawPage = lazy(() => import('./pages/DrawPage.jsx'));
 
 // Formulas
-const FormulasPage = lazy(() => import('./pages/FormulasPage.jsx'));
 const FormulasBrowsePage = lazy(() => import('./pages/FormulasBrowsePage.jsx'));
 const FormulaEditPage = lazy(() => import('./pages/FormulaEditPage.jsx'));
 const FormulaDetailPage = lazy(() => import('./pages/FormulaDetailPage.jsx'));
 const LaTeXExamplesPage = lazy(() => import('./pages/LaTeXExamplesPage.jsx'));
 
 // Quizzes
-const QuizzesPage = lazy(() => import('./pages/QuizzesPage.jsx'));
 const QuizzesBrowsePage = lazy(() => import('./pages/QuizzesBrowsePage.jsx'));
 const ContentBrowsePage = lazy(() => import('./pages/ContentBrowsePage.jsx'));
 const QuizDetailPage = lazy(() => import('./pages/QuizDetailPage.jsx'));
