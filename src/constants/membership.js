@@ -5,6 +5,7 @@
 export const SITE_ROLES = {
   TEACHER: 'TEACHER',
   STUDENT: 'STUDENT',
+  PARENT: 'PARENT',
   OTHER: 'OTHER',
 };
 
@@ -26,6 +27,10 @@ export const SITE_ROLE_CONFIG = {
   STUDENT: {
     label: 'Сурагч',
     description: 'Клубт элсэх, пост бичих эрхтэй',
+  },
+  PARENT: {
+    label: 'Эцэг эх',
+    description: 'Хүүхдийнхээ явцыг зөвхөн уншиж хянах эрхтэй',
   },
   OTHER: {
     label: 'Бусад',

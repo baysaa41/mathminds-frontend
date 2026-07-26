@@ -9,7 +9,7 @@ import Col from 'react-bootstrap/Col';
 import Card from 'react-bootstrap/Card';
 import Button from 'react-bootstrap/Button';
 import Spinner from 'react-bootstrap/Spinner';
-import { Users, Trophy, Target, Heart, Zap, BookOpen } from 'lucide-react';
+import { Users, Trophy, Target, Heart, Zap, BookOpen, Repeat, ClipboardList, Compass, TrendingUp } from 'lucide-react';
 import apiClient from '../api/axiosConfig';
 
 export default function AboutPage() {
@@ -111,6 +111,28 @@ export default function AboutPage() {
           )
         )}
 
+        {/* Efficiency report CTA */}
+        <Row className="mb-5">
+          <Col lg={10} className="mx-auto">
+            <Card className="shadow-sm border-0 bg-white">
+              <Card.Body className="p-4 d-flex flex-column flex-md-row align-items-md-center gap-3">
+                <TrendingUp size={40} className="text-primary flex-shrink-0" />
+                <div className="flex-grow-1">
+                  <h5 className="fw-bold mb-1">Платформ бодит үр дүнд хэрхэн нөлөөлж байна вэ?</h5>
+                  <p className="text-muted small mb-0">
+                    2026 оны ЭЕШ-ийн бэлтгэлийн явцад платформын идэвх бодит дүнд хэрхэн нөлөөлснийг
+                    харуулсан тоон тайлан — сорилгын гүйцэтгэлийн өсөлт, тогтмол дадлагын үр өгөөж,
+                    хамаарлын шинжилгээ.
+                  </p>
+                </div>
+                <Link to="/info/results" className="btn btn-primary text-nowrap">
+                  Тайланг үзэх
+                </Link>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+
         {/* Mission */}
         <div className="text-center mb-4">
           <h2 className="h3 fw-bold">Яагаад MathMinds вэ?</h2>
@@ -209,6 +231,65 @@ export default function AboutPage() {
             </Card>
           </Col>
         </Row>
+
+        {/* Адаптив сургалт */}
+        <div className="text-center mb-4">
+          <h2 className="h3 fw-bold">Хувь хүнд тохирсон сургалт</h2>
+          <p className="text-muted">Сурагч, багш, эцэг эх — гурвуулаа өөрийн хэсэгтэй</p>
+        </div>
+        <Row className="g-4 mb-5">
+          <Col md={4}>
+            <Card className="h-100 shadow-sm border-0 text-center">
+              <Card.Body className="p-4">
+                <div className="mb-3">
+                  <Repeat size={48} className="text-success" />
+                </div>
+                <h5 className="fw-bold mb-3">Сурагчийн "Миний өдөр"</h5>
+                <p className="text-muted small mb-0">
+                  Өдөр тутмын давталт, 7 хоногийн хувийн сургалтын төлөвлөгөө, дараагийн
+                  санал болгож буй сэдвийг нэг дороос харна.
+                </p>
+              </Card.Body>
+            </Card>
+          </Col>
+
+          <Col md={4}>
+            <Card className="h-100 shadow-sm border-0 text-center">
+              <Card.Body className="p-4">
+                <div className="mb-3">
+                  <ClipboardList size={48} className="text-info" />
+                </div>
+                <h5 className="fw-bold mb-3">Багшийн хяналтын самбар</h5>
+                <p className="text-muted small mb-0">
+                  Бүх клубынхаа шалгах ёстой ажил, дэмжлэг хэрэгтэй сурагчдыг нэг дороос
+                  хянана.
+                </p>
+              </Card.Body>
+            </Card>
+          </Col>
+
+          <Col md={4}>
+            <Card className="h-100 shadow-sm border-0 text-center">
+              <Card.Body className="p-4">
+                <div className="mb-3">
+                  <Heart size={48} className="text-danger" />
+                </div>
+                <h5 className="fw-bold mb-3">Эцэг эхийн хяналт</h5>
+                <p className="text-muted small mb-0">
+                  Хүүхдийнхээ явцыг код оруулж холбогдоод зөвхөн уншиж хянана, долоо хоног
+                  тутам имэйл тайлан авна.
+                </p>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+
+        <div className="text-center mb-5">
+          <Link to="/info/guide" className="btn btn-outline-primary">
+            <Compass size={16} className="me-2" />
+            Дэлгэрэнгүй ашиглах заавар үзэх
+          </Link>
+        </div>
 
         {/* Values */}
         <Row className="mb-5">

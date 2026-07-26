@@ -15,6 +15,9 @@ import LoadingState from './components/common/LoadingState';
 
 // Lazy-loaded page components
 const Feed = lazy(() => import('./components/Feed'));
+const MyDayPage = lazy(() => import('./pages/MyDayPage.jsx'));
+const TeacherDashboardPage = lazy(() => import('./pages/TeacherDashboardPage.jsx'));
+const ParentDashboardPage = lazy(() => import('./pages/ParentDashboardPage.jsx'));
 const BookmarksPage = lazy(() => import('./pages/BookmarksPage.jsx'));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage.jsx'));
 const MessagesPage = lazy(() => import('./pages/MessagesPage.jsx'));
@@ -88,6 +91,7 @@ const HomePage = lazy(() => import('./pages/HomePage'));
 // Info Pages
 const InfoPage = lazy(() => import('./pages/InfoPage.jsx'));
 const AboutPage = lazy(() => import('./pages/AboutPage.jsx'));
+const EfficiencyReportPage = lazy(() => import('./pages/EfficiencyReportPage.jsx'));
 const TopTeachersPage = lazy(() => import('./pages/TopTeachersPage.jsx'));
 const TeacherEditPage = lazy(() => import('./pages/TeacherEditPage.jsx'));
 const Nomads360Page = lazy(() => import('./pages/Nomads360Page.jsx'));
@@ -95,6 +99,7 @@ const TermsPage = lazy(() => import('./pages/TermsPage.jsx'));
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage.jsx'));
 const MembershipGuidePage = lazy(() => import('./pages/MembershipGuidePage.jsx'));
 const AIGuidePage = lazy(() => import('./pages/AIGuidePage.jsx'));
+const GuidePage = lazy(() => import('./pages/GuidePage.jsx'));
 
 // Admin
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
@@ -170,6 +175,8 @@ function App() {
         >
           {/* Үндсэн feed */}
           <Route index element={<Feed />} />
+          <Route path="dashboard" element={<MyDayPage />} />
+          <Route path="parent-dashboard" element={<ParentDashboardPage />} />
           <Route path="bookmarks" element={<BookmarksPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="messages" element={<MessagesPage />} />
@@ -235,6 +242,16 @@ function App() {
             element={
               <AdminRoute allowTeacher={true}>
                 <ReportsPage />
+              </AdminRoute>
+            }
+          />
+
+          {/* Багшийн хяналтын самбар - Admin болон Teacher нар л хандах боломжтой */}
+          <Route
+            path="teacher-dashboard"
+            element={
+              <AdminRoute allowTeacher={true}>
+                <TeacherDashboardPage />
               </AdminRoute>
             }
           />
@@ -346,6 +363,8 @@ function App() {
         <Route path="/info" element={<InfoPage />}>
           <Route index element={<Navigate to="/info/about" replace />} />
           <Route path="about" element={<AboutPage />} />
+          <Route path="results" element={<EfficiencyReportPage />} />
+          <Route path="guide" element={<GuidePage />} />
           <Route path="membership-guide" element={<MembershipGuidePage />} />
           <Route path="ai-guide" element={<AIGuidePage />} />
           <Route path="nomads360" element={<Nomads360Page />} />

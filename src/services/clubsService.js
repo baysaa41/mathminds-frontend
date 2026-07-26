@@ -187,6 +187,15 @@ export const getMyClubs = async (username = null, params = {}) => {
 };
 
 /**
+ * Багшийн бүх клубыг нэгтгэсэн хяналтын самбар
+ * GET /api/clubs/teacher_dashboard/
+ */
+export const getTeacherDashboard = async () => {
+  const response = await apiClient.get('/api/clubs/teacher_dashboard/');
+  return response.data;
+};
+
+/**
  * Клубын дэлгэрэнгүй мэдээлэл авах
  * GET /api/clubs/:id/
  */

@@ -3,7 +3,7 @@
 
 import React from 'react';
 import { useLocation, Outlet, Link } from 'react-router-dom';
-import { Info, HelpCircle, Globe, Users, Bot } from 'lucide-react';
+import { Info, Compass, HelpCircle, Globe, Users, Bot, TrendingUp } from 'lucide-react';
 import AppHeader from '../components/AppHeader';
 
 import Row from 'react-bootstrap/Row';
@@ -13,6 +13,8 @@ import ListGroup from 'react-bootstrap/ListGroup';
 
 const MENU_ITEMS = [
   { path: '/info/about',            label: 'Танилцуулга',  Icon: Info       },
+  { path: '/info/results',          label: 'Үр ашгийн тайлан', Icon: TrendingUp },
+  { path: '/info/guide',            label: 'Заавар',       Icon: Compass    },
   { path: '/info/membership-guide', label: 'Гишүүнчлэл',  Icon: HelpCircle },
   { path: '/info/ai-guide',         label: 'AI заавар',   Icon: Bot        },
   { path: '/info/nomads360',        label: 'Nomads 360°', Icon: Globe      },

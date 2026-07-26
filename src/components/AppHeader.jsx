@@ -5,6 +5,8 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getPrivateMessagesCount } from '../services/notificationService';
+import { getReviewStats } from '../services/integralService';
+import { getTeacherDashboard } from '../services/clubsService';
 import NotificationBell from './NotificationBell';
 
 import Navbar from 'react-bootstrap/Navbar';
@@ -27,6 +29,9 @@ import {
   PenLine,
   ChevronLeft,
   ChevronRight,
+  Repeat,
+  ClipboardList,
+  Heart,
 } from 'lucide-react';
 import DrawingPanel from './DrawingPanel';
 
@@ -38,6 +43,7 @@ export default function AppHeader() {
   const [showSidebar, setShowSidebar] = useState(false);
   const [showDrawPanel, setShowDrawPanel] = useState(false);
   const [privateMessagesCount, setPrivateMessagesCount] = useState(0);
+  const [reviewDueToday, setReviewDueToday] = useState(0);
 
   useEffect(() => {
     if (!user) return;
@@ -46,6 +52,28 @@ export default function AppHeader() {
     };
     fetch();
     const id = setInterval(fetch, 30000);
+    return () => clearInterval(id);
+  }, [user]);
+
+  useEffect(() => {
+    if (!user || user.site_role !== 'STUDENT') return;
+    const fetch = async () => {
+      try { setReviewDueToday((await getReviewStats()).due_today); } catch { /* ignore */ }
+    };
+    fetch();
+    const id = setInterval(fetch, 60000);
+    return () => clearInterval(id);
+  }, [user]);
+
+  const [ungradedCount, setUngradedCount] = useState(0);
+
+  useEffect(() => {
+    if (!user || user.site_role !== 'TEACHER') return;
+    const fetch = async () => {
+      try { setUngradedCount((await getTeacherDashboard()).ungraded_count); } catch { /* ignore */ }
+    };
+    fetch();
+    const id = setInterval(fetch, 60000);
     return () => clearInterval(id);
   }, [user]);
 
@@ -137,6 +165,29 @@ export default function AppHeader() {
                       </span>
                     </Dropdown.Toggle>
                     <Dropdown.Menu>
+                      {user.site_role === 'STUDENT' && (
+                        <Dropdown.Item as={Link} to="/dashboard"
+                          className="d-flex align-items-center justify-content-between">
+                          <span><Repeat size={16} className="me-2" />Миний өдөр</span>
+                          {reviewDueToday > 0 && (
+                            <Badge bg="danger" pill>{reviewDueToday}</Badge>
+                          )}
+                        </Dropdown.Item>
+                      )}
+                      {user.site_role === 'TEACHER' && (
+                        <Dropdown.Item as={Link} to="/teacher-dashboard"
+                          className="d-flex align-items-center justify-content-between">
+                          <span><ClipboardList size={16} className="me-2" />Хяналтын самбар</span>
+                          {ungradedCount > 0 && (
+                            <Badge bg="danger" pill>{ungradedCount}</Badge>
+                          )}
+                        </Dropdown.Item>
+                      )}
+                      {user.site_role === 'PARENT' && (
+                        <Dropdown.Item as={Link} to="/parent-dashboard">
+                          <Heart size={16} className="me-2" />Хүүхдийн явц
+                        </Dropdown.Item>
+                      )}
                       <Dropdown.Item as={Link} to={`/profile/${user.username}`}>
                         <UserIcon size={16} className="me-2" />Профайл
                       </Dropdown.Item>
@@ -209,6 +260,29 @@ export default function AppHeader() {
             {user && (
               <>
                 <div className="mt-3 mb-1 px-3 text-muted small">Хувийн</div>
+                {user.site_role === 'STUDENT' && (
+                  <Nav.Link as={Link} to="/dashboard" onClick={close}
+                    className="d-flex align-items-center justify-content-between">
+                    <span><Repeat size={18} className="me-2" />Миний өдөр</span>
+                    {reviewDueToday > 0 && (
+                      <Badge bg="danger" pill>{reviewDueToday}</Badge>
+                    )}
+                  </Nav.Link>
+                )}
+                {user.site_role === 'TEACHER' && (
+                  <Nav.Link as={Link} to="/teacher-dashboard" onClick={close}
+                    className="d-flex align-items-center justify-content-between">
+                    <span><ClipboardList size={18} className="me-2" />Хяналтын самбар</span>
+                    {ungradedCount > 0 && (
+                      <Badge bg="danger" pill>{ungradedCount}</Badge>
+                    )}
+                  </Nav.Link>
+                )}
+                {user.site_role === 'PARENT' && (
+                  <Nav.Link as={Link} to="/parent-dashboard" onClick={close}>
+                    <Heart size={18} className="me-2" />Хүүхдийн явц
+                  </Nav.Link>
+                )}
                 <Nav.Link as={Link} to={`/profile/${user.username}`} onClick={close}>
                   <UserIcon size={18} className="me-2" />Профайл
                 </Nav.Link>
