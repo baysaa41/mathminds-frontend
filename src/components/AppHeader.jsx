@@ -95,7 +95,7 @@ export default function AppHeader() {
         className="border-bottom shadow-sm py-2 sticky-top"
         style={{ zIndex: 1000 }}
       >
-        <Container>
+        <Container fluid>
           {/* Brand */}
           <Navbar.Brand
             as={Link}
