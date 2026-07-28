@@ -1,7 +1,7 @@
 // Quiz management modal - simplified version
 import React, { useState, useEffect } from 'react';
 import { Modal, Form, Button, Alert, Spinner } from 'react-bootstrap';
-import { createQuizItem, updateQuizItem } from '../services/clubsService';
+import { createQuizItem, updateQuizItem } from '../services/clubContentService';
 
 const QuizFormModal = ({ show, onHide, clubId, quizItem, onSuccess }) => {
   const [title, setTitle] = useState('');

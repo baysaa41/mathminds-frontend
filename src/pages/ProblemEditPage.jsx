@@ -5,144 +5,31 @@ import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useOutletContext, Link } from 'react-router-dom';
 import apiClient from '../api/axiosConfig.js';
 import { MathJax } from 'better-react-mathjax';
-import LivePreview from '../components/LivePreview.jsx';
-import RichTextEditor from '../components/RichTextEditor';
 
 // React Bootstrap components
 import Container from 'react-bootstrap/Container';
-import Row from 'react-bootstrap/Row';
-import Col from 'react-bootstrap/Col';
 import Card from 'react-bootstrap/Card';
 import Button from 'react-bootstrap/Button';
 import Spinner from 'react-bootstrap/Spinner';
 import Alert from 'react-bootstrap/Alert';
-import Badge from 'react-bootstrap/Badge';
 import Stack from 'react-bootstrap/Stack';
 import Form from 'react-bootstrap/Form';
-import InputGroup from 'react-bootstrap/InputGroup';
-import ListGroup from 'react-bootstrap/ListGroup';
-import Modal from 'react-bootstrap/Modal';
-import CloseButton from 'react-bootstrap/CloseButton';
 import Breadcrumb from 'react-bootstrap/Breadcrumb';
 
 // Lucide React Icons
 import {
-  Edit3,
-  Save,
-  X,
-  Trash2,
-  Copy,
-  Check,
-  FileText,
-  AlignLeft,
-  Eye,
-  Code2,
-  Tag,
-  Layers,
-  PlusCircle,
-  Home,
-  BookOpen,
-  GraduationCap,
-  Wand2,
-  Sparkles,
-  ImagePlus,
-  Image as ImageIcon,
+  Edit3, Save, X, Trash2, Copy, Check, FileText, Home, BookOpen, Wand2, Sparkles,
 } from 'lucide-react';
 
+import { ProblemInfoForm } from '../components/problemEdit/ProblemInfoForm.jsx';
+import { ChoicesEditor } from '../components/problemEdit/ChoicesEditor.jsx';
+import { KeywordsManager } from '../components/problemEdit/KeywordsManager.jsx';
+import { ImagesManager } from '../components/problemEdit/ImagesManager.jsx';
+import { DeleteProblemModal } from '../components/problemEdit/DeleteProblemModal.jsx';
+import { ConvertToMCModal } from '../components/problemEdit/ConvertToMCModal.jsx';
+import { PreviewModal } from '../components/problemEdit/PreviewModal.jsx';
+
 // (!!!) MathJax тохиргоог Layout.jsx-с авдаг болсон тул эндээс хассан.
-
-// --- Хичээл (Subject) сонголтууд: backend integral/models.py-н SUBJECT_CHOICES-тэй тохирсон ---
-const SUBJECT_CHOICES = [
-  { value: 'math', label: 'Математик' },
-  { value: 'physics', label: 'Физик' },
-  { value: 'chemistry', label: 'Хими' },
-  { value: 'biology', label: 'Биологи' },
-  { value: 'content', label: 'Контент төрөл' },
-];
-
-// --- Debounce Hook ---
-const useDebounce = (value, delay) => {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
-  return debouncedValue;
-};
-
-// --- PSTricks Рендер хийх туслах компонент ---
-const PSTricksRenderer = ({ code }) => {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [imageData, setImageData] = useState(null);
-
-  useEffect(() => {
-    const renderPST = async () => {
-      if (!code) {
-        setLoading(false);
-        return;
-      }
-      setLoading(true);
-      setError(null);
-      setImageData(null);
-      try {
-        //
-        const response = await fetch('http://127.0.0.1:5000/render-pstricks', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code: code }),
-        });
-        if (!response.ok) {
-          const errorResult = await response.json();
-          throw new Error(errorResult.error || 'PSTricks server error');
-        }
-        const result = await response.json();
-        if (result.png_base64) {
-          //
-          setImageData(result.png_base64);
-        } else {
-          throw new Error('Invalid response from PSTricks server.');
-        }
-      } catch (err) {
-        setError(err.message);
-        console.error('PSTricks rendering failed:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    renderPST();
-  }, [code]);
-
-  if (loading) {
-    return (
-      <div className="text-center p-2">
-        <Spinner animation="border" size="sm" />
-      </div>
-    );
-  }
-  if (error) {
-    return (
-      <Alert variant="danger" className="p-1 small">
-        [PST] Алдаа: {error}
-      </Alert>
-    );
-  }
-  if (imageData) {
-    //
-    return (
-      <img
-        src={'data:image/png;base64,' + imageData}
-        style={{ maxWidth: '100%', height: 'auto' }}
-        alt="PSTricks render"
-      />
-    );
-  }
-  return null;
-};
 
 // --- Үндсэн Засварлах Хуудас ---
 const ProblemEditPage = () => {
@@ -171,12 +58,6 @@ const ProblemEditPage = () => {
   const [titleSuggestions, setTitleSuggestions] = useState([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
 
-  // Debounce
-  const debouncedChoiceValues = useDebounce(
-    choices.map((c) => c.value),
-    500
-  );
-
   // Автомат Label-д зориулсан Memoized Dependencies
   const problemType = problem ? problem.type : null;
   const choiceValues = useMemo(() => choices.map((c) => c.value), [choices]);
@@ -193,7 +74,6 @@ const ProblemEditPage = () => {
     try {
       setLoading(true);
       setError(null);
-      //
       const response = await apiClient.get(`/api/integral/problems/${problemId}/`);
       setProblem({ ...response.data, is_public: response.data.is_public ?? false });
       setChoices(response.data.choices?.map((c) => ({ ...c, DELETE: false })) || []);
@@ -296,6 +176,10 @@ const ProblemEditPage = () => {
     }));
   };
 
+  const handleStatementChange = (html) => {
+    setProblem((prev) => ({ ...prev, statement: html }));
+  };
+
   const handleSuggestTitles = async () => {
     if (!id) return;
     setLoadingSuggestions(true);
@@ -310,6 +194,11 @@ const ProblemEditPage = () => {
     }
   };
 
+  const handleApplyTitleSuggestion = (title) => {
+    setProblem((prev) => ({ ...prev, title }));
+    setTitleSuggestions([]);
+  };
+
   // --- Choices Handlers (Formset logic) ---
   const handleChoiceChange = (index, e) => {
     const { name, value } = e.target;
@@ -322,14 +211,12 @@ const ProblemEditPage = () => {
   };
 
   const addChoice = () => {
-    //
     setChoices([...choices, { id: null, label: '', value: '', default_score: 0, DELETE: false }]);
   };
 
   const removeChoice = (index) => {
     const choice = choices[index];
     if (choice.id) {
-      //
       const newChoices = choices.map((c, i) => (i === index ? { ...c, DELETE: true } : c));
       setChoices(newChoices);
     } else {
@@ -348,7 +235,6 @@ const ProblemEditPage = () => {
     const searchKeywords = async () => {
       setLoadingKeywords(true);
       try {
-        //
         const response = await apiClient.get(`/api/integral/keywords/search/?q=${keywordSearch}`);
 
         let results = [];
@@ -376,7 +262,6 @@ const ProblemEditPage = () => {
     setKeywordSearch('');
     setKeywordResults([]);
     try {
-      //
       await apiClient.post(`/api/integral/problems/${id}/keywords/add/`, {
         keyword_id: keyword.id,
       });
@@ -390,7 +275,6 @@ const ProblemEditPage = () => {
   const removeKeyword = async (keywordToRemove) => {
     setKeywords((prev) => prev.filter((k) => k.id !== keywordToRemove.id));
     try {
-      //
       await apiClient.post(`/api/integral/problems/${id}/keywords/remove/`, {
         keyword_id: keywordToRemove.id,
       });
@@ -475,7 +359,6 @@ const ProblemEditPage = () => {
       is_public: problem.is_public ?? false,
       rendering: problem.rendering,
       mute_comments: problem.mute_comments,
-      //
       choices: choices
         .filter((c) => !c.DELETE)
         .map((c) => ({
@@ -488,7 +371,6 @@ const ProblemEditPage = () => {
     };
 
     try {
-      //
       await apiClient.patch(`/api/integral/problems/${id}/`, payload);
       navigate(`/problem/${id}`);
     } catch (err) {
@@ -503,7 +385,6 @@ const ProblemEditPage = () => {
     setShowDeleteModal(false);
     setSaving(true);
     try {
-      //
       await apiClient.delete(`/api/integral/problems/${id}/`);
       navigate('/content/browse?type=problems');
     } catch (err) {
@@ -580,7 +461,6 @@ const ProblemEditPage = () => {
     );
   }
 
-  //
   const showChoices = problem.type == 1 || problem.type == 4;
 
   return (
@@ -678,400 +558,51 @@ const ProblemEditPage = () => {
         {/* Үндсэн Карт */}
         <Card>
           <Card.Body className="p-4">
-            {/* Гарчиг, Түвшин */}
-            <Row>
-              <Col md={6}>
-                <Form.Group className="mb-1">
-                  <Form.Label htmlFor="id_title" className="fw-semibold">
-                    <FileText size={16} className="me-2" />
-                    Гарчиг
-                  </Form.Label>
-                  <InputGroup>
-                    <Form.Control
-                      type="text"
-                      name="title"
-                      id="id_title"
-                      value={problem.title || ''}
-                      onChange={handleProblemChange}
-                      placeholder="Гарчиг оруулах..."
-                    />
-                    <Button
-                      variant="outline-secondary"
-                      onClick={handleSuggestTitles}
-                      disabled={loadingSuggestions}
-                      title="Гарчиг санал болгох"
-                    >
-                      {loadingSuggestions
-                        ? <Spinner animation="border" size="sm" />
-                        : <Wand2 size={15} />}
-                    </Button>
-                  </InputGroup>
-                </Form.Group>
-                {titleSuggestions.length > 0 && (
-                  <div className="mb-3">
-                    {titleSuggestions.map((s, i) => (
-                      <Button
-                        key={i}
-                        variant="outline-primary"
-                        size="sm"
-                        className="me-1 mt-1"
-                        onClick={() => {
-                          setProblem((prev) => ({ ...prev, title: s.title }));
-                          setTitleSuggestions([]);
-                        }}
-                      >
-                        {s.title}
-                      </Button>
-                    ))}
-                  </div>
-                )}
-              </Col>
-              <Col md={3}>
-                <Form.Group className="mb-3">
-                  <Form.Label htmlFor="id_subject" className="fw-semibold">
-                    <GraduationCap size={16} className="me-2" />
-                    Хичээл
-                  </Form.Label>
-                  <Form.Select
-                    name="subject"
-                    id="id_subject"
-                    value={problem.subject || 'math'}
-                    onChange={handleProblemChange}
-                  >
-                    {SUBJECT_CHOICES.map((s) => (
-                      <option key={s.value} value={s.value}>
-                        {s.label}
-                      </option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-              <Col md={3}>
-                <Form.Group className="mb-3">
-                  <Form.Label htmlFor="id_level" className="fw-semibold">
-                    <Layers size={16} className="me-2" />
-                    Түвшин
-                  </Form.Label>
-                  <Form.Select
-                    name="level"
-                    id="id_level"
-                    value={problem.level || ''}
-                    onChange={handleProblemChange}
-                  >
-                    <option value="">---------</option>
-                    <option value="1">Сэргээн санах түвшин</option>
-                    <option value="2">Ойлгох түвшин</option>
-                    <option value="3">Хэрэглэх түвшин</option>
-                    <option value="4">Задлан шинжлэх түвшин</option>
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-            </Row>
-
-            {/* Бодлогын өгүүлбэр */}
-            <Form.Group className="mb-3">
-              <Stack direction="horizontal" gap={2} className="mb-2">
-                <Form.Label className="fw-semibold mb-0">
-                  <AlignLeft size={16} className="me-2" />
-                  Өгүүлбэр (LaTeX ашиглаж болно: $...$ эсвэл $$...$$)
-                </Form.Label>
-                <div className="ms-auto">
-                  <Button
-                    size="sm"
-                    variant={viewMode === 'visual' ? 'primary' : 'outline-secondary'}
-                    onClick={() => setViewMode('visual')}
-                    className="me-1"
-                  >
-                    <Edit3 size={14} className="me-1" />
-                    Visual
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={viewMode === 'source' ? 'primary' : 'outline-secondary'}
-                    onClick={() => setViewMode('source')}
-                    className="me-2"
-                  >
-                    <Code2 size={14} className="me-1" />
-                    Source
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline-primary"
-                    onClick={() => setShowPreviewModal(true)}
-                  >
-                    <Eye size={14} className="me-1" />
-                    Preview
-                  </Button>
-                </div>
-              </Stack>
-
-              {viewMode === 'visual' ? (
-                <RichTextEditor
-                  content={problem.statement || ''}
-                  onChange={(html) => setProblem((prev) => ({ ...prev, statement: html }))}
-                  placeholder="Бодлогын өгүүлбэр бичих..."
-                />
-              ) : (
-                <Form.Control
-                  as="textarea"
-                  rows={15}
-                  value={problem.statement || ''}
-                  onChange={(e) => setProblem((prev) => ({ ...prev, statement: e.target.value }))}
-                  placeholder="HTML код шууд бичих..."
-                  style={{
-                    fontFamily: 'monospace',
-                    fontSize: '0.9em',
-                    lineHeight: '1.5',
-                  }}
-                />
-              )}
-            </Form.Group>
-
-            {/* Төрөл, Хариулт, Нийтлэх */}
-            <Row>
-              <Col md={4}>
-                <Form.Group className="mb-3">
-                  <Form.Label htmlFor="id_type">Бодлогын төрөл</Form.Label>
-                  <Form.Select
-                    name="type"
-                    id="id_type"
-                    value={problem.type || 0}
-                    onChange={handleProblemChange}
-                  >
-                    <option value="0">Уламжлалт</option>
-                    <option value="1">Сонгох тест</option>
-                    <option value="4">Нөхөх тест</option>
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group className="mb-3">
-                  <Form.Label htmlFor="id_answer">Хариулт</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="answer"
-                    id="id_answer"
-                    value={problem.answer || ''}
-                    onChange={handleProblemChange}
-                  />
-                  <Form.Text>Сонгох/Нөхөх тестийн зөв хариултын Label (A, B, abcde...)</Form.Text>
-                  {(problem.alternative_answers?.length > 0) && (
-                    <div className="mt-2">
-                      <Form.Text className="d-block text-muted mb-1">Алтернатив хариултууд:</Form.Text>
-                      <div className="d-flex flex-wrap gap-1">
-                        {problem.alternative_answers.map((a, i) => (
-                          <span key={i} className="badge bg-secondary-subtle text-secondary border" style={{ fontSize: '0.75rem' }}>
-                            {a}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </Form.Group>
-              </Col>
-              <Col md={4} className="d-flex align-items-center pt-3">
-                <Form.Check
-                  type="switch"
-                  id="id_is_public"
-                  label="Нийтэд харагдах"
-                  name="is_public"
-                  checked={problem.is_public || false}
-                  onChange={handleProblemChange}
-                />
-              </Col>
-            </Row>
+            <ProblemInfoForm
+              problem={problem}
+              onFieldChange={handleProblemChange}
+              onStatementChange={handleStatementChange}
+              viewMode={viewMode}
+              setViewMode={setViewMode}
+              onShowPreview={() => setShowPreviewModal(true)}
+              titleSuggestions={titleSuggestions}
+              loadingSuggestions={loadingSuggestions}
+              onSuggestTitles={handleSuggestTitles}
+              onApplyTitleSuggestion={handleApplyTitleSuggestion}
+            />
 
             <hr />
 
             {/* --- Хариултын Сонголтууд (Formset) --- */}
             {showChoices && (
-              <div id="choices-section">
-                <h4>
-                  <Layers size={20} className="me-2" />
-                  Хариултын сонголтууд
-                </h4>
-                <div id="choice-forms-container">
-                  {choices.map((choice, index) => {
-                    if (choice.DELETE) return null; //
-                    const isCorrect = choice.default_score > 0;
-                    return (
-                      <Card
-                        key={choice.id || `new-${index}`}
-                        className={`mb-3 choice-form ${isCorrect ? 'bg-success-subtle' : ''}`}
-                        border={isCorrect ? 'success' : null}
-                      >
-                        <Card.Body>
-                          <Row className="align-items-start">
-                            <Col md={2}>
-                              <Form.Group>
-                                <Form.Label>Label</Form.Label>
-                                <Form.Control
-                                  type="text"
-                                  name="label"
-                                  value={choice.label || ''}
-                                  onChange={(e) => handleChoiceChange(index, e)}
-                                  readOnly // (!!!) Гараас засахыг хориглох
-                                />
-                              </Form.Group>
-                            </Col>
-                            <Col md={6}>
-                              <Form.Group>
-                                <Form.Label>Утга (Value)</Form.Label>
-                                <Form.Control
-                                  as="textarea"
-                                  name="value"
-                                  rows={2}
-                                  value={choice.value || ''}
-                                  onChange={(e) => handleChoiceChange(index, e)}
-                                  className="font-monospace"
-                                />
-                                <LivePreview content={debouncedChoiceValues[index]} />
-                              </Form.Group>
-                            </Col>
-                            <Col md={2}>
-                              <Form.Group>
-                                <Form.Label>Оноо</Form.Label>
-                                <Form.Control
-                                  type="number"
-                                  name="default_score"
-                                  value={choice.default_score}
-                                  onChange={(e) => handleChoiceChange(index, e)}
-                                />
-                              </Form.Group>
-                            </Col>
-                            <Col md={2} className="text-end pt-4">
-                              <Button
-                                variant="outline-danger"
-                                size="sm"
-                                onClick={() => removeChoice(index)}
-                              >
-                                Устгах
-                              </Button>
-                            </Col>
-                          </Row>
-                        </Card.Body>
-                      </Card>
-                    );
-                  })}
-                </div>
-                <Button
-                  id="add-choice-btn"
-                  type="button"
-                  variant="outline-success"
-                  size="sm"
-                  onClick={addChoice}
-                >
-                  <PlusCircle size={16} className="me-1" />
-                  Шинэ сонголт нэмэх
-                </Button>
-              </div>
+              <ChoicesEditor
+                choices={choices}
+                onChoiceChange={handleChoiceChange}
+                onAddChoice={addChoice}
+                onRemoveChoice={removeChoice}
+              />
             )}
 
             <hr />
 
-            {/* --- Түлхүүр үгс (Keywords) --- */}
-            <div id="keywords-manager">
-              <h4>
-                <Tag size={20} className="me-2" />
-                Холбоотой түлхүүр үгс
-              </h4>
-              <div id="current-keywords-list" className="mb-3">
-                {keywords.map((kw) => (
-                  <Badge bg="secondary" key={kw.id} className="me-1 keyword-badge" pill>
-                    {kw.name}
-                    <CloseButton
-                      variant="white"
-                      className="ms-1"
-                      style={{ fontSize: '0.65em' }}
-                      onClick={() => removeKeyword(kw)}
-                    />
-                  </Badge>
-                ))}
-              </div>
-
-              <Form.Label htmlFor="keyword-search-input">Түлхүүр үг хайж нэмэх:</Form.Label>
-              <InputGroup className="mb-1">
-                <Form.Control
-                  type="text"
-                  id="keyword-search-input"
-                  placeholder="Дор хаяж 2 үсэг бичнэ үү..."
-                  value={keywordSearch}
-                  onChange={(e) => setKeywordSearch(e.target.value)}
-                />
-                {loadingKeywords && (
-                  <InputGroup.Text>
-                    <Spinner animation="border" size="sm" />
-                  </InputGroup.Text>
-                )}
-              </InputGroup>
-              {keywordResults.length > 0 && (
-                <ListGroup id="keyword-search-results">
-                  {keywordResults.map((kw) => (
-                    <ListGroup.Item key={kw.id} action onClick={() => addKeyword(kw)}>
-                      {kw.name}
-                    </ListGroup.Item>
-                  ))}
-                </ListGroup>
-              )}
-            </div>
+            <KeywordsManager
+              keywords={keywords}
+              keywordSearch={keywordSearch}
+              setKeywordSearch={setKeywordSearch}
+              keywordResults={keywordResults}
+              loadingKeywords={loadingKeywords}
+              onAddKeyword={addKeyword}
+              onRemoveKeyword={removeKeyword}
+            />
             <hr />
 
-            {/* --- Зурагнууд --- */}
-            <div id="images-section">
-              <h4>
-                <ImageIcon size={20} className="me-2" />
-                Зурагнууд
-              </h4>
-              {imageError && (
-                <Alert variant="danger" className="py-2 small mb-2">{imageError}</Alert>
-              )}
-              {images.length > 0 && (
-                <Row className="g-2 mb-3">
-                  {images.map((img) => (
-                    <Col key={img.id} xs={6} sm={4} md={3}>
-                      <div className="position-relative border rounded overflow-hidden" style={{ aspectRatio: '4/3' }}>
-                        <img
-                          src={img.image}
-                          alt=""
-                          className="w-100 h-100"
-                          style={{ objectFit: 'cover' }}
-                        />
-                        <Button
-                          variant="danger"
-                          size="sm"
-                          className="position-absolute top-0 end-0 m-1 p-1 lh-1"
-                          onClick={() => handleImageDelete(img.id)}
-                          title="Зураг устгах"
-                        >
-                          <X size={14} />
-                        </Button>
-                      </div>
-                    </Col>
-                  ))}
-                </Row>
-              )}
-              <Form.Group>
-                <Form.Label
-                  htmlFor="image-upload-input"
-                  className="btn btn-outline-secondary btn-sm mb-0"
-                  style={{ cursor: 'pointer' }}
-                >
-                  {uploadingImage ? (
-                    <><Spinner as="span" animation="border" size="sm" className="me-1" />Оруулж байна...</>
-                  ) : (
-                    <><ImagePlus size={16} className="me-1" />Зураг нэмэх</>
-                  )}
-                </Form.Label>
-                <Form.Control
-                  id="image-upload-input"
-                  type="file"
-                  accept="image/*"
-                  className="d-none"
-                  onChange={handleImageUpload}
-                  disabled={uploadingImage}
-                />
-              </Form.Group>
-            </div>
+            <ImagesManager
+              images={images}
+              imageError={imageError}
+              uploadingImage={uploadingImage}
+              onImageUpload={handleImageUpload}
+              onImageDelete={handleImageDelete}
+            />
           </Card.Body>
           <Card.Footer className="d-flex justify-content-end">
             {error && (
@@ -1113,107 +644,29 @@ const ProblemEditPage = () => {
       </Form>
       {/* (!!!) MathJaxContext-г эндээс хассан. */}
 
-      {/* Convert to MC Confirmation Modal */}
-      <Modal show={showConvertModal} onHide={() => setShowConvertModal(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title className="h5">
-            <Wand2 size={20} className="me-2 text-warning" />
-            Сонгох тест болгох
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <p>
-            AI ашиглан <b>{problem.title || `Бодлого #${id}`}</b> бодлогыг клон хийж,{' '}
-            <b>5 сонгох хариулттай (1 зөв = 2 оноо, 4 буруу = 0 оноо)</b> шинэ бодлого үүсгэнэ.
-          </p>
-          {!problem.statement && (
-            <Alert variant="warning" className="py-2">
-              Бодлогын өгүүлбэр хоосон байна. AI-д илүү мэдээлэл өгсөн тусам илүү сайн хариулт гарна.
-            </Alert>
-          )}
-          <p className="text-muted small mb-0">
-            Эх бодлого өөрчлөгдөхгүй. Шинэ бодлого үүсэн засварлах хуудас руу шилжинэ.
-          </p>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowConvertModal(false)}>
-            <X size={16} className="me-2" />
-            Цуцлах
-          </Button>
-          <Button variant="warning" onClick={handleConvertToMC}>
-            <Wand2 size={16} className="me-2" />
-            Үүсгэх
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <ConvertToMCModal
+        show={showConvertModal}
+        onHide={() => setShowConvertModal(false)}
+        onConfirm={handleConvertToMC}
+        title={problem.title}
+        id={id}
+        hasStatement={!!problem.statement}
+      />
 
-      {/* Delete Confirmation Modal */}
-      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title className="h5">
-            <Trash2 size={20} className="me-2 text-danger" />
-            Устгахыг баталгаажуулах
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          Та "<b>{problem.title || `Бодлого #${id}`}</b>"-г устгахдаа итгэлтэй байна уу? Энэ
-          үйлдлийг буцаах боломжгүй.
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
-            <X size={16} className="me-2" />
-            Цуцлах
-          </Button>
-          <Button variant="danger" onClick={handleDelete}>
-            <Trash2 size={16} className="me-2" />
-            Устгах
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <DeleteProblemModal
+        show={showDeleteModal}
+        onHide={() => setShowDeleteModal(false)}
+        onConfirm={handleDelete}
+        title={problem.title}
+        id={id}
+      />
 
-      {/* Preview Modal */}
-      <Modal show={showPreviewModal} onHide={() => setShowPreviewModal(false)} size="xl" centered>
-        <Modal.Header closeButton>
-          <Modal.Title>
-            <Eye size={20} className="me-2" />
-            Урьдчилж харах
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-          {/* Title Preview */}
-          {problem.title && (
-            <div className="mb-4">
-              <h2 className="h3 fw-bold">
-                <FileText size={24} className="me-2 text-primary" />
-                {problem.title}
-              </h2>
-            </div>
-          )}
-
-          {/* Statement Preview */}
-          <MathJax hideUntilTypeset={'first'}>
-            <div
-              className="mathjax-content"
-              style={{
-                whiteSpace: 'normal',
-                wordBreak: 'break-word',
-                lineHeight: '1.6',
-              }}
-              dangerouslySetInnerHTML={{
-                __html:
-                  problem.statement ||
-                  "<span class='text-muted fst-italic'>Өгүүлбэр хоосон байна...</span>",
-              }}
-            />
-          </MathJax>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowPreviewModal(false)}>
-            <X size={16} className="me-2" />
-            Хаах
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <PreviewModal
+        show={showPreviewModal}
+        onHide={() => setShowPreviewModal(false)}
+        title={problem.title}
+        statement={problem.statement}
+      />
     </Container>
   );
 };

@@ -13,11 +13,15 @@ import Button from 'react-bootstrap/Button';
 import Spinner from 'react-bootstrap/Spinner';
 import Alert from 'react-bootstrap/Alert';
 import Stack from 'react-bootstrap/Stack';
-import ProgressBar from 'react-bootstrap/ProgressBar';
 import Badge from 'react-bootstrap/Badge';
-import Form from 'react-bootstrap/Form';
-import InputGroup from 'react-bootstrap/InputGroup';
-import Modal from 'react-bootstrap/Modal';
+
+import { QuizProgressHeader } from '../components/quizTake/QuizProgressHeader.jsx';
+import { ProblemAnswerInput } from '../components/quizTake/ProblemAnswerInput.jsx';
+import { ProblemNavigatorSidebar } from '../components/quizTake/ProblemNavigatorSidebar.jsx';
+import { PauseModal } from '../components/quizTake/PauseModal.jsx';
+import { FinishModal } from '../components/quizTake/FinishModal.jsx';
+import { TimeLimitModal } from '../components/quizTake/TimeLimitModal.jsx';
+import { LeaveWarningModal } from '../components/quizTake/LeaveWarningModal.jsx';
 
 const QuizTakePage = () => {
   const { uuid: id } = useParams(); // quiz uuid
@@ -97,7 +101,6 @@ const QuizTakePage = () => {
         // Тестийн бодлогуудыг авах
         const quizResponse = await apiClient.get(`/api/integral/quizzes/${id}/`);
         const problemsData = quizResponse.data.problems || [];
-        console.log('Loaded problems:', problemsData); // Debug
         setProblems(problemsData);
         setPageTitle(`Тест бөглөх: ${quizResponse.data.title}`);
 
@@ -437,13 +440,6 @@ const QuizTakePage = () => {
     goToIndex(idx);
   };
 
-  // Format time (seconds to MM:SS)
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
   if (loading) {
     return (
       <Container className="d-flex justify-content-center align-items-center py-5">
@@ -503,44 +499,15 @@ const QuizTakePage = () => {
     <Container fluid className="py-4" style={{ maxWidth: '1100px' }}>
       <div className="d-flex gap-3 align-items-start">
       <div style={{ flex: 1, minWidth: 0 }}>
-      {/* Progress & Timer */}
-      <Card className="mb-3">
-        <Card.Body>
-          <Stack direction="horizontal" gap={3} className="mb-2 flex-wrap">
-            <div>
-              <strong>Бодлого:</strong> {currentIndex + 1} / {problems.length}
-            </div>
-            <div>
-              <i className="bi bi-clock me-1"></i>
-              <strong>{formatTime(currentProblemTime)}</strong>
-              <small className="text-muted"> (одоо)</small>
-            </div>
-            <div className="ms-auto d-flex gap-3 align-items-center">
-              <div>
-                <i className="bi bi-stopwatch me-1"></i>
-                <strong>{formatTime(totalProblemTime)}</strong>
-                <small className="text-muted"> (нийт)</small>
-              </div>
-              {quiz?.default_time_limit && (
-                <div>
-                  <i className="bi bi-hourglass-split me-1"></i>
-                  <strong>{formatTime(totalElapsedTime)}</strong>
-                  <small className="text-muted"> / {quiz.default_time_limit} мин</small>
-                  {totalElapsedTime >= quiz.default_time_limit * 60 * 0.9 && (
-                    <Badge bg="warning" className="ms-2">
-                      Хугацаа дуусч байна!
-                    </Badge>
-                  )}
-                </div>
-              )}
-            </div>
-          </Stack>
-          <ProgressBar
-            now={problems.length ? Math.round(answeredCount / problems.length * 100) : 0}
-            label={`${answeredCount}/${problems.length}`}
-          />
-        </Card.Body>
-      </Card>
+      <QuizProgressHeader
+        currentIndex={currentIndex}
+        problemsLength={problems.length}
+        currentProblemTime={currentProblemTime}
+        totalProblemTime={totalProblemTime}
+        totalElapsedTime={totalElapsedTime}
+        defaultTimeLimit={quiz?.default_time_limit}
+        answeredCount={answeredCount}
+      />
 
       {/* Бодлого */}
       <Card className="mb-3">
@@ -582,132 +549,25 @@ const QuizTakePage = () => {
           )}
 
           {/* Хариулт оруулах хэсэг */}
-          {currentProblem.type === 1 &&
-          currentProblem.choices &&
-          currentProblem.choices.length > 0 ? (
-            // Multiple choice - Radio buttons
-            <Form>
-              {[...currentProblem.choices].sort((a, b) => (a.label || '').localeCompare(b.label || '')).map((choice) => (
-                <Form.Check
-                  key={choice.id}
-                  type="radio"
-                  id={`choice-${choice.id}`}
-                  name={`problem-${currentProblem.id}`}
-                  label={
-                    <div className="mathjax-content">
-                      <LivePreview content={`${choice.label}: ${choice.value}`} />
-                    </div>
-                  }
-                  checked={answers[currentProblem.id]?.label === choice.label}
-                  onChange={() => handleAnswerChange(currentProblem.id, choice.label, choice.value)}
-                />
-              ))}
-            </Form>
-          ) : currentProblem.type === 4 &&
-            currentProblem.choices &&
-            currentProblem.choices.length > 0 ? (
-            // Fill-in-the-blank - Input fields
-            <div>
-              <Form.Label className="mb-3">Хариултаа нөхнө үү:</Form.Label>
-              {currentProblem.choices.map((choice) => (
-                <Form.Group key={choice.id} className="mb-3">
-                  <InputGroup>
-                    <InputGroup.Text style={{ minWidth: '80px' }}>
-                      <strong className="mathjax-content">
-                        <LivePreview content={choice.label} />
-                      </strong>
-                    </InputGroup.Text>
-                    <Form.Control
-                      type="text"
-                      value={answers[currentProblem.id]?.answers?.[choice.label] || ''}
-                      onChange={(e) => {
-                        const currentAnswers = answers[currentProblem.id]?.answers || {};
-                        const newAnswers = {
-                          ...currentAnswers,
-                          [choice.label]: e.target.value,
-                        };
-                        console.log(
-                          '[Fill-in-blank input] choice.label:',
-                          choice.label,
-                          'value:',
-                          e.target.value
-                        );
-                        console.log('[Fill-in-blank input] newAnswers:', newAnswers);
-                        handleAnswerChange(currentProblem.id, '', '', newAnswers);
-                      }}
-                      placeholder={`${choice.value.length} оронтой`}
-                      maxLength={choice.value.length}
-                      style={{ fontFamily: 'monospace' }}
-                    />
-                  </InputGroup>
-                  <Form.Text className="text-muted">
-                    <i className="bi bi-info-circle me-1"></i>
-                    {choice.value.length} тэмдэгт оруулна уу
-                  </Form.Text>
-                </Form.Group>
-              ))}
-            </div>
-          ) : (
-            // Traditional - Text area + Image upload
-            <div>
-              <Form.Group className="mb-3">
-                <Form.Label>Хариулт:</Form.Label>
-                <Form.Control
-                  as="textarea"
-                  rows={3}
-                  value={answers[currentProblem.id]?.value || ''}
-                  onChange={(e) => handleAnswerChange(currentProblem.id, '', e.target.value)}
-                  placeholder="Хариултаа энд бичнэ үү..."
-                />
-              </Form.Group>
-
-              <Form.Group>
-                <Form.Label>
-                  <i className="bi bi-image me-1"></i>
-                  Зураг оруулах (сонголттой):
-                </Form.Label>
-                <Form.Control
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                      setSelectedImages((prev) => ({
-                        ...prev,
-                        [currentProblem.id]: file,
-                      }));
-                    }
-                  }}
-                />
-                {selectedImages[currentProblem.id] && (
-                  <div className="mt-2">
-                    <img
-                      src={URL.createObjectURL(selectedImages[currentProblem.id])}
-                      alt="Preview"
-                      style={{ maxWidth: '100%', maxHeight: '300px', objectFit: 'contain' }}
-                      className="border rounded"
-                    />
-                    <div className="mt-1">
-                      <Button
-                        variant="outline-danger"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedImages((prev) => {
-                            const newImages = { ...prev };
-                            delete newImages[currentProblem.id];
-                            return newImages;
-                          });
-                        }}
-                      >
-                        <i className="bi bi-trash me-1"></i>
-                        Устгах
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </Form.Group>
-            </div>
-          )}
+          <ProblemAnswerInput
+            problem={currentProblem}
+            answer={answers[currentProblem.id]}
+            selectedImage={selectedImages[currentProblem.id]}
+            onAnswerChange={handleAnswerChange}
+            onImageSelect={(problemId, file) => {
+              setSelectedImages((prev) => ({
+                ...prev,
+                [problemId]: file,
+              }));
+            }}
+            onImageRemove={(problemId) => {
+              setSelectedImages((prev) => {
+                const newImages = { ...prev };
+                delete newImages[problemId];
+                return newImages;
+              });
+            }}
+          />
         </Card.Body>
       </Card>
 
@@ -746,262 +606,69 @@ const QuizTakePage = () => {
       </Stack>
       </div>{/* flex main */}
 
-      {/* Right Sidebar */}
-      <div style={{
-        width: 200,
-        flexShrink: 0,
-        position: 'sticky',
-        top: 80,
-        alignSelf: 'flex-start',
-      }}>
-        <div className="card border-0 shadow-sm">
-          <div className="card-header py-2 px-3 bg-white border-bottom d-flex justify-content-between align-items-center">
-            <span className="fw-semibold" style={{ fontSize: '0.8rem' }}>Бодлогууд</span>
-            <span className="text-muted" style={{ fontSize: '0.75rem' }}>
-              {answeredCount}/{problems.length}
-            </span>
-          </div>
-          <div className="card-body p-2">
-            <div className="d-flex flex-wrap gap-1">
-              {problems.map((p, idx) => {
-                const ans = answers[p.id];
-                let isAnswered = false;
-                let isPartial = false;
-                if (p.type === 4) {
-                  const choices = p.choices || [];
-                  const filledCount = choices.filter(c => {
-                    const v = ans?.answers?.[c.label];
-                    return v !== undefined && v !== '';
-                  }).length;
-                  isAnswered = choices.length > 0 && filledCount === choices.length;
-                  isPartial = filledCount > 0 && filledCount < choices.length;
-                } else if (p.type === 1) {
-                  isAnswered = !!(ans?.label);
-                } else {
-                  isAnswered = !!(ans?.value?.trim()) || !!(selectedImages[p.id]);
-                }
-                const isCurrent = idx === currentIndex;
-                return (
-                  <button
-                    key={p.id}
-                    onClick={() => handleJumpTo(idx)}
-                    disabled={isSaving}
-                    style={{
-                      width: 34,
-                      height: 34,
-                      fontSize: '0.75rem',
-                      fontWeight: isCurrent ? 700 : 500,
-                      border: isCurrent ? '2px solid #0d6efd' : isPartial ? '1px solid #ffc107' : '1px solid #dee2e6',
-                      borderRadius: 6,
-                      cursor: 'pointer',
-                      background: isCurrent
-                        ? '#0d6efd'
-                        : isAnswered
-                        ? '#d1e7dd'
-                        : isPartial
-                        ? '#fff3cd'
-                        : '#f8f9fa',
-                      color: isCurrent ? '#fff' : isAnswered ? '#0a3622' : isPartial ? '#664d03' : '#6c757d',
-                    }}
-                  >
-                    {idx + 1}
-                  </button>
-                );
-              })}
-            </div>
-            <div className="mt-3 d-flex flex-column gap-1" style={{ fontSize: '0.7rem', color: '#6c757d' }}>
-              <div className="d-flex align-items-center gap-1">
-                <span style={{ width: 12, height: 12, background: '#0d6efd', borderRadius: 3, display: 'inline-block' }} />
-                Одоогийн
-              </div>
-              <div className="d-flex align-items-center gap-1">
-                <span style={{ width: 12, height: 12, background: '#d1e7dd', border: '1px solid #dee2e6', borderRadius: 3, display: 'inline-block' }} />
-                Хариулсан
-              </div>
-              <div className="d-flex align-items-center gap-1">
-                <span style={{ width: 12, height: 12, background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 3, display: 'inline-block' }} />
-                Дутуу
-              </div>
-              <div className="d-flex align-items-center gap-1">
-                <span style={{ width: 12, height: 12, background: '#f8f9fa', border: '1px solid #dee2e6', borderRadius: 3, display: 'inline-block' }} />
-                Хариулаагүй
-              </div>
-            </div>
-            <div className="mt-3 d-flex flex-column gap-2">
-              <button
-                className="btn btn-success btn-sm w-100"
-                onClick={() => setShowFinishModal(true)}
-                disabled={isSaving}
-                style={{ fontSize: '0.75rem' }}
-              >
-                <i className="bi bi-check-circle me-1"></i>
-                Дуусгах
-              </button>
-              <button
-                className="btn btn-outline-secondary btn-sm w-100"
-                onClick={handleSaveAndExit}
-                disabled={isSaving}
-                style={{ fontSize: '0.75rem' }}
-              >
-                <i className="bi bi-save me-1"></i>
-                Хадгалаад гарах
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <ProblemNavigatorSidebar
+        problems={problems}
+        answers={answers}
+        selectedImages={selectedImages}
+        currentIndex={currentIndex}
+        answeredCount={answeredCount}
+        isSaving={isSaving}
+        onJumpTo={handleJumpTo}
+        onFinish={() => setShowFinishModal(true)}
+        onSaveAndExit={handleSaveAndExit}
+      />
       </div>{/* d-flex wrapper */}
 
-      {/* Pause Modal */}
-      <Modal show={showPauseModal} onHide={handleResume} centered backdrop="static">
-        <Modal.Header>
-          <Modal.Title>
-            <i className="bi bi-pause-circle text-warning me-2"></i>
-            Тест түр зогссон
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <p>Тест түр зогссон байна. Та хүссэн үедээ үргэлжлүүлж болно.</p>
-          <Alert variant="info" className="mb-0">
-            <i className="bi bi-info-circle me-2"></i>
-            Түр зогсоосон хугацаа нийт хугацаанд тооцогдохгүй.
-          </Alert>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="primary" onClick={handleResume}>
-            <i className="bi bi-play-circle me-2"></i>
-            Үргэлжлүүлэх
-          </Button>
-          <Button variant="outline-secondary" onClick={() => { intentionalExitRef.current = true; navigate(`/quiz/${id}`); }}>
-            <i className="bi bi-save me-1"></i>
-            Хадгалаад гарах
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <PauseModal
+        show={showPauseModal}
+        onResume={handleResume}
+        onExit={() => { intentionalExitRef.current = true; navigate(`/quiz/${id}`); }}
+      />
 
-      {/* Finish Modal */}
-      <Modal show={showFinishModal} onHide={() => setShowFinishModal(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>
-            <i className="bi bi-check-circle text-success me-2"></i>
-            Тест дуусгах
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <p>Та тестийг дуусгахдаа итгэлтэй байна уу?</p>
-          <p className="mb-0">
-            <strong>Нийт хариулсан:</strong> {answeredCount} / {problems.length}
-          </p>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowFinishModal(false)}>
-            Цуцлах
-          </Button>
-          <Button variant="success" onClick={handleFinish}>
-            <i className="bi bi-check-circle me-2"></i>
-            Тийм, дуусгах
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <FinishModal
+        show={showFinishModal}
+        onHide={() => setShowFinishModal(false)}
+        answeredCount={answeredCount}
+        problemsLength={problems.length}
+        onConfirm={handleFinish}
+      />
 
-      {/* Time Limit Modal */}
-      <Modal show={showTimeLimitModal} onHide={() => {}} centered backdrop="static">
-        <Modal.Header>
-          <Modal.Title>
-            <i className="bi bi-hourglass-bottom text-danger me-2"></i>
-            Хугацаа дууслаа!
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Alert variant="warning">
-            <i className="bi bi-exclamation-triangle me-2"></i>
-            Тестийн хугацаа ({quiz?.default_time_limit} минут) дууссан байна.
-          </Alert>
-          <p className="mb-0">Та тестийг дуусгах уу эсвэл үргэлжлүүлэх үү?</p>
-          <p className="text-muted small">
-            <strong>Санамж:</strong> Үргэлжлүүлсэн ч дүн дээр нөлөөлнө.
-          </p>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button
-            variant="primary"
-            onClick={() => {
-              setShowTimeLimitModal(false);
-              // Timer-г үргэлжлүүлэх
-              setQuizStartTime(new Date(new Date() - totalElapsedTime * 1000));
-            }}
-          >
-            <i className="bi bi-play-circle me-2"></i>
-            Үргэлжлүүлэх
-          </Button>
-          <Button variant="danger" onClick={handleFinish}>
-            <i className="bi bi-check-circle me-2"></i>
-            Тестийг дуусгах
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <TimeLimitModal
+        show={showTimeLimitModal}
+        defaultTimeLimit={quiz?.default_time_limit}
+        onContinue={() => {
+          setShowTimeLimitModal(false);
+          // Timer-г үргэлжлүүлэх
+          setQuizStartTime(new Date(new Date() - totalElapsedTime * 1000));
+        }}
+        onFinish={handleFinish}
+      />
 
-      {/* Leave Warning Modal — back товч дарахад гарна */}
-      <Modal show={showLeaveModal} onHide={() => setShowLeaveModal(false)} centered backdrop="static">
-        <Modal.Header>
-          <Modal.Title>
-            <i className="bi bi-exclamation-triangle text-warning me-2"></i>
-            Тестээс гарах уу?
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <p>Та тестийг дуусгаагүй байна. Явцыг хадгалаад гарах уу?</p>
-          <p className="text-muted small mb-0">
-            Хадгалсан тохиолдолд дараа үргэлжлүүлж болно.
-          </p>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button
-            variant="primary"
-            disabled={isSavingLeave}
-            onClick={async () => {
-              setIsSavingLeave(true);
-              try {
-                await pauseWithIndex(currentIndex);
-              } catch (e) {
-                console.error(e);
-              } finally {
-                setIsSavingLeave(false);
-              }
-              setShowLeaveModal(false);
-              intentionalExitRef.current = true;
-              navigate(`/quiz/${id}`);
-            }}
-          >
-            {isSavingLeave
-              ? <><Spinner as="span" size="sm" className="me-1" />Хадгалж байна...</>
-              : <><i className="bi bi-save me-1" />Хадгалаад гарах</>
-            }
-          </Button>
-          <Button
-            variant="outline-danger"
-            disabled={isSavingLeave}
-            onClick={() => {
-              setShowLeaveModal(false);
-              intentionalExitRef.current = true;
-              navigate(`/quiz/${id}`);
-            }}
-          >
-            Хадгалахгүй гарах
-          </Button>
-          <Button
-            variant="outline-secondary"
-            disabled={isSavingLeave}
-            onClick={() => setShowLeaveModal(false)}
-          >
-            Цуцлах
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <LeaveWarningModal
+        show={showLeaveModal}
+        onHide={() => setShowLeaveModal(false)}
+        isSavingLeave={isSavingLeave}
+        onSaveAndExit={async () => {
+          setIsSavingLeave(true);
+          try {
+            await pauseWithIndex(currentIndex);
+          } catch (e) {
+            console.error(e);
+          } finally {
+            setIsSavingLeave(false);
+          }
+          setShowLeaveModal(false);
+          intentionalExitRef.current = true;
+          navigate(`/quiz/${id}`);
+        }}
+        onExitWithoutSaving={() => {
+          setShowLeaveModal(false);
+          intentionalExitRef.current = true;
+          navigate(`/quiz/${id}`);
+        }}
+      />
     </Container>
   );
 };
-
-
 
 export default QuizTakePage;

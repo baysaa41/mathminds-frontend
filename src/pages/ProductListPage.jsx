@@ -10,9 +10,7 @@ import Button from 'react-bootstrap/Button';
 import Badge from 'react-bootstrap/Badge';
 import Spinner from 'react-bootstrap/Spinner';
 import Alert from 'react-bootstrap/Alert';
-import Nav from 'react-bootstrap/Nav';
 import { getProducts } from '../services/productsService';
-import PaymentModal from '../components/PaymentModal.jsx';
 import './ProductListPage.css';
 
 function ProductListPage() {
@@ -21,22 +19,6 @@ function ProductListPage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedCategory, setSelectedCategory] = useState('all');
-
-  // Модалын state-үүд (хуучин төлбөрийн систем)
-  const [showModal, setShowModal] = useState(false);
-  const [modalData, _setModalData] = useState(null);
-  const [localInvoiceId, _setLocalInvoiceId] = useState(null);
-
-  // Ангиллын тодорхойлолт
-  const categories = [
-    { key: 'all', label: 'Бүгд', icon: 'grid' },
-    { key: 'student_membership', label: 'Сурагчийн гишүүнчлэл', icon: 'person-badge' },
-    { key: 'teacher_membership', label: 'Багшийн гишүүнчлэл', icon: 'person-workspace' },
-    { key: 'club_membership', label: 'Клубын эрх', icon: 'people' },
-    { key: 'book', label: 'Ном', icon: 'book' },
-    { key: 'other', label: 'Бусад', icon: 'box-seam' },
-  ];
 
   useEffect(() => {
     fetchProducts();
@@ -69,29 +51,6 @@ function ProductListPage() {
     return stars;
   };
 
-  // Ангилалаар шүүх
-  const filteredProducts =
-    selectedCategory === 'all'
-      ? products
-      : products.filter((product) => {
-          switch (selectedCategory) {
-            case 'student_membership':
-              return product.product_type === 'MEMBERSHIP' && product.target_audience === 'student';
-            case 'teacher_membership':
-              return product.product_type === 'MEMBERSHIP' && product.target_audience === 'teacher';
-            case 'club_membership':
-              return product.product_type === 'CLUB_ACCESS';
-            case 'book':
-              return (
-                product.product_type === 'PHYSICAL_BOOK' || product.product_type === 'DIGITAL_BOOK'
-              );
-            case 'other':
-              return product.product_type === 'ITEM' || product.product_type === 'COIN_PACK';
-            default:
-              return true;
-          }
-        });
-
   if (loading) {
     return (
       <Container className="py-5 text-center">
@@ -120,33 +79,14 @@ function ProductListPage() {
             </p>
           </div>
 
-          {/* Ангиллын tabs */}
-          <div className="mb-4">
-            <Nav variant="pills" className="justify-content-center flex-wrap gap-2">
-              {categories.map((category) => (
-                <Nav.Item key={category.key}>
-                  <Nav.Link
-                    active={selectedCategory === category.key}
-                    onClick={() => setSelectedCategory(category.key)}
-                    className="d-flex align-items-center gap-2"
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <i className={`bi bi-${category.icon}`}></i>
-                    {category.label}
-                  </Nav.Link>
-                </Nav.Item>
-              ))}
-            </Nav>
-          </div>
-
           {/* Бүтээгдэхүүнүүд */}
-          {filteredProducts.length === 0 ? (
+          {products.length === 0 ? (
             <Alert variant="info" className="text-center">
               Одоогоор худалдаж авах боломжтой бүтээгдэхүүн алга.
             </Alert>
           ) : (
             <Row className="g-3">
-              {filteredProducts.map((product) => (
+              {products.map((product) => (
                 <Col key={product.id} xs={6} sm={6} md={4} lg={3} xl={3}>
                   <Card className="h-100 shadow-sm border-0 product-card-hover">
                     {/* Зураг */}
@@ -296,14 +236,6 @@ function ProductListPage() {
               ))}
             </Row>
           )}
-
-          {/* Хуучин төлбөрийн модал */}
-          <PaymentModal
-            show={showModal}
-            onClose={() => setShowModal(false)}
-            paymentData={modalData}
-            localInvoiceId={localInvoiceId}
-          />
       </Container>
 
       <style>

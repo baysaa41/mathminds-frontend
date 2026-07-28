@@ -12,7 +12,7 @@ import Modal from 'react-bootstrap/Modal';
 import Toast from 'react-bootstrap/Toast';
 import ToastContainer from 'react-bootstrap/ToastContainer';
 import Form from 'react-bootstrap/Form';
-import { getClubDetail, updateClub, leaveClub, inviteTeacher, removeTeacher, removeMember, refreshRegCode, formatErrorMessage } from '../services/clubsService';
+import { getClubDetail, updateClub, leaveClub, inviteTeacher, removeTeacher, removeMember, refreshRegCode, formatErrorMessage } from '../services/clubService';
 import useToast from '../hooks/useToast';
 import JoinClubModal from '../components/JoinClubModal';
 import { LogOut, Key, Clipboard, RefreshCw } from 'lucide-react';

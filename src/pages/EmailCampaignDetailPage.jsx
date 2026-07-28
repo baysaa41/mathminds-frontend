@@ -117,7 +117,7 @@ const EmailCampaignDetailPage = () => {
     return <Badge bg={badge.variant}>{badge.text}</Badge>;
   };
 
-  const formatDate = (dateString) => {
+  const formatDateTime = (dateString) => {
     if (!dateString) return '-';
     return new Date(dateString).toLocaleString('mn-MN', {
       year: 'numeric',
@@ -205,10 +205,10 @@ const EmailCampaignDetailPage = () => {
             </Col>
             <Col md={6}>
               <p>
-                <strong>Үүсгэсэн:</strong> {formatDate(campaign.created_at)}
+                <strong>Үүсгэсэн:</strong> {formatDateTime(campaign.created_at)}
               </p>
               <p>
-                <strong>Илгээсэн:</strong> {formatDate(campaign.sent_at)}
+                <strong>Илгээсэн:</strong> {formatDateTime(campaign.sent_at)}
               </p>
               <p>
                 <strong>Тест:</strong>{' '}
@@ -331,7 +331,7 @@ const EmailCampaignDetailPage = () => {
                       <tr key={r.id}>
                         <td>{r.email}</td>
                         <td>{r.name || '-'}</td>
-                        <td className="text-muted small">{formatDate(r.sent_at)}</td>
+                        <td className="text-muted small">{formatDateTime(r.sent_at)}</td>
                       </tr>
                     ))}
                   </tbody>

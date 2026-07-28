@@ -9,7 +9,7 @@ import Badge from 'react-bootstrap/Badge';
 import Spinner from 'react-bootstrap/Spinner';
 import { Video, Play, Clock, ChevronUp, ChevronDown, Edit2, Trash2, Plus } from 'lucide-react';
 import VideoFormModal from './VideoFormModal';
-import { deleteVideoItem, moveVideoUp, moveVideoDown } from '../services/clubsService';
+import { deleteVideoItem, moveVideoUp, moveVideoDown } from '../services/clubContentService';
 
 const ClubVideosWidget = ({ club, onUpdate, isTeacherOrAdmin }) => {
   const [showFormModal, setShowFormModal] = useState(false);

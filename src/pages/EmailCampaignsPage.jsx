@@ -72,7 +72,7 @@ const EmailCampaignsPage = () => {
     return <Badge bg={badge.variant}>{badge.text}</Badge>;
   };
 
-  const formatDate = (dateString) => {
+  const formatDateTime = (dateString) => {
     if (!dateString) return '-';
     return new Date(dateString).toLocaleString('mn-MN', {
       year: 'numeric',
@@ -183,7 +183,7 @@ const EmailCampaignsPage = () => {
                         )}
                       </td>
                       <td className="small text-muted">
-                        {formatDate(campaign.created_at)}
+                        {formatDateTime(campaign.created_at)}
                       </td>
                       <td>
                         <div className="d-flex gap-1">

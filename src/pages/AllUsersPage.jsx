@@ -15,6 +15,7 @@ import {
 } from 'react-bootstrap';
 import { Users, Search, Save } from 'lucide-react';
 import apiClient from '../api/axiosConfig';
+import { MEMBERSHIP_CONFIG } from '../constants/membership';
 
 function AllUsersPage() {
   const [users, setUsers] = useState([]);
@@ -127,20 +128,18 @@ function AllUsersPage() {
   };
 
   const getMembershipBadge = (tier, isActiveMember) => {
-    if (tier === 'PRO') {
-      return (
-        <Badge bg={isActiveMember ? 'warning' : 'secondary'} text={isActiveMember ? 'dark' : 'light'}>
-          PRO {!isActiveMember && '(Дууссан)'}
-        </Badge>
-      );
-    } else if (tier === 'MEMBER') {
-      return (
-        <Badge bg={isActiveMember ? 'primary' : 'secondary'}>
-          MEMBER {!isActiveMember && '(Дууссан)'}
-        </Badge>
-      );
+    const config = MEMBERSHIP_CONFIG[tier] || MEMBERSHIP_CONFIG.FREE;
+    if (tier !== 'MEMBER' && tier !== 'PRO') {
+      return <Badge bg="light" text="dark">{config.label}</Badge>;
     }
-    return <Badge bg="light" text="dark">FREE</Badge>;
+    return (
+      <Badge
+        style={{ backgroundColor: isActiveMember ? config.color : '#6c757d' }}
+        text={isActiveMember && tier === 'PRO' ? 'dark' : 'light'}
+      >
+        {config.label} {!isActiveMember && '(Дууссан)'}
+      </Badge>
+    );
   };
 
   const getRoleBadge = (role, isStaff) => {

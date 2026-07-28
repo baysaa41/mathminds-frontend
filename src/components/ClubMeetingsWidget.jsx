@@ -9,7 +9,7 @@ import Badge from 'react-bootstrap/Badge';
 import Spinner from 'react-bootstrap/Spinner';
 import { Video, CalendarDays, Clock, Edit2, Trash2, Plus, ExternalLink } from 'lucide-react';
 import MeetingFormModal from './MeetingFormModal';
-import { deleteMeetingItem } from '../services/clubsService';
+import { deleteMeetingItem } from '../services/clubContentService';
 
 const WEEKDAY_LABELS = ['Даваа', 'Мягмар', 'Лхагва', 'Пүрэв', 'Баасан', 'Бямба', 'Ням'];
 

@@ -8,7 +8,7 @@ import axiosInstance from '../api/axiosConfig';
 import LivePreview from '../components/LivePreview';
 import UserAvatar from '../components/UserAvatar';
 
-const formatTime = (dateStr) => {
+const formatDateTime = (dateStr) => {
   if (!dateStr) return '';
   const d = new Date(dateStr);
   return d.toLocaleString('mn-MN', {
@@ -91,7 +91,7 @@ export default function AdminConversationPage() {
           </div>
           <Badge bg="secondary" className="fw-normal">{messages.length} мессеж</Badge>
         </div>
-        <span className="text-muted small ms-auto">{formatTime(conversation?.created_at)}</span>
+        <span className="text-muted small ms-auto">{formatDateTime(conversation?.created_at)}</span>
       </div>
 
       {/* Messages */}
@@ -126,7 +126,7 @@ export default function AdminConversationPage() {
                         ))}
                       </div>
                       <div className={`small text-muted mt-1 ${isAi ? '' : 'text-end'}`}>
-                        {formatTime(msg.created_at)}
+                        {formatDateTime(msg.created_at)}
                       </div>
                     </div>
                   </div>

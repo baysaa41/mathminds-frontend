@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Card, ListGroup, Button, Badge, Spinner } from 'react-bootstrap';
 import { Award, Calendar, Edit2, Trash2, Plus } from 'lucide-react';
 import ExamFormModal from './ExamFormModal';
-import { deleteExamItem } from '../services/clubsService';
+import { deleteExamItem } from '../services/clubContentService';
 
 const ClubExamsWidget = ({ club, onUpdate, isTeacherOrAdmin }) => {
   const [showFormModal, setShowFormModal] = useState(false);

@@ -11,7 +11,7 @@ import Spinner from 'react-bootstrap/Spinner';
 import UserAvatar from '../components/UserAvatar';
 import { Users, Users2, X, Search, UserPlus, BarChart2, TrendingUp } from 'lucide-react';
 import apiClient from '../api/axiosConfig';
-import { inviteTeacher, formatErrorMessage } from '../services/clubsService';
+import { inviteTeacher, formatErrorMessage } from '../services/clubService';
 
 const ClubMembersPage = () => {
   const {

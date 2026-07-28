@@ -25,7 +25,13 @@ export default defineConfig({
           'bootstrap': ['bootstrap', 'react-bootstrap'],
           'math': ['better-react-mathjax'],
           'editor': ['@tiptap/react', '@tiptap/starter-kit'],
-          'excalidraw': ['@excalidraw/excalidraw'],
+          // ЗОРИУДААР "excalidraw" нэртэй manualChunks entry ашиглахгүй: object хэлбэрийн
+          // manualChunks-д нэр өгсөн chunk бүрийг Vite <link rel="modulepreload">-ээр
+          // index.html-д эхнээс нь татуулдаг болж хувирдаг (зөвхөн DrawPage/DrawingPanel-ийн
+          // lazy() дотор л хэрэглэгддэг ч гэсэн) — @excalidraw/excalidraw (~1.1MB)-ийг
+          // Rollup-ийн автомат code-splitting-д даатгаснаар зөвхөн бодитоор зурах хуудас/
+          // панел нээх үед л татагдана (chunk нэр автоматаар олгогдоно, гэхдээ preload-
+          // гүй болно — bundle:analyze-аар шалгаж болно).
         }
       }
     },

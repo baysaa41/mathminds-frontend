@@ -18,7 +18,7 @@ import EmptyState from '../components/common/EmptyState';
 import {
   getAssignments, createAssignment, updateAssignment, deleteAssignment,
   startAssignment,
-} from '../services/clubsService';
+} from '../services/clubAssignmentService';
 import apiClient from '../api/axiosConfig';
 
 const STATUS_MAP = {

@@ -23,7 +23,7 @@ import {
   Users, PlusCircle, LogIn, ShieldCheck, Award,
   Lock, Unlock, BookOpen, User, Power,
 } from 'lucide-react';
-import { reactivateClub } from '../services/clubsService';
+import { reactivateClub } from '../services/clubService';
 
 // -------------------------------------------------------------------
 const VIEW_TYPES = {

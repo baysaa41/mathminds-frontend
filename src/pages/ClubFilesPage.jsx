@@ -8,7 +8,8 @@ import Button from 'react-bootstrap/Button';
 import Modal from 'react-bootstrap/Modal';
 import Form from 'react-bootstrap/Form';
 import { FileText, FileSpreadsheet, File, FileDown, FolderOpen, Plus, Pencil, Trash2 } from 'lucide-react';
-import clubsService from '../services/clubsService';
+import { createFileItem, updateFileItem, deleteFileItem } from '../services/clubContentService';
+import { formatErrorMessage } from '../services/clubService';
 
 const FILE_ICONS = {
   PDF:  <FileText size={18} className="text-danger" />,
@@ -113,14 +114,14 @@ const ClubFilesPage = () => {
       if (!editing) fd.append('club', clubData.id);
 
       if (editing) {
-        await clubsService.updateFileItem(editing.id, fd);
+        await updateFileItem(editing.id, fd);
       } else {
-        await clubsService.createFileItem(fd);
+        await createFileItem(fd);
       }
       await clubActions.onUpdate();
       setShowModal(false);
     } catch (err) {
-      setError(clubsService.formatErrorMessage(err));
+      setError(formatErrorMessage(err));
     } finally {
       setSaving(false);
     }
@@ -135,7 +136,7 @@ const ClubFilesPage = () => {
     if (!fileToDelete) return;
     setDeletingId(fileToDelete.id);
     try {
-      await clubsService.deleteFileItem(fileToDelete.id);
+      await deleteFileItem(fileToDelete.id);
       await clubActions.onUpdate();
     } catch (err) {
       console.error(err);

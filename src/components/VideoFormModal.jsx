@@ -7,7 +7,7 @@ import Form from 'react-bootstrap/Form';
 import Button from 'react-bootstrap/Button';
 import Alert from 'react-bootstrap/Alert';
 import Spinner from 'react-bootstrap/Spinner';
-import { createVideoItem, updateVideoItem } from '../services/clubsService';
+import { createVideoItem, updateVideoItem } from '../services/clubContentService';
 
 const VideoFormModal = ({ show, onHide, clubId, videoItem, onSuccess }) => {
   const [title, setTitle] = useState('');

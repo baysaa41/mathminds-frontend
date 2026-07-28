@@ -18,6 +18,8 @@ import Alert from 'react-bootstrap/Alert';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 import Modal from 'react-bootstrap/Modal';
+import ListGroup from 'react-bootstrap/ListGroup';
+import Badge from 'react-bootstrap/Badge';
 
 function ProfileEditPage() {
   const { user, updateUser } = useAuth(); // updateUser-г context-с авна
@@ -56,7 +58,7 @@ function ProfileEditPage() {
   const [programError, setProgramError] = useState(null);
 
   const loadMyPrograms = useCallback(() => {
-    apiClient.get('/api/curriculum/my-programs/')
+    apiClient.get('/api/curriculum/my-programs/', { params: { self_only: true } })
       .then(r => setMyPrograms(r.data || []))
       .catch(() => {});
   }, []);
@@ -616,13 +618,19 @@ function ProfileEditPage() {
                 <Form.Label>Миний хөтөлбөрүүд</Form.Label>
                 {programError && <Alert variant="danger" className="py-2 small">{programError}</Alert>}
                 {myPrograms.length > 0 ? (
-                  <div className="d-flex flex-column gap-2 mb-2">
+                  <ListGroup variant="flush" className="border rounded mb-2">
                     {myPrograms.map(e => (
-                      <div key={e.id} className="d-flex align-items-center justify-content-between border rounded px-3 py-2">
-                        <span>
+                      <ListGroup.Item
+                        key={e.id}
+                        className="py-2 px-3 d-flex align-items-center justify-content-between"
+                        style={{ fontSize: '0.8rem' }}
+                      >
+                        <div className="text-truncate">
                           <span className="fw-semibold">{e.program.name}</span>
-                          <span className="text-muted small ms-2">{e.program.grade}-р анги</span>
-                        </span>
+                          <Badge bg="secondary" className="ms-2" style={{ fontSize: '0.65rem' }}>
+                            {e.program.grade}-р анги
+                          </Badge>
+                        </div>
                         <Button
                           variant="outline-danger"
                           size="sm"
@@ -631,9 +639,9 @@ function ProfileEditPage() {
                         >
                           Цуцлах
                         </Button>
-                      </div>
+                      </ListGroup.Item>
                     ))}
-                  </div>
+                  </ListGroup>
                 ) : (
                   <div className="text-muted small mb-2">Одоогоор хөтөлбөр сонгоогүй байна.</div>
                 )}

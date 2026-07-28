@@ -89,6 +89,7 @@ export const MEMBERSHIP_PERMISSIONS = {
     canJoinClubs: true,
     canCreateClubs: true,
     canPurchaseAddons: false,
+    canUseAi: false,
     roleType: 'teacher',
     label: 'Үнэгүй багш',
     description: '1 клуб, 10 сурагч, контент үүсгэхгүй, зартай',
@@ -104,6 +105,7 @@ export const MEMBERSHIP_PERMISSIONS = {
     canJoinClubs: true,
     canCreateClubs: true,
     canPurchaseAddons: true,  // Нэмэлт худалдаж авах боломжтой
+    canUseAi: true,
     teachersPerClubBonus: 10,  // 1 багш = +10 сурагч
     roleType: 'teacher',
     label: 'Энгийн багш',
@@ -120,6 +122,7 @@ export const MEMBERSHIP_PERMISSIONS = {
     canJoinClubs: true,
     canCreateClubs: true,
     canPurchaseAddons: false,  // Хязгааргүй тул шаардлагагүй
+    canUseAi: true,
     roleType: 'teacher',
     label: 'VIP багш',
     description: 'Хязгааргүй клуб, хязгааргүй сурагч (админ олгоно)',
@@ -151,6 +154,7 @@ export const MEMBERSHIP_PERMISSIONS = {
     canCreateContent: false,
     canJoinClubs: false,  // FREE сурагч клубд элсэх боломжгүй!
     canCreateClubs: false,
+    canUseAi: false,
     roleType: 'student',
     label: 'Үнэгүй сурагч',
     description: 'Үзэх, пост бичих, клубд элсэхгүй',
@@ -165,11 +169,76 @@ export const MEMBERSHIP_PERMISSIONS = {
     canCreateContent: false,
     canJoinClubs: true,  // MEMBER сурагч клубд элсэх боломжтой
     canCreateClubs: false,
+    canUseAi: true,
     roleType: 'student',
     label: 'Гишүүн сурагч',
     description: 'Клубт элсэх, пост бичих, илүү олон зураг',
   },
-  // PRO түвшин сурагчид байхгүй
+  'STUDENT:PRO': {  // Endowment-ээ бүрмөсөн хандивласан сурагч (backend: convert_to_permanent)
+    maxClubs: 0,
+    maxClubMembers: 0,
+    boostedPostsPerMonth: 0,
+    showAds: false,
+    maxImagesPerPost: 10,
+    maxVideoSize: 200 * 1024 * 1024, // 200MB
+    canCreateContent: false,
+    canJoinClubs: true,
+    canCreateClubs: false,
+    canUseAi: true,
+    roleType: 'student',
+    label: 'VIP сурагч',
+    description: 'Хугацаагүй VIP эрх, тэргүүн ээлжийн боломж',
+  },
+
+  // ЭЦЭГ ЭХИЙН ЭРХ
+  'PARENT:FREE': {
+    maxClubs: 0,
+    maxClubMembers: 0,
+    boostedPostsPerMonth: 0,
+    showAds: true,
+    maxImagesPerPost: 3,
+    maxVideoSize: 50 * 1024 * 1024, // 50MB
+    canCreateContent: false,
+    canJoinClubs: false,
+    canCreateClubs: false,
+    canPurchaseAddons: false,
+    canUseAi: false,
+    roleType: 'parent',
+    label: 'Үнэгүй эцэг эх',
+    description: 'Хүүхдийнхээ явцыг хянах, хязгаарлагдмал',
+  },
+  'PARENT:MEMBER': {
+    maxClubs: 0,
+    maxClubMembers: 0,
+    boostedPostsPerMonth: 0,
+    showAds: false,
+    maxImagesPerPost: 5,
+    maxVideoSize: 100 * 1024 * 1024, // 100MB
+    canCreateContent: false,
+    canJoinClubs: false,
+    canCreateClubs: false,
+    canPurchaseAddons: false,
+    canUseAi: true,
+    roleType: 'parent',
+    label: 'Гишүүн эцэг эх',
+    description: 'Хүүхдийнхээ явцыг хянах, AI боломж ашиглах',
+  },
+  'PARENT:PRO': {
+    maxClubs: 0,
+    maxClubMembers: 0,
+    boostedPostsPerMonth: 0,
+    showAds: false,
+    maxImagesPerPost: 5,
+    maxVideoSize: 100 * 1024 * 1024, // 100MB
+    canCreateContent: false,
+    canJoinClubs: false,
+    canCreateClubs: false,
+    canPurchaseAddons: false,
+    canUseAi: true,
+    roleType: 'parent',
+    label: 'VIP эцэг эх',
+    description: 'Хүүхдийнхээ явцыг хянах, тэргүүн ээлжийн эрх',
+  },
 
   // БУСАД/ЗОЧИН
   'OTHER:FREE': {
@@ -182,6 +251,7 @@ export const MEMBERSHIP_PERMISSIONS = {
     canCreateContent: false,
     canJoinClubs: false,
     canCreateClubs: false,
+    canUseAi: false,
     roleType: 'other',
     label: 'Зочин',
     description: 'Үзэх эрхтэй, хязгаарлагдмал',
@@ -196,6 +266,7 @@ export const MEMBERSHIP_PERMISSIONS = {
     canCreateContent: false,
     canJoinClubs: true,
     canCreateClubs: false,
+    canUseAi: true,
     roleType: 'other',
     label: 'Гишүүн',
     description: 'Клубт элсэх, пост бичих',
@@ -210,6 +281,7 @@ export const MEMBERSHIP_PERMISSIONS = {
     canCreateContent: false,
     canJoinClubs: true,
     canCreateClubs: true,
+    canUseAi: true,
     roleType: 'other',
     label: 'Мэргэжлийн гишүүн',
     description: 'Клуб үүсгэх, илүү олон боломж',
@@ -296,6 +368,17 @@ export function canCreateContent(siteRole, membershipTier) {
 export function canJoinClubs(siteRole, membershipTier) {
   const perms = getMembershipPermissions(siteRole, membershipTier);
   return perms.canJoinClubs;
+}
+
+/**
+ * AI боломж ашиглах эрхтэй эсэхийг шалгах (FREE tier ашиглах боломжгүй)
+ * @param {string} siteRole - Сайт дахь үүрэг
+ * @param {string} membershipTier - Гишүүнчлэлийн түвшин
+ * @returns {boolean}
+ */
+export function canUseAi(siteRole, membershipTier) {
+  const perms = getMembershipPermissions(siteRole, membershipTier);
+  return perms.canUseAi || false;
 }
 
 // Legacy support - хуучин кодтой нийцтэй байлгах

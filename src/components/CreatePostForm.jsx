@@ -12,7 +12,7 @@ import {
 } from 'react-bootstrap';
 import apiClient from '../api/axiosConfig';
 import { usePrefill } from '../context/PrefillContext';
-import { getMyClubs } from '../services/clubsService';
+import { getMyClubs } from '../services/clubService';
 import EmojiPickerButton from './EmojiPickerButton';
 
 /**

@@ -22,15 +22,18 @@ function PostTimestamp({ date, className = '', showTooltip = true }) {
     return <span className={className}>{displayText}</span>;
   }
 
+  // `className` (жишээ нь "d-block") нь эндхийн гадна span-д хэрэглэгдэнэ — OverlayTrigger-ийн
+  // шууд хүүхэд элемент block өргөнөөр сунадаггүй, зөвхөн харагдах текстийн хэмжээтэй тул
+  // Popper tooltip-ийг үзэгдэж буй текстийн дээр биш, бүтэн блокийн голд тавихаас сэргийлнэ.
   return (
-    <OverlayTrigger
-      placement="top"
-      overlay={<Tooltip>{fullDateTime}</Tooltip>}
-    >
-      <span className={className} style={{ cursor: 'help' }}>
-        {displayText}
-      </span>
-    </OverlayTrigger>
+    <span className={className}>
+      <OverlayTrigger
+        placement="top"
+        overlay={<Tooltip>{fullDateTime}</Tooltip>}
+      >
+        <span style={{ cursor: 'help' }}>{displayText}</span>
+      </OverlayTrigger>
+    </span>
   );
 }
 

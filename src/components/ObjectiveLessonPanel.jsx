@@ -11,7 +11,7 @@ import LivePreview from './LivePreview';
 import { useAuth } from '../context/AuthContext';
 import {
   startObjectiveLesson, sendObjectiveFeedback, getObjective, updateObjective,
-} from '../services/clubsService';
+} from '../services/curriculumService';
 import { getConversationMessages, sendMessage } from '../services/conversationService';
 import useChatSocket from '../hooks/useChatSocket';
 

@@ -13,7 +13,7 @@ const SUBJECT_LABELS = {
   all: 'Бүх хичээл',
 };
 
-function formatDate(dateStr) {
+function formatDateTime(dateStr) {
   if (!dateStr) return '—';
   const d = new Date(dateStr);
   return d.toLocaleString('mn-MN', {
@@ -165,7 +165,7 @@ export default function AIConversationsPage() {
                         <Badge bg="secondary" className="fw-normal">{conv.message_count}</Badge>
                       </td>
                       <td style={{ fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
-                        {formatDate(conv.updated_at)}
+                        {formatDateTime(conv.updated_at)}
                       </td>
                       <td>
                         <Link

@@ -55,6 +55,25 @@ export function formatTime(date) {
 }
 
 /**
+ * Мессежийн жагсаалтад зориулсан богино харьцангуй цаг: 24 цагийн дотор бол
+ * цаг (14:30), 24-48 цагийн хооронд бол "Өчигдөр", түүнээс хойш богино огноо
+ * (12-р сарын 2). `formatRelativeDate`-ээс ялгаатай, илүү бага мужтай.
+ * @param {string|Date} dateString - Он сар
+ * @returns {string}
+ */
+export function formatMessageTime(dateString) {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInHours = (now - date) / (1000 * 60 * 60);
+  if (diffInHours < 24) {
+    return date.toLocaleTimeString('mn-MN', { hour: '2-digit', minute: '2-digit' });
+  } else if (diffInHours < 48) {
+    return 'Өчигдөр';
+  }
+  return date.toLocaleDateString('mn-MN', { month: 'short', day: 'numeric' });
+}
+
+/**
  * Харьцангуй он сар (3 хоногийн өмнө гэх мэт)
  * @param {string|Date} date - Он сар
  * @returns {string}

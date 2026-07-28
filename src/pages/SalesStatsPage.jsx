@@ -31,7 +31,7 @@ const MONTHS_MN = ['1-р сар','2-р сар','3-р сар','4-р сар','5-р
 const currentYear = new Date().getFullYear();
 const YEARS = Array.from({ length: 4 }, (_, i) => currentYear - i);
 
-function formatDate(d) {
+function formatDateTime(d) {
   if (!d) return '-';
   return new Date(d).toLocaleDateString('mn-MN', {
     year: 'numeric', month: '2-digit', day: '2-digit',
@@ -182,7 +182,7 @@ function CoinSalesTab() {
                                       </td>
                                       <td className="text-end">{p.quantity}</td>
                                       <td className="text-end">{(p.price_paid || 0).toLocaleString()}</td>
-                                      <td className="text-end"><small>{formatDate(p.purchased_at)}</small></td>
+                                      <td className="text-end"><small>{formatDateTime(p.purchased_at)}</small></td>
                                     </tr>
                                   ))}
                                 </tbody>
@@ -384,7 +384,7 @@ function QPayTab() {
                           }
                         </td>
                         <td className="text-end fw-semibold text-success">{formatMnt(inv.amount)}</td>
-                        <td className="text-end"><small>{formatDate(inv.paid_at)}</small></td>
+                        <td className="text-end"><small>{formatDateTime(inv.paid_at)}</small></td>
                       </tr>
                     ))
                   }

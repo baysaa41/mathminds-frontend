@@ -243,13 +243,28 @@ export default function ProductDetailPage() {
               <Card className="shadow-sm border-0">
                 <Card.Body className="p-4">
                   {/* Төрөл */}
-                  <div className="mb-3">
-                    <Badge bg="primary">{product.product_type_display}</Badge>
-                    {product.is_digital && (
-                      <Badge bg="info" className="ms-2">
-                        <i className="bi bi-download me-1" />
-                        Дижитал
-                      </Badge>
+                  <div className="mb-3 d-flex align-items-center justify-content-between">
+                    <div>
+                      <Badge bg="primary">{product.product_type_display}</Badge>
+                      {product.is_digital && (
+                        <Badge bg="info" className="ms-2">
+                          <i className="bi bi-download me-1" />
+                          Дижитал
+                        </Badge>
+                      )}
+                    </div>
+                    {user?.is_staff && (
+                      <Button
+                        variant="outline-primary"
+                        size="sm"
+                        href={`${import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000'}/admin/products/product/${product.id}/change/`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Засварлах"
+                      >
+                        <i className="bi bi-pencil me-1" />
+                        Засварлах
+                      </Button>
                     )}
                   </div>
 

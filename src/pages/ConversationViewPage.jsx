@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getConversation, getConversationMessages } from '../services/conversationService';
+import { formatMessageTime } from '../utils/dateFormatter';
 import UserAvatar from '../components/UserAvatar';
 import LivePreview from '../components/LivePreview';
 import Spinner from 'react-bootstrap/Spinner';
@@ -27,18 +28,6 @@ const openImageViewer = (e) => {
     hidden() { viewer.destroy(); },
   });
   viewer.show();
-};
-
-const formatTime = (dateString) => {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffInHours = (now - date) / (1000 * 60 * 60);
-  if (diffInHours < 24) {
-    return date.toLocaleTimeString('mn-MN', { hour: '2-digit', minute: '2-digit' });
-  } else if (diffInHours < 48) {
-    return 'Өчигдөр';
-  }
-  return date.toLocaleDateString('mn-MN', { month: 'short', day: 'numeric' });
 };
 
 const isAiConv = (conv) => conv?.user1?.is_ai_teacher || conv?.user2?.is_ai_teacher;
@@ -76,8 +65,14 @@ const ConversationViewPage = () => {
         const msgData = await getConversationMessages(conversationUuid);
         if (cancelled) return;
         setMessages(msgData.messages || []);
-      } catch {
-        if (!cancelled) setError('Харилцан яриа олдсонгүй эсвэл устгагдсан байна.');
+      } catch (err) {
+        if (!cancelled) {
+          if (err.response?.status === 403) {
+            setError('Энэ харилцан яриа хаагдсан байна.');
+          } else {
+            setError('Харилцан яриа олдсонгүй эсвэл устгагдсан байна.');
+          }
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -121,8 +116,8 @@ const ConversationViewPage = () => {
             <div className="fw-bold">
               {user2?.first_name || user2?.username}
             </div>
-            <Badge bg="secondary" className="ms-auto">
-              Нийтэд нээлттэй
+            <Badge bg={conversation?.is_closed ? 'warning' : 'secondary'} text={conversation?.is_closed ? 'dark' : undefined} className="ms-auto">
+              {conversation?.is_closed ? 'Хаагдсан' : 'Нийтэд нээлттэй'}
             </Badge>
           </div>
           {!user && (
@@ -171,7 +166,7 @@ const ConversationViewPage = () => {
                         ))}
                       </div>
                       <div className={`small text-muted mt-1 ${isByUser1 ? '' : 'text-end'}`}>
-                        {formatTime(message.created_at)}
+                        {formatMessageTime(message.created_at)}
                       </div>
                     </div>
                   </div>

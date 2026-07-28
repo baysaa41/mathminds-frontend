@@ -1,7 +1,7 @@
 // Exam management modal - simplified version
 import React, { useState, useEffect } from 'react';
 import { Modal, Form, Button, Alert, Spinner } from 'react-bootstrap';
-import { createExamItem, updateExamItem } from '../services/clubsService';
+import { createExamItem, updateExamItem } from '../services/clubContentService';
 
 const ExamFormModal = ({ show, onHide, clubId, examItem, onSuccess }) => {
   const [title, setTitle] = useState('');

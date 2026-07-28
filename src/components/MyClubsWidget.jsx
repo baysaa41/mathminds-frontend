@@ -6,7 +6,7 @@ import Badge from 'react-bootstrap/Badge';
 import Spinner from 'react-bootstrap/Spinner';
 import { Users, Plus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { getMyClubs } from '../services/clubsService';
+import { getMyClubs } from '../services/clubService';
 
 const MyClubsWidget = () => {
   const { user, isAuthenticated } = useAuth();

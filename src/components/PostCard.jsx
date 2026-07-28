@@ -1,7 +1,5 @@
 // frontend/src/components/PostCard.jsx
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import Viewer from 'viewerjs';
-import 'viewerjs/dist/viewer.css';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import apiClient from '../api/axiosConfig';
 import { useAuth } from '../context/AuthContext';
@@ -10,359 +8,26 @@ import { useAuth } from '../context/AuthContext';
 import LivePreview from './LivePreview';
 import UserAvatar from './UserAvatar';
 import EmbedRenderer from './EmbedRenderer';
-import VerifiedBadge from './VerifiedBadge';
 import UserName from './UserName';
 import PostTimestamp from './PostTimestamp';
+import { PostImageGallery } from './postCard/PostImageGallery.jsx';
+import { EmbeddedProblemsList } from './postCard/EmbeddedProblemsList.jsx';
+import { PostContent } from './postCard/PostContent.jsx';
+import { PostMenu } from './postCard/PostMenu.jsx';
+import { PostActionsFooter } from './postCard/PostActionsFooter.jsx';
+import { DeletePostModal } from './postCard/DeletePostModal.jsx';
+import { ReportPostModal } from './postCard/ReportPostModal.jsx';
+import { AIHelpModal } from './postCard/AIHelpModal.jsx';
+import { EditPostModal } from './postCard/EditPostModal.jsx';
 
 // React Bootstrap
 import Card from 'react-bootstrap/Card';
 import Stack from 'react-bootstrap/Stack';
-import Button from 'react-bootstrap/Button';
-import Spinner from 'react-bootstrap/Spinner';
 import Toast from 'react-bootstrap/Toast';
 import ToastContainer from 'react-bootstrap/ToastContainer';
-import Dropdown from 'react-bootstrap/Dropdown';
 import Badge from 'react-bootstrap/Badge';
-import Modal from 'react-bootstrap/Modal';
-import Accordion from 'react-bootstrap/Accordion';
-
-// -------------------------------------------------------------------
-// ----------------- PostImageGallery (Туслах компонент) -----------------
-// -------------------------------------------------------------------
-const PostImageGallery = ({ images }) => {
-  const galleryRef = useRef(null);
-  const viewerRef = useRef(null);
-
-  useEffect(() => {
-    if (!galleryRef.current || !images || images.length === 0) return;
-
-    viewerRef.current = new Viewer(galleryRef.current, {
-      toolbar: {
-        zoomIn: 1,
-        zoomOut: 1,
-        oneToOne: 1,
-        reset: 1,
-        prev: images.length > 1 ? 1 : 0,
-        play: 0,
-        next: images.length > 1 ? 1 : 0,
-        rotateLeft: 1,
-        rotateRight: 1,
-        flipHorizontal: 0,
-        flipVertical: 0,
-      },
-      navbar: images.length > 1,
-      title: false,
-    });
-
-    return () => {
-      if (viewerRef.current) {
-        viewerRef.current.destroy();
-        viewerRef.current = null;
-      }
-    };
-  }, [images]);
-
-  if (!images || images.length === 0) return null;
-
-  // 1. Нэг зураг байвал: Бүтнээр нь харуулах
-  if (images.length === 1) {
-    return (
-      <div
-        ref={galleryRef}
-        className="my-2"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <img
-          src={images[0].image}
-          className="img-fluid rounded post-image"
-          alt="Post attachment"
-          style={{
-            maxWidth: '100%',
-            maxHeight: '600px',
-            height: 'auto',
-            objectFit: 'contain',
-            display: 'block',
-            margin: '0 auto',
-            cursor: 'zoom-in',
-          }}
-        />
-      </div>
-    );
-  }
-
-  // 2. 2+ зураг байвал: Grid
-  const visibleImages = images.slice(0, 4);
-  const hiddenImages = images.slice(4);
-
-  return (
-    <div
-      ref={galleryRef}
-      className="my-2"
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div
-        className="post-image-gallery"
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '4px',
-          borderRadius: '8px',
-          overflow: 'hidden',
-        }}
-      >
-        {visibleImages.map((img, index) => (
-          <div
-            key={img.id}
-            className="position-relative"
-            style={{ paddingTop: '100%', overflow: 'hidden' }}
-          >
-            <img
-              src={img.image}
-              alt={`Post image ${index + 1}`}
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                cursor: 'zoom-in',
-              }}
-            />
-            {images.length > 4 && index === 3 && (
-              <div
-                className="position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center"
-                style={{
-                  backgroundColor: 'rgba(0,0,0,0.5)',
-                  color: 'white',
-                  fontSize: '1.5rem',
-                  fontWeight: 'bold',
-                  pointerEvents: 'none',
-                }}
-              >
-                +{images.length - 4}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-      {/* Viewer-т зориулсан нуугдмал зургууд (5-с дээш зурагтай үед) */}
-      {hiddenImages.map((img) => (
-        <img
-          key={img.id}
-          src={img.image}
-          alt="Post attachment"
-          style={{ display: 'none' }}
-        />
-      ))}
-    </div>
-  );
-};
-
-// LaTeX expression-н дотор тасрахгүйгээр товчлох
-const safeTruncate = (text, maxLen) => {
-  if (!text || text.length <= maxLen) return text;
-  // maxLen-с өмнөх байрлалаас LaTeX-н хаалтад орсон эсэхийг шалгана
-  let inside = false;
-  let i = 0;
-  while (i < maxLen) {
-    if (text[i] === '$') { inside = !inside; }
-    else if (text.startsWith('\\(', i)) { inside = true; i++; }
-    else if (text.startsWith('\\)', i)) { inside = false; i++; }
-    i++;
-  }
-  // LaTeX дотор байвал хаах тэмдэг хүртэл буцна
-  if (inside) {
-    const closeIdx = text.indexOf('$', maxLen);
-    const closeIdx2 = text.indexOf('\\)', maxLen);
-    const end = [closeIdx, closeIdx2].filter(x => x >= 0).sort((a,b) => a-b)[0];
-    if (end !== undefined) return text.substring(0, end + (text[end] === '$' ? 1 : 2)) + '...';
-  }
-  return text.substring(0, maxLen) + '...';
-};
-
-// -------------------------------------------------------------------
-// -------------- EmbeddedProblemsList (Туслах компонент) ------------
-// -------------------------------------------------------------------
-const EmbeddedProblemsList = ({ problems }) => {
-  if (!problems || problems.length === 0) return null;
-
-  return (
-    <Accordion className="mt-3" alwaysOpen>
-      {problems.map((p, idx) => (
-        <Accordion.Item eventKey={String(idx)} key={p.id}>
-          <Accordion.Header>Жишээ {idx + 1}</Accordion.Header>
-          <Accordion.Body>
-            <div className="mathjax-content mb-2" style={{ whiteSpace: 'pre-wrap' }}>
-              <LivePreview content={p.statement || p.title} />
-            </div>
-            <div className="text-end">
-              <Link to={`/problem/${p.uuid}`} target="_blank" rel="noopener noreferrer" className="small">
-                Дэлгэрэнгүй харах →
-              </Link>
-            </div>
-          </Accordion.Body>
-        </Accordion.Item>
-      ))}
-    </Accordion>
-  );
-};
-
-// -------------------------------------------------------------------
-// ----------------- PostContent (Туслах компонент) ------------------
-// -------------------------------------------------------------------
-const AIChatExcerptCard = ({ post, excerpt }) => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const messages = excerpt?.messages_snapshot || [];
-  const canContinue = excerpt?.conversation_uuid && post?.author?.id === user?.id;
-
-  return (
-    <div className="border rounded p-2" style={{ background: '#f8f9fa' }}>
-      {!messages.length ? (
-        <div className="text-muted fst-italic">[Чатын агуулга олдсонгүй]</div>
-      ) : (
-        messages.map((m, idx) => (
-          <div key={idx} className={`d-flex gap-2 mb-2 ${idx === messages.length - 1 && !canContinue ? 'mb-0' : ''}`}>
-            <span style={{ flexShrink: 0 }}>{m.is_ai ? '🤖' : '🧑'}</span>
-            <div className="small">
-              <div className="fw-bold">{m.author_name}</div>
-              <LivePreview content={m.content} />
-            </div>
-          </div>
-        ))
-      )}
-      {canContinue && (
-        <Button
-          variant="link"
-          size="sm"
-          className="p-0"
-          onClick={(e) => {
-            e.stopPropagation();
-            navigate('/ai-chat/messages', { state: { conversationUuid: excerpt.conversation_uuid } });
-          }}
-        >
-          Үргэлжлүүлэх ярилцах
-        </Button>
-      )}
-    </div>
-  );
-};
-
-const PostContent = ({ post }) => {
-  const navigate = useNavigate();
-
-  if (!post) return null;
-
-  if (
-    post.content_type === 'post' ||
-    post.content_type === 'repost' ||
-    post.content_type === 'reply'
-  ) {
-    return null;
-  }
-
-  if (post.content_type === 'ai_chat') {
-    return <AIChatExcerptCard post={post} excerpt={post.related_chat_excerpt} />;
-  }
-
-  const relatedItem =
-    post.related_problem || post.related_formula || post.related_article || post.related_quiz;
-
-  if (!relatedItem)
-    return <div className="text-muted fst-italic">[Холбоотой контент олдсонгүй]</div>;
-
-  const detailUrlMap = {
-    article: `/article/${relatedItem.uuid}`,
-    problem: `/problem/${relatedItem.uuid}`,
-    formula: `/formula/${relatedItem.uuid}`,
-    quiz:    `/quiz/${relatedItem.uuid}`,
-  };
-  const contentUrl = relatedItem.uuid ? detailUrlMap[post.content_type] : null;
-
-  let title = relatedItem.title || relatedItem.name || `Контент #${relatedItem.id}`;
-
-  let description =
-    relatedItem.statement ||
-    relatedItem.content ||
-    relatedItem.abstract ||
-    relatedItem.description ||
-    '';
-
-  let typeLabel;
-  let badgeVariant;
-
-  switch (post.content_type) {
-    case 'problem':
-      typeLabel = 'Бодлого';
-      badgeVariant = 'secondary';
-      break;
-    case 'formula':
-      typeLabel = 'Томьёо';
-      badgeVariant = 'info';
-      break;
-    case 'article':
-      typeLabel = 'Өгүүлэл';
-      badgeVariant = 'danger';
-      break;
-    case 'quiz':
-      typeLabel = 'Тест';
-      badgeVariant = 'success';
-      break;
-    default:
-      typeLabel = 'Контент';
-      badgeVariant = 'warning';
-  }
-
-  const contentToShow =
-    post.content_type === 'problem' || post.content_type === 'formula'
-      ? description
-      : safeTruncate(description, 100);
-
-  return (
-    <>
-      <LivePreview content={post.content} />
-      <Card
-        className="bg-light border shadow-sm mt-2 post-content-card"
-        onClick={() => navigate(`/post/${post.uuid}`)}
-        style={{ cursor: 'pointer' }}
-      >
-        <Card.Body>
-          <div className="mb-2">
-            <Badge bg={badgeVariant}>{typeLabel}</Badge>
-          </div>
-
-          <Card.Title className="h6 mathjax-content mb-1">
-            <LivePreview content={title} />
-          </Card.Title>
-
-          {description && (
-            <Card.Text
-              as="div"
-              className="small text-muted mathjax-content"
-              style={{ whiteSpace: 'pre-wrap' }}
-            >
-              <LivePreview content={contentToShow} />
-            </Card.Text>
-          )}
-
-          {contentUrl && (
-            <div className="text-end mt-2" onClick={(e) => e.stopPropagation()}>
-              <Button
-                variant={`outline-${badgeVariant}`}
-                size="sm"
-                onClick={() => navigate(contentUrl)}
-                style={{ fontSize: '0.7rem', padding: '1px 8px' }}
-              >
-                {typeLabel} харах
-              </Button>
-            </div>
-          )}
-        </Card.Body>
-      </Card>
-    </>
-  );
-};
+import Button from 'react-bootstrap/Button';
+import Spinner from 'react-bootstrap/Spinner';
 
 // -------------------------------------------------------------------
 // ----------------- Үндсэн PostCard компонент -----------------
@@ -766,233 +431,61 @@ const PostCard = ({ post, onPostDeleted, depth = 0, compact = false, onCardClick
         </Toast>
       </ToastContainer>
 
-      <Modal
+      <DeletePostModal
         show={showDeleteModal}
-        onHide={() => !isDeleting && setShowDeleteModal(false)}
-        centered
-      >
-        <Modal.Header closeButton>
-          <Modal.Title className="h5">{getModalTitle()}</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          Та энэ {currentPost.content_type === 'reply' ? 'сэтгэгдлийг' : isRepost ? 'repost-г' : 'постыг'}{' '}
-          устгахдаа итгэлтэй байна уу?
-        </Modal.Body>
-        <Modal.Footer>
-          <Button
-            variant="secondary"
-            onClick={() => setShowDeleteModal(false)}
-            disabled={isDeleting}
-          >
-            Болих
-          </Button>
-          <Button variant="danger" onClick={confirmDelete} disabled={isDeleting}>
-            {isDeleting ? (
-              <Spinner as="span" size="sm" className="me-1" />
-            ) : (
-              <i className="bi bi-trash me-1"></i>
-            )}
-            Устгах
-          </Button>
-        </Modal.Footer>
-      </Modal>
+        onHide={() => setShowDeleteModal(false)}
+        isDeleting={isDeleting}
+        onConfirm={confirmDelete}
+        title={getModalTitle()}
+        contentType={currentPost.content_type}
+        isRepost={isRepost}
+      />
 
-      {/* Report Modal */}
-      <Modal
+      <ReportPostModal
         show={showReportModal}
-        onHide={() => !isReporting && setShowReportModal(false)}
-        centered
-      >
-        <Modal.Header closeButton>
-          <Modal.Title className="h5">
-            <i className="bi bi-flag me-2"></i>
-            Post report хийх
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <p className="text-muted small mb-3">
-            Та энэ постыг яагаад report хийж байгаагаа сонгоно уу.
-          </p>
+        onHide={() => setShowReportModal(false)}
+        isReporting={isReporting}
+        reportReason={reportReason}
+        setReportReason={setReportReason}
+        reportDescription={reportDescription}
+        setReportDescription={setReportDescription}
+        onSubmit={submitReport}
+      />
 
-          <div className="mb-3">
-            <label htmlFor="reportReason" className="form-label fw-semibold">
-              Шалтгаан
-            </label>
-            <select
-              id="reportReason"
-              className="form-select"
-              value={reportReason}
-              onChange={(e) => setReportReason(e.target.value)}
-            >
-              <option value="spam">Спам</option>
-              <option value="harassment">Дарамт, доромжлол</option>
-              <option value="hate_speech">Үзэн ядалт үг хэллэг</option>
-              <option value="violence">Хүчирхийлэл</option>
-              <option value="false_info">Худал мэдээлэл</option>
-              <option value="inappropriate">Зохисгүй агуулга</option>
-              <option value="other">Бусад</option>
-            </select>
-          </div>
-
-          <div className="mb-3">
-            <label htmlFor="reportDescription" className="form-label fw-semibold">
-              Дэлгэрэнгүй (заавал биш)
-            </label>
-            <textarea
-              id="reportDescription"
-              className="form-control"
-              rows="3"
-              value={reportDescription}
-              onChange={(e) => setReportDescription(e.target.value)}
-              placeholder="Нэмэлт мэдээлэл..."
-            />
-          </div>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button
-            variant="secondary"
-            onClick={() => setShowReportModal(false)}
-            disabled={isReporting}
-          >
-            Цуцлах
-          </Button>
-          <Button variant="warning" onClick={submitReport} disabled={isReporting}>
-            {isReporting ? (
-              <>
-                <Spinner as="span" size="sm" className="me-1" />
-                Илгээж байна...
-              </>
-            ) : (
-              <>
-                <i className="bi bi-flag me-1"></i>
-                Report илгээх
-              </>
-            )}
-          </Button>
-        </Modal.Footer>
-      </Modal>
-
-      {/* AI тусламж Modal */}
-      <Modal
+      <AIHelpModal
         show={showAIModal}
-        onHide={() => !aiLoading && !isSavingReply && setShowAIModal(false)}
-        centered
-        size="lg"
-      >
-        <Modal.Header closeButton>
-          <Modal.Title className="h5">
-            <i className="bi bi-stars me-2 text-warning"></i>
-            AI тусламж
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {aiLoading && (
-            <div className="text-center py-4">
-              <Spinner animation="border" variant="warning" className="mb-3" />
-              <p className="text-muted small mb-0">AI дүгнэж байна...</p>
-            </div>
-          )}
-          {!aiLoading && aiError && (
-            <div className="alert alert-danger small mb-0">{aiError}</div>
-          )}
-          {!aiLoading && aiResponse && (
-            <LivePreview content={aiResponse} />
-          )}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setShowAIModal(false)}
-            disabled={isSavingReply}
-          >
-            Хаах
-          </Button>
-          {aiResponse && !aiLoading && (
-            <Button
-              variant="primary"
-              size="sm"
-              disabled={isSavingReply}
-              onClick={async () => {
-                try {
-                  setIsSavingReply(true);
-                  const res = await apiClient.post(`/api/minds/posts/${currentPost.uuid}/save_ai_reply/`, {
-                    content: aiResponse,
-                  });
-                  setCommentCount((c) => c + 1);
-                  setShowAIModal(false);
-                  onAIReplyAdded?.(res.data);
-                  showNotification('AI хариулт амжилттай хадгалагдлаа.', 'success');
-                } catch (err) {
-                  console.error('AI reply save error:', err);
-                  showNotification('Хадгалахад алдаа гарлаа.', 'danger');
-                } finally {
-                  setIsSavingReply(false);
-                }
-              }}
-            >
-              {isSavingReply ? (
-                <>
-                  <Spinner as="span" size="sm" className="me-1" />
-                  Хадгалж байна...
-                </>
-              ) : (
-                <>
-                  <i className="bi bi-chat-left-text me-1"></i>
-                  Хариулт болгон хадгалах
-                </>
-              )}
-            </Button>
-          )}
-        </Modal.Footer>
-      </Modal>
+        onHide={() => setShowAIModal(false)}
+        aiLoading={aiLoading}
+        aiError={aiError}
+        aiResponse={aiResponse}
+        isSavingReply={isSavingReply}
+        onSaveReply={async () => {
+          try {
+            setIsSavingReply(true);
+            const res = await apiClient.post(`/api/minds/posts/${currentPost.uuid}/save_ai_reply/`, {
+              content: aiResponse,
+            });
+            setCommentCount((c) => c + 1);
+            setShowAIModal(false);
+            onAIReplyAdded?.(res.data);
+            showNotification('AI хариулт амжилттай хадгалагдлаа.', 'success');
+          } catch (err) {
+            console.error('AI reply save error:', err);
+            showNotification('Хадгалахад алдаа гарлаа.', 'danger');
+          } finally {
+            setIsSavingReply(false);
+          }
+        }}
+      />
 
-      {/* Edit Post Modal */}
-      <Modal show={showEditModal} onHide={() => !isEditing && setShowEditModal(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title className="h5">
-            <i className="bi bi-pencil me-2"></i>
-            Пост засах
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <div className="mb-3">
-            <label htmlFor="editContent" className="form-label fw-semibold">
-              Агуулга
-            </label>
-            <textarea
-              id="editContent"
-              className="form-control"
-              rows="5"
-              value={editContent}
-              onChange={(e) => setEditContent(e.target.value)}
-              placeholder="Постын агуулгаа бичнэ үү..."
-            />
-          </div>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowEditModal(false)} disabled={isEditing}>
-            Цуцлах
-          </Button>
-          <Button
-            variant="primary"
-            onClick={submitEdit}
-            disabled={isEditing || !editContent.trim()}
-          >
-            {isEditing ? (
-              <>
-                <Spinner as="span" size="sm" className="me-1" />
-                Хадгалж байна...
-              </>
-            ) : (
-              <>
-                <i className="bi bi-check-circle me-1"></i>
-                Хадгалах
-              </>
-            )}
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <EditPostModal
+        show={showEditModal}
+        onHide={() => setShowEditModal(false)}
+        isEditing={isEditing}
+        editContent={editContent}
+        setEditContent={setEditContent}
+        onSubmit={submitEdit}
+      />
 
       {/* --- Үндсэн Пост Карт --- */}
       <Card
@@ -1092,66 +585,19 @@ const PostCard = ({ post, onPostDeleted, depth = 0, compact = false, onCardClick
               </div>
 
               {/* Post Menu */}
-              {user && (
-                <Dropdown align="end">
-                  <Dropdown.Toggle
-                    variant="link"
-                    size="sm"
-                    className="text-muted no-caret p-0"
-                    id={`dropdown-post-${post.id}`}
-                  >
-                    <i className="bi bi-three-dots-vertical"></i>
-                  </Dropdown.Toggle>
-                  <Dropdown.Menu>
-                    {/* Засах (эзэн/staff) */}
-                    {canEdit && (
-                      <Dropdown.Item onClick={handleEditClick}>
-                        <i className="bi bi-pencil me-2"></i>
-                        Засах
-                      </Dropdown.Item>
-                    )}
-                    {/* Устгах (эзэн/staff/клубын багш) */}
-                    {canDelete && (
-                      <Dropdown.Item onClick={handleDeleteClick}>
-                        <i className="bi bi-trash me-2"></i>
-                        Устгах
-                      </Dropdown.Item>
-                    )}
-                    {(canEdit || canDelete) && <Dropdown.Divider />}
-
-                    {/* Бусад хэрэглэгчийн үйлдлүүд */}
-                    {!canEdit && originalAuthor && user.id !== originalAuthor.id && (
-                      <>
-                        <Dropdown.Item onClick={handleBlockUser}>
-                          <i className="bi bi-ban me-2"></i>@{originalAuthor.username}-г block хийх
-                        </Dropdown.Item>
-                        <Dropdown.Item onClick={handleMuteUser}>
-                          <i className="bi bi-volume-mute me-2"></i>@{originalAuthor.username}-г
-                          mute хийх
-                        </Dropdown.Item>
-                        <Dropdown.Divider />
-                      </>
-                    )}
-
-                    {/* AI тусламж — бүх хэрэглэгчид */}
-                    <Dropdown.Item onClick={handleAIHelp}>
-                      <i className="bi bi-stars me-2"></i>
-                      AI тусламж
-                    </Dropdown.Item>
-
-                    {/* Бүгдэд харагдах */}
-                    {user.id !== originalAuthor?.id && (
-                      <>
-                        <Dropdown.Divider />
-                        <Dropdown.Item onClick={handleReportClick}>
-                          <i className="bi bi-flag me-2"></i>
-                          Report хийх
-                        </Dropdown.Item>
-                      </>
-                    )}
-                  </Dropdown.Menu>
-                </Dropdown>
-              )}
+              <PostMenu
+                postId={post.id}
+                user={user}
+                canEdit={canEdit}
+                canDelete={canDelete}
+                originalAuthor={originalAuthor}
+                onEditClick={handleEditClick}
+                onDeleteClick={handleDeleteClick}
+                onBlockUser={handleBlockUser}
+                onMuteUser={handleMuteUser}
+                onAIHelp={handleAIHelp}
+                onReportClick={handleReportClick}
+              />
             </Stack>
 
             {/* Постын үндсэн агуулга */}
@@ -1187,108 +633,39 @@ const PostCard = ({ post, onPostDeleted, depth = 0, compact = false, onCardClick
         </Card.Body>
 
         {/* --- FOOTER: Үйлдлийн товчнууд --- */}
-        <Card.Footer className="bg-white border-top-0 pt-0">
-          <Stack direction="horizontal" gap={3} className="post-actions align-items-center">
-            {/* Таалагдсан */}
-            <Button
-              variant="link"
-              className="text-decoration-none p-1 d-flex align-items-center text-muted"
-              onClick={(e) => handleAction('favorite', e)}
-              title="Таалагдсан"
-            >
-              <i className={`bi ${isFavorited ? 'bi-heart-fill text-danger' : 'bi-heart'}`}></i>
-              <span className={`ms-1 small ${isFavorited ? 'text-danger' : ''}`}>
-                {favoriteCount}
-              </span>
-            </Button>
-
-            {/* Коммент (State-с авсан тоо) - PostDetailPage руу үсрэх */}
-            <div
-              className="p-1 d-flex align-items-center text-muted"
-              style={{ cursor: 'pointer' }}
-              title="Сэтгэгдэл"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (onCardClick) {
-                  onCardClick(currentPost);
-                } else if (depth === 0) {
-                  const postId = post.uuid || post.id;
-                  navigate(`/post/${postId}`);
-                }
-              }}
-            >
-              <i className="bi bi-chat-square me-1"></i>
-              <span className="ms-1 small">{commentCount}</span>
-            </div>
-
-            {/* Үзэлт */}
-            <span className="text-muted small ms-2 d-flex align-items-center" title="Үзсэн тоо">
-              <i className="bi bi-eye me-1"></i>
-              {currentViewCount || 0}
-            </span>
-
-            {/* Үсэг томруулах/жижигрүүлэх */}
-            <div className="ms-auto d-flex align-items-center">
-              <Button
-                variant="link"
-                className="text-decoration-none p-1 text-muted"
-                onClick={decreaseFontSize}
-                title="Үсэг жижигрүүлэх"
-                disabled={fontSizeIndex === 0}
-              >
-                <small style={{ fontSize: '0.7rem', fontWeight: 'bold' }}>Aa</small>
-              </Button>
-              <Button
-                variant="link"
-                className="text-decoration-none p-1 text-muted"
-                onClick={increaseFontSize}
-                title="Үсэг томруулах"
-                disabled={fontSizeIndex === fontSizes.length - 1}
-              >
-                <span style={{ fontSize: '1rem', fontWeight: 'bold' }}>Aa</span>
-              </Button>
-            </div>
-
-            {/* Хадгалах */}
-            <Button
-              variant="link"
-              className={`text-decoration-none p-1 ${isBookmarked ? 'text-primary' : 'text-muted'}`}
-              onClick={(e) => handleAction('bookmark', e)}
-              title="Хадгалах"
-            >
-              <i className={`bi ${isBookmarked ? 'bi-bookmark-fill' : 'bi-bookmark'}`}></i>
-            </Button>
-
-            {/* Repost */}
-            <Button
-              variant="link"
-              className="text-decoration-none text-muted p-1"
-              onClick={handleRepost}
-              disabled={isReposting || post.content_type === 'repost'}
-              title={post.content_type === 'repost' ? 'Дахин repost хийх боломжгүй' : 'Repost'}
-            >
-              {isReposting ? <Spinner as="span" size="sm" /> : <i className="bi bi-repeat"></i>}
-            </Button>
-
-            {/* Сурагчдын хариулт — зөвхөн тест постын эзэнд харагдана */}
-            {canEdit &&
-              originalPost.content_type === 'quiz' &&
-              originalPost.related_quiz?.uuid && (
-                <Button
-                  variant="link"
-                  className="text-decoration-none text-muted p-1"
-                  title="Сурагчдын хариулт харах"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigate(`/quiz/${originalPost.related_quiz.uuid}/student-answers`);
-                  }}
-                >
-                  <i className="bi bi-people-fill"></i>
-                </Button>
-              )}
-          </Stack>
-        </Card.Footer>
+        <PostActionsFooter
+          isFavorited={isFavorited}
+          favoriteCount={favoriteCount}
+          onFavorite={(e) => handleAction('favorite', e)}
+          commentCount={commentCount}
+          onCommentClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (onCardClick) {
+              onCardClick(currentPost);
+            } else if (depth === 0) {
+              const postId = post.uuid || post.id;
+              navigate(`/post/${postId}`);
+            }
+          }}
+          currentViewCount={currentViewCount}
+          fontSizeIndex={fontSizeIndex}
+          fontSizesLength={fontSizes.length}
+          onDecreaseFontSize={decreaseFontSize}
+          onIncreaseFontSize={increaseFontSize}
+          isBookmarked={isBookmarked}
+          onBookmark={(e) => handleAction('bookmark', e)}
+          isReposting={isReposting}
+          isOriginalRepost={post.content_type === 'repost'}
+          onRepost={handleRepost}
+          canEdit={canEdit}
+          isQuizPost={originalPost.content_type === 'quiz'}
+          quizUuid={originalPost.related_quiz?.uuid}
+          onViewStudentAnswers={(e) => {
+            e.stopPropagation();
+            navigate(`/quiz/${originalPost.related_quiz.uuid}/student-answers`);
+          }}
+        />
       </Card>
     </>
   );

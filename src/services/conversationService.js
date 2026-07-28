@@ -266,6 +266,24 @@ export const unarchiveConversation = async (conversationUuid) => {
   return response.data;
 };
 
+/**
+ * Харилцан ярааг хаах — нийтэд харагдахгүй болгож, зөвхөн гишүүд/is_staff-д хязгаарлана
+ * @param {string} conversationUuid - Харилцан ярианы UUID
+ */
+export const closeConversation = async (conversationUuid) => {
+  const response = await apiClient.post(`/api/minds/conversations/${conversationUuid}/close/`);
+  return response.data;
+};
+
+/**
+ * Хаасан харилцан ярааг дахин нээх
+ * @param {string} conversationUuid - Харилцан ярианы UUID
+ */
+export const reopenConversation = async (conversationUuid) => {
+  const response = await apiClient.post(`/api/minds/conversations/${conversationUuid}/reopen/`);
+  return response.data;
+};
+
 /** AI мессежэд like/dislike үнэлгээ өгөх. rating = 'like' | 'dislike' | null */
 export const rateMessage = async (messageUuid, rating, examPrepProblemId = null) => {
   const body = { rating };

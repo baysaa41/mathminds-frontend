@@ -7,7 +7,7 @@ import Form from 'react-bootstrap/Form';
 import { Send, ListChecks, ArrowRight } from 'lucide-react';
 import LivePreview from './LivePreview';
 import { useAuth } from '../context/AuthContext';
-import { getNextPracticeProblem } from '../services/clubsService';
+import { getNextPracticeProblem } from '../services/curriculumService';
 import { sendMessage } from '../services/conversationService';
 import useChatSocket from '../hooks/useChatSocket';
 

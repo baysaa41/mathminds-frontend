@@ -4,7 +4,7 @@ import {
   getProgramProgress,
   getTopicCheckQuiz,
   getProgramReviewQuiz,
-} from '../services/clubsService';
+} from '../services/curriculumService';
 
 const POLL_INTERVAL_MS = 3000;
 const POLL_TIMEOUT_MS = 180000; // 40 бодлоготой нэгтгэсэн тест удаан үүсэж болно

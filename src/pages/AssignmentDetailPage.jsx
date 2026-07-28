@@ -16,7 +16,7 @@ import AppBreadcrumb from '../components/common/AppBreadcrumb';
 import {
   getMySubmission, getSubmissions, getAssignmentProgress,
   startAssignment, gradeSubmission,
-} from '../services/clubsService';
+} from '../services/clubAssignmentService';
 import apiClient from '../api/axiosConfig';
 import AssignmentAnswersImport from '../components/clubs/AssignmentAnswersImport';
 

@@ -9,7 +9,7 @@ import { PlusCircle } from 'lucide-react';
 import AppBreadcrumb from '../components/common/AppBreadcrumb';
 
 // ✅ Service-г ашиглах
-import clubsService, { formatErrorMessage } from '../services/clubsService'; //
+import { createClub, formatErrorMessage } from '../services/clubService';
 
 const CreateClub = () => {
   const navigate = useNavigate();
@@ -26,7 +26,7 @@ const CreateClub = () => {
 
     try {
       const clubData = { name, description, club_type: clubType };
-      const newClub = await clubsService.createClub(clubData); //
+      const newClub = await createClub(clubData);
 
       if (newClub && newClub.id) {
         console.log('Клуб амжилттай үүслээ, ID:', newClub.id);

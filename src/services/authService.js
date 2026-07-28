@@ -54,14 +54,6 @@ class AuthService {
   // ... (Login эхлүүлэх хэвээрээ) ...
   async login() {
     try {
-      console.log('🔐 Starting MMO login WITH PKCE...');
-      console.log('📋 MMO Config:', {
-        clientId: MMO_CONFIG.clientId,
-        authUrl: MMO_CONFIG.authorizationUrl,
-        redirectUri: MMO_CONFIG.redirectUri,
-        scope: MMO_CONFIG.scope,
-      });
-
       // ✅ MMO.mn PKCE шаарддаг тул БУЦААЖ НЭМСЭН
       const { codeVerifier, codeChallenge } = await this.generatePKCE();
       const state = this.generateState();
@@ -80,18 +72,9 @@ class AuthService {
       });
 
       const authUrl = `${MMO_CONFIG.authorizationUrl}?${params.toString()}`;
-      console.log('🔗 Full Authorization URL:', authUrl);
-      console.log('📝 Parameters being sent to MMO (WITH PKCE):');
-      console.log('   - response_type:', 'code');
-      console.log('   - client_id:', MMO_CONFIG.clientId);
-      console.log('   - redirect_uri:', MMO_CONFIG.redirectUri);
-      console.log('   - scope:', MMO_CONFIG.scope);
-      console.log('   - code_challenge_method:', 'S256');
-      console.log('   ✅ PKCE enabled');
-
       window.location.href = authUrl;
     } catch (error) {
-      console.error('❌ Login error:', error);
+      console.error('Login error:', error);
       throw error;
     }
   }
@@ -101,27 +84,14 @@ class AuthService {
     const savedState = sessionStorage.getItem('oauth_state');
     const codeVerifier = sessionStorage.getItem('code_verifier');
 
-    console.log('  Saved state:', savedState);
-    console.log(
-      '  Saved code_verifier:',
-      codeVerifier ? codeVerifier.slice(0, 20) + '...' : 'null'
-    );
-    console.log('='.repeat(60));
-
     if (!savedState) {
-      console.error('❌ No saved state in sessionStorage!');
       throw new Error('Session expired. Please log in again.');
     }
     if (state !== savedState) {
-      console.error('❌ State mismatch!');
-      console.error('  Expected:', savedState);
-      console.error('  Received:', state);
       throw new Error('Invalid state parameter. Please try logging in again.');
     }
-    console.log('✅ State verified!');
 
     if (!codeVerifier) {
-      console.error('❌ No code verifier!');
       throw new Error('Missing code verifier. Please try logging in again.');
     }
 
@@ -140,15 +110,10 @@ class AuthService {
       });
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('❌ Backend exchange-code error:', errorData);
-        console.error('   Status:', response.status);
-        console.error('   Full response:', errorData);
+        console.error('Backend exchange-code error:', errorData);
         throw new Error(errorData.error || 'Failed to exchange code');
       }
       const data = await response.json();
-      console.log('✅ Backend response received:');
-      console.log('  Token:', data.token ? data.token.slice(0, 20) + '...' : 'null');
-      console.log('  User data:', data.user);
       localStorage.setItem('access_token', data.token);
       if (data.refresh) {
         localStorage.setItem('refresh_token', data.refresh);
@@ -156,10 +121,9 @@ class AuthService {
       localStorage.setItem('user', JSON.stringify(data.user));
       sessionStorage.removeItem('code_verifier');
       sessionStorage.removeItem('oauth_state');
-      console.log('✅ Login successful!');
       return { user: data.user, token: data.token };
     } catch (error) {
-      console.error('❌ Callback error:', error);
+      console.error('Callback error:', error);
       sessionStorage.removeItem('code_verifier');
       sessionStorage.removeItem('oauth_state');
       throw error;
@@ -180,7 +144,6 @@ class AuthService {
     const refreshToken = localStorage.getItem('refresh_token');
 
     if (!refreshToken) {
-      console.log('No refresh token available, logging out.');
       this.logout();
       isRefreshing = false;
       return Promise.reject(new Error('No refresh token'));
@@ -231,13 +194,10 @@ class AuthService {
   async getCurrentUser() {
     const token = localStorage.getItem('access_token');
     if (!token) {
-      console.log('ℹ️ No access token found');
       return null;
     }
 
     try {
-      console.log('👤 Verifying token with backend...');
-
       // (!!!) `fetch`-ийн оронд `apiClient`-г ашиглана
       // Ингэснээр 401 алдаа гарвал `axiosConfig.js` дахь interceptor
       // автоматаар токен сэргээхийг оролдоно.
@@ -250,7 +210,7 @@ class AuthService {
       localStorage.setItem('user', JSON.stringify(data));
       return data;
     } catch (error) {
-      console.error('❌ Get user error (after refresh attempt):', error);
+      console.error('Get user error (after refresh attempt):', error);
 
       // (!!!) `this.logout()`-г эндээс хасна.
       // Logout-г `refreshToken` функц эсвэл `interceptor` өөрөө хариуцна.
@@ -262,7 +222,6 @@ class AuthService {
 
   // Logout
   logout() {
-    console.log('🚪 Logging out...');
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user');

@@ -10,7 +10,8 @@ import Form from 'react-bootstrap/Form';
 import Accordion from 'react-bootstrap/Accordion';
 import { CalendarDays, GraduationCap, Sparkles, Plus, X, RotateCcw, FileText, Send, Target, Wand2, ArrowRight } from 'lucide-react';
 import Modal from 'react-bootstrap/Modal';
-import { generateWeeklyArticle, getWeeklyTopics, getPrograms, addProgram, removeProgram, setWeek } from '../services/clubsService';
+import { generateWeeklyArticle, getWeeklyTopics, addProgram, removeProgram, setWeek } from '../services/clubService';
+import { getPrograms } from '../services/curriculumService';
 import apiClient from '../api/axiosConfig';
 import { resolveResourceHref } from '../utils/resourceLink';
 

@@ -42,7 +42,7 @@ const formatTime = (seconds) => {
   return `${mins}м ${secs}с`;
 };
 
-const formatDate = (dateStr) => {
+const formatDateTime = (dateStr) => {
   if (!dateStr) return '—';
   return new Date(dateStr).toLocaleString('mn-MN', {
     year: 'numeric',
@@ -249,8 +249,8 @@ const QuizStudentAnswersPage = () => {
                           <span className="text-muted small">—</span>
                         )}
                       </td>
-                      <td className="small text-muted">{formatDate(sheet.started_at)}</td>
-                      <td className="small text-muted">{formatDate(sheet.finished_at)}</td>
+                      <td className="small text-muted">{formatDateTime(sheet.started_at)}</td>
+                      <td className="small text-muted">{formatDateTime(sheet.finished_at)}</td>
                       <td className="small text-muted">
                         {isCompleted ? formatTime(sheet.total_time_spent) : '—'}
                       </td>

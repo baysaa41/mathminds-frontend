@@ -11,7 +11,7 @@ import Badge from 'react-bootstrap/Badge';
 import Spinner from 'react-bootstrap/Spinner';
 import Alert from 'react-bootstrap/Alert';
 import { Check, X, Mail } from 'lucide-react';
-import { getMyInvitations, acceptInvitation, rejectInvitation, formatErrorMessage } from '../services/clubsService';
+import { getMyInvitations, acceptInvitation, rejectInvitation, formatErrorMessage } from '../services/clubService';
 import useToast from '../hooks/useToast';
 import Toast from 'react-bootstrap/Toast';
 import ToastContainer from 'react-bootstrap/ToastContainer';

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import Badge from 'react-bootstrap/Badge';
 import Spinner from 'react-bootstrap/Spinner';
 import { Users, ClipboardList, AlertTriangle } from 'lucide-react';
-import { getTeacherDashboard } from '../services/clubsService';
+import { getTeacherDashboard } from '../services/clubService';
 
 const fmtDate = (iso) => iso ? new Date(iso).toLocaleDateString('mn-MN') : '—';
 

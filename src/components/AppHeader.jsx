@@ -1,12 +1,12 @@
 // src/components/AppHeader.jsx
 // Логин хуудаснаас бусад бүх хуудсанд ашиглагдах нийтлэг header.
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getPrivateMessagesCount } from '../services/notificationService';
 import { getReviewStats } from '../services/integralService';
-import { getTeacherDashboard } from '../services/clubsService';
+import { getTeacherDashboard } from '../services/clubService';
 import NotificationBell from './NotificationBell';
 
 import Navbar from 'react-bootstrap/Navbar';
@@ -33,7 +33,9 @@ import {
   ClipboardList,
   Heart,
 } from 'lucide-react';
-import DrawingPanel from './DrawingPanel';
+// @excalidraw/excalidraw (~1.1MB) — зөвхөн хэрэглэгч "Зурах" товч дархад ачаална
+// (нэвтэрсэн хэрэглэгч бүрийн анхны ачаалалтад орохоос сэргийлнэ).
+const DrawingPanel = lazy(() => import('./DrawingPanel'));
 
 export default function AppHeader() {
   const { user, logout } = useAuth();
@@ -351,11 +353,15 @@ export default function AppHeader() {
         </Offcanvas.Body>
       </Offcanvas>
 
-      <DrawingPanel
-        show={showDrawPanel}
-        onHide={() => setShowDrawPanel(false)}
-        pageUrl={location.pathname}
-      />
+      {showDrawPanel && (
+        <Suspense fallback={null}>
+          <DrawingPanel
+            show={showDrawPanel}
+            onHide={() => setShowDrawPanel(false)}
+            pageUrl={location.pathname}
+          />
+        </Suspense>
+      )}
     </>
   );
 }

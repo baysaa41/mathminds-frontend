@@ -11,7 +11,7 @@ import Badge from 'react-bootstrap/Badge';
 import { GraduationCap, Bot, Users } from 'lucide-react';
 import useProgramProgress from '../hooks/useProgramProgress';
 import ProgramProgressPanel from '../components/ProgramProgressPanel';
-import { remindProgramTopics } from '../services/clubsService';
+import { remindProgramTopics } from '../services/curriculumService';
 
 /**
  * Хөтөлбөрийн тусдаа хуудас — "Клубын хөтөлбөр" болон "Миний хөтөлбөр" хоёулаа

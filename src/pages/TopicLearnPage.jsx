@@ -10,7 +10,7 @@ import Alert from 'react-bootstrap/Alert';
 import Badge from 'react-bootstrap/Badge';
 import Accordion from 'react-bootstrap/Accordion';
 import { FileText, ListChecks, GraduationCap, ArrowLeft, ArrowRight, BookOpen, Target, Check, Star, Search } from 'lucide-react';
-import { getWeeklyTopicLearn, getTopicCheckQuiz } from '../services/clubsService';
+import { getWeeklyTopicLearn, getTopicCheckQuiz } from '../services/curriculumService';
 import ObjectiveLessonPanel from '../components/ObjectiveLessonPanel';
 import TopicPracticeChat from '../components/TopicPracticeChat';
 import { resolveResourceHref } from '../utils/resourceLink';

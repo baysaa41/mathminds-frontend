@@ -183,7 +183,7 @@ const CoinTransferPage = () => {
     }
   };
 
-  const formatDate = (dateString) => {
+  const formatDateTime = (dateString) => {
     return new Date(dateString).toLocaleString('mn-MN', {
       year: 'numeric',
       month: 'short',
@@ -415,7 +415,7 @@ const CoinTransferPage = () => {
                         </div>
                       </Stack>
                       <div className="text-muted" style={{ fontSize: '0.7rem' }}>
-                        {formatDate(tx.created_at)}
+                        {formatDateTime(tx.created_at)}
                       </div>
                       {tx.description && (
                         <div className="text-muted small mt-1 fst-italic">"{tx.description}"</div>

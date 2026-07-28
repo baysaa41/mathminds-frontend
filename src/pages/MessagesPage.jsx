@@ -11,6 +11,7 @@ import { MathJax } from 'better-react-mathjax';
 import NewConversationModal from '../components/NewConversationModal';
 import ProgramProgressModal from '../components/ProgramProgressModal';
 import useChatSocket from '../hooks/useChatSocket';
+import { formatMessageTime } from '../utils/dateFormatter';
 
 // Chat UI Kit — bubble/sidebar/input-ийн бүтэц (business logic хэвээр)
 import {
@@ -56,6 +57,8 @@ import {
   ThumbsUp,
   ThumbsDown,
   GraduationCap,
+  Lock,
+  Unlock,
 } from 'lucide-react';
 
 // Services
@@ -67,6 +70,8 @@ import {
   createConversation,
   archiveConversation,
   unarchiveConversation,
+  closeConversation,
+  reopenConversation,
   deleteConversation,
   getEeshProblems,
   getEeshStats,
@@ -81,19 +86,6 @@ import {
 
 import './PrivateMessagesPage.css';
 
-// formatTime компонентоос гадагш — render бүрт шинэ функц үүсгэхгүй
-const formatTime = (dateString) => {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffInHours = (now - date) / (1000 * 60 * 60);
-  if (diffInHours < 24) {
-    return date.toLocaleTimeString('mn-MN', { hour: '2-digit', minute: '2-digit' });
-  } else if (diffInHours < 48) {
-    return 'Өчигдөр';
-  } else {
-    return date.toLocaleDateString('mn-MN', { month: 'short', day: 'numeric' });
-  }
-};
 
 // Зураг дарахад ViewerJS-ээр нээх
 const openImageViewer = (e) => {
@@ -195,7 +187,7 @@ const MessageBubble = memo(function MessageBubble({ message, currentUserId, onRe
         )}
         <div className="message-time d-flex align-items-center gap-1 flex-wrap">
           <span>
-            {formatTime(message.created_at)}
+            {formatMessageTime(message.created_at)}
             {message.is_edited && <span className="ms-1">(засварласан)</span>}
           </span>
           {message.content && (
@@ -269,6 +261,7 @@ const MessagesPage = ({ aiOnly = false }) => {
   const [showNewConversationModal, setShowNewConversationModal] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [archivingConv, setArchivingConv] = useState(null);
+  const [closingConv, setClosingConv] = useState(null);
   const [deletingConv, setDeletingConv] = useState(null);
 
   // Like/Dislike үнэлгээ — AI мессеж болон сонголтын тайлбар
@@ -1034,6 +1027,37 @@ const MessagesPage = ({ aiOnly = false }) => {
     }
   };
 
+  // Close conversation (нийтэд харагдахгүй болгох)
+  const handleClose = async (conv) => {
+    if (!window.confirm('Харилцан яриаг хаах уу? Хаасны дараа зөвхөн та хоёр болон админ харах боломжтой болно.')) return;
+    try {
+      setClosingConv(conv.uuid);
+      const { conversation } = await closeConversation(conv.uuid);
+      setSelectedConversation((prev) => (prev?.uuid === conv.uuid ? conversation : prev));
+      setConversations((prev) => prev.map((c) => (c.uuid === conv.uuid ? conversation : c)));
+    } catch (err) {
+      console.error('Error closing conversation:', err);
+      alert('Хаахад алдаа гарлаа.');
+    } finally {
+      setClosingConv(null);
+    }
+  };
+
+  // Reopen conversation (дахин нийтэд нээх)
+  const handleReopen = async (conv) => {
+    try {
+      setClosingConv(conv.uuid);
+      const { conversation } = await reopenConversation(conv.uuid);
+      setSelectedConversation((prev) => (prev?.uuid === conv.uuid ? conversation : prev));
+      setConversations((prev) => prev.map((c) => (c.uuid === conv.uuid ? conversation : c)));
+    } catch (err) {
+      console.error('Error reopening conversation:', err);
+      alert('Дахин нээхэд алдаа гарлаа.');
+    } finally {
+      setClosingConv(null);
+    }
+  };
+
   // Delete conversation
   const handleDelete = async (conv) => {
     const isAi = isAiConv(conv);
@@ -1195,7 +1219,7 @@ const MessagesPage = ({ aiOnly = false }) => {
                 key={conversation.uuid}
                 name={conversation.title || <UserName user={partner} showLink={false} />}
                 info={lastMsg ? `${preview}${lastMsg.content?.length > 50 ? '...' : ''}` : undefined}
-                lastActivityTime={lastMsg ? formatTime(lastMsg.created_at) : undefined}
+                lastActivityTime={lastMsg ? formatMessageTime(lastMsg.created_at) : undefined}
                 unreadCnt={unreadCount}
                 active={selectedConversation?.uuid === conversation.uuid}
                 onClick={() => setSelectedConversation(conversation)}
@@ -1287,10 +1311,17 @@ const MessagesPage = ({ aiOnly = false }) => {
                       <span className="d-none d-md-inline ms-1">ЭЕШ</span>
                     </button>
                   )}
-                  <div className="text-secondary small d-flex align-items-center gap-1">
-                    <AlertTriangle size={14} />
-                    <span className="d-none d-md-inline">Нийтэд нээлттэй</span>
-                  </div>
+                  {selectedConversation?.is_closed ? (
+                    <div className="text-secondary small d-flex align-items-center gap-1">
+                      <Lock size={14} />
+                      <span className="d-none d-md-inline">Хаагдсан</span>
+                    </div>
+                  ) : (
+                    <div className="text-secondary small d-flex align-items-center gap-1">
+                      <AlertTriangle size={14} />
+                      <span className="d-none d-md-inline">Нийтэд нээлттэй</span>
+                    </div>
+                  )}
                   <button
                     className="btn btn-sm btn-outline-primary"
                     onClick={() => navigate(`/profile/${otherUser?.username}`)}
@@ -1304,6 +1335,26 @@ const MessagesPage = ({ aiOnly = false }) => {
                     title="Харилцааны линк хуулах"
                   >
                     {linkCopied ? <Check size={16} /> : <Link2 size={16} />}
+                  </button>
+                  <button
+                    className={`btn btn-sm ${selectedConversation?.is_closed ? 'btn-warning' : 'btn-outline-secondary'}`}
+                    onClick={() => {
+                      if (selectedConversation?.is_closed) {
+                        handleReopen(selectedConversation);
+                      } else {
+                        handleClose(selectedConversation);
+                      }
+                    }}
+                    disabled={closingConv === selectedConversation?.uuid}
+                    title={selectedConversation?.is_closed ? 'Дахин нээх' : 'Хаах'}
+                  >
+                    {closingConv === selectedConversation?.uuid ? (
+                      <Spinner animation="border" size="sm" />
+                    ) : selectedConversation?.is_closed ? (
+                      <Unlock size={16} />
+                    ) : (
+                      <Lock size={16} />
+                    )}
                   </button>
                   <button
                     className={`btn btn-sm ${selectedConversation?.is_archived_by_user ? 'btn-warning' : 'btn-outline-secondary'}`}

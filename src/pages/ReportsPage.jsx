@@ -94,7 +94,7 @@ const ReportsPage = () => {
     return <Badge bg={variant}>{reasonDisplay || reason}</Badge>;
   };
 
-  const formatDate = (dateString) => {
+  const formatDateTime = (dateString) => {
     if (!dateString) return '-';
     return new Date(dateString).toLocaleString('mn-MN', {
       year: 'numeric',
@@ -193,7 +193,7 @@ const ReportsPage = () => {
                           <span className="text-muted">N/A</span>
                         )}
                       </td>
-                      <td className="small text-muted">{formatDate(report.created_at)}</td>
+                      <td className="small text-muted">{formatDateTime(report.created_at)}</td>
                       <td>{getStatusBadge(report.status)}</td>
                       <td>
                         <div className="d-flex gap-1">

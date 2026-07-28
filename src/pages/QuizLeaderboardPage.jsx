@@ -33,10 +33,14 @@ const formatTime = (seconds) => {
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '—';
-  return new Date(dateStr).toLocaleString('mn-MN', {
-    month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit',
-  });
+  // Intl-ийн mn-MN locale month:'2-digit' (жилгүй) сонголтоор Ромын тоогоор
+  // сар харуулдаг тул (жишээ "XII/02") гараар барьж энэ гажигаас зайлсхийнэ.
+  const d = new Date(dateStr);
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  return `${month}.${day} ${hours}:${minutes}`;
 };
 
 const QuizLeaderboardPage = () => {

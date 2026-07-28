@@ -382,7 +382,7 @@ const QuizDetailPage = () => {
                   paused: { variant: 'warning', text: 'Түр зогссон' },
                 }[attempt.status] || { variant: 'secondary', text: attempt.status };
 
-                const formatDate = (dateString) => {
+                const formatDateTime = (dateString) => {
                   if (!dateString) return 'Тодорхойгүй';
                   return new Date(dateString).toLocaleString('mn-MN', {
                     year: 'numeric', month: '2-digit', day: '2-digit',
@@ -404,7 +404,7 @@ const QuizDetailPage = () => {
                     <div>
                       <div className="mb-1">
                         <Badge bg={statusBadge.variant} className="me-2">{statusBadge.text}</Badge>
-                        <span className="small">{formatDate(attempt.started_at)}</span>
+                        <span className="small">{formatDateTime(attempt.started_at)}</span>
                       </div>
                       <Stack direction="horizontal" gap={3} className="text-muted small">
                         <span><i className="bi bi-trophy me-1"></i>{attempt.score || 0} оноо</span>
