@@ -113,16 +113,12 @@ const SUBJECTS = [
   { value: 'physics', label: 'Физик', icon: 'bi-lightning', color: '#fd7e14' },
   { value: 'chemistry', label: 'Хими', icon: 'bi-droplet-half', color: '#20c997' },
   { value: 'biology', label: 'Биологи', icon: 'bi-tree', color: '#198754' },
+  { value: 'philosophy', label: 'Философи', icon: 'bi-lightbulb', color: '#6f42c1' },
 ]
 
 const getProblemTypeLabel = (type) => {
   const map = { 0: 'Уламжлалт', 1: 'Сонгох тест', 4: 'Нөхөх тест' }
   return map[type] || ''
-}
-
-const getSubjectLabel = (value) => {
-  const found = SUBJECTS.find((s) => s.value === value)
-  return found ? found.label : ''
 }
 
 function ContentBrowsePage() {
@@ -326,12 +322,13 @@ function ContentBrowsePage() {
   const hasActiveFilters = selectedCategory || searchInput || myOnly || selectedProblemTypes.length > 0 || selectedProblemLevels.length > 0 || selectedSubject || selectedMathCategory
 
   const renderItemBadges = (item) => {
-    const subjectBadge = item.subject && item.subject !== 'math' ? (
+    const subjectMeta = SUBJECTS.find((s) => s.value === item.subject)
+    const subjectBadge = item.subject ? (
       <Badge
         className="small"
-        style={{ backgroundColor: SUBJECTS.find((s) => s.value === item.subject)?.color || '#6c757d' }}
+        style={{ backgroundColor: subjectMeta?.color || '#6c757d' }}
       >
-        {getSubjectLabel(item.subject)}
+        {subjectMeta ? subjectMeta.label : 'Ерөнхий'}
       </Badge>
     ) : null
 
