@@ -10,8 +10,8 @@
 export function stripPSTricks(content, maxLength = 200) {
   if (!content) return '';
 
-  // [pst]...[/pst] блокыг арилгах
-  let stripped = content.replace(/\[pst\][\s\S]*?\[\/pst\]/g, '[PSTricks зураг]');
+  // [pst]...[/pst] болон [psti]...[/psti] блокыг арилгах
+  let stripped = content.replace(/\[pst(i)?\][\s\S]*?\[\/pst\1\]/g, '[PSTricks зураг]');
 
   // Хэт урт бол богиносгох
   if (stripped.length > maxLength) {

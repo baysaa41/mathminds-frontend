@@ -330,23 +330,25 @@ const ProblemDetailPage = () => {
       {problem.type === 1 && problem.choices && problem.choices.length > 0 && (
         <div className="mb-4">
           <h5 className="fw-semibold mb-3">Сонголтууд:</h5>
-          <div className="list-group">
+          <div className="d-flex flex-wrap gap-3">
             {[...problem.choices].sort((a, b) => (a.label || '').localeCompare(b.label || '')).map((choice, index) => {
               const isCorrect = choice.default_score > 0;
               return (
                 <div
                   key={choice.id || index}
-                  className={`list-group-item d-flex align-items-center gap-2 ${canEdit && isCorrect ? 'bg-success-subtle' : ''}`}
+                  style={{ flex: `1 1 calc(${100 / problem.choices.length}% - 1rem)`, minWidth: '160px' }}
                 >
-                  <strong className="flex-shrink-0">
-                    {choice.label || `${String.fromCharCode(65 + index)}.`}
-                  </strong>
-                  <div className="flex-grow-1">
-                    <LivePreview content={choice.value || '(Сонголт хоосон)'} />
+                  <div
+                    className={`h-100 p-2 rounded border d-flex flex-column ${canEdit && isCorrect ? 'bg-success-subtle' : ''}`}
+                  >
+                    <div className="d-flex align-items-center justify-content-between mb-1">
+                      <strong>{choice.label || `${String.fromCharCode(65 + index)}.`}</strong>
+                      {canEdit && isCorrect && <Badge bg="success">Зөв</Badge>}
+                    </div>
+                    <div className="flex-grow-1">
+                      <LivePreview content={choice.value || '(Сонголт хоосон)'} />
+                    </div>
                   </div>
-                  {canEdit && isCorrect && (
-                    <Badge bg="success" className="flex-shrink-0">Зөв</Badge>
-                  )}
                 </div>
               );
             })}

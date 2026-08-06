@@ -19,6 +19,104 @@ import Alert from 'react-bootstrap/Alert';
 import Breadcrumb from 'react-bootstrap/Breadcrumb';
 import Button from 'react-bootstrap/Button';
 import Stack from 'react-bootstrap/Stack';
+import Collapse from 'react-bootstrap/Collapse';
+import ListGroup from 'react-bootstrap/ListGroup';
+
+// Нэг хөтөлбөрийн өгүүллүүдийг дараалалд нь үзэх навигаци (өмнөх/дараах + бүх долоо
+// хоногийн жагсаалт). Article нь ямар ч Program-той холбоогүй бол null-той тэнцүү
+// байх тул юу ч рендерлэхгүй.
+const ProgramArticleNav = ({ nav }) => {
+  const [expanded, setExpanded] = useState(false);
+  if (!nav || !nav.program) return null;
+
+  const { program, topics, current_week_num: currentWeek, prev, next } = nav;
+
+  return (
+    <div className="border rounded-3 p-3 mb-4 bg-light">
+      <div className="small text-muted">
+        <i className="bi bi-journal-bookmark me-1"></i>
+        Хөтөлбөр: <strong>{program.name}</strong> &middot; {currentWeek}/{topics.length} долоо хоног
+      </div>
+
+      <div className="d-flex justify-content-between align-items-stretch gap-2 mt-3">
+        {prev ? (
+          <Button
+            as={Link}
+            to={`/article/${prev.uuid}`}
+            variant="outline-primary"
+            size="sm"
+            className="text-start flex-grow-1"
+            style={{ maxWidth: '48%' }}
+          >
+            <div className="small text-muted">&laquo; {prev.week_num}-р долоо хоног</div>
+            <div className="text-truncate">{prev.topic}</div>
+          </Button>
+        ) : (
+          <div className="flex-grow-1" style={{ maxWidth: '48%' }} />
+        )}
+        {next ? (
+          <Button
+            as={Link}
+            to={`/article/${next.uuid}`}
+            variant="outline-primary"
+            size="sm"
+            className="text-end flex-grow-1"
+            style={{ maxWidth: '48%' }}
+          >
+            <div className="small text-muted">{next.week_num}-р долоо хоног &raquo;</div>
+            <div className="text-truncate">{next.topic}</div>
+          </Button>
+        ) : (
+          <div className="flex-grow-1" style={{ maxWidth: '48%' }} />
+        )}
+      </div>
+
+      <Button
+        variant="outline-secondary"
+        size="sm"
+        className="mt-3"
+        onClick={() => setExpanded((v) => !v)}
+      >
+        {expanded ? 'Жагсаалтыг хаах' : 'Бүх долоо хоногийг харах'}
+        <i className={`bi ms-1 bi-chevron-${expanded ? 'up' : 'down'}`}></i>
+      </Button>
+
+      <Collapse in={expanded}>
+        <div className="mt-3">
+          <ListGroup variant="flush">
+            {topics.map((t) => {
+              const isCurrent = t.week_num === currentWeek;
+              const content = (
+                <div className="d-flex justify-content-between align-items-center">
+                  <span>
+                    <strong>{t.week_num}.</strong> {t.topic}
+                  </span>
+                  {!t.uuid && <span className="text-muted small">Өгүүлэлгүй</span>}
+                </div>
+              );
+              return t.uuid ? (
+                <ListGroup.Item
+                  key={t.week_num}
+                  as={Link}
+                  to={`/article/${t.uuid}`}
+                  action
+                  active={isCurrent}
+                  className="py-2"
+                >
+                  {content}
+                </ListGroup.Item>
+              ) : (
+                <ListGroup.Item key={t.week_num} disabled className="py-2 text-muted">
+                  {content}
+                </ListGroup.Item>
+              );
+            })}
+          </ListGroup>
+        </div>
+      </Collapse>
+    </div>
+  );
+};
 
 const ArticleDetailPage = () => {
   // (!!!) "articleId"-г "id" болгож өөрчилсөн (App.jsx-тэй нийцүүлсэн)
@@ -26,6 +124,7 @@ const ArticleDetailPage = () => {
   const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [programNav, setProgramNav] = useState(null);
   const { user } = useAuth();
   const navigate = useNavigate();
   const { setPrefillData } = usePrefill();
@@ -50,6 +149,13 @@ const ArticleDetailPage = () => {
         if (response.data?.title) {
           setPageTitle(`Өгүүлэл · ${response.data.title}`);
         }
+
+        // Хөтөлбөрийн навигаци — заавал биш тул алдаа гарвал зүгээр л нуугдана
+        setProgramNav(null);
+        apiClient
+          .get(`/api/integral/articles/${id}/program-nav/`)
+          .then((navRes) => setProgramNav(navRes.data))
+          .catch(() => setProgramNav(null));
       } catch (err) {
         if (err.response && err.response.status === 404) {
           setError('Өгүүлэл олдсонгүй.');
@@ -226,6 +332,12 @@ const ArticleDetailPage = () => {
       >
         <LivePreview content={article.content || ''} />
       </div>
+
+      {programNav?.program && (
+        <div className="mt-4">
+          <ProgramArticleNav nav={programNav} />
+        </div>
+      )}
 
       {canEdit && (
         <div className="d-flex justify-content-end gap-2 mt-3">

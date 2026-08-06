@@ -21,6 +21,7 @@ import {
   Cpu,
   Brain,
   GraduationCap,
+  ClipboardList,
 } from 'lucide-react';
 import authService from '../services/authService';
 
@@ -377,6 +378,29 @@ function DashboardPage() {
                   Статистик
                 </Link>
               </div>
+            </Card.Body>
+          </Card>
+        </Col>
+
+        {/* ЭЕШ жишиг бодлого */}
+        <Col md={6} lg={4}>
+          <Card className="h-100 shadow-sm" style={{ borderColor: '#e8a700' }}>
+            <Card.Body className="d-flex flex-column">
+              <div className="mb-3">
+                <ClipboardList size={40} style={{ color: '#e8a700' }} />
+              </div>
+              <Card.Title>ЭЕШ жишиг бодлого</Card.Title>
+              <Card.Text className="text-muted flex-grow-1">
+                "ЭЕШ жишиг" keyword-той бодлогуудыг жагсаалтаар харах, шүүх, олноор нь засах.
+              </Card.Text>
+              <Link
+                to="/admin/eesh-jishig"
+                className="btn"
+                style={{ backgroundColor: '#e8a700', color: '#000' }}
+              >
+                <ClipboardList size={18} className="me-2" />
+                Удирдах
+              </Link>
             </Card.Body>
           </Card>
         </Col>

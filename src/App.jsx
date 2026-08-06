@@ -118,6 +118,8 @@ const MathTermsPage = lazy(() => import('./pages/MathTermsPage.jsx'));
 const AITeachersAdminPage = lazy(() => import('./pages/AITeachersAdminPage.jsx'));
 const EECResultsPage = lazy(() => import('./pages/EECResultsPage.jsx'));
 const EECStatsPage = lazy(() => import('./pages/EECStatsPage.jsx'));
+const EeshJishigAdminPage = lazy(() => import('./pages/EeshJishigAdminPage.jsx'));
+const EeshJishigSummaryPage = lazy(() => import('./pages/EeshJishigSummaryPage.jsx'));
 
 // Email Campaigns
 const EmailCampaignsPage = lazy(() => import('./pages/EmailCampaignsPage.jsx'));
@@ -541,6 +543,26 @@ function App() {
           element={
             <AdminRoute>
               <EECStatsPage />
+            </AdminRoute>
+          }
+        />
+
+        {/* ЭЕШ жишиг бодлого засах - Staff only */}
+        <Route
+          path="/admin/eesh-jishig"
+          element={
+            <AdminRoute>
+              <EeshJishigAdminPage />
+            </AdminRoute>
+          }
+        />
+
+        {/* ЭЕШ жишиг бодлогын summary - Staff only */}
+        <Route
+          path="/admin/eesh-jishig-summary"
+          element={
+            <AdminRoute>
+              <EeshJishigSummaryPage />
             </AdminRoute>
           }
         />

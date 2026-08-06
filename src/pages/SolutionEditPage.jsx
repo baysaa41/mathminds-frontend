@@ -379,14 +379,40 @@ const SolutionEditPage = () => {
       <Card className="mb-4 bg-light border-0">
         <Card.Body className="p-3">
           <h6 className="fw-semibold mb-2">Бодлогын нөхцөл:</h6>
-          <MathJax hideUntilTypeset={'first'}>
-            <div
-              className="mathjax-content small text-muted"
-              style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
-            >
-              {problem.statement}
+          <div
+            className="mathjax-content small text-muted"
+            style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+          >
+            <GlobalLivePreview content={problem.statement} />
+          </div>
+
+          {problem.type === 1 && problem.choices && problem.choices.length > 0 && (
+            <div className="mt-3 d-flex flex-wrap gap-3">
+              {[...problem.choices]
+                .sort((a, b) => (a.label || '').localeCompare(b.label || ''))
+                .map((choice, index) => {
+                  const isCorrect = choice.default_score > 0;
+                  return (
+                    <div
+                      key={choice.id || index}
+                      style={{ flex: `1 1 calc(${100 / problem.choices.length}% - 1rem)`, minWidth: '160px' }}
+                    >
+                      <div
+                        className={`h-100 p-2 rounded border d-flex flex-column ${isCorrect ? 'bg-success-subtle' : ''}`}
+                      >
+                        <div className="d-flex align-items-center justify-content-between mb-1">
+                          <strong>{choice.label || `${String.fromCharCode(65 + index)}.`}</strong>
+                          {isCorrect && <Badge bg="success">Зөв</Badge>}
+                        </div>
+                        <div className="flex-grow-1 small text-muted">
+                          <GlobalLivePreview content={choice.value || '(Сонголт хоосон)'} />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
             </div>
-          </MathJax>
+          )}
         </Card.Body>
       </Card>
 

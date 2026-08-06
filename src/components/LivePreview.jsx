@@ -12,7 +12,7 @@ const PSTRICKS_SERVER_BASE_URL = 'https://pst.mathminds.club';
 
 // --- PSTricks Рендер хийх туслах компонент ---
 // (Энэ хэсэг өөрчлөгдөөгүй)
-const PSTricksRenderer = ({ code }) => {
+const PSTricksRenderer = ({ code, inline = false }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [imageUrl, setImageUrl] = useState(null);
@@ -56,7 +56,9 @@ const PSTricksRenderer = ({ code }) => {
   }, [code]);
 
   if (loading) {
-    return (
+    return inline ? (
+      <Spinner animation="border" size="sm" className="mx-1" />
+    ) : (
       <div className="text-center p-2">
         <Spinner animation="border" size="sm" />
       </div>
@@ -64,25 +66,24 @@ const PSTricksRenderer = ({ code }) => {
   }
   if (error) {
     return (
-      <Alert variant="danger" className="p-1 small">
+      <Alert variant="danger" className="p-1 small d-inline-block">
         [PST] Алдаа: {error}
       </Alert>
     );
   }
   if (imageUrl) {
-    return (
-      <div className="text-center my-2">
-        <img
-          src={imageUrl}
-          style={{ maxWidth: '100%', height: 'auto', display: 'inline-block' }}
-          alt="PSTricks render"
-          onError={(e) => {
-            e.target.style.display = 'none';
-            setError(`Зургийг (${imageUrl}) ачаалахад алдаа гарлаа.`);
-          }}
-        />
-      </div>
+    const img = (
+      <img
+        src={imageUrl}
+        style={{ maxWidth: '100%', height: 'auto', display: 'inline-block', verticalAlign: 'middle' }}
+        alt="PSTricks render"
+        onError={(e) => {
+          e.target.style.display = 'none';
+          setError(`Зургийг (${imageUrl}) ачаалахад алдаа гарлаа.`);
+        }}
+      />
     );
+    return inline ? img : <div className="text-center my-2">{img}</div>;
   }
   if (code && !loading && !error && !imageUrl) {
     return (
@@ -96,20 +97,28 @@ const PSTricksRenderer = ({ code }) => {
 };
 
 // --- Табулар хөрвүүлэх функц ---
-// (Энэ хэсэг өөрчлөгдөөгүй)
 function convertTabularToHTML(text) {
   if (!text) return text;
-  // ... (код хэвээрээ) ...
   return text.replace(
     /\\begin\{tabular\}\{([^}]*)\}([\s\S]*?)\\end\{tabular\}/g,
     (match, colSpec, body) => {
       const colMatches = colSpec.match(/[lcr]/g) || [];
       const colCount =
         colMatches.length || Math.max(1, body.split('&')[0] ? body.split('&').length : 1);
+      // Багана бүрийн align-ийг colSpec-ийн эрэмбийн дагуу тэмдэглэнэ (l/c/r → left/
+      // center/right) — colSpec-д зааагүй (ж: colCount нь fallback-аар тооцогдсон) багана
+      // бүрт зөвхөн анхдагч (align тохируулаагүй) хэвээр үлдэнэ.
+      const ALIGN_MAP = { l: 'left', c: 'center', r: 'right' };
+      const colAligns = colMatches.map((ch) => ALIGN_MAP[ch]);
       let rawRows = body.split(/\\\\\s*(?:\n|$)/g);
-      const rows = rawRows.map((r) => r.trim()).filter((r) => r.length > 0);
+      // Сүүлийн мөрийн "\\" тусгаарлагчийн ДАРАА үлдэх "\hline"-г (өөрөө шинэ мөрийн
+      // өгөгдөл биш, зөвхөн хүснэгтийн доод зураас) бодит мөр гэж андуурч хоосон
+      // <tr>-д хөрвүүлдэг байсан тул \hline-г арилгасны ДАРАА хоосон эсэхийг шалгана.
+      const rows = rawRows
+        .map((r) => r.trim())
+        .filter((r) => r.replace(/\\hline/g, '').trim().length > 0);
       let html = `<div class="table-responsive"><table class="table table-sm" style="border-collapse:collapse;">`;
-      const cellStyle = 'style="border:1px solid #dee2e6;padding:6px;vertical-align:middle;"';
+      const cellStyleBase = 'border:1px solid #dee2e6;padding:6px;vertical-align:middle;';
       rows.forEach((rowRaw, _rowIndex) => {
         let row = rowRaw.replace(/\\hline/g, '').trim();
         let rowColorMatch = row.match(/(?:<comment>\s*)?\\rowcolor\{([^}]+)\}(?:\s*<\/comment>)?/);
@@ -124,6 +133,8 @@ function convertTabularToHTML(text) {
         html += `<tr${rowClass}>`;
         for (let c = 0; c < Math.max(colCount, cells.length); c++) {
           const cellContent = cells[c] !== undefined ? cells[c] : '';
+          const align = colAligns[c];
+          const cellStyle = `style="${cellStyleBase}${align ? `text-align:${align};` : ''}"`;
           if (useHeader) {
             html += `<th ${cellStyle}>${cellContent}</th>`;
           } else {
@@ -138,35 +149,194 @@ function convertTabularToHTML(text) {
   );
 }
 
+// --- Аюултай '<' тэмдгийг escape хийх ---
+// DB-д Articles.content зэрэгт зохиогчдын бичсэн БОДИТ HTML (<strong>, <a href>, <table> гэх
+// мэт — WYSIWYG засварлагчаас ирдэг) байдаг тул '<'-г бүрмөсөн escape хийж болохгүй. Гэвч
+// "1<a", "x<b" гэх мэт тэнцэтгэл биш доторх '<' нь мэдэгдэж буй tag-ийн нэртэй давхцвал
+// (жиш нь 'a', 'p', 'b') browser үүнийг tag эхлэл гэж андуурч, дараагийн агуулгыг тухайн
+// (байхгүй) tag-ийн дотор шингээдэг. Иймд зөвхөн БҮРЭН ХЭЛБ�эржсэн, мэдэгдэж буй tag-уудыг
+// (whitelist) хэвээр үлдээж, бусад бүх '<'-г (тэдгээрийн дараа үсэг орсон эсэхээс үл
+// хамааран) '&lt;'-рүү хөрвүүлнэ.
+const ALLOWED_HTML_TAGS = new Set([
+  'a', 'b', 'i', 'u', 'em', 'strong', 'span', 'div', 'p', 'br', 'hr',
+  'ul', 'ol', 'li', 'table', 'thead', 'tbody', 'tr', 'td', 'th', 'colgroup', 'col',
+  'img', 'iframe', 'center', 'del', 'sub', 'sup', 'pre', 'code', 'blockquote', 'q',
+  'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'comment', 'body', 'html',
+]);
+// Alt 1: бүрэн хэлбэржсэн tag (нээх/хаах, зайлшгүй '>'-ээр төгсдөг). Alt 2: ганцаараа '<'.
+const TAG_OR_STRAY_LT_RE = /<\/?[a-zA-Z][a-zA-Z0-9]*(?:\s[^<>]*)?\/?>|</g;
+
+function sanitizeAngleBrackets(text) {
+  return text.replace(TAG_OR_STRAY_LT_RE, (match) => {
+    if (match === '<') return '&lt;';
+    const nameMatch = match.match(/^<\/?([a-zA-Z][a-zA-Z0-9]*)/);
+    const tagName = nameMatch ? nameMatch[1].toLowerCase() : '';
+    if (ALLOWED_HTML_TAGS.has(tagName)) return match;
+    // "tag" шиг харагдаад ч дэмждэггүй нэртэй бол — escape хийж бодит текст болгоно.
+    return match.replace(/^</, '&lt;').replace(/>$/, '&gt;');
+  });
+}
+
+// --- Цэвэрхэн web-рендерт орчуулагдахгүй, зөвхөн PDF/LaTeX компайлерт зориулсан
+// формат/зай тохируулах командуудыг арилгах ---
+// (\vspace, \hspace, \medskip зэрэг нь хуудасны зай/шифт тохируулдаг цэвэр TeX-only
+// команд — веб дээр дүрслэх шаардлагагүй тул зүгээр л устгана. \setcounter{enumi}{N}
+// нь enumerate жагсаалтын дугаарлалтыг тасалж үргэлжлүүлэхэд ашигладаг, мөн веб
+// хувилбарт дүрслэх шаардлагагүй.)
+function stripTexOnlyDirectives(text) {
+  let out = text;
+  out = out.replace(/\\setcounter\{[^}]*\}\{[^}]*\}\s*/g, '');
+  out = out.replace(/\\(vspace|hspace)\*?\{[^}]*\}\s*/g, '');
+  out = out.replace(/\\(med|big|small)skip\s*/g, '');
+  out = out.replace(/\\noindent\s*/g, '');
+  out = out.replace(/\\centering\s*/g, '');
+  // '\\[5mm]' — мөр хоорондын нэмэлт зай зааж буй LaTeX заавар (мөр таслах '\\'-той хамт)
+  out = out.replace(/\\\\\[\d+[a-zA-Z]*\]\s*/g, '');
+  // \hfill — мөрийг баруун тийш түлхэх зай тэлэх команд, веб урсгалд утгагүй тул арилгана
+  out = out.replace(/\\hfill\s*/g, '');
+  // \index{...} — makeindex-д зориулсан үл харагдах index-тэмдэглэгээ, хэвлэмэл гарцад
+  // ямар ч дүрслэл өгдөггүй тул зүгээр л арилгана.
+  out = out.replace(/\\index\{[^}]*\}\s*/g, '');
+  // \label{...} — cross-reference зориулалттай, өөрөө ямар ч дүрслэл өгдөггүй.
+  out = out.replace(/\\label\{[^}]*\}\s*/g, '');
+  // \caption{Text} — зурган доорх тайлбар, italic текст болгож харуулна.
+  out = out.replace(
+    /\\caption\{([^}]*)\}\s*/g,
+    '<div style="text-align:center;font-style:italic;color:#666;font-size:0.9em;margin-top:-8px;margin-bottom:12px;">$1</div>'
+  );
+  // \scalebox{N}{...} — веб дээр хариуцлагатай (responsive) зургийг өөрөө аль хэдийн
+  // тохирсон хэмжээтэй тул scale factor-ыг хэрэгсэхгүй, зөвхөн дотоод агуулгыг үлдээнэ.
+  out = out.replace(/\\scalebox\{[^}]*\}\s*\{([\s\S]*?)\}/g, '$1');
+  // \url{https://...} — жинхэнэ дарж болох холбоос болгож хөрвүүлнэ.
+  out = out.replace(
+    /\\url\{([^}]*)\}/g,
+    '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
+  );
+  return out;
+}
+
+// \begin{table}[ht]\centering ... \end{table} — LaTeX float wrapper, зөвхөн байрлал/
+// хүрээгийн тухай заавар агуулна (хэвлэлийн зориулалттай), дотор нь ихэвчлэн
+// \begin{tabular}/бусад агуулга байрлана. \begin{center}-тэй адил зөвхөн wrapper-ийг
+// арилгаж, дотоод агуулгыг хэвээр үлдээнэ.
+function unwrapLatexFloats(text) {
+  let out = text.replace(/\\begin\{table\}(?:\[[a-zA-Z!]*\])?/g, '').replace(/\\end\{table\}/g, '');
+  // \begin{multicols}{N} — олон баганатай текст layout, веб дээр давхар багана
+  // зохион байгуулах шаардлагагүй тул зүгээр л задална (агуулга энгийн урсгалаар харагдана).
+  out = out.replace(/\\begin\{multicols\}\{\d+\}/g, '').replace(/\\end\{multicols\}/g, '');
+  // \begin{figure}[h] ... \end{figure} — table-тэй адил зөвхөн float wrapper, дотор нь
+  // ихэвчлэн зураг (\scalebox/<img>) + \caption + \label байрлана.
+  out = out.replace(/\\begin\{figure\}(?:\[[a-zA-Z!]*\])?/g, '').replace(/\\end\{figure\}/g, '');
+  return out;
+}
+
+// --- \begin{itemize}/\begin{enumerate}-ийг УГЛАГДСАН (nested) тохиолдолд ч зөв хөрвүүлэх ---
+// Энгийн non-greedy regex (\\begin{env}(.*?)\\end{env}) нь давхарлагдсан жагсаалтад
+// АЛДААТАЙ ажилладаг: хамгийн ойрын \\end{env}-г (өөрөөр хэлбэл дотоод жагсаалтынхыг)
+// хаалт гэж бодож, гадаад \\end{env} нь холбогдох хос нэхэлгүй үлдэж дэлгэцэнд түүхий
+// текстээр гарч ирдэг байсан. Иймд '{'-ийн гүнийг тоолж ХАМГИЙН ГАДААД (balanced)
+// хосыг олж, дотоод агуулгыг эхлээд РЕКУРСИВООР хөрвүүлсний дараа \\item-ээр хуваана.
+function findBalancedEnvSpans(text, envName) {
+  const beginTok = `\\begin{${envName}}`;
+  const endTok = `\\end{${envName}}`;
+  const spans = [];
+  let i = 0;
+  while (i < text.length) {
+    const b = text.indexOf(beginTok, i);
+    if (b === -1) break;
+    let depth = 1;
+    let j = b + beginTok.length;
+    while (depth > 0) {
+      const nb = text.indexOf(beginTok, j);
+      const ne = text.indexOf(endTok, j);
+      if (ne === -1) { depth = -1; break; } // тэнцүү бус (unbalanced) — цааш оролдохгүй
+      if (nb !== -1 && nb < ne) {
+        depth += 1;
+        j = nb + beginTok.length;
+      } else {
+        depth -= 1;
+        j = ne + endTok.length;
+      }
+    }
+    if (depth !== 0) break;
+    spans.push({ start: b, end: j, body: text.slice(b + beginTok.length, j - endTok.length) });
+    i = j;
+  }
+  return spans;
+}
+
+function convertListEnv(text, envName, wrapTag) {
+  const spans = findBalancedEnvSpans(text, envName);
+  if (spans.length === 0) return text;
+  let out = '';
+  let last = 0;
+  for (const span of spans) {
+    out += text.slice(last, span.start);
+    // дотоод (nested) жагсаалтыг эхэлж хөрвүүлнэ — ингэснээр доор \\item-ээр хуваахад
+    // дотоод жагсаалтын \\item-үүд аль хэдийн <li>-д хувирсан байгаа тул холилдохгүй.
+    const body = convertListEnv(span.body, envName, wrapTag);
+    const parts = body.split(/\\item\s*/).map((s) => s.trim()).filter((s) => s.length > 0);
+    out += `<${wrapTag}>${parts.map((p) => `<li>${p}</li>`).join('')}</${wrapTag}>`;
+    last = span.end;
+  }
+  out += text.slice(last);
+  return out;
+}
+
+// --- $...$/$$...$$-ийн ГАДНА байгаа "\\" (мөр таслах команд) -г <br/> болгох ---
+// LaTeX-д "\\" нь array/cases/tabular орчинд эгнээ тусгаарлах зориулалттай БОЛОВЧ эх
+// материалд энгийн өгүүлбэрийн төгсгөлд ч (шинэ мөрөнд шилжих зорилгоор) байнга
+// ашигласан байдаг — тэдгээр нь math horoo-ны гадна тул MathJax огт хардаггүй, зүгээр л
+// "\\" гэсэн түүхий текст хэвээр үлдэж (жиш нь "...байг.\\" мөрийн төгсгөлд харагдана).
+// Математик доторх "\\" (array/cases мөр таслалт)-д хүрэхгүйн тулд зөвхөн $...$/$$...$$
+// блокуудын ХООРОНДЫН хэсгүүдэд л ажиллана. convertTabularToHTML() дараа заавал ажиллах
+// ёстой — эс тэгвэл tabular мөр тусгаарлагч "\\"-г MathJax хүрэхээс өмнө устгачихна.
+// \begin{multline*}/\begin{gather*} гэх мэт orчны хувьд MathJax (processEnvironments:
+// true, анхдагч утга) $-аар ороогдоогүй ч ШУУД math гэж таньдаг тул тэдгээрийг ч мөн
+// "math" гэж тооцож алгасах ёстой — эс тэгвэл дотоод "\\" мөр таслалт эвдэрнэ.
+// АНХААР: ганц '$...$' (inline math) нь MathJax-ын хувьд НЭГ МӨРӨӨР хязгаарлагддаггүй —
+// дотроо \begin{array}{ll}...\end{array} гэх мэт олон мөрт бүтэц агуулж болно (жиш нь
+// уламжлалын хүснэгт). Эхэндээ '[^$\n]' (зөвхөн ганц мөр) ашигласан нь ийм олон мөрт
+// inline math-ыг "math биш" гэж андуурч, дотоод "\\"-г нь эвдэж байсан тул '[^$]' (мөр
+// хамаагүй, зөвхөн дараагийн '$' хүртэл) болгож өргөтгөсөн.
+const MATH_ENV_NAMES = 'equation|align|alignat|gather|multline|eqnarray';
+const MATH_BLOCK_SPLIT_RE = new RegExp(
+  '(\\$\\$[\\s\\S]+?\\$\\$|\\$[^$]+?\\$|' +
+  '\\\\begin\\{(?:' + MATH_ENV_NAMES + ')\\*?\\}[\\s\\S]*?\\\\end\\{(?:' + MATH_ENV_NAMES + ')\\*?\\})',
+  'g'
+);
+
+function convertLineBreaksOutsideMath(text) {
+  let out = '';
+  let last = 0;
+  MATH_BLOCK_SPLIT_RE.lastIndex = 0;
+  let m;
+  while ((m = MATH_BLOCK_SPLIT_RE.exec(text))) {
+    out += text.slice(last, m.index).replace(/\\\\/g, '<br/>');
+    out += m[0];
+    last = MATH_BLOCK_SPLIT_RE.lastIndex;
+  }
+  out += text.slice(last).replace(/\\\\/g, '<br/>');
+  return out;
+}
+
 // --- LaTeX филтер функц ---
-// (Энэ хэсэг өөрчлөгдөөгүй)
 function applyLatexFilters(text) {
   if (!text) return '';
-  let html = text;
-  html = convertTabularToHTML(html);
+  // АНХААР: convertTabularToHTML() ЗААВАЛ sanitizeAngleBrackets()-ээс ӨМНӨ ажиллах
+  // ёстой. sanitizeAngleBrackets() нь орчлон доторх "<" тэмдгийг "&lt;" болгож escape
+  // хийдэг бөгөөд энэ нь шинэ "&" тэмдэг үүсгэдэг ("&lt;"). Хэрэв энэ дараа
+  // convertTabularToHTML() ажиллавал тухайн эгнээг "&" (баганын тусгаарлагч) гэж
+  // андуурч, "$m < 35$" гэсэн НЭГ нүдийг "$m" ба "lt; 35$" гэсэн ХОЁР нүд болгож
+  // хуваачихдаг байсан (баганын тоо, эгнэлт бүгд эвдэрдэг байсан).
+  let html = convertTabularToHTML(text);
+  html = sanitizeAngleBrackets(html);
+  html = stripTexOnlyDirectives(html);
+  html = unwrapLatexFloats(html);
+  html = convertLineBreaksOutsideMath(html);
   // ... (бусад replace-үүд хэвээрээ) ...
-  html = html.replace(/\\begin{enumerate}(.*?)(\\item(.*?))*\\end{enumerate}/gs, (match) => {
-    let items = match.replace(/\\begin{enumerate}\s*(\\item)?/g, '<li>');
-    items = items.replace(/\\end{enumerate}\s*/g, '</li>');
-    items = items.replace(/\\item\s*/g, '</li><li>');
-    if (items.endsWith('<li>')) {
-      items = items.substring(0, items.length - 4);
-    } else if (!items.endsWith('</li>')) {
-      items += '</li>';
-    }
-    return `<ol>${items}</ol>`;
-  });
-  html = html.replace(/\\begin{itemize}(.*?)(\\item(.*?))*\\end{itemize}/gs, (match) => {
-    let items = match.replace(/\\begin{itemize}\s*(\\item)?/g, '<li>');
-    items = items.replace(/\\end{itemize}\s*/g, '</li>');
-    items = items.replace(/\\item\s*/g, '</li><li>');
-    if (items.endsWith('<li>')) {
-      items = items.substring(0, items.length - 4);
-    } else if (!items.endsWith('</li>')) {
-      items += '</li>';
-    }
-    return `<ul>${items}</ul>`;
-  });
+  html = convertListEnv(html, 'enumerate', 'ol');
+  html = convertListEnv(html, 'itemize', 'ul');
   // \begin{description}\item[Нэр] тайлбар...\end{description} — нэр томьёоны жагсаалт
   // (MathJax "description"-ийг математик орчин гэж ойлгодоггүй тул "Unknown environment"
   // алдаа өгдөг байсан, иймд HTML болгож хөрвүүлнэ)
@@ -191,9 +361,12 @@ function applyLatexFilters(text) {
     { env: 'exercise',   label: 'Дасгал',       color: '#198754', bg: '#e8f5e9', icon: '✏️' },
   ];
   for (const bt of blockTypes) {
-    // {Нэр} аргумент заавал биш — байвал ашиглана, байхгүй бол label-аа ганцаараа харуулна
+    // {Нэр} аргумент заавал биш — байвал ашиглана, байхгүй бол label-аа ганцаараа харуулна.
+    // Нэр өөрөө математик тэмдэглэгээ ($x^{2}$ гэх мэт) агуулж, нэг түвшний дотоод '{...}'
+    // хос агуулж болно ('[^}]*' үүнийг зөв даахгүй — ХАМГИЙН ЭХНИЙ '}'-д (жиш нь "{\infty}"
+    // доторх) зогсоод, нэрийг таслаж, үлдсэн хэсгийг buруу нь body-д унагаадаг байсан).
     const re = new RegExp(
-      `\\\\begin\\{${bt.env}\\}(?:\\{([^}]*)\\})?([\\s\\S]*?)\\\\end\\{${bt.env}\\}`,
+      `\\\\begin\\{${bt.env}\\}(?:\\{((?:[^{}]|\\{[^{}]*\\})*)\\})?([\\s\\S]*?)\\\\end\\{${bt.env}\\}`,
       'g'
     );
     html = html.replace(re, (_, name, body) => {
@@ -282,10 +455,10 @@ function applyLatexFilters(text) {
 
 // --- НЭГДСЭН компонент (!!! ЗАСВАР ОРСОН) ---
 const LivePreview = ({ content }) => {
-  // 1. Текстийг [pst] тааг-аар салгах (хэвээрээ)
+  // 1. Текстийг [pst] / [psti] (inline хувилбар) тааг-аар салгах
   const parts = useMemo(() => {
     if (!content) return [];
-    const pstRegex = /\[pst\]([\s\S]*?)\[\/pst\]/g;
+    const pstRegex = /\[pst(i)?\]([\s\S]*?)\[\/pst\1\]/g;
     const result = [];
     let lastIndex = 0;
     let match;
@@ -293,7 +466,7 @@ const LivePreview = ({ content }) => {
       if (match.index > lastIndex) {
         result.push({ type: 'latex', value: content.substring(lastIndex, match.index) });
       }
-      result.push({ type: 'pst', value: match[1].trim() });
+      result.push({ type: match[1] ? 'psti' : 'pst', value: match[2].trim() });
       lastIndex = match.index + match[0].length;
     }
     if (lastIndex < content.length) {
@@ -327,6 +500,10 @@ const LivePreview = ({ content }) => {
         if (part.type === 'pst') {
           // 5. PSTricks хэсэг (MathJax шаардлагагүй)
           return <PSTricksRenderer key={index} code={part.value} />;
+        }
+        if (part.type === 'psti') {
+          // 5b. Inline PSTricks хэсэг — мөр таслахгүй, текст/элементийн урсгалд орно
+          return <PSTricksRenderer key={index} code={part.value} inline />;
         }
         return null;
       })}
