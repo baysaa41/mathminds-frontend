@@ -23,6 +23,14 @@ import Modal from 'react-bootstrap/Modal';
 import { Save, X, Lightbulb, FileText, StickyNote, Sparkles, PlusCircle, Wand2 } from 'lucide-react';
 import AppBreadcrumb from '../components/common/AppBreadcrumb';
 
+// Нэг товшилтоор "Нэмэлт зааварчилгаа" талбарт шууд оруулах бэлэн зааврууд
+const PRESET_INSTRUCTIONS = [
+  'Бодолтыг илүү тодорхой тайлбарла',
+  'Бодолтыг дахин хийгээрэй',
+  'Алхам бүрийг дэлгэрэнгүй бич',
+  'Хариултыг дахин шалгаж баталгаажуул',
+];
+
 // --- Debounce Hook ---
 const useDebounce = (value, delay) => {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -71,7 +79,11 @@ const LivePreview = ({ content, label }) => {
 
 // --- Үндсэн компонент ---
 const SolutionEditPage = () => {
-  const { uuid: id } = useParams(); // problem UUID
+  // Хоёр өөр route-оор ирж болно: /problem/:uuid/solution/new (бодлогын uuid)
+  // эсвэл /solution/:solutionUuid/edit (бодолтын өөрийн uuid — тухайн үед
+  // бодлогын uuid-г эхлээд API-аар шийднэ)
+  const { uuid: problemUuidParam, solutionUuid } = useParams();
+  const [id, setId] = useState(problemUuidParam || null);
   const navigate = useNavigate();
   const location = useLocation();
   const { setPageTitle } = useOutletContext();
@@ -114,19 +126,41 @@ const SolutionEditPage = () => {
   useEffect(() => {
     setPageTitle('Бодолт засах');
     fetchProblemAndSolutions();
-  }, [id, setPageTitle]);
+  }, [problemUuidParam, solutionUuid, setPageTitle]);
 
   const fetchProblemAndSolutions = async () => {
     try {
       setLoading(true);
       setError(null);
 
+      let effectiveProblemId = problemUuidParam;
+      let preselectSolutionId = location.state?.solutionId ?? null;
+
+      if (!effectiveProblemId && solutionUuid) {
+        // /solution/:solutionUuid/edit route-оор ирсэн — эхлээд бодолтоор нь
+        // хайж, харьяалагдах бодлогын uuid-г шийднэ
+        const solRes = await apiClient.get('/api/integral/solutions/', { params: { uuid: solutionUuid } });
+        const found = (solRes.data.results || solRes.data)[0];
+        if (!found) {
+          setError('Бодолт олдсонгүй.');
+          return;
+        }
+        effectiveProblemId = found.problem_uuid;
+        preselectSolutionId = found.id;
+      }
+
+      if (!effectiveProblemId) {
+        setError('Бодлогын мэдээлэл олдсонгүй.');
+        return;
+      }
+      setId(effectiveProblemId);
+
       // Fetch problem details
-      const problemResponse = await apiClient.get(`/api/integral/problems/${id}/`);
+      const problemResponse = await apiClient.get(`/api/integral/problems/${effectiveProblemId}/`);
       setProblem(problemResponse.data);
 
       // Fetch solutions for this problem
-      const solutionsResponse = await apiClient.get(`/api/integral/solutions/?problem_id=${id}`);
+      const solutionsResponse = await apiClient.get(`/api/integral/solutions/?problem_id=${effectiveProblemId}`);
 
       // ✅ Pagination шалгах
       let solutionsData = [];
@@ -143,7 +177,7 @@ const SolutionEditPage = () => {
       setSolutions(solutionsData);
 
       const forceNew = location.state?.forceNew;
-      const solutionId = location.state?.solutionId;
+      const solutionId = preselectSolutionId;
 
       if (forceNew || solutionsData.length === 0) {
         // "Шинэ бодолт нэмэх" товчоор ирсэн, эсвэл бодолт байхгүй
@@ -822,6 +856,20 @@ const SolutionEditPage = () => {
             <Form.Label className="fw-semibold small mb-1">
               Нэмэлт зааварчилгаа <span className="text-muted fw-normal">(заавал биш)</span>
             </Form.Label>
+            <div className="d-flex flex-wrap gap-1 mb-2">
+              {PRESET_INSTRUCTIONS.map((preset) => (
+                <Button
+                  key={preset}
+                  variant="outline-secondary"
+                  size="sm"
+                  className="py-0 px-2"
+                  style={{ fontSize: '0.78rem' }}
+                  onClick={() => setImproveComment(preset)}
+                >
+                  {preset}
+                </Button>
+              ))}
+            </div>
             <Form.Control
               as="textarea"
               rows={3}

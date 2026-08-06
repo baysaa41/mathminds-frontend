@@ -120,6 +120,7 @@ const EECResultsPage = lazy(() => import('./pages/EECResultsPage.jsx'));
 const EECStatsPage = lazy(() => import('./pages/EECStatsPage.jsx'));
 const EeshJishigAdminPage = lazy(() => import('./pages/EeshJishigAdminPage.jsx'));
 const EeshJishigSummaryPage = lazy(() => import('./pages/EeshJishigSummaryPage.jsx'));
+const BookProblemsAdminPage = lazy(() => import('./pages/BookProblemsAdminPage.jsx'));
 
 // Email Campaigns
 const EmailCampaignsPage = lazy(() => import('./pages/EmailCampaignsPage.jsx'));
@@ -563,6 +564,16 @@ function App() {
           element={
             <AdminRoute>
               <EeshJishigSummaryPage />
+            </AdminRoute>
+          }
+        />
+
+        {/* ЭЕШ бэлтгэлийн номын бодлого засах - Staff only */}
+        <Route
+          path="/admin/eesh-books"
+          element={
+            <AdminRoute>
+              <BookProblemsAdminPage />
             </AdminRoute>
           }
         />

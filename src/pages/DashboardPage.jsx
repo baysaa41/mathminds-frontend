@@ -22,6 +22,7 @@ import {
   Brain,
   GraduationCap,
   ClipboardList,
+  Library,
 } from 'lucide-react';
 import authService from '../services/authService';
 
@@ -399,6 +400,29 @@ function DashboardPage() {
                 style={{ backgroundColor: '#e8a700', color: '#000' }}
               >
                 <ClipboardList size={18} className="me-2" />
+                Удирдах
+              </Link>
+            </Card.Body>
+          </Card>
+        </Col>
+
+        {/* ЭЕШ бэлтгэлийн ном */}
+        <Col md={6} lg={4}>
+          <Card className="h-100 shadow-sm" style={{ borderColor: '#20c997' }}>
+            <Card.Body className="d-flex flex-column">
+              <div className="mb-3">
+                <Library size={40} style={{ color: '#20c997' }} />
+              </div>
+              <Card.Title>ЭЕШ бэлтгэлийн ном</Card.Title>
+              <Card.Text className="text-muted flex-grow-1">
+                5 номын жишээ, дасгал бодлогуудыг ном тус бүрээр харах, засах.
+              </Card.Text>
+              <Link
+                to="/admin/eesh-books"
+                className="btn"
+                style={{ backgroundColor: '#20c997', color: '#000' }}
+              >
+                <Library size={18} className="me-2" />
                 Удирдах
               </Link>
             </Card.Body>
