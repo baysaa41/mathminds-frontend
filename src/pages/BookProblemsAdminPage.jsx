@@ -8,7 +8,7 @@ import { MathJaxContext } from 'better-react-mathjax';
 import {
   Container, Card, Spinner, Form, Row, Col, Badge, Pagination, InputGroup, Button, Modal, Alert, Dropdown,
 } from 'react-bootstrap';
-import { Search, X, Pencil, ArrowLeft, Sparkles, Wand2, CheckCircle2, Circle } from 'lucide-react';
+import { Search, X, Pencil, ArrowLeft, Sparkles, Wand2, CheckCircle2, Circle, RefreshCw } from 'lucide-react';
 import apiClient from '../api/axiosConfig.js';
 import LivePreview from '../components/LivePreview.jsx';
 import { mathJaxConfig } from '../mathjax.config.js';
@@ -43,9 +43,15 @@ const BOOKS = [
 function ChoicesInline({ choices }) {
   if (!choices || choices.length === 0) return null;
   return (
-    <div className="d-flex flex-wrap gap-3 mt-1 mb-1" style={{ fontSize: 13 }}>
+    <div
+      className="d-flex flex-nowrap align-items-center gap-3 mt-1 mb-1"
+      style={{ fontSize: 13, overflowX: 'auto' }}
+    >
       {choices.map((c) => (
-        <span key={c.label} className="d-inline-flex align-items-baseline gap-1">
+        <span
+          key={c.label}
+          className="d-inline-flex align-items-center gap-1 flex-shrink-0"
+        >
           <strong>{c.label})</strong>
           <LivePreview content={c.value} />
         </span>
@@ -242,6 +248,40 @@ function VerifyToggle({ uuid, verified, onToggled, cascadeLabel }) {
   );
 }
 
+function ReloadButton({ uuid, onReloaded }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleReload = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await apiClient.get(`${API_ENDPOINTS.INTEGRAL.PROBLEMS}${uuid}/eesh-book-detail/`);
+      onReloaded(res.data);
+    } catch {
+      setError('Алдаа гарлаа.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="d-inline-flex align-items-center gap-1">
+      <Button
+        size="sm"
+        variant="outline-secondary"
+        className="d-inline-flex align-items-center py-0 px-2 flex-shrink-0"
+        onClick={handleReload}
+        disabled={busy}
+        title="Гараар засварласны дараа энэ картыг дахин ачаалах"
+      >
+        {busy ? <Spinner size="sm" animation="border" /> : <RefreshCw size={13} />}
+      </Button>
+      {error && <span className="text-danger small">{error}</span>}
+    </div>
+  );
+}
+
 function ExampleCard({ item, exampleNumber, verifiedOverrides, onVerifyChange }) {
   const [override, setOverride] = useState(null);
   const d = override ? { ...item, ...override } : item;
@@ -257,23 +297,23 @@ function ExampleCard({ item, exampleNumber, verifiedOverrides, onVerifyChange })
         <span className="fw-semibold">
           Жишээ бодлого {exampleNumber} <span className="text-white-50">#{item.id}</span>
         </span>
-        <span>{item.stars}</span>
+        <span>{d.stars}</span>
       </div>
 
       <div className="d-flex justify-content-between align-items-start gap-2 mb-1 px-1">
         <div className="d-flex align-items-center gap-2 flex-wrap">
-          {item.category && (
-            <span className="badge" style={{ backgroundColor: item.category.color || '#6c757d' }}>
-              {item.category.name_mn || item.category.name}
+          {d.category && (
+            <span className="badge" style={{ backgroundColor: d.category.color || '#6c757d' }}>
+              {d.category.name_mn || d.category.name}
             </span>
           )}
           <Badge bg="light" text="dark" className="border">
-            {item.level_name || '—'}
+            {d.level_name || '—'}
           </Badge>
           <Badge bg="light" text="dark" className="border">
             {d.type_display}
           </Badge>
-          {!item.is_public && <Badge bg="secondary">Хувийн</Badge>}
+          {!d.is_public && <Badge bg="secondary">Хувийн</Badge>}
           <VerifyToggle
             uuid={item.uuid}
             verified={verified}
@@ -292,12 +332,13 @@ function ExampleCard({ item, exampleNumber, verifiedOverrides, onVerifyChange })
           >
             <Pencil size={13} />
           </a>
+          <ReloadButton uuid={item.uuid} onReloaded={setOverride} />
         </div>
       </div>
 
       <div className="px-1" style={{ fontSize: 13, overflowWrap: 'break-word' }}>
-        {item.title && <div className="fw-semibold mb-1">{item.title}</div>}
-        <LivePreview content={item.statement} />
+        {d.title && <div className="fw-semibold mb-1">{d.title}</div>}
+        <LivePreview content={d.statement} />
         <ChoicesInline choices={d.choices} />
       </div>
 
@@ -371,9 +412,10 @@ function ExerciseRow({ item, exerciseNumber, verifiedOverrides, onVerifyChange }
           >
             <Pencil size={13} />
           </a>
+          <ReloadButton uuid={item.uuid} onReloaded={setOverride} />
         </div>
       </div>
-      <LivePreview content={item.statement} />
+      <LivePreview content={d.statement} />
       <ChoicesInline choices={d.choices} />
       {d.answer && (
         <div className="mt-1"><em>Хариулт:</em> <LivePreview content={d.answer} /></div>
