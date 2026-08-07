@@ -427,18 +427,39 @@ export default function BookProblemsAdminPage() {
   const [verifiedOverrides, setVerifiedOverrides] = useState({});
 
   const handleVerifyChange = (data) => {
+    const changedIds = new Set([data.id, ...(data.cascaded_ids || [])]);
+
     setVerifiedOverrides((prev) => {
       const next = { ...prev, [data.id]: data.is_verified };
       for (const cid of data.cascaded_ids || []) next[cid] = data.is_verified;
       return next;
     });
-    setVerifiedCount((c) => {
-      const delta = (data.cascaded_ids?.length || 0) + 1;
-      return data.is_verified ? c + delta : Math.max(0, c - delta);
-    });
-    setUnverifiedCount((c) => {
-      const delta = (data.cascaded_ids?.length || 0) + 1;
-      return data.is_verified ? Math.max(0, c - delta) : c + delta;
+    const delta = (data.cascaded_ids?.length || 0) + 1;
+    setVerifiedCount((c) => (data.is_verified ? c + delta : Math.max(0, c - delta)));
+    setUnverifiedCount((c) => (data.is_verified ? Math.max(0, c - delta) : c + delta));
+
+    // Идэвхтэй шүүлтүүр "Бүгд" биш үед, шинэ баталгаажуулалтын төлөв шүүлтүүрт
+    // тохирохгүй бол мөрийг (жишээ + касказ хийсэн дасгалуудыг, эсвэл ганц дасгалыг) жагсаалтаас нуана.
+    if (verifiedFilter === 'all') return;
+    const matchesFilter = (verifiedFilter === 'true') === data.is_verified;
+    if (matchesFilter) return;
+
+    setItems((prevItems) => {
+      let removedExamples = 0;
+      const next = prevItems
+        .map((item) => {
+          if (changedIds.has(item.id)) {
+            removedExamples += 1;
+            return null;
+          }
+          if (item.variants?.some((v) => changedIds.has(v.id))) {
+            return { ...item, variants: item.variants.filter((v) => !changedIds.has(v.id)) };
+          }
+          return item;
+        })
+        .filter(Boolean);
+      if (removedExamples) setTotalCount((c) => Math.max(0, c - removedExamples));
+      return next;
     });
   };
 
