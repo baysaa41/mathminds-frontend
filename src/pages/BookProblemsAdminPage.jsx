@@ -8,13 +8,14 @@ import { MathJaxContext } from 'better-react-mathjax';
 import {
   Container, Card, Spinner, Form, Row, Col, Badge, Pagination, InputGroup, Button, Modal, Alert, Dropdown,
 } from 'react-bootstrap';
-import { Search, X, Pencil, ArrowLeft, Sparkles, Wand2 } from 'lucide-react';
+import { Search, X, Pencil, ArrowLeft, Sparkles, Wand2, CheckCircle2, Circle } from 'lucide-react';
 import apiClient from '../api/axiosConfig.js';
 import LivePreview from '../components/LivePreview.jsx';
 import { mathJaxConfig } from '../mathjax.config.js';
 import { API_ENDPOINTS } from '../constants/api.js';
 
 const TRADITIONAL_TYPE = 0;
+const VERIFIED_FILTER_STORAGE_KEY = 'eesh_book_verified_filter';
 
 const EXERCISE_REGEN_STYLES = [
   { key: 'match_example', label: 'Жишээтэй адилхан' },
@@ -193,9 +194,58 @@ function RegenerateSolutionDropdown({ item, styles, onRegenerated, label = 'Бо
   );
 }
 
-function ExampleCard({ item, exampleNumber }) {
+function VerifyToggle({ uuid, verified, onToggled, cascadeLabel }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleToggle = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await apiClient.post(
+        `${API_ENDPOINTS.INTEGRAL.PROBLEMS}${uuid}/set-verified/`,
+        { verified: !verified, cascade: true }
+      );
+      onToggled(res.data);
+    } catch {
+      setError('Алдаа гарлаа.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="d-inline-flex align-items-center gap-1">
+      <Button
+        size="sm"
+        variant={verified ? 'success' : 'outline-secondary'}
+        className="d-inline-flex align-items-center gap-1 py-0 px-2"
+        onClick={handleToggle}
+        disabled={busy}
+        title={
+          verified
+            ? 'Дахин дарж баталгаажуулалтыг цуцлах'
+            : `Баталгаажуулах${cascadeLabel ? ` (${cascadeLabel})` : ''}`
+        }
+      >
+        {busy ? (
+          <Spinner size="sm" animation="border" />
+        ) : verified ? (
+          <CheckCircle2 size={13} />
+        ) : (
+          <Circle size={13} />
+        )}
+        {verified ? 'Баталгаажсан' : 'Баталгаажуулах'}
+      </Button>
+      {error && <span className="text-danger small">{error}</span>}
+    </div>
+  );
+}
+
+function ExampleCard({ item, exampleNumber, verifiedOverrides, onVerifyChange }) {
   const [override, setOverride] = useState(null);
   const d = override ? { ...item, ...override } : item;
+  const verified = verifiedOverrides[item.id] ?? item.is_verified;
 
   return (
     <div>
@@ -224,6 +274,12 @@ function ExampleCard({ item, exampleNumber }) {
             {d.type_display}
           </Badge>
           {!item.is_public && <Badge bg="secondary">Хувийн</Badge>}
+          <VerifyToggle
+            uuid={item.uuid}
+            verified={verified}
+            cascadeLabel="жишээ + дасгалууд"
+            onToggled={onVerifyChange}
+          />
         </div>
         <div className="d-flex align-items-center gap-2 flex-shrink-0">
           <ConvertToMCButton item={d} onConverted={(data) => setOverride(data)} />
@@ -291,16 +347,18 @@ function ExampleCard({ item, exampleNumber }) {
   );
 }
 
-function ExerciseRow({ item, exerciseNumber }) {
+function ExerciseRow({ item, exerciseNumber, verifiedOverrides, onVerifyChange }) {
   const [override, setOverride] = useState(null);
   const d = override ? { ...item, ...override } : item;
+  const verified = verifiedOverrides[item.id] ?? item.is_verified;
 
   return (
     <div className="ps-3 mt-2 border-start border-2 border-warning-subtle" style={{ fontSize: 13 }}>
       <div className="d-flex justify-content-between align-items-start gap-2">
         <span>
           <strong>Дасгал {exerciseNumber}.</strong>{' '}
-          <span className="small text-muted">#{item.id}</span>
+          <span className="small text-muted">#{item.id}</span>{' '}
+          <VerifyToggle uuid={item.uuid} verified={verified} onToggled={onVerifyChange} />
         </span>
         <div className="d-flex align-items-center gap-2 flex-shrink-0">
           <ConvertToMCButton item={d} onConverted={(data) => setOverride((o) => ({ ...o, ...data }))} />
@@ -361,6 +419,28 @@ export default function BookProblemsAdminPage() {
   const [categoryId, setCategoryId] = useState('');
   const [inputVal, setInputVal] = useState('');
   const [search, setSearch] = useState('');
+  const [verifiedFilter, setVerifiedFilter] = useState(
+    () => localStorage.getItem(VERIFIED_FILTER_STORAGE_KEY) || 'all'
+  );
+  const [verifiedCount, setVerifiedCount] = useState(0);
+  const [unverifiedCount, setUnverifiedCount] = useState(0);
+  const [verifiedOverrides, setVerifiedOverrides] = useState({});
+
+  const handleVerifyChange = (data) => {
+    setVerifiedOverrides((prev) => {
+      const next = { ...prev, [data.id]: data.is_verified };
+      for (const cid of data.cascaded_ids || []) next[cid] = data.is_verified;
+      return next;
+    });
+    setVerifiedCount((c) => {
+      const delta = (data.cascaded_ids?.length || 0) + 1;
+      return data.is_verified ? c + delta : Math.max(0, c - delta);
+    });
+    setUnverifiedCount((c) => {
+      const delta = (data.cascaded_ids?.length || 0) + 1;
+      return data.is_verified ? Math.max(0, c - delta) : c + delta;
+    });
+  };
 
   useEffect(() => {
     apiClient
@@ -377,10 +457,13 @@ export default function BookProblemsAdminPage() {
         const params = { book: bookKey, page, page_size: PAGE_SIZE };
         if (categoryId) params.category = categoryId;
         if (search) params.search = search;
+        if (verifiedFilter !== 'all') params.verified = verifiedFilter;
 
         const res = await apiClient.get(`${API_ENDPOINTS.INTEGRAL.PROBLEMS}eesh-book-problems/`, { params });
         setItems(res.data.results || []);
         setTotalCount(res.data.count || 0);
+        setVerifiedCount(res.data.verified_count || 0);
+        setUnverifiedCount(res.data.unverified_count || 0);
         setCurrentPage(page);
       } catch {
         setError('Мэдээлэл татахад алдаа гарлаа.');
@@ -388,12 +471,17 @@ export default function BookProblemsAdminPage() {
         setLoading(false);
       }
     },
-    [bookKey, categoryId, search]
+    [bookKey, categoryId, search, verifiedFilter]
   );
 
   useEffect(() => {
     loadResults(1);
   }, [loadResults]);
+
+  const handleVerifiedFilterChange = (key) => {
+    setVerifiedFilter(key);
+    localStorage.setItem(VERIFIED_FILTER_STORAGE_KEY, key);
+  };
 
   const handleSearchInput = (val) => {
     setInputVal(val);
@@ -427,7 +515,13 @@ export default function BookProblemsAdminPage() {
             </Link>
             <h4 className="fw-bold mb-0">ЭЕШ бэлтгэлийн номын бодлого засах</h4>
           </div>
-          <Badge bg="secondary">{totalCount.toLocaleString()} жишээ бодлого</Badge>
+          <div className="d-flex align-items-center gap-2">
+            <Badge bg="secondary">{totalCount.toLocaleString()} жишээ бодлого</Badge>
+            <Badge bg="success">{verifiedCount.toLocaleString()} баталгаажсан</Badge>
+            <Badge bg="light" text="dark" className="border">
+              {unverifiedCount.toLocaleString()} баталгаажаагүй
+            </Badge>
+          </div>
         </div>
 
         {/* Ном сонгох */}
@@ -479,6 +573,25 @@ export default function BookProblemsAdminPage() {
                   ))}
                 </Form.Select>
               </Col>
+              <Col xs={12}>
+                <Form.Label className="small text-muted mb-1">Баталгаажуулалт</Form.Label>
+                <div className="d-flex gap-2">
+                  {[
+                    { key: 'all', label: 'Бүгд' },
+                    { key: 'true', label: 'Баталгаажсан' },
+                    { key: 'false', label: 'Баталгаажаагүй' },
+                  ].map((f) => (
+                    <Button
+                      key={f.key}
+                      size="sm"
+                      variant={verifiedFilter === f.key ? 'primary' : 'outline-secondary'}
+                      onClick={() => handleVerifiedFilterChange(f.key)}
+                    >
+                      {f.label}
+                    </Button>
+                  ))}
+                </div>
+              </Col>
             </Row>
           </Card.Body>
         </Card>
@@ -502,7 +615,12 @@ export default function BookProblemsAdminPage() {
                     key={item.uuid}
                     className={`p-3 ${idx > 0 ? 'border-top' : ''}`}
                   >
-                    <ExampleCard item={item} exampleNumber={(currentPage - 1) * PAGE_SIZE + idx + 1} />
+                    <ExampleCard
+                      item={item}
+                      exampleNumber={(currentPage - 1) * PAGE_SIZE + idx + 1}
+                      verifiedOverrides={verifiedOverrides}
+                      onVerifyChange={handleVerifyChange}
+                    />
                     {item.variants && item.variants.length > 0 && (
                       <div className="d-flex flex-column">
                         {item.variants.map((v, vIdx) => (
@@ -510,6 +628,8 @@ export default function BookProblemsAdminPage() {
                             key={v.uuid}
                             item={v}
                             exerciseNumber={(item.exercise_start || 1) + vIdx}
+                            verifiedOverrides={verifiedOverrides}
+                            onVerifyChange={handleVerifyChange}
                           />
                         ))}
                       </div>
