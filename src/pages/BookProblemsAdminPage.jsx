@@ -6,7 +6,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { MathJaxContext } from 'better-react-mathjax';
 import {
-  Container, Card, Spinner, Form, Row, Col, Badge, Pagination, InputGroup, Button, Modal, Alert,
+  Container, Card, Spinner, Form, Row, Col, Badge, Pagination, InputGroup, Button, Modal, Alert, Dropdown,
 } from 'react-bootstrap';
 import { Search, X, Pencil, ArrowLeft, Sparkles, Wand2 } from 'lucide-react';
 import apiClient from '../api/axiosConfig.js';
@@ -15,6 +15,19 @@ import { mathJaxConfig } from '../mathjax.config.js';
 import { API_ENDPOINTS } from '../constants/api.js';
 
 const TRADITIONAL_TYPE = 0;
+
+const EXERCISE_REGEN_STYLES = [
+  { key: 'match_example', label: 'Жишээтэй адилхан' },
+  { key: 'concise', label: 'Товч' },
+  { key: 'standard', label: 'Стандарт' },
+  { key: 'step_by_step', label: 'Алхамчилсан' },
+];
+
+const EXAMPLE_REGEN_STYLES = [
+  { key: 'concise', label: 'Товч' },
+  { key: 'standard', label: 'Стандарт' },
+  { key: 'detailed', label: 'Дэлгэрэнгүй' },
+];
 
 const PAGE_SIZE = 20;
 
@@ -124,6 +137,62 @@ function ConvertToMCButton({ item, onConverted }) {
   );
 }
 
+function RegenerateSolutionDropdown({ item, styles, onRegenerated, label = 'Бодолт дахин үүсгэх' }) {
+  const [regenerating, setRegenerating] = useState(false);
+  const [regenError, setRegenError] = useState(null);
+  const [regenStyleLabel, setRegenStyleLabel] = useState(null);
+
+  const handleRegenerate = async (styleKey, styleLabel) => {
+    setRegenerating(true);
+    setRegenError(null);
+    try {
+      const res = await apiClient.post(
+        `${API_ENDPOINTS.INTEGRAL.PROBLEMS}${item.uuid}/regenerate-eesh-solution/`,
+        { style: styleKey }
+      );
+      onRegenerated({
+        hint: res.data.hint,
+        solution: res.data.solution,
+        solution_uuid: res.data.solution_uuid,
+        linked_formulas: res.data.linked_formulas,
+      });
+      setRegenStyleLabel(styleLabel);
+    } catch (err) {
+      setRegenError(err.response?.data?.error || 'Бодолт үүсгэхэд алдаа гарлаа.');
+    } finally {
+      setRegenerating(false);
+    }
+  };
+
+  return (
+    <div className="d-flex align-items-center gap-2 flex-wrap">
+      <Dropdown>
+        <Dropdown.Toggle
+          variant="outline-warning"
+          size="sm"
+          disabled={regenerating}
+          className="d-inline-flex align-items-center gap-1 py-0 px-2"
+          title="Сонгосон хэв маягаар AI-аар бодолт дахин бичих"
+        >
+          {regenerating ? <Spinner size="sm" animation="border" /> : <Sparkles size={12} />}
+          {label}
+        </Dropdown.Toggle>
+        <Dropdown.Menu>
+          {styles.map((s) => (
+            <Dropdown.Item key={s.key} onClick={() => handleRegenerate(s.key, s.label)}>
+              {s.label}
+            </Dropdown.Item>
+          ))}
+        </Dropdown.Menu>
+      </Dropdown>
+      {regenError && <span className="text-danger small">{regenError}</span>}
+      {regenStyleLabel && !regenError && (
+        <span className="text-success small">Шинэчлэгдлээ ({regenStyleLabel})</span>
+      )}
+    </div>
+  );
+}
+
 function ExampleCard({ item, exampleNumber }) {
   const [override, setOverride] = useState(null);
   const d = override ? { ...item, ...override } : item;
@@ -176,6 +245,14 @@ function ExampleCard({ item, exampleNumber }) {
         <ChoicesInline choices={d.choices} />
       </div>
 
+      <div className="px-1 mt-2">
+        <RegenerateSolutionDropdown
+          item={item}
+          styles={EXAMPLE_REGEN_STYLES}
+          onRegenerated={(data) => setOverride((o) => ({ ...o, ...data }))}
+        />
+      </div>
+
       {d.hint && (
         <div className="mx-1 mt-2 p-2" style={{ background: '#fff3e6', borderLeft: '3px solid #cc7a00', fontSize: 13 }}>
           <div className="fw-bold mb-1" style={{ color: '#cc7a00' }}>CHART — Гол санаа</div>
@@ -197,6 +274,17 @@ function ExampleCard({ item, exampleNumber }) {
               <Pencil size={11} /> Бодолтыг засах
             </a>
           )}
+          {d.linked_formulas?.length > 0 && (
+            <div className="mt-2 pt-2 border-top">
+              <span className="text-muted">Холбогдсон томьёо: </span>
+              {d.linked_formulas.map((f, i) => (
+                <span key={f.id}>
+                  {i > 0 && ', '}
+                  <a href={`/formula/${f.uuid}`} target="_blank" rel="noreferrer">{f.title}</a>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -204,25 +292,8 @@ function ExampleCard({ item, exampleNumber }) {
 }
 
 function ExerciseRow({ item, exerciseNumber }) {
-  const [regenerating, setRegenerating] = useState(false);
-  const [regenError, setRegenError] = useState(null);
   const [override, setOverride] = useState(null);
   const d = override ? { ...item, ...override } : item;
-
-  const handleRegenerate = async () => {
-    setRegenerating(true);
-    setRegenError(null);
-    try {
-      const res = await apiClient.post(
-        `${API_ENDPOINTS.INTEGRAL.PROBLEMS}${item.uuid}/regenerate-eesh-solution/`
-      );
-      setOverride((o) => ({ ...o, solution: res.data.solution, solution_uuid: res.data.solution_uuid }));
-    } catch {
-      setRegenError('Бодолт үүсгэхэд алдаа гарлаа.');
-    } finally {
-      setRegenerating(false);
-    }
-  };
 
   return (
     <div className="ps-3 mt-2 border-start border-2 border-warning-subtle" style={{ fontSize: 13 }}>
@@ -250,20 +321,12 @@ function ExerciseRow({ item, exerciseNumber }) {
         <div className="mt-1"><em>Хариулт:</em> <LivePreview content={d.answer} /></div>
       )}
 
-      <div className="mt-2 d-flex align-items-center gap-2">
-        <Button
-          size="sm"
-          variant="outline-warning"
-          className="d-inline-flex align-items-center gap-1 py-0 px-2"
-          onClick={handleRegenerate}
-          disabled={regenerating}
-          title="Жишээ бодлогын бодолттой адилхан хэв маяг, түвшинд тохирсон дэлгэрэнгүй байдлаар AI-аар дахин бичих"
-        >
-          {regenerating ? <Spinner size="sm" animation="border" /> : <Sparkles size={12} />}
-          Жишээтэй адилхан болгож дахин үүсгэх
-        </Button>
-        {regenError && <span className="text-danger small">{regenError}</span>}
-        {override?.solution && !regenError && <span className="text-success small">Шинэчлэгдлээ</span>}
+      <div className="mt-2">
+        <RegenerateSolutionDropdown
+          item={item}
+          styles={EXERCISE_REGEN_STYLES}
+          onRegenerated={(data) => setOverride((o) => ({ ...o, ...data }))}
+        />
       </div>
 
       {d.solution && (

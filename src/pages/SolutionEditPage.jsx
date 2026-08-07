@@ -20,7 +20,7 @@ import Badge from 'react-bootstrap/Badge';
 import Modal from 'react-bootstrap/Modal';
 
 // Icons
-import { Save, X, Lightbulb, FileText, StickyNote, Sparkles, PlusCircle, Wand2 } from 'lucide-react';
+import { Save, X, Lightbulb, FileText, StickyNote, Sparkles, PlusCircle, Wand2, Pencil } from 'lucide-react';
 import AppBreadcrumb from '../components/common/AppBreadcrumb';
 
 // Нэг товшилтоор "Нэмэлт зааварчилгаа" талбарт шууд оруулах бэлэн зааврууд
@@ -624,6 +624,17 @@ const SolutionEditPage = () => {
                         )}
                         <GlobalLivePreview content={f.content} />
                       </div>
+                      {isStaff && f.uuid && (
+                        <a
+                          href={`/formula/${f.uuid}/edit`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex-shrink-0 mt-1"
+                          title="Томьёог засах"
+                        >
+                          <Pencil size={14} />
+                        </a>
+                      )}
                       <Button
                         variant="link" size="sm" className="p-0 text-danger flex-shrink-0 mt-1"
                         onClick={() => handleRemoveFormula(f.id)}
