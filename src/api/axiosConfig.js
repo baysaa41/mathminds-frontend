@@ -52,6 +52,8 @@ apiClient.interceptors.request.use(
       'generate_solution_note',
       'generate-ai-content',
       'convert_to_mc',
+      'convert-to-mc-in-place',
+      'regenerate-eesh-solution',
       'improve',
       'generate_weekly_article',
       'explain-wrong-choice',

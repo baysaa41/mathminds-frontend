@@ -6,31 +6,144 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { MathJaxContext } from 'better-react-mathjax';
 import {
-  Container, Card, Spinner, Form, Row, Col, Badge, Pagination, InputGroup, Button,
+  Container, Card, Spinner, Form, Row, Col, Badge, Pagination, InputGroup, Button, Modal, Alert,
 } from 'react-bootstrap';
-import { Search, X, Pencil, ArrowLeft } from 'lucide-react';
+import { Search, X, Pencil, ArrowLeft, Sparkles, Wand2 } from 'lucide-react';
 import apiClient from '../api/axiosConfig.js';
 import LivePreview from '../components/LivePreview.jsx';
 import { mathJaxConfig } from '../mathjax.config.js';
 import { API_ENDPOINTS } from '../constants/api.js';
 
+const TRADITIONAL_TYPE = 0;
+
 const PAGE_SIZE = 20;
 
 const BOOKS = [
   { key: 'book1', label: 'Ном 1', hint: 'Сэргээн санах / Ойлгох' },
-  { key: 'book2', label: 'Ном 2', hint: 'Ойлгох / Хэрэглэх' },
-  { key: 'book3', label: 'Ном 3', hint: 'Хэрэглэх ба түүнээс дээш' },
+  { key: 'book2', label: 'Ном 2', hint: 'Хэрэглэх' },
+  { key: 'book3', label: 'Ном 3', hint: 'Хэрэглэхээс дээш түвшин' },
   { key: 'geometry', label: 'Геометр', hint: 'Бүх түвшин' },
   { key: 'probstat', label: 'Магадлал статистик', hint: 'Бүх түвшин' },
 ];
 
-function ProblemRow({ item, variant = false }) {
+function ChoicesInline({ choices }) {
+  if (!choices || choices.length === 0) return null;
   return (
-    <div className={variant ? 'ps-3 border-start border-2 border-warning-subtle' : ''}>
-      <div className="d-flex justify-content-between align-items-start gap-2 mb-1">
+    <div className="d-flex flex-wrap gap-3 mt-1 mb-1" style={{ fontSize: 13 }}>
+      {choices.map((c) => (
+        <span key={c.label} className="d-inline-flex align-items-baseline gap-1">
+          <strong>{c.label})</strong>
+          <LivePreview content={c.value} />
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function ConvertToMCInPlaceModal({ show, onHide, onConfirm, title, id }) {
+  return (
+    <Modal show={show} onHide={onHide} centered>
+      <Modal.Header closeButton>
+        <Modal.Title className="h5">
+          <Wand2 size={20} className="me-2 text-warning" />
+          Сонгох тест болгож хувиргах
+        </Modal.Title>
+      </Modal.Header>
+      <Modal.Body>
+        <p>
+          AI ашиглан <b>{title || `Бодлого #${id}`}</b> бодлогыг{' '}
+          <b>яг үүн дээр нь</b> (клон үүсгэлгүйгээр) <b>5 сонгох хариулттай</b> болгож хувиргана.
+        </p>
+        <Alert variant="warning" className="py-2 mb-0">
+          Клон хийхгүй — энэ бодлогын одоогийн бодолт, хариулт AI-аар үүсгэсэн шинэ
+          хувилбараар дарагдана. Номын бодлого дахин компайлагдахад шинэ агуулга орно.
+        </Alert>
+      </Modal.Body>
+      <Modal.Footer>
+        <Button variant="secondary" onClick={onHide}>
+          <X size={16} className="me-2" />
+          Цуцлах
+        </Button>
+        <Button variant="warning" onClick={onConfirm}>
+          <Wand2 size={16} className="me-2" />
+          Хувиргах
+        </Button>
+      </Modal.Footer>
+    </Modal>
+  );
+}
+
+function ConvertToMCButton({ item, onConverted }) {
+  const [showModal, setShowModal] = useState(false);
+  const [converting, setConverting] = useState(false);
+  const [error, setError] = useState(null);
+  const [done, setDone] = useState(false);
+
+  if (item.type !== TRADITIONAL_TYPE) return null;
+
+  const handleConfirm = async () => {
+    setShowModal(false);
+    setConverting(true);
+    setError(null);
+    try {
+      const res = await apiClient.post(
+        `${API_ENDPOINTS.INTEGRAL.PROBLEMS}${item.uuid}/convert-to-mc-in-place/`
+      );
+      setDone(true);
+      onConverted(res.data);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Сонгох тест болгоход алдаа гарлаа.');
+    } finally {
+      setConverting(false);
+    }
+  };
+
+  return (
+    <>
+      <Button
+        size="sm"
+        variant="outline-secondary"
+        className="d-inline-flex align-items-center gap-1 py-0 px-2 flex-shrink-0"
+        onClick={() => setShowModal(true)}
+        disabled={converting}
+        title="AI ашиглан энэ бодлогыг яг үүн дээр нь (клонгүйгээр) сонгох тест болгож хувиргах"
+      >
+        {converting ? <Spinner size="sm" animation="border" /> : <Wand2 size={13} />}
+        Сонгох тест болгох
+      </Button>
+      {error && <span className="text-danger small ms-1">{error}</span>}
+      {done && !error && <span className="text-success small ms-1">Хувирлаа</span>}
+      <ConvertToMCInPlaceModal
+        show={showModal}
+        onHide={() => setShowModal(false)}
+        onConfirm={handleConfirm}
+        title={item.title}
+        id={item.id}
+      />
+    </>
+  );
+}
+
+function ExampleCard({ item, exampleNumber }) {
+  const [override, setOverride] = useState(null);
+  const d = override ? { ...item, ...override } : item;
+
+  return (
+    <div>
+      {/* Номын цэнхэр гарчгийн зурвасын хэв маягтай толгой */}
+      <div
+        className="d-flex justify-content-between align-items-center px-2 py-1 mb-2"
+        style={{ background: '#0d3b8c', color: '#fff', fontSize: 13 }}
+      >
+        <span className="fw-semibold">
+          Жишээ бодлого {exampleNumber} <span className="text-white-50">#{item.id}</span>
+        </span>
+        <span>{item.stars}</span>
+      </div>
+
+      <div className="d-flex justify-content-between align-items-start gap-2 mb-1 px-1">
         <div className="d-flex align-items-center gap-2 flex-wrap">
-          <span className="small text-muted">#{item.id}</span>
-          {!variant && item.category && (
+          {item.category && (
             <span className="badge" style={{ backgroundColor: item.category.color || '#6c757d' }}>
               {item.category.name_mn || item.category.name}
             </span>
@@ -39,24 +152,136 @@ function ProblemRow({ item, variant = false }) {
             {item.level_name || '—'}
           </Badge>
           <Badge bg="light" text="dark" className="border">
-            {item.type_display}
+            {d.type_display}
           </Badge>
           {!item.is_public && <Badge bg="secondary">Хувийн</Badge>}
         </div>
-        <a
-          href={`/problem/${item.uuid}/edit`}
-          target="_blank"
-          rel="noreferrer"
-          className="btn btn-sm btn-outline-primary py-0 px-2 flex-shrink-0"
-          title="Шинэ таб дээр засах"
-        >
-          <Pencil size={13} />
-        </a>
+        <div className="d-flex align-items-center gap-2 flex-shrink-0">
+          <ConvertToMCButton item={d} onConverted={(data) => setOverride(data)} />
+          <a
+            href={`/problem/${item.uuid}/edit`}
+            target="_blank"
+            rel="noreferrer"
+            className="btn btn-sm btn-outline-primary py-0 px-2 flex-shrink-0"
+            title="Шинэ таб дээр засах"
+          >
+            <Pencil size={13} />
+          </a>
+        </div>
       </div>
-      {item.title && <div className="fw-semibold small mb-1">{item.title}</div>}
-      <div style={{ fontSize: 13, overflowWrap: 'break-word' }}>
+
+      <div className="px-1" style={{ fontSize: 13, overflowWrap: 'break-word' }}>
+        {item.title && <div className="fw-semibold mb-1">{item.title}</div>}
         <LivePreview content={item.statement} />
+        <ChoicesInline choices={d.choices} />
       </div>
+
+      {d.hint && (
+        <div className="mx-1 mt-2 p-2" style={{ background: '#fff3e6', borderLeft: '3px solid #cc7a00', fontSize: 13 }}>
+          <div className="fw-bold mb-1" style={{ color: '#cc7a00' }}>CHART — Гол санаа</div>
+          <LivePreview content={d.hint} />
+        </div>
+      )}
+
+      {d.solution && (
+        <div className="mx-1 mt-2 p-2" style={{ background: '#eefaf0', borderLeft: '3px solid #2e8b40', fontSize: 13 }}>
+          <div className="fw-bold mb-1" style={{ color: '#2e8b40' }}>Бодолт</div>
+          <LivePreview content={d.solution} />
+          {d.solution_uuid && (
+            <a
+              href={`/solution/${d.solution_uuid}/edit`}
+              target="_blank"
+              rel="noreferrer"
+              className="small d-inline-flex align-items-center gap-1 mt-1"
+            >
+              <Pencil size={11} /> Бодолтыг засах
+            </a>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ExerciseRow({ item, exerciseNumber }) {
+  const [regenerating, setRegenerating] = useState(false);
+  const [regenError, setRegenError] = useState(null);
+  const [override, setOverride] = useState(null);
+  const d = override ? { ...item, ...override } : item;
+
+  const handleRegenerate = async () => {
+    setRegenerating(true);
+    setRegenError(null);
+    try {
+      const res = await apiClient.post(
+        `${API_ENDPOINTS.INTEGRAL.PROBLEMS}${item.uuid}/regenerate-eesh-solution/`
+      );
+      setOverride((o) => ({ ...o, solution: res.data.solution, solution_uuid: res.data.solution_uuid }));
+    } catch {
+      setRegenError('Бодолт үүсгэхэд алдаа гарлаа.');
+    } finally {
+      setRegenerating(false);
+    }
+  };
+
+  return (
+    <div className="ps-3 mt-2 border-start border-2 border-warning-subtle" style={{ fontSize: 13 }}>
+      <div className="d-flex justify-content-between align-items-start gap-2">
+        <span>
+          <strong>Дасгал {exerciseNumber}.</strong>{' '}
+          <span className="small text-muted">#{item.id}</span>
+        </span>
+        <div className="d-flex align-items-center gap-2 flex-shrink-0">
+          <ConvertToMCButton item={d} onConverted={(data) => setOverride((o) => ({ ...o, ...data }))} />
+          <a
+            href={`/problem/${item.uuid}/edit`}
+            target="_blank"
+            rel="noreferrer"
+            className="btn btn-sm btn-outline-primary py-0 px-2 flex-shrink-0"
+            title="Шинэ таб дээр засах"
+          >
+            <Pencil size={13} />
+          </a>
+        </div>
+      </div>
+      <LivePreview content={item.statement} />
+      <ChoicesInline choices={d.choices} />
+      {d.answer && (
+        <div className="mt-1"><em>Хариулт:</em> <LivePreview content={d.answer} /></div>
+      )}
+
+      <div className="mt-2 d-flex align-items-center gap-2">
+        <Button
+          size="sm"
+          variant="outline-warning"
+          className="d-inline-flex align-items-center gap-1 py-0 px-2"
+          onClick={handleRegenerate}
+          disabled={regenerating}
+          title="Жишээ бодлогын бодолттой адилхан хэв маяг, түвшинд тохирсон дэлгэрэнгүй байдлаар AI-аар дахин бичих"
+        >
+          {regenerating ? <Spinner size="sm" animation="border" /> : <Sparkles size={12} />}
+          Жишээтэй адилхан болгож дахин үүсгэх
+        </Button>
+        {regenError && <span className="text-danger small">{regenError}</span>}
+        {override?.solution && !regenError && <span className="text-success small">Шинэчлэгдлээ</span>}
+      </div>
+
+      {d.solution && (
+        <div className="mt-2 p-2" style={{ background: '#eefaf0', borderLeft: '3px solid #2e8b40' }}>
+          <div className="fw-bold mb-1" style={{ color: '#2e8b40' }}>Бодолт</div>
+          <LivePreview content={d.solution} />
+          {d.solution_uuid && (
+            <a
+              href={`/solution/${d.solution_uuid}/edit`}
+              target="_blank"
+              rel="noreferrer"
+              className="small d-inline-flex align-items-center gap-1 mt-1"
+            >
+              <Pencil size={11} /> Бодолтыг засах
+            </a>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -214,11 +439,15 @@ export default function BookProblemsAdminPage() {
                     key={item.uuid}
                     className={`p-3 ${idx > 0 ? 'border-top' : ''}`}
                   >
-                    <ProblemRow item={item} />
+                    <ExampleCard item={item} exampleNumber={(currentPage - 1) * PAGE_SIZE + idx + 1} />
                     {item.variants && item.variants.length > 0 && (
-                      <div className="mt-2 d-flex flex-column gap-2">
-                        {item.variants.map((v) => (
-                          <ProblemRow key={v.uuid} item={v} variant />
+                      <div className="d-flex flex-column">
+                        {item.variants.map((v, vIdx) => (
+                          <ExerciseRow
+                            key={v.uuid}
+                            item={v}
+                            exerciseNumber={(item.exercise_start || 1) + vIdx}
+                          />
                         ))}
                       </div>
                     )}
