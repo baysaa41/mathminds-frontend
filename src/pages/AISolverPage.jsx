@@ -63,6 +63,8 @@ const PRESETS = [
     prompt: 'Бодолтыг товчлоод эцсийн хариулт болон гол алхмуудыг хэдхэн мөрөнд дүгнэж бич.' },
   { icon: '🔄', label: 'Өөр арга',        needsHistory: true,
     prompt: 'Өөр арга, өөр аргачлал ашиглан бодлогыг дахин бод.' },
+  { icon: '🎯', label: 'Distractor хариулт', needsHistory: true,
+    prompt: 'Энэ бодлогын зөв хариултад тулгуурлан сонгох тест (multiple choice)-д зориулж 4 буруу хариулт (distractor) бэлд. Хариулт бүр сурагчийн гаргадаг өөр өөр нийтлэг алдаанаас (тооцооны алдаа, буруу томьёо ашиглах, дутуу алхам, ойлголтын алдаа гэх мэт) үүссэн, зөв хариулттай төстэй боловч тодорхой ялгаатай байх ёстой. Хариулт бүрийн ард ямар алдаанаас үүссэнийг товч тайлбарла.' },
 ];
 
 function aiInfo(role) {
@@ -154,7 +156,7 @@ const Typing = memo(function Typing({ role }) {
 });
 
 // ─── Бодлогын зүүн панель — memo-р тогтворжуулна ─────────────────────────────
-const ProblemPanel = memo(function ProblemPanel({ statement }) {
+const ProblemPanel = memo(function ProblemPanel({ statement, choices }) {
   return (
     <div style={{
       width: 300, flexShrink: 0,
@@ -174,6 +176,19 @@ const ProblemPanel = memo(function ProblemPanel({ statement }) {
       </div>
       <div style={{ padding: '16px', fontSize: 13.5, lineHeight: 1.75, flex: 1 }}>
         <LivePreview content={statement || ''} />
+        {choices?.length > 0 && (
+          <div style={{
+            marginTop: 14, paddingTop: 12, borderTop: '1px dashed #dde2f5',
+            display: 'flex', flexWrap: 'wrap', gap: '6px 14px',
+          }}>
+            {[...choices].sort((a, b) => (a.label || '').localeCompare(b.label || '')).map((c) => (
+              <span key={c.id || c.label} style={{ display: 'inline-flex', gap: 6, alignItems: 'baseline' }}>
+                <strong style={{ flexShrink: 0 }}>{c.label})</strong>
+                <LivePreview content={c.value} />
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -409,7 +424,7 @@ export default function AISolverPage() {
         <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
           {/* Left: бодлого — ProblemPanel memo-р тогтворжуулсан */}
-          <ProblemPanel statement={problem.statement} />
+          <ProblemPanel statement={problem.statement} choices={problem.choices} />
 
           {/* Right: chat */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>

@@ -8,7 +8,7 @@ import { MathJaxContext } from 'better-react-mathjax';
 import {
   Container, Card, Spinner, Form, Row, Col, Badge, Pagination, InputGroup, Button, Modal, Alert, Dropdown,
 } from 'react-bootstrap';
-import { Search, X, Pencil, ArrowLeft, Sparkles, Wand2, CheckCircle2, Circle, RefreshCw } from 'lucide-react';
+import { Search, X, Pencil, ArrowLeft, Sparkles, Wand2, CheckCircle2, Circle, RefreshCw, BrainCircuit } from 'lucide-react';
 import apiClient from '../api/axiosConfig.js';
 import LivePreview from '../components/LivePreview.jsx';
 import { mathJaxConfig } from '../mathjax.config.js';
@@ -282,6 +282,20 @@ function ReloadButton({ uuid, onReloaded }) {
   );
 }
 
+function AIChatButton({ uuid }) {
+  return (
+    <a
+      href={`/problem/${uuid}/ai-solve`}
+      target="_blank"
+      rel="noreferrer"
+      className="btn btn-sm btn-outline-primary d-inline-flex align-items-center justify-content-center py-0 px-2 flex-shrink-0"
+      title="AI хамтарсан бодлогын чат нээх"
+    >
+      <BrainCircuit size={13} />
+    </a>
+  );
+}
+
 function ExampleCard({ item, exampleNumber, verifiedOverrides, onVerifyChange }) {
   const [override, setOverride] = useState(null);
   const d = override ? { ...item, ...override } : item;
@@ -323,11 +337,12 @@ function ExampleCard({ item, exampleNumber, verifiedOverrides, onVerifyChange })
         </div>
         <div className="d-flex align-items-center gap-2 flex-shrink-0">
           <ConvertToMCButton item={d} onConverted={(data) => setOverride(data)} />
+          <AIChatButton uuid={item.uuid} />
           <a
             href={`/problem/${item.uuid}/edit`}
             target="_blank"
             rel="noreferrer"
-            className="btn btn-sm btn-outline-primary py-0 px-2 flex-shrink-0"
+            className="btn btn-sm btn-outline-primary d-inline-flex align-items-center justify-content-center py-0 px-2 flex-shrink-0"
             title="Шинэ таб дээр засах"
           >
             <Pencil size={13} />
@@ -403,11 +418,12 @@ function ExerciseRow({ item, exerciseNumber, verifiedOverrides, onVerifyChange }
         </span>
         <div className="d-flex align-items-center gap-2 flex-shrink-0">
           <ConvertToMCButton item={d} onConverted={(data) => setOverride((o) => ({ ...o, ...data }))} />
+          <AIChatButton uuid={item.uuid} />
           <a
             href={`/problem/${item.uuid}/edit`}
             target="_blank"
             rel="noreferrer"
-            className="btn btn-sm btn-outline-primary py-0 px-2 flex-shrink-0"
+            className="btn btn-sm btn-outline-primary d-inline-flex align-items-center justify-content-center py-0 px-2 flex-shrink-0"
             title="Шинэ таб дээр засах"
           >
             <Pencil size={13} />
