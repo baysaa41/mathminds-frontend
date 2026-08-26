@@ -15,6 +15,8 @@ import LoadingState from './components/common/LoadingState';
 
 // Lazy-loaded page components
 const Feed = lazy(() => import('./components/Feed'));
+const HomeRedirect = lazy(() => import('./components/HomeRedirect.jsx'));
+const OnboardingPage = lazy(() => import('./pages/OnboardingPage.jsx'));
 const MyDayPage = lazy(() => import('./pages/MyDayPage.jsx'));
 const TeacherDashboardPage = lazy(() => import('./pages/TeacherDashboardPage.jsx'));
 const ParentDashboardPage = lazy(() => import('./pages/ParentDashboardPage.jsx'));
@@ -150,6 +152,16 @@ function App() {
         <Route path="/reset-password/:uidb64/:token" element={<PasswordResetConfirmPage />} />
         <Route path="/callback" element={<CallbackPage />} />
 
+        {/* Шинэ хэрэглэгчийн 3 алхамт танилцуулга */}
+        <Route
+          path="/onboarding"
+          element={
+            <ProtectedRoute>
+              <OnboardingPage />
+            </ProtectedRoute>
+          }
+        />
+
         {/* Нийтэд нээлттэй харилцан яриа харах */}
         <Route
           path="/messages/conversation/:conversationUuid"
@@ -177,8 +189,9 @@ function App() {
             </ProtectedRoute>
           }
         >
-          {/* Үндсэн feed */}
-          <Route index element={<Feed />} />
+          {/* Үндсэн хуудас - role-д тохирсон dashboard руу чиглүүлэх, эсвэл feed */}
+          <Route index element={<HomeRedirect />} />
+          <Route path="feed" element={<Feed />} />
           <Route path="dashboard" element={<MyDayPage />} />
           <Route path="parent-dashboard" element={<ParentDashboardPage />} />
           <Route path="bookmarks" element={<BookmarksPage />} />
@@ -343,13 +356,13 @@ function App() {
           }
         />
 
-        {/* Нэгдсэн контентийн сан */}
+        {/* Нэгдсэн контентийн сан - зөвхөн багш, staff */}
         <Route
           path="/content/browse"
           element={
-            <ProtectedRoute>
+            <AdminRoute allowTeacher={true}>
               <ContentBrowsePage />
-            </ProtectedRoute>
+            </AdminRoute>
           }
         />
 

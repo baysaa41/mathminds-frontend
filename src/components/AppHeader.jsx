@@ -133,10 +133,16 @@ export default function AppHeader() {
           {/* Desktop nav */}
           <Navbar.Collapse id="main-navbar">
             <Nav className="me-auto">
-              <Nav.Link as={Link} to="/content/browse" className="d-flex align-items-center">
-                <i className="bi bi-collection me-1"></i>
-                <span>Контентийн сан</span>
+              <Nav.Link as={Link} to="/feed" className="d-flex align-items-center">
+                <i className="bi bi-rss me-1"></i>
+                <span>Feed</span>
               </Nav.Link>
+              {user && (user.is_staff || user.site_role === 'TEACHER') && (
+                <Nav.Link as={Link} to="/content/browse" className="d-flex align-items-center">
+                  <i className="bi bi-collection me-1"></i>
+                  <span>Контентийн сан</span>
+                </Nav.Link>
+              )}
               <Nav.Link as={Link} to="/clubs/browse" className="d-flex align-items-center">
                 <Users size={18} className="me-1" />
                 <span>Клубууд</span>
@@ -240,9 +246,14 @@ export default function AppHeader() {
         </Offcanvas.Header>
         <Offcanvas.Body>
           <Nav className="flex-column">
-            <Nav.Link as={Link} to="/content/browse" onClick={close}>
-              <i className="bi bi-collection me-2"></i>Контентийн сан
+            <Nav.Link as={Link} to="/feed" onClick={close}>
+              <i className="bi bi-rss me-2"></i>Feed
             </Nav.Link>
+            {user && (user.is_staff || user.site_role === 'TEACHER') && (
+              <Nav.Link as={Link} to="/content/browse" onClick={close}>
+                <i className="bi bi-collection me-2"></i>Контентийн сан
+              </Nav.Link>
+            )}
 
             <div className="mt-3 mb-1 px-3 text-muted small">Клубууд</div>
             {user && (

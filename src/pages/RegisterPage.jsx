@@ -101,8 +101,8 @@ const RegisterPage = () => {
       // Автоматаар нэвтрүүлэх
       login(user, token);
 
-      // Home хуудас руу очих
-      navigate('/');
+      // Шинэ хэрэглэгчийн танилцуулга руу очих
+      navigate('/onboarding');
     } catch (err) {
       setLoading(false);
 

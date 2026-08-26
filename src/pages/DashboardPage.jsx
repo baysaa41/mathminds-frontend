@@ -67,7 +67,7 @@ function DashboardPage() {
         <Col>
           <div className="d-flex align-items-center justify-content-between mb-3">
             <h1 className="mb-0">Admin Dashboard</h1>
-            <Link to="/" className="btn btn-outline-secondary btn-sm">
+            <Link to="/feed" className="btn btn-outline-secondary btn-sm">
               <i className="bi bi-house me-1"></i>
               Үндсэн хуудас
             </Link>
