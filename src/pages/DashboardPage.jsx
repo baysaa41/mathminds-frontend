@@ -23,6 +23,7 @@ import {
   GraduationCap,
   ClipboardList,
   Library,
+  Search,
 } from 'lucide-react';
 import authService from '../services/authService';
 
@@ -425,6 +426,31 @@ function DashboardPage() {
                 <Library size={18} className="me-2" />
                 Удирдах
               </Link>
+            </Card.Body>
+          </Card>
+        </Col>
+
+        {/* ЭЕШ жишээ бодлого — эх сурвалжаар шүүх (Django-д server-rendered хуудас, SPA route биш тул энгийн <a href>) */}
+        <Col md={6} lg={4}>
+          <Card className="h-100 shadow-sm" style={{ borderColor: '#0dcaf0' }}>
+            <Card.Body className="d-flex flex-column">
+              <div className="mb-3">
+                <Search size={40} style={{ color: '#0dcaf0' }} />
+              </div>
+              <Card.Title>Жишээ бодлого — эх сурвалж</Card.Title>
+              <Card.Text className="text-muted flex-grow-1">
+                ЭЕШ жишээ бодлогуудыг эх PDF файл, дугаар, ном, сэдвээр шүүж харах.
+              </Card.Text>
+              <a
+                href="https://api.mathminds.club/books/eesh-source-browser/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn"
+                style={{ backgroundColor: '#0dcaf0', color: '#000' }}
+              >
+                <Search size={18} className="me-2" />
+                Харах
+              </a>
             </Card.Body>
           </Card>
         </Col>

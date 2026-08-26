@@ -148,7 +148,7 @@ export default function WeeklyTopicsTab({ programs }) {
 
   const handleGenerateArticle = async (t) => {
     if (!window.confirm(
-      `${t.week_num}-р долоо хоногийн «${t.topic}» сэдвээр AI өгүүлэл үүсгэх үү?\n\nПостлохгүй, зөвхөн өгүүлэл үүсгэнэ.`
+      `${t.week_num}-р долоо хоногийн «${t.topic}» сэдвээр AI өгүүлэл үүсгэх үү?\n\nӨгүүлэл шууд нийтлэгдэж, бүгд харах боломжтой болно. Клубын feed-д Post болж постлогдохгүй (энэ нь 7 хоног бүрийн автомат ажлаар тусад нь хийгдэнэ).`
     )) return;
     setGeneratingId(t.id);
     try {

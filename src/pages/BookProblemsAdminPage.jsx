@@ -2,7 +2,7 @@
 // Admin: ЭЕШ бэлтгэлийн 5 номын (book1/book2/book3/geometry/probstat) жишээ болон
 // AI-аар үүсгэсэн дасгал бодлогуудыг харах, /problem/:uuid/edit хуудсаар засах.
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { MathJaxContext } from 'better-react-mathjax';
 import {
@@ -562,13 +562,18 @@ export default function BookProblemsAdminPage() {
     localStorage.setItem(VERIFIED_FILTER_STORAGE_KEY, key);
   };
 
+  const searchTimeoutRef = useRef(null);
+
   const handleSearchInput = (val) => {
     setInputVal(val);
-    clearTimeout(handleSearchInput._t);
-    handleSearchInput._t = setTimeout(() => setSearch(val.trim()), 500);
+    clearTimeout(searchTimeoutRef.current);
+    searchTimeoutRef.current = setTimeout(() => setSearch(val.trim()), 500);
   };
 
+  useEffect(() => () => clearTimeout(searchTimeoutRef.current), []);
+
   const clearSearch = () => {
+    clearTimeout(searchTimeoutRef.current);
     setInputVal('');
     setSearch('');
   };

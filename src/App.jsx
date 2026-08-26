@@ -121,6 +121,7 @@ const EECStatsPage = lazy(() => import('./pages/EECStatsPage.jsx'));
 const EeshJishigAdminPage = lazy(() => import('./pages/EeshJishigAdminPage.jsx'));
 const EeshJishigSummaryPage = lazy(() => import('./pages/EeshJishigSummaryPage.jsx'));
 const BookProblemsAdminPage = lazy(() => import('./pages/BookProblemsAdminPage.jsx'));
+const QualityAuditReviewPage = lazy(() => import('./pages/QualityAuditReviewPage.jsx'));
 
 // Email Campaigns
 const EmailCampaignsPage = lazy(() => import('./pages/EmailCampaignsPage.jsx'));
@@ -574,6 +575,16 @@ function App() {
           element={
             <AdminRoute>
               <BookProblemsAdminPage />
+            </AdminRoute>
+          }
+        />
+
+        {/* Чанарын аудитын хамгийн муу бодлогуудыг дараалан засах - Staff only */}
+        <Route
+          path="/admin/quality-audit-review"
+          element={
+            <AdminRoute>
+              <QualityAuditReviewPage />
             </AdminRoute>
           }
         />

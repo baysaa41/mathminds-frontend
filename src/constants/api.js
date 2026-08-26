@@ -62,6 +62,10 @@ export const API_ENDPOINTS = {
     TOPICS: '/api/integral/topics/',
     TOPIC_DETAIL: (id) => `/api/integral/topics/${id}/`,
     MATH_CATEGORIES: '/api/integral/math-categories/',
+
+    // Чанарын аудитын тайлан (admin: QualityAuditReviewPage)
+    QUALITY_AUDIT_REPORTS: '/api/integral/quality-audit/reports/',
+    QUALITY_AUDIT_GROUPS: (filename) => `/api/integral/quality-audit/reports/${filename}/groups/`,
   },
 
   // Clubs — Daily Practice
