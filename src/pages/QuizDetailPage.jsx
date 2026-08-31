@@ -57,6 +57,9 @@ const QuizDetailPage = () => {
   const [addError, setAddError] = useState(null);
   const [addSuccess, setAddSuccess] = useState(false);
 
+  // PDF татах (ESH загварын сорилго template)
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+
   useEffect(() => {
     const fetchQuiz = async () => {
       try {
@@ -136,6 +139,40 @@ const QuizDetailPage = () => {
     } else {
       // Ноорог бол шууд засна
       navigate(`/quiz/${id}/edit`);
+    }
+  };
+
+  // Тестийг "ЭШ загварын сорилго" template-ээр PDF болгож татах
+  const handleDownloadPdf = async () => {
+    try {
+      setDownloadingPdf(true);
+      const response = await apiClient.get(`/api/integral/quizzes/${id}/download_pdf/`, {
+        responseType: 'blob',
+      });
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `${quiz?.title || 'quiz'}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error(err);
+      let message = 'PDF татахад алдаа гарлаа. Дахин оролдоно уу.';
+      if (err.response?.data instanceof Blob) {
+        try {
+          const text = await err.response.data.text();
+          const parsed = JSON.parse(text);
+          if (parsed?.error) message = parsed.error;
+        } catch (_e) {
+          // parse хийж чадсангүй бол анхны message-ээ ашиглана
+        }
+      }
+      alert(message);
+    } finally {
+      setDownloadingPdf(false);
     }
   };
 
@@ -277,13 +314,33 @@ const QuizDetailPage = () => {
           </div>
 
 
-          {/* Клубт оруулах (багш нарт) */}
-          {user && quiz.problems?.length > 0 && (
+          {/* PDF татах (ЭШ загварын сорилго template) + Клубт оруулах (багш нарт) */}
+          {quiz.problems?.length > 0 && (
             <Stack gap={2} className="mb-3">
-              <Button variant="outline-info" size="sm" onClick={handleShowAddToClub}>
-                <i className="bi bi-collection me-1"></i>
-                Клубт дасгал болгох
+              <Button
+                variant="outline-secondary"
+                size="sm"
+                onClick={handleDownloadPdf}
+                disabled={downloadingPdf}
+              >
+                {downloadingPdf ? (
+                  <>
+                    <Spinner animation="border" size="sm" className="me-1" />
+                    PDF бэлдэж байна...
+                  </>
+                ) : (
+                  <>
+                    <i className="bi bi-file-earmark-pdf me-1"></i>
+                    PDF татах
+                  </>
+                )}
               </Button>
+              {user && (
+                <Button variant="outline-info" size="sm" onClick={handleShowAddToClub}>
+                  <i className="bi bi-collection me-1"></i>
+                  Клубт дасгал болгох
+                </Button>
+              )}
             </Stack>
           )}
 
