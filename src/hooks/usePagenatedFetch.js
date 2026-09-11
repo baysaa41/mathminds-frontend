@@ -12,6 +12,8 @@ const usePaginatedFetch = (endpoint, options = {}) => {
   const [error, setError] = useState(null);
   const [nextPage, setNextPage] = useState(null);
   const [hasMore, setHasMore] = useState(true);
+  // DRF pagination-ийн нийт бичлогийн тоо (results биш)
+  const [totalCount, setTotalCount] = useState(null);
 
   // (!!!) 1. Шүүлтүүрийг хадгалах state нэмэх
   const [currentParams, setCurrentParams] = useState({});
@@ -40,6 +42,7 @@ const usePaginatedFetch = (endpoint, options = {}) => {
         setData(response.data.results || response.data);
         setNextPage(response.data.next);
         setHasMore(!!response.data.next);
+        setTotalCount(response.data.count ?? null);
       } catch (err) {
         const errorMessage = err.response?.data?.message || err.message || 'Алдаа гарлаа';
         setError(errorMessage);
@@ -93,6 +96,7 @@ const usePaginatedFetch = (endpoint, options = {}) => {
     loadingMore,
     error,
     hasMore,
+    totalCount,
     fetchData,
     loadMore,
     refresh,

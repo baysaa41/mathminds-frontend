@@ -8,6 +8,7 @@ const EmptyState = ({
   title = 'Хоосон байна',
   message = 'Одоогоор мэдээлэл байхгүй байна.',
   actionLabel,
+  actionIcon: ActionIcon = Plus,
   onAction,
   variant = 'light',
 }) => {
@@ -19,7 +20,7 @@ const EmptyState = ({
         <p className="text-muted mb-4">{message}</p>
         {actionLabel && onAction && (
           <Button variant="primary" size="sm" onClick={onAction}>
-            <Plus size={16} className="me-1" />
+            <ActionIcon size={16} className="me-1" />
             {actionLabel}
           </Button>
         )}

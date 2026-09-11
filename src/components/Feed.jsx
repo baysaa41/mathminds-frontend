@@ -1,9 +1,11 @@
 // frontend/src/components/Feed.jsx
 // ✅ ШИНЭЧИЛСЭН: Custom hooks, common components ашигласан, 20-оор pagination
+// ✅ ШИНЭ: Хайлт, контентын төрөл, "дагаж буй" шүүлтүүр
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import PostCard from './PostCard';
 import CreatePostForm from './CreatePostForm';
+import FeedFilterBar from './FeedFilterBar';
 
 // ✅ Custom Hooks
 import usePaginatedFetch from '../hooks/usePagenatedFetch.js';
@@ -20,7 +22,9 @@ import { MESSAGES } from '../constants/messages.js';
 
 import Spinner from 'react-bootstrap/Spinner';
 import Alert from 'react-bootstrap/Alert';
-import { FileText } from 'lucide-react';
+import { FileText, SearchX, X } from 'lucide-react';
+
+const SEARCH_DEBOUNCE_MS = 400;
 
 const Feed = () => {
   // ✅ Custom Hooks ашиглах
@@ -30,6 +34,7 @@ const Feed = () => {
     loadingMore,
     error,
     hasMore,
+    totalCount,
     fetchData,
     loadMore,
     refresh,
@@ -38,10 +43,32 @@ const Feed = () => {
 
   const { triggerRef } = useInfiniteScroll(loadMore, hasMore, loadingMore);
 
-  // Анхны ачаалалт
+  // --- Шүүлтүүрийн төлөв ---
+  const [searchInput, setSearchInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [scope, setScope] = useState('all');
+  const [contentType, setContentType] = useState('');
+
+  // Хайлтыг товчлуур дарж бичихэд хэт олон хүсэлт явуулахгүйн тулд delay хийнэ
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    const timer = setTimeout(() => setSearchQuery(searchInput.trim()), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  const hasActiveFilters = Boolean(searchQuery || contentType || scope === 'following');
+
+  const params = useMemo(() => {
+    const p = {};
+    if (searchQuery) p.search = searchQuery;
+    if (contentType) p.content_type__in = contentType;
+    if (scope === 'following') p.scope = 'following';
+    return p;
+  }, [searchQuery, contentType, scope]);
+
+  // Анхны ачаалалт ба шүүлтүүр солигдох үед дахин татах
+  useEffect(() => {
+    fetchData(params);
+  }, [fetchData, params]);
 
   // Пост устгасан үед
   const handlePostDeleted = useCallback(
@@ -51,15 +78,29 @@ const Feed = () => {
     [setData]
   );
 
-  // ✅ Анхны ачааллын үед Loading State
-  if (loading && posts.length === 0) {
-    return <LoadingState message={MESSAGES.LOADING.POSTS} fullPage />;
-  }
+  const resetFilters = () => {
+    setSearchInput('');
+    setScope('all');
+    setContentType('');
+  };
 
   return (
     <div>
       {/* ✅ Шинэ пост үүсгэх форм - refresh функцийг дамжуулна */}
       <CreatePostForm onPostCreated={refresh} />
+
+      {/* ✅ Шүүлтүүрийн мөр — ачаалж байх үед ч харагдана */}
+      <FeedFilterBar
+        search={searchInput}
+        onSearchChange={setSearchInput}
+        scope={scope}
+        onScopeChange={setScope}
+        contentType={contentType}
+        onContentTypeChange={setContentType}
+      />
+
+      {/* ✅ Анхны ачааллын үед Loading State */}
+      {loading && posts.length === 0 && <LoadingState message={MESSAGES.LOADING.POSTS} />}
 
       {/* ✅ Error State */}
       {error && posts.length === 0 && <ErrorState message={error} onRetry={refresh} />}
@@ -72,13 +113,25 @@ const Feed = () => {
       )}
 
       {/* ✅ Empty State */}
-      {!loading && posts.length === 0 && (
-        <EmptyState
-          icon={FileText}
-          title={MESSAGES.EMPTY.NO_POSTS}
-          message="Та эхний постыг бичээрэй!"
-        />
-      )}
+      {!loading &&
+        posts.length === 0 &&
+        !error &&
+        (hasActiveFilters ? (
+          <EmptyState
+            icon={SearchX}
+            title={MESSAGES.EMPTY.NO_RESULTS}
+            message="Шүүлтүүрээ өөрчлөөд дахин оролдоно уу."
+            actionLabel="Шүүлтүүр цэвэрлэх"
+            actionIcon={X}
+            onAction={resetFilters}
+          />
+        ) : (
+          <EmptyState
+            icon={FileText}
+            title={MESSAGES.EMPTY.NO_POSTS}
+            message="Та эхний постыг бичээрэй!"
+          />
+        ))}
 
       {/* Posts list */}
       {posts.length > 0 &&
@@ -101,7 +154,15 @@ const Feed = () => {
       {posts.length > 0 && (
         <div className="mt-4 p-3 bg-light rounded">
           <small className="text-muted">
-            Нийт: <strong>{posts.length}</strong> пост
+            {totalCount != null ? (
+              <>
+                <strong>{posts.length}</strong> / {totalCount} пост харагдаж байна
+              </>
+            ) : (
+              <>
+                Нийт: <strong>{posts.length}</strong> пост
+              </>
+            )}
             {hasMore && <> • {MESSAGES.INFO.SCROLL_FOR_MORE}</>}
           </small>
         </div>
