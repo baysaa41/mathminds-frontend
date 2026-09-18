@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { MathJaxContext } from 'better-react-mathjax'
-import { mathJaxConfig } from '../mathjax.config.js'
 import apiClient from '../api/axiosConfig.js'
 import LivePreview from '../components/LivePreview.jsx'
 import { stripPSTricks } from '../utils/stripPSTricks.js'
@@ -373,7 +371,6 @@ function ContentBrowsePage() {
   }
 
   return (
-    <MathJaxContext config={mathJaxConfig}>
       <div className="d-flex flex-column vh-100">
 
         <AppHeader />
@@ -872,7 +869,6 @@ function ContentBrowsePage() {
           </Row>
         </div>
       </div>
-    </MathJaxContext>
   )
 }
 

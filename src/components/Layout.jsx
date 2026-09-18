@@ -7,8 +7,6 @@ import ScrollRestoration from '../components/ScrollRestoration';
 import AppHeader from './AppHeader';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 
-import { MathJaxContext } from 'better-react-mathjax';
-import { mathJaxConfig } from '../mathjax.config.js';
 
 import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
@@ -105,7 +103,6 @@ const Layout = () => {
   const noSidebarColumn = forcedFullWidth || sidebarCollapsed;
 
   return (
-    <MathJaxContext version={3} config={mathJaxConfig}>
       <div className="min-vh-100 d-flex flex-column">
         <AppHeader />
 
@@ -192,7 +189,6 @@ const Layout = () => {
         />
 
       </div>
-    </MathJaxContext>
   );
 };
 

@@ -6,14 +6,12 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { MathJaxContext } from 'better-react-mathjax';
 import {
   Container, Card, Spinner, Form, Row, Col, Badge, Button, Alert, Table,
 } from 'react-bootstrap';
 import { ArrowLeft, ChevronRight, SkipForward, Pencil, CheckCircle2, Circle } from 'lucide-react';
 import apiClient from '../api/axiosConfig.js';
 import LivePreview from '../components/LivePreview.jsx';
-import { mathJaxConfig } from '../mathjax.config.js';
 import { API_ENDPOINTS } from '../constants/api.js';
 
 const CRITERIA = [
@@ -245,7 +243,6 @@ export default function QualityAuditReviewPage() {
   const currentGroup = groups[currentIndex];
 
   return (
-    <MathJaxContext config={mathJaxConfig}>
       <Container fluid className="py-4" style={{ maxWidth: 1000 }}>
         <div className="d-flex align-items-center gap-2 mb-3">
           <Link to="/admin" className="btn btn-sm btn-outline-secondary">
@@ -316,6 +313,5 @@ export default function QualityAuditReviewPage() {
           </>
         )}
       </Container>
-    </MathJaxContext>
   );
 }

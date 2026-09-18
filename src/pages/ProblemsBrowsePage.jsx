@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
-import { MathJaxContext } from 'better-react-mathjax'
-import { mathJaxConfig } from '../mathjax.config.js'
 import apiClient from '../api/axiosConfig.js'
 import LivePreview from '../components/LivePreview.jsx'
 import { stripPSTricks } from '../utils/stripPSTricks.js'
@@ -209,7 +207,6 @@ function ProblemsBrowsePage() {
   const hasActiveFilters = selectedCategory || selectedTypes.length > 0 || selectedLevels.length > 0 || searchInput || myOnly
 
   return (
-    <MathJaxContext config={mathJaxConfig}>
       <div className="d-flex flex-column vh-100">
         {/* Top Navbar */}
         <Navbar bg="white" className="border-bottom shadow-sm px-3" style={{ zIndex: 10 }}>
@@ -439,7 +436,6 @@ function ProblemsBrowsePage() {
           </Row>
         </div>
       </div>
-    </MathJaxContext>
   )
 }
 

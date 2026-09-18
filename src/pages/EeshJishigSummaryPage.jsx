@@ -4,12 +4,10 @@
 
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MathJaxContext } from 'better-react-mathjax';
 import { Container, Card, Table, Spinner, Row, Col, Badge, Button, Alert } from 'react-bootstrap';
 import { ArrowLeft, Pencil, ListChecks } from 'lucide-react';
 import apiClient from '../api/axiosConfig.js';
 import LivePreview from '../components/LivePreview.jsx';
-import { mathJaxConfig } from '../mathjax.config.js';
 import { API_ENDPOINTS } from '../constants/api.js';
 
 function Bar({ ratio, color = '#0d6efd' }) {
@@ -45,7 +43,6 @@ export default function EeshJishigSummaryPage() {
   }, []);
 
   return (
-    <MathJaxContext config={mathJaxConfig}>
       <Container fluid className="py-4" style={{ maxWidth: 1100 }}>
         <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
           <div className="d-flex align-items-center gap-2">
@@ -217,6 +214,5 @@ export default function EeshJishigSummaryPage() {
           </>
         ) : null}
       </Container>
-    </MathJaxContext>
   );
 }

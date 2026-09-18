@@ -4,8 +4,6 @@ import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import 'bootstrap-icons/font/bootstrap-icons.css';
 
-import { MathJaxContext } from 'better-react-mathjax';
-import { mathJaxConfig } from './mathjax.config.js';
 
 // Critical components - loaded immediately
 import Layout from './components/Layout';
@@ -166,9 +164,7 @@ function App() {
         <Route
           path="/messages/conversation/:conversationUuid"
           element={
-            <MathJaxContext version={3} config={mathJaxConfig}>
               <ConversationViewPage />
-            </MathJaxContext>
           }
         />
 
@@ -279,9 +275,7 @@ function App() {
           path="/ai-chat/messages"
           element={
             <ProtectedRoute>
-              <MathJaxContext version={3} config={mathJaxConfig}>
                 <MessagesPage aiOnly={true} />
-              </MathJaxContext>
             </ProtectedRoute>
           }
         />
@@ -495,9 +489,7 @@ function App() {
           path="/admin/conversation/:conversationUuid"
           element={
             <AdminRoute>
-              <MathJaxContext version={3} config={mathJaxConfig}>
                 <AdminConversationPage />
-              </MathJaxContext>
             </AdminRoute>
           }
         />

@@ -4,14 +4,12 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { MathJaxContext } from 'better-react-mathjax';
 import {
   Container, Card, Table, Spinner, Form, Row, Col, Badge, Pagination, InputGroup, Button, Alert, Modal,
 } from 'react-bootstrap';
 import { Search, X, Pencil, ArrowLeft, SearchCheck } from 'lucide-react';
 import apiClient from '../api/axiosConfig.js';
 import LivePreview from '../components/LivePreview.jsx';
-import { mathJaxConfig } from '../mathjax.config.js';
 import { API_ENDPOINTS } from '../constants/api.js';
 
 const EESH_KEYWORD = 'ЭЕШ жишиг';
@@ -221,7 +219,6 @@ export default function EeshJishigAdminPage() {
   };
 
   return (
-    <MathJaxContext config={mathJaxConfig}>
     <Container fluid className="py-4" style={{ maxWidth: 1200 }}>
       <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
         <div className="d-flex align-items-center gap-2">
@@ -591,6 +588,5 @@ export default function EeshJishigAdminPage() {
         </Modal.Footer>
       </Modal>
     </Container>
-    </MathJaxContext>
   );
 }

@@ -4,8 +4,7 @@
 
 import { useState, useRef, useEffect, useCallback, memo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MathJax, MathJaxContext } from 'better-react-mathjax';
-import { mathJaxConfig } from '../mathjax.config.js';
+import { MathJax } from 'better-react-mathjax';
 import apiClient from '../api/axiosConfig.js';
 import Spinner from 'react-bootstrap/Spinner';
 import LivePreview from '../components/LivePreview.jsx';
@@ -370,7 +369,6 @@ export default function AISolverPage() {
   }
 
   return (
-    <MathJaxContext version={3} config={mathJaxConfig}>
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#f4f6fb', position: 'relative' }}>
 
         {/* Save overlay */}
@@ -577,6 +575,5 @@ export default function AISolverPage() {
           .collab-md h4,.collab-md h5,.collab-md h6 { color:#222; margin-top:12px; }
         `}</style>
       </div>
-    </MathJaxContext>
   );
 }

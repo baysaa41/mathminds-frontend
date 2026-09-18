@@ -4,14 +4,12 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { MathJaxContext } from 'better-react-mathjax';
 import {
   Container, Card, Spinner, Form, Row, Col, Badge, Pagination, InputGroup, Button, Modal, Alert, Dropdown,
 } from 'react-bootstrap';
 import { Search, X, Pencil, ArrowLeft, Sparkles, Wand2, CheckCircle2, Circle, RefreshCw, BrainCircuit } from 'lucide-react';
 import apiClient from '../api/axiosConfig.js';
 import LivePreview from '../components/LivePreview.jsx';
-import { mathJaxConfig } from '../mathjax.config.js';
 import { API_ENDPOINTS } from '../constants/api.js';
 
 const TRADITIONAL_TYPE = 0;
@@ -589,7 +587,6 @@ export default function BookProblemsAdminPage() {
   };
 
   return (
-    <MathJaxContext config={mathJaxConfig}>
       <Container fluid className="py-4" style={{ maxWidth: 1100 }}>
         <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
           <div className="d-flex align-items-center gap-2">
@@ -752,6 +749,5 @@ export default function BookProblemsAdminPage() {
           )}
         </Card>
       </Container>
-    </MathJaxContext>
   );
 }

@@ -2,8 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Container, Card, ListGroup, Button, Spinner, Badge, Nav } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import { MathJaxContext, MathJax } from 'better-react-mathjax';
-import { mathJaxConfig } from '../mathjax.config.js';
+import { MathJax } from 'better-react-mathjax';
 import { markAllAsRead, markAsRead, markGroupAsRead } from '../services/notificationService';
 import { formatRelativeDate } from '../utils/dateFormatter';
 import { stripPSTricks } from '../utils/stripPSTricks.js';
@@ -129,7 +128,6 @@ const NotificationsPage = () => {
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <MathJaxContext config={mathJaxConfig}>
       <Container className="py-4">
         <Card className="shadow-sm">
           <Card.Header className="bg-white border-bottom py-3">
@@ -295,7 +293,6 @@ const NotificationsPage = () => {
           </Card.Body>
         </Card>
       </Container>
-    </MathJaxContext>
   );
 };
 
