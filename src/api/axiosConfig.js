@@ -1,8 +1,9 @@
 // frontend/src/api/axiosConfig.js (БҮРЭН ЗАСВАРЛАСАН)
 
 import axios from 'axios';
-import authService from '../services/authService';
 import * as cache from './apiCache';
+import { getToken } from './tokenStore';
+import { hardLogout, refreshAccessToken } from './tokenRefresh';
 
 function getCookie(name) {
   let cookieValue = null;
@@ -33,7 +34,7 @@ const apiClient = axios.create({
  */
 apiClient.interceptors.request.use(
   (config) => {
-    const token = authService.getToken();
+    const token = getToken();
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
@@ -138,7 +139,7 @@ apiClient.interceptors.response.use(
       // шууд logout хийнэ.
       if (originalRequest.url === '/users/api/token/refresh/') {
         console.error('Refresh token is invalid, logging out.');
-        authService.logout();
+        hardLogout();
         // Хуудсыг дахин ачаалж, нэвтрэх хуудас руу шилжүүлнэ.
         // '/callback'-с шилжүүлэхгүй — тэнд MMO-гийн code солилцож байгаа.
         if (window.location.pathname !== '/callback') {
@@ -149,9 +150,9 @@ apiClient.interceptors.response.use(
 
       try {
         // (!!!) Шинэ access token авахыг оролдоно
-        const newAccessToken = await authService.refreshToken();
+        const newAccessToken = await refreshAccessToken();
 
-        // Шинэ токеноо localStorage-д хадгалсан (authService дотор)
+        // Шинэ токеноо localStorage-д хадгалсан (tokenRefresh дотор)
         // Одоо бүтэлгүйтсэн анхны хүсэлтийн толгойг шинэчилнэ
         apiClient.defaults.headers.common['Authorization'] = 'Bearer ' + newAccessToken;
         originalRequest.headers['Authorization'] = 'Bearer ' + newAccessToken;
@@ -159,7 +160,7 @@ apiClient.interceptors.response.use(
         // (!!!) Анхны хүсэлтийг шинэ токентойгоор ДАХИН ДУУДНА
         return apiClient(originalRequest);
       } catch (refreshError) {
-        // Refresh хийх үед алдаа гарвал (authService.refreshToken дотор logout хийгдсэн)
+        // Refresh хийх үед алдаа гарвал (tokenRefresh дотор logout хийгдсэн)
         // хэрэглэгчийг нэвтрэх хуудас руу шилжүүлнэ.
         console.error('Token refresh failed:', refreshError);
         if (window.location.pathname !== '/login' && window.location.pathname !== '/callback') {

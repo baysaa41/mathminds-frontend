@@ -1,8 +1,16 @@
 // src/services/authService.js (БҮРЭN ЗАСВАРЛАСАН)
 
-// (!!!) ШИНЭЭР НЭМЭХ: axiosConfig-г импортлоно
 import apiClient from '../api/axiosConfig.js';
 import apiCache from '../api/apiCache.js';
+import {
+  getToken,
+  getUser,
+  isAuthenticated,
+  setAccessToken,
+  setRefreshToken,
+  setUser,
+} from '../api/tokenStore.js';
+import { hardLogout, refreshAccessToken } from '../api/tokenRefresh.js';
 
 const MMO_CONFIG = {
   clientId: import.meta.env.VITE_MMO_CLIENT_ID || 'REDACTED_MMO_CLIENT_ID',
@@ -13,22 +21,6 @@ const MMO_CONFIG = {
 };
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
-
-// (!!!) ШИНЭ ХЭСЭГ: Token сэргээх үеийн "цоож"
-// Олон хүсэлт зэрэг 401 буцаах үед бүгд refresh хийхээс сэргийлнэ
-let isRefreshing = false;
-let failedQueue = [];
-
-const processQueue = (error, token = null) => {
-  failedQueue.forEach((prom) => {
-    if (error) {
-      prom.reject(error);
-    } else {
-      prom.resolve(token);
-    }
-  });
-  failedQueue = [];
-};
 
 class AuthService {
   // ... (PKCE helper функцууд хэвээрээ) ...
@@ -128,11 +120,11 @@ class AuthService {
       // Шинэ session эхэлж байна — өмнөх хэрэглэгчийн кэшлэгдсэн GET
       // хариу үлдвэл шинэ хэрэглэгчид харагдах эрсдэлтэй.
       apiCache.clearAll();
-      localStorage.setItem('access_token', data.token);
+      setAccessToken(data.token);
       if (data.refresh) {
-        localStorage.setItem('refresh_token', data.refresh);
+        setRefreshToken(data.refresh);
       }
-      localStorage.setItem('user', JSON.stringify(data.user));
+      setUser(data.user);
       localStorage.setItem('oauth_last_code', code);
       localStorage.removeItem('code_verifier');
       localStorage.removeItem('oauth_state');
@@ -145,69 +137,14 @@ class AuthService {
     }
   }
 
-  // (!!!) ШИНЭ ФУНКЦ: refreshToken
+  // Бодит логик нь `api/tokenRefresh.js`-д — тэр модуль нь `apiClient`-г
+  // импортлохгүй тул 401 → refresh → retry давталт үүсэхгүй.
   async refreshToken() {
-    // Хэрэв өөр хүсэлт аль хэдийн токен сэргээж байвал
-    if (isRefreshing) {
-      // Энэ хүсэлтийг "оочерт" оруулж, шинэ токен ирэхийг хүлээнэ
-      return new Promise((resolve, reject) => {
-        failedQueue.push({ resolve, reject });
-      });
-    }
-
-    isRefreshing = true; // Цоожлох
-    const refreshToken = localStorage.getItem('refresh_token');
-
-    if (!refreshToken) {
-      this.logout();
-      isRefreshing = false;
-      return Promise.reject(new Error('No refresh token'));
-    }
-
-    try {
-      // (!!!) Энд `apiClient` БИШ, `fetch` (эсвэл шинэ axios instance) ашиглах ёстой.
-      // Учир нь `apiClient` нь өөрөө `refreshToken`-г дуудах interceptor-той тул
-      // эцэс төгсгөлгүй давталт (infinite loop) үүсгэнэ.
-      const response = await fetch(`${BACKEND_URL}/users/api/token/refresh/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ refresh: refreshToken }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to refresh token');
-      }
-
-      const data = await response.json();
-      const newAccessToken = data.access; // SimpleJWT "access" гэж буцаадаг
-
-      localStorage.setItem('access_token', newAccessToken);
-
-      // Зарим тохиргоо (ROTATE_REFRESH_TOKENS=True) шинэ refresh токен буцаадаг
-      if (data.refresh) {
-        localStorage.setItem('refresh_token', data.refresh);
-      }
-
-      // `apiClient`-н дараагийн хүсэлтүүдэд ашиглагдах default толгойг шинэчлэх
-      apiClient.defaults.headers.common['Authorization'] = 'Bearer ' + newAccessToken;
-
-      processQueue(null, newAccessToken); // Хүлээлгэнд байсан хүсэлтүүдийг ажиллуулах
-      return newAccessToken;
-    } catch (error) {
-      console.error('Refresh token failed or expired', error);
-      this.logout(); // Refresh токен алдаатай тул системээс гаргана
-      processQueue(error, null); // Хүлээлгэнд байсан хүсэлтүүдийг цуцлах
-      return Promise.reject(error);
-    } finally {
-      isRefreshing = false; // Цоожийг тайлах
-    }
+    return refreshAccessToken();
   }
 
-  // (!!!) ЗАСВАРЛАСАН ФУНКЦ: getCurrentUser
   async getCurrentUser() {
-    const token = localStorage.getItem('access_token');
+    const token = getToken();
     if (!token) {
       return null;
     }
@@ -222,7 +159,7 @@ class AuthService {
       const data = response.data;
 
       // Хэрэглэгчийн мэдээллийг localStorage-д шинэчлэх
-      localStorage.setItem('user', JSON.stringify(data));
+      setUser(data);
       return data;
     } catch (error) {
       console.error('Get user error (after refresh attempt):', error);
@@ -235,66 +172,34 @@ class AuthService {
     }
   }
 
-  // Logout
+  // Logout — кэш нь хэрэглэгчийн өгөгдлийг localStorage-д хадгалдаг тул
+  // заавал хамт устгана (tokenRefresh.hardLogout дотор).
+  // code_verifier / oauth_state-ийг энд устгахгүй: тэдгээр нь яг одоо
+  // явагдаж буй MMO нэвтрэлтийн гарааны мэдээлэл бөгөөд хуучин
+  // session-ий logout-оос болж устаж болохгүй.
   logout() {
-    // Кэш нь хэрэглэгчийн өгөгдлийг localStorage-д хадгалдаг тул заавал
-    // устгана. 401 → refresh → retry зам болон refreshToken-ийн уналт ч
-    // энэ функцээр ордог тул бүх гарах замыг хамарна.
-    apiCache.clearAll();
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('oauth_last_code');
-    // code_verifier / oauth_state-ийг энд устгахгүй: тэдгээр нь яг одоо
-    // явагдаж буй MMO нэвтрэлтийн гарааны мэдээлэл бөгөөд хуучин
-    // session-ий logout-оос болж устаж болохгүй.
+    hardLogout();
   }
 
-  // Нэвтэрсэн эсэхийг шалгах
   isAuthenticated() {
-    const hasToken = !!localStorage.getItem('access_token');
-    return hasToken;
+    return isAuthenticated();
   }
 
-  // Token авах
   getToken() {
-    return localStorage.getItem('access_token');
+    return getToken();
   }
 
-  // Хэрэглэгч авах
   getUser() {
-    const userStr = localStorage.getItem('user');
-    if (!userStr) {
-      return null;
-    }
-    try {
-      const user = JSON.parse(userStr);
-      return user;
-    } catch (error) {
-      console.error('❌ Error parsing user:', error);
-      return null;
-    }
+    return getUser();
   }
 
-  // (!!!) -----------------------------------------------
-  // (!!!) --- ХЭРЭГЛЭГЧИЙН ХҮССЭН ШИНЭ ФУНКЦ ---
-  // (!!!) -----------------------------------------------
   /**
    * Хэрэглэгчийн мэдээллийг localStorage-д шинэчлэх.
    * (Профайл зассаны дараа AuthContext-с дуудагдана)
    * @param {object} newUserData - Шинэчлэгдсэн хэрэглэгчийн объект
    */
   updateUser(newUserData) {
-    if (!newUserData) {
-      console.warn('authService.updateUser: null эсвэл undefined мэдээлэл хүлээн авлаа.');
-      return;
-    }
-    try {
-      // localStorage дахь 'user' түлхүүрийг шинэ мэдээллээр дарж бичнэ
-      localStorage.setItem('user', JSON.stringify(newUserData));
-    } catch (error) {
-      console.error('localStorage-д хэрэглэгчийн мэдээллийг шинэчлэхэд алдаа гарлаа:', error);
-    }
+    setUser(newUserData);
   }
 }
 
