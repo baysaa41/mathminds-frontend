@@ -1,0 +1,26 @@
+User-agent: *
+Allow: /
+Allow: /info/
+Allow: /login
+Allow: /register
+Allow: /terms
+Allow: /privacy
+
+# Нэвтрэлт шаарддаг аппын хэсгүүд — crawler-ийн цаг үрэхгүйн тулд хаана
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /teacher-dashboard
+Disallow: /parent-dashboard
+Disallow: /messages
+Disallow: /notifications
+Disallow: /bookmarks
+Disallow: /cart
+Disallow: /checkout
+Disallow: /my-purchases
+Disallow: /purchases
+Disallow: /profile
+Disallow: /onboarding
+Disallow: /reset-password
+Disallow: /callback
+
+Sitemap: https://mathminds.club/sitemap.xml
