@@ -1,28 +1,11 @@
 // frontend/src/components/NotificationBell.jsx
-import { useState, useEffect, useRef } from 'react';
+// Тоог эцэг компонент (AppHeader) дамжуулна — өөрөө poll хийхгүй,
+// ингэснээр нэг л хүсэлтээр хоёр badge шинэчлэгдэнэ.
 import { Badge } from 'react-bootstrap';
-import { getUnreadCount } from '../services/notificationService';
 import { useNavigate } from 'react-router-dom';
 
-const NotificationBell = () => {
-  const [unreadCount, setUnreadCount] = useState(0);
+const NotificationBell = ({ unreadCount = 0 }) => {
   const navigate = useNavigate();
-  const intervalRef = useRef(null);
-
-  const fetchUnreadCount = async () => {
-    try {
-      const count = await getUnreadCount();
-      setUnreadCount(count);
-    } catch (error) {
-      console.error('Failed to fetch unread count:', error);
-    }
-  };
-
-  useEffect(() => {
-    fetchUnreadCount();
-    intervalRef.current = setInterval(fetchUnreadCount, 30000);
-    return () => clearInterval(intervalRef.current);
-  }, []);
 
   return (
     <button

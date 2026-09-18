@@ -4,7 +4,7 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getPrivateMessagesCount } from '../services/notificationService';
+import { getNotificationSummary } from '../services/notificationService';
 import { getReviewStats } from '../services/integralService';
 import { getTeacherDashboard } from '../services/clubService';
 import NotificationBell from './NotificationBell';
@@ -44,17 +44,39 @@ export default function AppHeader() {
 
   const [showSidebar, setShowSidebar] = useState(false);
   const [showDrawPanel, setShowDrawPanel] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [privateMessagesCount, setPrivateMessagesCount] = useState(0);
   const [reviewDueToday, setReviewDueToday] = useState(0);
 
+  // Мэдэгдэл + хувийн мессежийн тоог НЭГ хүсэлтээр татна (өмнө нь хоёр
+  // тусдаа 30с poll байсан). Таб далд байхад огт хүсэлт явуулахгүй, буцаж
+  // ирэхэд нэн даруй нэг удаа татна. NotificationsPage уншсан болгоод
+  // 'notifications:changed' event илгээхэд ч мөн адил шинэчлэгдэнэ.
   useEffect(() => {
     if (!user) return;
-    const fetch = async () => {
-      try { setPrivateMessagesCount(await getPrivateMessagesCount()); } catch { /* ignore */ }
+
+    const fetchCounts = async () => {
+      if (document.visibilityState === 'hidden') return;
+      try {
+        const { unread, private_messages } = await getNotificationSummary();
+        setUnreadCount(unread);
+        setPrivateMessagesCount(private_messages);
+      } catch { /* ignore */ }
     };
-    fetch();
-    const id = setInterval(fetch, 30000);
-    return () => clearInterval(id);
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') fetchCounts();
+    };
+
+    fetchCounts();
+    const id = setInterval(fetchCounts, 30000);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('notifications:changed', fetchCounts);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('notifications:changed', fetchCounts);
+    };
   }, [user]);
 
   useEffect(() => {
@@ -156,7 +178,7 @@ export default function AppHeader() {
             {user && (
               <Nav className="ms-auto">
                 <div className="d-flex align-items-center gap-2">
-                  <NotificationBell />
+                  <NotificationBell unreadCount={unreadCount} />
 
                   <Button as={Link} to="/products" variant="outline-success" size="sm"
                     className="d-flex align-items-center">

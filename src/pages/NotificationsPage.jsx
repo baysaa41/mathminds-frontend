@@ -1,5 +1,5 @@
 // frontend/src/pages/NotificationsPage.jsx
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Container, Card, ListGroup, Button, Spinner, Badge, Nav } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { MathJaxContext, MathJax } from 'better-react-mathjax';
@@ -81,10 +81,16 @@ const NotificationsPage = () => {
     setActiveTab(tabKey === 'null' ? null : tabKey);
   };
 
+  // Header-ийн badge нь 30 секунд хүлээхгүйгээр шууд шинэчлэгдэх ёстой
+  const notifyCountsChanged = () => {
+    window.dispatchEvent(new Event('notifications:changed'));
+  };
+
   const handleMarkAllRead = async () => {
     try {
       await markAllAsRead();
       setData((prev) => prev.map((n) => ({ ...n, read: true })));
+      notifyCountsChanged();
     } catch (error) {
       console.error('Failed to mark all as read:', error);
     }
@@ -101,6 +107,7 @@ const NotificationsPage = () => {
         setData((prev) =>
           prev.map((n) => (n.id === notification.id ? { ...n, read: true } : n)),
         );
+        notifyCountsChanged();
       } catch (error) {
         console.error('Failed to mark notification as read:', error);
       }

@@ -19,12 +19,14 @@ export const getNotifications = async (page = 1, type = null) => {
 };
 
 /**
- * Уншаагүй мэдэгдлийн тоог авах
- * @returns {Promise<number>} Уншаагүй мэдэгдлийн тоо
+ * Badge-үүдийн тоог нэг хүсэлтээр авах.
+ * Урьд нь unread_count + private-messages-count гэсэн хоёр тусдаа
+ * 30 секундын poll байсан.
+ * @returns {Promise<{unread: number, private_messages: number}>}
  */
-export const getUnreadCount = async () => {
-  const response = await apiClient.get('/api/minds/notifications/unread_count/');
-  return response.data.count;
+export const getNotificationSummary = async () => {
+  const response = await apiClient.get('/api/minds/notifications/summary/');
+  return response.data;
 };
 
 /**
@@ -51,22 +53,16 @@ export const markAsRead = async (notificationId) => {
  * @param {number[]} notificationIds - Мэдэгдлийн ID-үүд
  */
 export const markGroupAsRead = async (notificationIds) => {
-  await Promise.all(
-    notificationIds.map((id) =>
-      apiClient.post(`/api/minds/notifications/${id}/mark_as_read/`),
-    ),
-  );
-};
-
-export const getPrivateMessagesCount = async () => {
-  const response = await apiClient.get('/api/minds/notifications/private-messages-count/');
-  return response.data.count;
+  if (!notificationIds?.length) return;
+  await apiClient.post('/api/minds/notifications/mark_many_as_read/', {
+    ids: notificationIds,
+  });
 };
 
 export default {
   getNotifications,
-  getUnreadCount,
+  getNotificationSummary,
   markAllAsRead,
   markAsRead,
-  getPrivateMessagesCount,
+  markGroupAsRead,
 };
