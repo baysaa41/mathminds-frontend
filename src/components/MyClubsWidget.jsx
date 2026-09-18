@@ -7,11 +7,35 @@ import Spinner from 'react-bootstrap/Spinner';
 import { Users, Plus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getMyClubs } from '../services/clubService';
+import useCachedValue from '../hooks/useCachedValue';
+
+// Гишүүдийн тоогоор буурахаар эрэмбэлнэ. Кэш болон сүлжээ хоёр замаас
+// ижил хэлбэрт оруулахын тулд нэг газар тодорхойлсон.
+const normalizeClubs = (data) => {
+  const list = Array.isArray(data) ? data : data?.results || [];
+  return [...list].sort(
+    (a, b) =>
+      (b.members_count ?? b.member_count ?? 0) - (a.members_count ?? a.member_count ?? 0)
+  );
+};
 
 const MyClubsWidget = () => {
   const { user, isAuthenticated } = useAuth();
   const [clubs, setClubs] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Фон дээрх шинэчлэлт (клубт элсэх/гарах) ирвэл жагсаалтыг солино
+  const cachedClubs = useCachedValue(
+    '/api/clubs/my_clubs/',
+    user?.username ? { username: user.username } : null,
+    normalizeClubs
+  );
+
+  useEffect(() => {
+    if (!cachedClubs) return;
+    setClubs(cachedClubs);
+    setLoading(false);
+  }, [cachedClubs]);
 
   useEffect(() => {
     if (!isAuthenticated || !user) {
@@ -23,13 +47,7 @@ const MyClubsWidget = () => {
     const fetchClubs = async () => {
       try {
         const data = await getMyClubs(user.username);
-        if (!cancelled) {
-          const list = Array.isArray(data) ? data : data.results || [];
-          list.sort((a, b) =>
-            (b.members_count ?? b.member_count ?? 0) - (a.members_count ?? a.member_count ?? 0)
-          );
-          setClubs(list);
-        }
+        if (!cancelled) setClubs(normalizeClubs(data));
       } catch (err) {
         console.error('MyClubsWidget: failed to fetch clubs', err);
       } finally {

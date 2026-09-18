@@ -10,6 +10,37 @@ import ListGroup from 'react-bootstrap/ListGroup';
 import Badge from 'react-bootstrap/Badge';
 import Spinner from 'react-bootstrap/Spinner';
 import LivePreview from './LivePreview';
+import useCachedValue from '../hooks/useCachedValue';
+
+const TRENDING_PARAMS = { days: 7, limit: 5 };
+
+// Зөвхөн харуулах агуулгатай постуудыг үлдээнэ. Кэш болон сүлжээ хоёр
+// замаас ижил шүүлт хийгдэх ёстой тул нэг газар тодорхойлсон.
+const pickValidPosts = (posts) =>
+  (posts || []).filter((post) => {
+    if (!post) return false;
+
+    // Энгийн пост: content, зураг, эсвэл AI тайлбар байвал харуулна
+    if (
+      post.content_type === 'post' ||
+      post.content_type === 'repost' ||
+      post.content_type === 'reply'
+    ) {
+      return (
+        (post.content && typeof post.content === 'string') ||
+        (post.images && post.images.length > 0) ||
+        post.ai_image_description
+      );
+    }
+
+    // Бодлого, томьёо, өгүүлэл, тест бол холбоотой объект байх ёстой
+    return (
+      post.related_problem ||
+      post.related_formula ||
+      post.related_article ||
+      post.related_quiz
+    );
+  });
 
 // Постын төрөл болон гарчигийг авах функц
 const getPostTitle = (post) => {
@@ -105,35 +136,28 @@ const TrendingPostsWidget = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  // Фон дээрх шинэчлэлт (жишээ нь шинэ пост trending болох) ирвэл жагсаалтыг солино
+  const cachedTrending = useCachedValue(
+    '/api/minds/posts/trending/',
+    TRENDING_PARAMS,
+    pickValidPosts
+  );
+
+  useEffect(() => {
+    if (!cachedTrending) return;
+    setTrendingPosts(cachedTrending);
+    setLoading(false);
+  }, [cachedTrending]);
+
   useEffect(() => {
     const fetchTrending = async () => {
       if (!loading) setLoading(true);
       try {
         const response = await apiClient.get('/api/minds/posts/trending/', {
-          params: { days: 7, limit: 5 },
+          params: TRENDING_PARAMS,
         });
         // Постууд нь ямар нэгэн харуулах агуулгатай байх ёстой
-        const validPosts = (response.data || []).filter((post) => {
-          if (!post) return false;
-
-          // Энгийн пост: content, зураг, эсвэл AI тайлбар байвал харуулна
-          if (post.content_type === 'post' || post.content_type === 'repost' || post.content_type === 'reply') {
-            return (
-              (post.content && typeof post.content === 'string') ||
-              (post.images && post.images.length > 0) ||
-              post.ai_image_description
-            );
-          }
-
-          // Бодлого, томьёо, өгүүлэл, тест бол холбоотой объект байх ёстой
-          return (
-            post.related_problem ||
-            post.related_formula ||
-            post.related_article ||
-            post.related_quiz
-          );
-        });
-        setTrendingPosts(validPosts);
+        setTrendingPosts(pickValidPosts(response.data));
       } catch (error) {
         console.error('Trending posts татахад алдаа:', error);
         setTrendingPosts([]);

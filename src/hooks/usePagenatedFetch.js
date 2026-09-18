@@ -1,9 +1,11 @@
 // hooks/usePaginatedFetch.js
 // ✅ САЙЖРУУЛСАН хувилбар - Error callback дэмжсэн
 // (!!! ШИНЭЧИЛСЭН: loadMore үед шүүлтүүрийг хадгалдаг болсон)
+// (!!! ШИНЭЧИЛСЭН: 1-р хуудсыг кэшээс шууд харуулж, фон дээр шинэчилнэ)
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import apiClient from '../api/axiosConfig';
+import apiCache from '../api/apiCache';
 
 const usePaginatedFetch = (endpoint, options = {}) => {
   const [data, setData] = useState([]);
@@ -18,17 +20,40 @@ const usePaginatedFetch = (endpoint, options = {}) => {
   // (!!!) 1. Шүүлтүүрийг хадгалах state нэмэх
   const [currentParams, setCurrentParams] = useState({});
 
+  // Хэдэн хуудас татсаныг санана. Хэрэглэгч 1-ээс олон хуудас үзсэн бол
+  // фон шинэчлэлт 1-р хуудсаар бүх жагсаалтыг дарж бичих ёсгүй.
+  const pagesLoadedRef = useRef(1);
+
   const { onError } = options;
+
+  const applyPage = useCallback((payload) => {
+    setData(payload.results || payload);
+    setNextPage(payload.next);
+    setHasMore(!!payload.next);
+    setTotalCount(payload.count ?? null);
+  }, []);
 
   const fetchData = useCallback(
     async (params = {}, reset = true) => {
       if (reset) {
-        setLoading(true);
-        setData([]);
-        setNextPage(null);
-        setHasMore(true);
         // (!!!) 2. Шинэ шүүлтүүрийг state-д хадгалах
         setCurrentParams(params);
+        pagesLoadedRef.current = 1;
+
+        // Кэш байвал шууд харуулна — spinner гарахгүй. Дараах
+        // apiClient.get нь кэшээс тэр даруй буцаж, фон дээр шинэчилнэ.
+        const cached = apiCache.peek(
+          apiCache.cacheKey(endpoint, { params: { ...params, page: 1 } })
+        );
+        if (cached) {
+          applyPage(cached.data);
+          setLoading(false);
+        } else {
+          setLoading(true);
+          setData([]);
+          setNextPage(null);
+          setHasMore(true);
+        }
       }
 
       setError(null);
@@ -39,10 +64,7 @@ const usePaginatedFetch = (endpoint, options = {}) => {
           params: { ...params, page: 1 },
         });
 
-        setData(response.data.results || response.data);
-        setNextPage(response.data.next);
-        setHasMore(!!response.data.next);
-        setTotalCount(response.data.count ?? null);
+        applyPage(response.data);
       } catch (err) {
         const errorMessage = err.response?.data?.message || err.message || 'Алдаа гарлаа';
         setError(errorMessage);
@@ -51,8 +73,19 @@ const usePaginatedFetch = (endpoint, options = {}) => {
         setLoading(false);
       }
     },
-    [endpoint, onError]
+    [endpoint, onError, applyPage]
   );
+
+  // Фон дээрх шинэчлэлт (revalidate) ирвэл жагсаалтыг солино
+  useEffect(() => {
+    const key = apiCache.cacheKey(endpoint, {
+      params: { ...currentParams, page: 1 },
+    });
+    return apiCache.subscribe(key, (payload) => {
+      if (pagesLoadedRef.current > 1) return;
+      applyPage(payload);
+    });
+  }, [endpoint, currentParams, applyPage]);
 
   const loadMore = useCallback(async () => {
     if (!hasMore || loadingMore || !nextPage) {
@@ -74,6 +107,7 @@ const usePaginatedFetch = (endpoint, options = {}) => {
       setData((prev) => [...prev, ...(response.data.results || response.data)]);
       setNextPage(response.data.next);
       setHasMore(!!response.data.next);
+      pagesLoadedRef.current += 1;
     } catch (err) {
       const errorMessage = err.response?.data?.message || err.message || 'Алдаа гарлаа';
       setError(errorMessage);

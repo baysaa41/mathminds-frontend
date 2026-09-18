@@ -2,6 +2,7 @@
 
 import axios from 'axios';
 import authService from '../services/authService';
+import * as cache from './apiCache';
 
 function getCookie(name) {
   let cookieValue = null;
@@ -71,14 +72,18 @@ apiClient.interceptors.request.use(
       config.timeout = 30_000;
     }
 
-    // --- Console лог ---
-    const method = (config.method || 'GET').toUpperCase()
-    const url = (config.baseURL || '') + (config.url || '')
-    const isPoll = config.url?.includes('/poll')
-    if (isPoll) {
-      console.debug(`[API poll] ${method} ${url}`)
-    } else {
-      console.log(`[API] ${method} ${url}`, config.data || '')
+    // --- Console лог (зөвхөн dev) ---
+    // Production дээр хүсэлт бүрийг лог хийвэл 30с poll × олон таб үед
+    // тасралтгүй I/O болж, консол дүүрдэг.
+    if (import.meta.env.DEV) {
+      const method = (config.method || 'GET').toUpperCase()
+      const url = (config.baseURL || '') + (config.url || '')
+      const isPoll = config.url?.includes('/poll')
+      if (isPoll) {
+        console.debug(`[API poll] ${method} ${url}`)
+      } else {
+        console.log(`[API] ${method} ${url}`, config.data || '')
+      }
     }
 
     return config;
@@ -95,13 +100,22 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   // 1. Амжилттай хариу (2xx status)
   (response) => {
-    const method = (response.config.method || 'GET').toUpperCase()
-    const url = response.config.url || ''
-    const isPoll = url.includes('/poll')
-    if (isPoll) {
-      console.debug(`[API poll] ← ${response.status} ${url}`, response.data)
-    } else {
-      console.log(`[API] ← ${response.status} ${method} ${url}`)
+    // Бичилт (POST/PATCH/DELETE) амжилттай болмогц холбогдох GET кэшийг
+    // stale тэмдэглэж, харагдаж байгаа компонентуудыг фон дээр шинэчилнэ.
+    if ((response.config?.method || 'get').toLowerCase() !== 'get') {
+      cache.markFamilyStale(response.config?.url);
+      cache.revalidateSubscribed();
+    }
+
+    if (import.meta.env.DEV) {
+      const method = (response.config.method || 'GET').toUpperCase()
+      const url = response.config.url || ''
+      const isPoll = url.includes('/poll')
+      if (isPoll) {
+        console.debug(`[API poll] ← ${response.status} ${url}`, response.data)
+      } else {
+        console.log(`[API] ← ${response.status} ${method} ${url}`)
+      }
     }
     return response;
   },
@@ -125,8 +139,11 @@ apiClient.interceptors.response.use(
       if (originalRequest.url === '/users/api/token/refresh/') {
         console.error('Refresh token is invalid, logging out.');
         authService.logout();
-        // Хуудсыг дахин ачаалж, нэвтрэх хуудас руу шилжүүлнэ
-        window.location.replace('/login');
+        // Хуудсыг дахин ачаалж, нэвтрэх хуудас руу шилжүүлнэ.
+        // '/callback'-с шилжүүлэхгүй — тэнд MMO-гийн code солилцож байгаа.
+        if (window.location.pathname !== '/callback') {
+          window.location.replace('/login');
+        }
         return Promise.reject(error);
       }
 
@@ -145,7 +162,7 @@ apiClient.interceptors.response.use(
         // Refresh хийх үед алдаа гарвал (authService.refreshToken дотор logout хийгдсэн)
         // хэрэглэгчийг нэвтрэх хуудас руу шилжүүлнэ.
         console.error('Token refresh failed:', refreshError);
-        if (window.location.pathname !== '/login') {
+        if (window.location.pathname !== '/login' && window.location.pathname !== '/callback') {
           window.location.replace('/login');
         }
         return Promise.reject(refreshError);
@@ -156,5 +173,76 @@ apiClient.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+/**
+ * Кэш давхарга — GET хариуг browser дээр хадгалж, stale-while-revalidate.
+ *
+ * Interceptor биш, `apiClient.get`-ийг шууд дарж бичсэн нь санаатай:
+ * axios v1-д request interceptor-оос response буцааж хүсэлтийг
+ * богиносгох боломжгүй (`dispatchRequest` дахин ажиллана). `rawGet` нь
+ * хэвийн замыг (timeout, 401 → refresh → retry) бүрэн хэвээр үлдээнэ.
+ */
+const rawGet = apiClient.get.bind(apiClient);
+
+function sameJSON(a, b) {
+  try {
+    return JSON.stringify(a) === JSON.stringify(b);
+  } catch {
+    return false;
+  }
+}
+
+/** Жинхэнэ axios хариуны дуураймал — хэрэглэгчид зөвхөн `.data` хэрэгтэй. */
+function syntheticResponse(entry, config) {
+  return {
+    data: entry.data,
+    status: 200,
+    statusText: 'OK',
+    headers: {},
+    config,
+    request: null,
+    fromCache: true,
+  };
+}
+
+/**
+ * Сүлжээнээс татаж кэшэд бичнэ. Нэгэн зэрэг ижил хүсэлт явбал (StrictMode-ийн
+ * 2× эффект, олон компонент) нэг л хүсэлт хуваалцана.
+ */
+function fetchAndCache(url, config, key) {
+  return cache.shareInflight(key, () =>
+    rawGet(url, config).then((res) => {
+      const prev = cache.peek(key);
+      cache.set(key, res.data, cache.pathOf(url));
+      cache.remember(key, url, config);
+      // Зөвхөн өөрчлөгдсөн бол — дэмий re-render хийхгүй
+      if (prev && !sameJSON(prev.data, res.data)) cache.emit(key, res.data);
+      return res;
+    })
+  );
+}
+
+/** Фон дээрх шинэчлэлт — алдааг залгина (401-ийг interceptor шийднэ). */
+function revalidate(url, config, key) {
+  fetchAndCache(url, config, key).catch(() => {});
+}
+
+cache.setRevalidateHandler(revalidate);
+
+apiClient.get = (url, config = {}) => {
+  if (!cache.isCacheable(url, config)) return rawGet(url, config);
+
+  const key = cache.cacheKey(url, config);
+  const hit = cache.get(key);
+
+  if (hit && !cache.isExpired(hit)) {
+    cache.remember(key, url, config);
+    // Хуучирсан бол хариуг хүлээлгүй фон дээр шинэчилнэ
+    if (cache.isStale(hit)) revalidate(url, config, key);
+    return Promise.resolve(syntheticResponse(hit, config));
+  }
+
+  return fetchAndCache(url, config, key);
+};
 
 export default apiClient;

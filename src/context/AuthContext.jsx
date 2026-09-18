@@ -4,6 +4,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 // 1. apiClient-г эндээс УСТГАСАН. (axiosConfig.js үүнийг хариуцна)
 // 2. authService-г импортлох
 import authService from '../services/authService';
+import apiCache from '../api/apiCache';
 
 const AuthContext = createContext(null);
 
@@ -19,6 +20,14 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // OAuth callback дээр хуучин токеныг шалгахгүй. Хэрэв шалгавал 401 →
+    // refresh → logout → '/login' руу шилжих cascade эхэлж, буцаж ирсэн
+    // code болон PKCE мэдээлэл устаад нэвтрэлт нурдаг.
+    if (window.location.pathname === '/callback') {
+      setLoading(false);
+      return;
+    }
+
     // Энэ useEffect нь зөвхөн апп-г анх ачаалахад хэрэглэгчийн
     // мэдээллийг backend-с шалгаж, state-г тохируулна.
     const verifyUser = async () => {
@@ -31,6 +40,9 @@ export const AuthProvider = ({ children }) => {
           if (userData) {
             setUser(userData);
             setToken(currentToken);
+            // Кэшийн түлхүүр хэрэглэгчийн id-г агуулдаг тул хэн болохоо
+            // мэдсэний дараа л кэшээ унших ёстой.
+            apiCache.setUser(userData.id ?? userData.username);
           } else {
             // Токен хүчингүй (жишээ нь, хугацаа нь дууссан)
             authService.logout();
@@ -55,6 +67,11 @@ export const AuthProvider = ({ children }) => {
 
   // 5. 'login' функцийг ЗАСВАРЛАСАН
   const login = (userData, userToken) => {
+    // Нэг browser дээр хэрэглэгч солигдож байна — өмнөх хэрэглэгчийн
+    // кэшлэгдсэн өгөгдөл үлдэх ёсгүй.
+    apiCache.clearAll();
+    apiCache.setUser(userData?.id ?? userData?.username);
+
     // И-мэйлээр нэвтрэх үед
     // localStorage-г ЗӨВ түлхүүрээр хадгалах
     localStorage.setItem('access_token', userToken);

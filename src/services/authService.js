@@ -2,6 +2,7 @@
 
 // (!!!) ШИНЭЭР НЭМЭХ: axiosConfig-г импортлоно
 import apiClient from '../api/axiosConfig.js';
+import apiCache from '../api/apiCache.js';
 
 const MMO_CONFIG = {
   clientId: import.meta.env.VITE_MMO_CLIENT_ID || 'REDACTED_MMO_CLIENT_ID',
@@ -58,8 +59,10 @@ class AuthService {
       const { codeVerifier, codeChallenge } = await this.generatePKCE();
       const state = this.generateState();
 
-      sessionStorage.setItem('code_verifier', codeVerifier);
-      sessionStorage.setItem('oauth_state', state);
+      // MMO руу шилжиж буцахдаа in-app browser эсвэл шинэ tab дээр
+      // sessionStorage алга болдог тул localStorage-д хадгална.
+      localStorage.setItem('code_verifier', codeVerifier);
+      localStorage.setItem('oauth_state', state);
 
       const params = new URLSearchParams({
         response_type: 'code',
@@ -81,8 +84,16 @@ class AuthService {
 
   // ... (Callback шийдэх хэвээрээ) ...
   async handleCallback(code, state) {
-    const savedState = sessionStorage.getItem('oauth_state');
-    const codeVerifier = sessionStorage.getItem('code_verifier');
+    // Ижил code-г хоёр дахин солилцохгүй. Компонент дахин mount болох,
+    // эсвэл хэрэглэгч буцах/урагшлах товч дарахад энэ функц дахин
+    // ажиллаж, аль хэдийн устсан oauth_state-ийг олоогүй "Session expired"
+    // гэж алдаа харуулдаг байсан — гэтэл нэвтрэлт амжилттай болсон байсан.
+    if (code && localStorage.getItem('oauth_last_code') === code && this.isAuthenticated()) {
+      return { user: this.getUser(), token: this.getToken() };
+    }
+
+    const savedState = localStorage.getItem('oauth_state');
+    const codeVerifier = localStorage.getItem('code_verifier');
 
     if (!savedState) {
       throw new Error('Session expired. Please log in again.');
@@ -114,18 +125,22 @@ class AuthService {
         throw new Error(errorData.error || 'Failed to exchange code');
       }
       const data = await response.json();
+      // Шинэ session эхэлж байна — өмнөх хэрэглэгчийн кэшлэгдсэн GET
+      // хариу үлдвэл шинэ хэрэглэгчид харагдах эрсдэлтэй.
+      apiCache.clearAll();
       localStorage.setItem('access_token', data.token);
       if (data.refresh) {
         localStorage.setItem('refresh_token', data.refresh);
       }
       localStorage.setItem('user', JSON.stringify(data.user));
-      sessionStorage.removeItem('code_verifier');
-      sessionStorage.removeItem('oauth_state');
+      localStorage.setItem('oauth_last_code', code);
+      localStorage.removeItem('code_verifier');
+      localStorage.removeItem('oauth_state');
       return { user: data.user, token: data.token };
     } catch (error) {
       console.error('Callback error:', error);
-      sessionStorage.removeItem('code_verifier');
-      sessionStorage.removeItem('oauth_state');
+      localStorage.removeItem('code_verifier');
+      localStorage.removeItem('oauth_state');
       throw error;
     }
   }
@@ -222,11 +237,17 @@ class AuthService {
 
   // Logout
   logout() {
+    // Кэш нь хэрэглэгчийн өгөгдлийг localStorage-д хадгалдаг тул заавал
+    // устгана. 401 → refresh → retry зам болон refreshToken-ийн уналт ч
+    // энэ функцээр ордог тул бүх гарах замыг хамарна.
+    apiCache.clearAll();
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user');
-    sessionStorage.removeItem('code_verifier');
-    sessionStorage.removeItem('oauth_state');
+    localStorage.removeItem('oauth_last_code');
+    // code_verifier / oauth_state-ийг энд устгахгүй: тэдгээр нь яг одоо
+    // явагдаж буй MMO нэвтрэлтийн гарааны мэдээлэл бөгөөд хуучин
+    // session-ий logout-оос болж устаж болохгүй.
   }
 
   // Нэвтэрсэн эсэхийг шалгах
