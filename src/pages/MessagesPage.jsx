@@ -76,7 +76,6 @@ import {
   getEeshProblems,
   getEeshStats,
   getEeshTopics,
-  getEeshDifferentProblem,
   sendExamProblem,
   getProblemHintSolution,
   explainWrongChoice,
@@ -107,7 +106,7 @@ const openImageViewer = (e) => {
 
 // React.memo: message prop өөрчлөгдөөгүй бол re-render хийхгүй
 // → MathJax/LivePreview зөвхөн шинэ мессеж дээр л ажиллана
-const MessageBubble = memo(function MessageBubble({ message, currentUserId, onReuse, isTypewriting, onTypewritingDone, onTypewritingStart, rating, onRate }) {
+const MessageBubble = memo(function MessageBubble({ message, currentUserId, onReuse, isTypewriting, onTypewritingDone, rating, onRate }) {
   const isSent = message.author?.id === currentUserId;
   const [copied, setCopied] = useState(false);
   const bubbleRef = useRef(null);
@@ -125,7 +124,6 @@ const MessageBubble = memo(function MessageBubble({ message, currentUserId, onRe
     let current = 0;
     const tick = () => {
       current = Math.min(current + 1, content.length);
-      if (current === 1) onTypewritingStart?.();
       setDisplayedLen(current);
       if (current < content.length) {
         timerId = setTimeout(tick, SPEED);
@@ -253,7 +251,6 @@ const MessagesPage = ({ aiOnly = false }) => {
   const [sending, setSending] = useState(false);
   const [aiTyping, setAiTyping] = useState(false);
   const [typewriterMsgId, setTypewriterMsgId] = useState(null);
-  const [typewriterStarted, setTypewriterStarted] = useState(false);
   const [uploadedImages, setUploadedImages] = useState([]);
   const [input, setInput] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -609,30 +606,6 @@ const MessagesPage = ({ aiOnly = false }) => {
     await sendProblemToChat(examProblems, nextIndex);
   };
 
-  // Өөр (өөр сэдвийн) бодлого — алгоритмын дагуу сонгох, олдохгүй бол AI зохионо
-  const handleDifferentProblem = async () => {
-    const currentProblem = examProblems[examProblemIndex];
-    if (!currentProblem || !selectedConversation || examSending || !examAiReplied || typewriterMsgId) return;
-    setExamSending(true);
-    try {
-      const data = await getEeshDifferentProblem(currentProblem.id, 'math');
-      if (!data?.problem) return;
-      const newProblem = data.problem;
-      const insertIndex = examProblemIndex + 1;
-      const newList = [
-        ...examProblems.slice(0, insertIndex),
-        newProblem,
-        ...examProblems.slice(insertIndex),
-      ];
-      setExamProblems(newList);
-      // sendProblemToChat нь setExamSending(true/false) дотроо хийдэг тул finally-д false хийхгүй
-      await sendProblemToChat(newList, insertIndex);
-    } catch (e) {
-      console.error('Өөр бодлого авахад алдаа:', e);
-      setExamSending(false);
-    }
-  };
-
   // Зөвлөгөө (Hint) modal нээх
   const handleOpenHint = async () => {
     if (!examCurrentProblem) return;
@@ -795,7 +768,6 @@ const MessagesPage = ({ aiOnly = false }) => {
       // AI мессеж ирвэл typewriter эффект эхлүүлнэ
       if (aiUserId && incoming.author?.id === aiUserId) {
         setAiTyping(false)
-        setTypewriterStarted(false)
         setTypewriterMsgId(incoming.uuid)
         // Зөв хариулсны дараа багшийн хариулт ирсэн → товч харуулна
         if (examNeedsAiReplyRef.current) {
@@ -1434,8 +1406,7 @@ const MessagesPage = ({ aiOnly = false }) => {
                       currentUserId={user?.id}
                       onReuse={handleReuse}
                       isTypewriting={message.uuid === typewriterMsgId}
-                      onTypewritingDone={() => { setTypewriterMsgId(null); setTypewriterStarted(false); }}
-                      onTypewritingStart={() => setTypewriterStarted(true)}
+                      onTypewritingDone={() => setTypewriterMsgId(null)}
                       rating={messageRatings[message.uuid] ?? message.my_rating ?? null}
                       onRate={isAiConv(selectedConversation) ? (r) => handleRateMessage(message.uuid, r) : null}
                     />

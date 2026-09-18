@@ -30,7 +30,7 @@ function matchBadge(score) {
 
 const AssignmentFlexibleImportPage = () => {
   const { id: clubId, assignmentId } = useParams();
-  const { clubData, showToast } = useOutletContext();
+  const { clubData } = useOutletContext();
   const navigate = useNavigate();
 
   const [step, setStep] = useState(STEP_UPLOAD);
@@ -47,7 +47,6 @@ const AssignmentFlexibleImportPage = () => {
 
   // Step 2: overrides — {row_key: user_id | 'skip'}
   const [overrides, setOverrides] = useState({});
-  const [memberSearch, setMemberSearch] = useState({});  // {row_key: search text}
 
   // Step 3 state
   const [importing, setImporting] = useState(false);
@@ -314,7 +313,6 @@ const AssignmentFlexibleImportPage = () => {
                     const ovVal = overrides[s.row_key];
                     const isSkipped = ovVal === 'skip';
                     const mb = matchBadge(s.match_score);
-                    const resolvedId = effectiveUser(s);
 
                     return (
                       <tr key={s.row_key} className={isSkipped ? 'opacity-50' : ''}>

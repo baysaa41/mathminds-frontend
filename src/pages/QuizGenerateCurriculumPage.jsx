@@ -233,8 +233,6 @@ export default function QuizGenerateCurriculumPage() {
 
   const allSelected = weeklyTopics.length > 0 && selectedWeeks.size === weeklyTopics.length;
 
-  const selectedProgram = programs.find(p => String(p.id) === String(programId));
-
   return (
     <Container className="py-4" style={{ maxWidth: 680 }}>
       <AppBreadcrumb
