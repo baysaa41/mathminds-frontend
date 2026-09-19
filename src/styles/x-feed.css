@@ -1,0 +1,384 @@
+/* src/styles/x-feed.css
+   X (Twitter)-ийн timeline харагдац. Bootstrap-ийн card/shadow загварыг
+   постын feed дээр орлоно. Бусад хуудсууд хэвээр Bootstrap-тай.
+
+   Өмнө нь PostCard нь `post-card`, `post-actions`, `post-reply-card`, `no-caret`
+   гэсэн классуудыг хэрэглэдэг ч тэдгээрийг ямар ч CSS тодорхойлдоггүй байсан —
+   зөвхөн Bootstrap-ийн card/shadow-sm ажиллаж байв. Энэ файл тэр давхаргыг орлоно. */
+
+:root {
+  --x-bg: #ffffff;
+  --x-text: #0f1419;
+  --x-secondary: #536471;
+  --x-border: #eff3f4;
+  --x-hover: rgba(0, 0, 0, 0.03);
+  --x-blue: #1d9bf0;
+  --x-green: #00ba7c;
+  --x-pink: #f91880;
+  --x-hover-blue: rgba(29, 155, 240, 0.1);
+  --x-hover-green: rgba(0, 186, 124, 0.1);
+  --x-hover-pink: rgba(249, 24, 128, 0.1);
+  /* Аватар (40px) + зай (12px) + захын padding (16px) */
+  --x-gutter: 68px;
+}
+
+/* ---------------- Feed багана ---------------- */
+
+.x-feed {
+  background: var(--x-bg);
+}
+
+/* Пост бичих форм — x.com-ийн composer шиг ирмэг хүртэл, доод хүрээтэй */
+.x-composer {
+  background: var(--x-bg);
+  border-bottom: 1px solid var(--x-border);
+  padding: 12px 16px;
+}
+
+/* Ачаалалт / алдаа / хоосон төлөвт зориулсан padding */
+.x-feed__pad {
+  padding: 24px 16px;
+}
+
+/* ---------------- Постын мөр ---------------- */
+
+.x-post {
+  position: relative;
+  background: var(--x-bg);
+  border-bottom: 1px solid var(--x-border);
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.x-post:hover {
+  background: var(--x-hover);
+}
+
+.x-post__row {
+  display: flex;
+  gap: 12px;
+  padding: 12px 16px;
+}
+
+.x-post--compact .x-post__row {
+  padding: 10px 16px;
+}
+
+.x-post__avatar {
+  flex: 0 0 auto;
+  line-height: 0;
+}
+
+.x-post__main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* ---------------- Толгой ---------------- */
+
+.x-post__header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.x-post__meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.x-post__name {
+  font-weight: 700;
+  color: var(--x-text);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.x-post__name:hover {
+  text-decoration: underline;
+  color: var(--x-text);
+}
+
+.x-post__handle,
+.x-post__dot,
+.x-post__time {
+  color: var(--x-secondary);
+  font-size: 15px;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.x-post__handle {
+  text-decoration: none;
+}
+
+/* UserName компонент нь нэрийг өөрийн <Link>-ээр ороож, доогуур зураасыг
+   нь дардаг тул hover-ийг эцэг элементээс нь барьж өгнө */
+.x-post__header a:hover .x-post__name {
+  text-decoration: underline;
+}
+
+.x-post__handle:hover {
+  text-decoration: underline;
+  color: var(--x-secondary);
+}
+
+/* ---------------- Агуулга ---------------- */
+
+.x-post__content {
+  margin-top: 2px;
+  color: var(--x-text);
+  line-height: 1.4;
+  overflow-wrap: break-word;
+}
+
+.x-post__content > *:last-child {
+  margin-bottom: 0;
+}
+
+/* Quote tweet: эх пост нь хүрээтэй хайрцагт */
+.x-quote {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--x-border);
+  border-radius: 16px;
+}
+
+/* Зургийн хүрээ — x.com шиг 16px булан */
+.x-post__content .post-image,
+.x-post__content .post-image-gallery {
+  border-radius: 16px;
+  border: 1px solid var(--x-border);
+}
+
+/* ---------------- Мэдээллийн тууз (клуб / repost / AI) ---------------- */
+
+.x-post__banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  font-size: 13px;
+  line-height: 18px;
+  border-bottom: 1px solid var(--x-border);
+}
+
+.x-post__banner--club {
+  background: #f0f4ff;
+}
+
+.x-post__banner--ai {
+  background: #f8f9fa;
+}
+
+/* Repost banner нь аватарын баганыг алгасаж, агуулгын баганатай зэрэгцэнэ */
+.x-post__banner--repost {
+  padding-left: var(--x-gutter);
+  color: var(--x-secondary);
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+/* ---------------- Үйлдлийн мөр ---------------- */
+
+.x-actions {
+  display: flex;
+  align-items: center;
+  margin-top: 12px;
+  margin-left: -8px;
+}
+
+.x-action {
+  display: inline-flex;
+  align-items: center;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--x-secondary);
+  font-size: 13px;
+  line-height: 16px;
+  cursor: pointer;
+  transition: color 0.12s ease;
+}
+
+.x-action:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.x-action__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34.75px;
+  height: 34.75px;
+  border-radius: 9999px;
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease;
+}
+
+.x-action__count {
+  padding-right: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.x-action--reply:hover .x-action__icon,
+.x-action--views:hover .x-action__icon,
+.x-action--bookmark:hover .x-action__icon,
+.x-action--font:hover .x-action__icon {
+  background: var(--x-hover-blue);
+  color: var(--x-blue);
+}
+
+.x-action--repost:hover .x-action__icon {
+  background: var(--x-hover-green);
+  color: var(--x-green);
+}
+
+.x-action--like:hover .x-action__icon {
+  background: var(--x-hover-pink);
+  color: var(--x-pink);
+}
+
+.x-action--like.is-active {
+  color: var(--x-pink);
+}
+
+.x-action--bookmark.is-active {
+  color: var(--x-blue);
+}
+
+/* Үзэлтийн тоо — x.com шиг hover-гүй, бага зэрэг бүдэг */
+.x-action--views {
+  cursor: default;
+}
+
+/* ---------------- Постын цэс ---------------- */
+
+.no-caret::after {
+  display: none !important;
+}
+
+.x-post__menu .dropdown-toggle {
+  color: var(--x-secondary);
+  padding: 4px;
+  border-radius: 9999px;
+  line-height: 0;
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease;
+}
+
+.x-post__menu .dropdown-toggle:hover,
+.x-post__menu .dropdown-toggle:focus {
+  background: var(--x-hover-blue);
+  color: var(--x-blue);
+}
+
+/* ---------------- Шүүлтүүрийн мөр ---------------- */
+
+.x-filterbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--x-border);
+  padding: 8px 16px 0;
+}
+
+.x-filterbar__tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 24px;
+  margin-bottom: 8px;
+}
+
+.x-filterbar__tab {
+  background: none;
+  border: 0;
+  padding: 10px 0;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--x-secondary);
+  cursor: pointer;
+  position: relative;
+  transition: color 0.12s ease;
+}
+
+.x-filterbar__tab:hover {
+  color: var(--x-text);
+}
+
+.x-filterbar__tab.is-active {
+  color: var(--x-text);
+  font-weight: 700;
+}
+
+.x-filterbar__tab.is-active::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: 100%;
+  min-width: 56px;
+  height: 4px;
+  border-radius: 9999px;
+  background: var(--x-blue);
+}
+
+.x-filterbar__search {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.x-filterbar__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-bottom: 10px;
+}
+
+.x-filterbar__chip {
+  background: none;
+  border: 1px solid #cfd9de;
+  border-radius: 9999px;
+  padding: 3px 12px;
+  font-size: 13px;
+  color: var(--x-secondary);
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.x-filterbar__chip:hover {
+  background: var(--x-hover-blue);
+  border-color: var(--x-blue);
+  color: var(--x-blue);
+}
+
+.x-filterbar__chip.is-active {
+  background: var(--x-text);
+  border-color: var(--x-text);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ---------------- Feed-ийн доод тэмдэглэл ---------------- */
+
+.x-feed__footer {
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--x-secondary);
+  font-size: 13px;
+}

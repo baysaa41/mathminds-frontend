@@ -42,14 +42,10 @@ export const PostImageGallery = ({ images }) => {
   // 1. Нэг зураг байвал: Бүтнээр нь харуулах
   if (images.length === 1) {
     return (
-      <div
-        ref={galleryRef}
-        className="my-2"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div ref={galleryRef} className="my-2" onClick={(e) => e.stopPropagation()}>
         <img
           src={images[0].image}
-          className="img-fluid rounded post-image"
+          className="img-fluid post-image"
           alt="Post attachment"
           style={{
             maxWidth: '100%',
@@ -70,18 +66,14 @@ export const PostImageGallery = ({ images }) => {
   const hiddenImages = images.slice(4);
 
   return (
-    <div
-      ref={galleryRef}
-      className="my-2"
-      onClick={(e) => e.stopPropagation()}
-    >
+    <div ref={galleryRef} className="my-2" onClick={(e) => e.stopPropagation()}>
       <div
         className="post-image-gallery"
         style={{
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
           gap: '4px',
-          borderRadius: '8px',
+          borderRadius: '16px',
           overflow: 'hidden',
         }}
       >
@@ -123,12 +115,7 @@ export const PostImageGallery = ({ images }) => {
       </div>
       {/* Viewer-т зориулсан нуугдмал зургууд (5-с дээш зурагтай үед) */}
       {hiddenImages.map((img) => (
-        <img
-          key={img.id}
-          src={img.image}
-          alt="Post attachment"
-          style={{ display: 'none' }}
-        />
+        <img key={img.id} src={img.image} alt="Post attachment" style={{ display: 'none' }} />
       ))}
     </div>
   );

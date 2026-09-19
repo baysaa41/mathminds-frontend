@@ -82,8 +82,9 @@ const CreatePostForm = ({ onPostCreated, clubId = null, clubName = null }) => {
       setSelectedSubgroupId('');
       return;
     }
-    apiClient.get('/api/club-subgroups/', { params: { club: targetId } })
-      .then(r => setClubSubgroups(r.data.results || r.data || []))
+    apiClient
+      .get('/api/club-subgroups/', { params: { club: targetId } })
+      .then((r) => setClubSubgroups(r.data.results || r.data || []))
       .catch(() => {});
   }, [clubId, selectedClubId]);
 
@@ -208,30 +209,35 @@ const CreatePostForm = ({ onPostCreated, clubId = null, clubName = null }) => {
   const renderClubBadge = () => {
     if (!clubId || !clubName) return null;
 
-    const selectedSg = clubSubgroups.find(sg => String(sg.id) === selectedSubgroupId);
+    const selectedSg = clubSubgroups.find((sg) => String(sg.id) === selectedSubgroupId);
 
     return (
       <div className="mb-2">
         <Alert variant="success" className="py-2 px-3 small mb-2">
-          <Badge pill bg="success" className="me-2">Клуб</Badge>
+          <Badge pill bg="success" className="me-2">
+            Клуб
+          </Badge>
           {clubName}-д пост үүсгэж байна
         </Alert>
         {clubSubgroups.length > 0 && (
           <Form.Select
             size="sm"
             value={selectedSubgroupId}
-            onChange={e => setSelectedSubgroupId(e.target.value)}
+            onChange={(e) => setSelectedSubgroupId(e.target.value)}
             className="mb-1"
           >
             <option value="">Бүх гишүүдэд</option>
-            {clubSubgroups.map(sg => (
-              <option key={sg.id} value={sg.id}>{sg.name}</option>
+            {clubSubgroups.map((sg) => (
+              <option key={sg.id} value={sg.id}>
+                {sg.name}
+              </option>
             ))}
           </Form.Select>
         )}
         {selectedSg && (
           <div className="small text-muted">
-            Зөвхөн <Badge bg={selectedSg.color || 'secondary'}>{selectedSg.name}</Badge> дэд бүлэгт харагдана
+            Зөвхөн <Badge bg={selectedSg.color || 'secondary'}>{selectedSg.name}</Badge> дэд бүлэгт
+            харагдана
           </div>
         )}
       </div>
@@ -305,122 +311,124 @@ const CreatePostForm = ({ onPostCreated, clubId = null, clubName = null }) => {
 
   // --- Үндсэн Render ---
   return (
-    <Form onSubmit={handleSubmit} className="p-3 border rounded bg-white shadow-sm mb-3 mx-3">
-        {error && <Alert variant="danger">{error}</Alert>}
+    <Form onSubmit={handleSubmit} className="x-composer">
+      {error && <Alert variant="danger">{error}</Alert>}
 
-        {/* Клуб сонгох dropdown (зөвхөн clubId prop байхгүй үед) */}
-        {!clubId && myClubs.length > 0 && (
-          <Form.Group className="mb-3">
-            <Form.Label className="small text-muted">
-              Хаашаа {loadingClubs && <Spinner size="sm" animation="border" />}
-            </Form.Label>
+      {/* Клуб сонгох dropdown (зөвхөн clubId prop байхгүй үед) */}
+      {!clubId && myClubs.length > 0 && (
+        <Form.Group className="mb-3">
+          <Form.Label className="small text-muted">
+            Хаашаа {loadingClubs && <Spinner size="sm" animation="border" />}
+          </Form.Label>
+          <Form.Select
+            value={selectedClubId}
+            onChange={(e) => setSelectedClubId(e.target.value)}
+            disabled={loadingClubs}
+          >
+            <option value="">Нийтэд</option>
+            {myClubs.map((club) => (
+              <option key={club.id} value={club.id}>
+                📚 {club.name} {club.role === 'teacher' ? '(Багш)' : '(Гишүүн)'}
+              </option>
+            ))}
+          </Form.Select>
+          {selectedClubId && clubSubgroups.length > 0 && (
             <Form.Select
-              value={selectedClubId}
-              onChange={(e) => setSelectedClubId(e.target.value)}
-              disabled={loadingClubs}
+              size="sm"
+              className="mt-2"
+              value={selectedSubgroupId}
+              onChange={(e) => setSelectedSubgroupId(e.target.value)}
             >
-              <option value="">Нийтэд</option>
-              {myClubs.map((club) => (
-                <option key={club.id} value={club.id}>
-                  📚 {club.name} {club.role === 'teacher' ? '(Багш)' : '(Гишүүн)'}
+              <option value="">Бүх гишүүдэд</option>
+              {clubSubgroups.map((sg) => (
+                <option key={sg.id} value={sg.id}>
+                  {sg.name}
                 </option>
               ))}
             </Form.Select>
-            {selectedClubId && clubSubgroups.length > 0 && (
-              <Form.Select
-                size="sm"
-                className="mt-2"
-                value={selectedSubgroupId}
-                onChange={e => setSelectedSubgroupId(e.target.value)}
-              >
-                <option value="">Бүх гишүүдэд</option>
-                {clubSubgroups.map(sg => (
-                  <option key={sg.id} value={sg.id}>{sg.name}</option>
-                ))}
-              </Form.Select>
-            )}
-          </Form.Group>
-        )}
-
-        {renderClubBadge()}
-        {renderRelatedItemBadge()}
-        <Form.Group controlId="postContent">
-          <Form.Control
-            ref={contentRef}
-            as="textarea"
-            rows={3}
-            placeholder={
-              relatedItem
-                ? 'Сэтгэгдлээ бичнэ үү...'
-                : 'Юу бодож байна... (YouTube, Vimeo, X, Facebook линкээ энд хуулж болно)'
-            }
-            value={content}
-            onChange={(e) => setContent(e.target.value)} // Энэ алдааг өмнө нь зассан
-            required={!relatedItem && imageFiles.length === 0}
-          />
+          )}
         </Form.Group>
-        <Stack direction="horizontal" gap={3} className="mt-2">
-          <Button
-            variant="link"
-            size="sm"
-            className="p-0 text-secondary text-decoration-none"
-            onClick={() => imageInputRef.current?.click()}
-            disabled={imageFiles.length >= 10}
-          >
-            <i className="bi bi-images me-1"></i>
-            Зураг {imageFiles.length > 0 && `(${imageFiles.length} / 10)`}
-          </Button>
-          <EmojiPickerButton
-            textareaRef={contentRef}
-            onInsert={(newValue, cursorPos) => {
-              setContent(newValue);
-              setTimeout(() => {
-                if (contentRef.current) {
-                  contentRef.current.selectionStart = cursorPos;
-                  contentRef.current.selectionEnd = cursorPos;
-                }
-              }, 0);
-            }}
-          />
-        </Stack>
+      )}
+
+      {renderClubBadge()}
+      {renderRelatedItemBadge()}
+      <Form.Group controlId="postContent">
         <Form.Control
-          type="file"
-          accept="image/*"
-          ref={imageInputRef}
-          onChange={handleImageChange}
-          className="d-none"
-          multiple
+          ref={contentRef}
+          as="textarea"
+          rows={3}
+          placeholder={
+            relatedItem
+              ? 'Сэтгэгдлээ бичнэ үү...'
+              : 'Юу бодож байна... (YouTube, Vimeo, X, Facebook линкээ энд хуулж болно)'
+          }
+          value={content}
+          onChange={(e) => setContent(e.target.value)} // Энэ алдааг өмнө нь зассан
+          required={!relatedItem && imageFiles.length === 0}
         />
-        {imagePreviews.length > 0 && (
-          <div className="mt-2 d-flex flex-wrap" style={{ gap: '10px' }}>
-            {imagePreviews.map((previewUrl, index) => (
-              <div
-                key={index}
-                className="position-relative d-inline-block"
-                style={{ width: '100px', height: '100px' }}
-              >
-                <CloseButton
-                  onClick={() => clearImage(index)}
-                  className="position-absolute top-0 end-0 bg-light p-1"
-                  style={{ zIndex: 1, fontSize: '0.6em', opacity: 0.8 }}
-                  title="Устгах"
-                />
-                <Image
-                  src={previewUrl}
-                  thumbnail
-                  fluid
-                  style={{ width: '100px', height: '100px', objectFit: 'cover' }}
-                />
-              </div>
-            ))}
-          </div>
-        )}
-        <div className="text-end mt-3 d-flex justify-content-end gap-2">
-          <Button type="submit" disabled={loading}>
-            {loading && <Spinner as="span" size="sm" className="me-1" />}
-            Нийтлэх
-          </Button>
+      </Form.Group>
+      <Stack direction="horizontal" gap={3} className="mt-2">
+        <Button
+          variant="link"
+          size="sm"
+          className="p-0 text-secondary text-decoration-none"
+          onClick={() => imageInputRef.current?.click()}
+          disabled={imageFiles.length >= 10}
+        >
+          <i className="bi bi-images me-1"></i>
+          Зураг {imageFiles.length > 0 && `(${imageFiles.length} / 10)`}
+        </Button>
+        <EmojiPickerButton
+          textareaRef={contentRef}
+          onInsert={(newValue, cursorPos) => {
+            setContent(newValue);
+            setTimeout(() => {
+              if (contentRef.current) {
+                contentRef.current.selectionStart = cursorPos;
+                contentRef.current.selectionEnd = cursorPos;
+              }
+            }, 0);
+          }}
+        />
+      </Stack>
+      <Form.Control
+        type="file"
+        accept="image/*"
+        ref={imageInputRef}
+        onChange={handleImageChange}
+        className="d-none"
+        multiple
+      />
+      {imagePreviews.length > 0 && (
+        <div className="mt-2 d-flex flex-wrap" style={{ gap: '10px' }}>
+          {imagePreviews.map((previewUrl, index) => (
+            <div
+              key={index}
+              className="position-relative d-inline-block"
+              style={{ width: '100px', height: '100px' }}
+            >
+              <CloseButton
+                onClick={() => clearImage(index)}
+                className="position-absolute top-0 end-0 bg-light p-1"
+                style={{ zIndex: 1, fontSize: '0.6em', opacity: 0.8 }}
+                title="Устгах"
+              />
+              <Image
+                src={previewUrl}
+                thumbnail
+                fluid
+                style={{ width: '100px', height: '100px', objectFit: 'cover' }}
+              />
+            </div>
+          ))}
         </div>
+      )}
+      <div className="text-end mt-3 d-flex justify-content-end gap-2">
+        <Button type="submit" disabled={loading}>
+          {loading && <Spinner as="span" size="sm" className="me-1" />}
+          Нийтлэх
+        </Button>
+      </div>
     </Form>
   );
 };

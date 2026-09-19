@@ -85,7 +85,7 @@ const Feed = () => {
   };
 
   return (
-    <div>
+    <div className="x-feed">
       {/* ✅ Шинэ пост үүсгэх форм - refresh функцийг дамжуулна */}
       <CreatePostForm onPostCreated={refresh} />
 
@@ -100,10 +100,18 @@ const Feed = () => {
       />
 
       {/* ✅ Анхны ачааллын үед Loading State */}
-      {loading && posts.length === 0 && <LoadingState message={MESSAGES.LOADING.POSTS} />}
+      {loading && posts.length === 0 && (
+        <div className="x-feed__pad">
+          <LoadingState message={MESSAGES.LOADING.POSTS} />
+        </div>
+      )}
 
       {/* ✅ Error State */}
-      {error && posts.length === 0 && <ErrorState message={error} onRetry={refresh} />}
+      {error && posts.length === 0 && (
+        <div className="x-feed__pad">
+          <ErrorState message={error} onRetry={refresh} />
+        </div>
+      )}
 
       {/* Хэсэгчилсэн алдаа (нэмэлт ачааллах үед) */}
       {error && posts.length > 0 && (
@@ -113,25 +121,26 @@ const Feed = () => {
       )}
 
       {/* ✅ Empty State */}
-      {!loading &&
-        posts.length === 0 &&
-        !error &&
-        (hasActiveFilters ? (
-          <EmptyState
-            icon={SearchX}
-            title={MESSAGES.EMPTY.NO_RESULTS}
-            message="Шүүлтүүрээ өөрчлөөд дахин оролдоно уу."
-            actionLabel="Шүүлтүүр цэвэрлэх"
-            actionIcon={X}
-            onAction={resetFilters}
-          />
-        ) : (
-          <EmptyState
-            icon={FileText}
-            title={MESSAGES.EMPTY.NO_POSTS}
-            message="Та эхний постыг бичээрэй!"
-          />
-        ))}
+      {!loading && posts.length === 0 && !error && (
+        <div className="x-feed__pad">
+          {hasActiveFilters ? (
+            <EmptyState
+              icon={SearchX}
+              title={MESSAGES.EMPTY.NO_RESULTS}
+              message="Шүүлтүүрээ өөрчлөөд дахин оролдоно уу."
+              actionLabel="Шүүлтүүр цэвэрлэх"
+              actionIcon={X}
+              onAction={resetFilters}
+            />
+          ) : (
+            <EmptyState
+              icon={FileText}
+              title={MESSAGES.EMPTY.NO_POSTS}
+              message="Та эхний постыг бичээрэй!"
+            />
+          )}
+        </div>
+      )}
 
       {/* Posts list */}
       {posts.length > 0 &&
@@ -144,7 +153,7 @@ const Feed = () => {
 
       {/* ✅ Нэмэлт ачааллын spinner */}
       {loadingMore && (
-        <div className="text-center mt-4 py-3">
+        <div className="x-feed__footer">
           <Spinner as="span" animation="border" size="sm" />
           <span className="ms-2">{MESSAGES.LOADING.DEFAULT}</span>
         </div>
@@ -152,19 +161,17 @@ const Feed = () => {
 
       {/* ✅ Stats footer */}
       {posts.length > 0 && (
-        <div className="mt-4 p-3 bg-light rounded">
-          <small className="text-muted">
-            {totalCount != null ? (
-              <>
-                <strong>{posts.length}</strong> / {totalCount} пост харагдаж байна
-              </>
-            ) : (
-              <>
-                Нийт: <strong>{posts.length}</strong> пост
-              </>
-            )}
-            {hasMore && <> • {MESSAGES.INFO.SCROLL_FOR_MORE}</>}
-          </small>
+        <div className="x-feed__footer">
+          {totalCount != null ? (
+            <>
+              <strong>{posts.length}</strong> / {totalCount} пост харагдаж байна
+            </>
+          ) : (
+            <>
+              Нийт: <strong>{posts.length}</strong> пост
+            </>
+          )}
+          {hasMore && <> • {MESSAGES.INFO.SCROLL_FOR_MORE}</>}
         </div>
       )}
     </div>
