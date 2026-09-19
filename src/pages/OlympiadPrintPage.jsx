@@ -41,7 +41,7 @@ function OlympiadPrintPage() {
             <div>
               <div style={{ fontSize: '11pt' }}>Дугаар: <strong>{s.participant_no}</strong></div>
               <div style={{ fontSize: '16pt', fontWeight: 700 }}>{s.full_name}</div>
-              <div style={{ fontSize: '11pt' }}>{s.school} · {s.grade}-р анги</div>
+              <div style={{ fontSize: '11pt' }}>{s.school} · {s.grade}</div>
               <div style={{ fontSize: '20pt', fontWeight: 700, marginTop: 8 }}>Бодлого {s.problem_no}</div>
             </div>
             <img className="sheet-qr" src={s.qr} alt="QR" />

@@ -5,7 +5,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import apiClient from '../api/axiosConfig'; // Таны тохируулсан apiClient
 import './PaymentModal.css'; // Таны илгээсэн CSS файл
 
-function PaymentModal({ show, onClose, paymentData, localInvoiceId }) {
+function PaymentModal({ show, onClose, paymentData, localInvoiceId, amount, title, successMessage }) {
   const [status, setStatus] = useState('PENDING'); // PENDING, PAID, FAILED
   const intervalRef = useRef(null); // Автомат шалгалтын interval-г хадгалах
 
@@ -156,7 +156,12 @@ function PaymentModal({ show, onClose, paymentData, localInvoiceId }) {
         {/* 1-р Төлөв: Төлбөр хүлээж байх */}
         {status === 'PENDING' && (
           <>
-            <h3>Төлбөр хийнэ үү</h3>
+            <h3>{title || 'Төлбөр хийнэ үү'}</h3>
+            {amount != null && (
+              <p style={{ fontSize: '1.4rem', fontWeight: 700, margin: '0.25rem 0' }}>
+                Төлөх дүн: {Number(amount).toLocaleString()}₮
+              </p>
+            )}
             <p>Доорх QR кодыг уншуулна уу:</p>
 
             <img src={qrImageSrc} alt="QPay QR Code" className="qr-image" />
@@ -169,7 +174,7 @@ function PaymentModal({ show, onClose, paymentData, localInvoiceId }) {
         {status === 'PAID' && (
           <div className="status-success">
             <h3>Төлбөр амжилттай</h3>
-            <p>Худалдан авалт хийсэнд баярлалаа!</p>
+            <p>{successMessage || 'Худалдан авалт хийсэнд баярлалаа!'}</p>
           </div>
         )}
 

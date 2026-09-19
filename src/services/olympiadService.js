@@ -43,3 +43,17 @@ export const getUploadedImages = async (slug, unmatchedOnly = false) =>
   (await apiClient.get(`${BASE}/${slug}/admin/uploads/`, {
     params: unmatchedOnly ? { unmatched: 1 } : {},
   })).data;
+
+export const createOlympiad = async (payload) => (await apiClient.post(`${BASE}/`, payload)).data;
+export const updateOlympiad = async (slug, payload) =>
+  (await apiClient.patch(`${BASE}/${slug}/`, payload)).data;
+
+// Бүртгэлтэй бол нуух ({deleted:false, hidden:true}), үгүй бол устгана ({deleted:true})
+export const deleteOlympiad = async (slug) => (await apiClient.delete(`${BASE}/${slug}/`)).data;
+
+// Маягтыг бөглөх өгөгдөл. mmo_id өгөөгүй бол өөрийн профайл (энгийн хэрэглэгч зөвхөн өөрийнхийг авна)
+export const getPrefill = async (mmoId) =>
+  (await apiClient.get(`${BASE}/prefill/`, { params: mmoId ? { mmo_id: mmoId } : {} })).data;
+
+// MMO-ийн аймаг/дүүргийн нэрсийн жагсаалт (хоосон бол MMO-той холбогдож чадаагүй)
+export const getProvinces = async () => (await apiClient.get(`${BASE}/provinces/`)).data;

@@ -5,6 +5,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Container, Row, Col, Card, Button } from 'react-bootstrap';
 import {
   Download,
+  Trophy,
   FileText,
   FileUp,
   Users,
@@ -120,6 +121,25 @@ function DashboardPage() {
               <Link to="/admin/doc-import" className="btn" style={{ backgroundColor: '#6f42c1', color: '#fff' }}>
                 <FileUp size={18} className="me-2" />
                 Импортлох
+              </Link>
+            </Card.Body>
+          </Card>
+        </Col>
+
+        {/* Олимпиад */}
+        <Col md={6} lg={4}>
+          <Card className="h-100 shadow-sm">
+            <Card.Body className="d-flex flex-column">
+              <div className="mb-3">
+                <Trophy size={40} style={{ color: '#fd7e14' }} />
+              </div>
+              <Card.Title>Олимпиад Зохион Байгуулах</Card.Title>
+              <Card.Text className="text-muted flex-grow-1">
+                Олимпиад үүсгэх, бүртгэл ба төлбөр хянах, QR бодолтын хуудас хэвлэх, сканнердсан материал upload хийх.
+              </Card.Text>
+              <Link to="/admin/olympiads" className="btn" style={{ backgroundColor: '#fd7e14', color: '#fff' }}>
+                <Trophy size={18} className="me-2" />
+                Удирдах
               </Link>
             </Card.Body>
           </Card>

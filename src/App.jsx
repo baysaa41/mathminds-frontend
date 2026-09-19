@@ -136,6 +136,8 @@ const CartPage = lazy(() => import('./pages/CartPage.jsx'));
 const OlympiadsPage = lazy(() => import('./pages/OlympiadsPage.jsx'));
 const OlympiadDetailPage = lazy(() => import('./pages/OlympiadDetailPage.jsx'));
 const OlympiadRosterPage = lazy(() => import('./pages/OlympiadRosterPage.jsx'));
+const OlympiadsAdminListPage = lazy(() => import('./pages/OlympiadsAdminListPage.jsx'));
+const OlympiadFormPage = lazy(() => import('./pages/OlympiadFormPage.jsx'));
 const OlympiadAdminPage = lazy(() => import('./pages/OlympiadAdminPage.jsx'));
 const OlympiadPrintPage = lazy(() => import('./pages/OlympiadPrintPage.jsx'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage.jsx'));
@@ -203,6 +205,9 @@ function App() {
           <Route path="olympiads" element={<OlympiadsPage />} />
           <Route path="olympiads/:slug" element={<OlympiadDetailPage />} />
           <Route path="olympiads/:slug/roster" element={<OlympiadRosterPage />} />
+          <Route path="admin/olympiads" element={<AdminRoute><OlympiadsAdminListPage /></AdminRoute>} />
+          <Route path="admin/olympiads/new" element={<AdminRoute><OlympiadFormPage /></AdminRoute>} />
+          <Route path="admin/olympiads/:slug/edit" element={<AdminRoute><OlympiadFormPage /></AdminRoute>} />
           <Route path="admin/olympiads/:slug" element={<AdminRoute><OlympiadAdminPage /></AdminRoute>} />
 
           {/* AI Ярилцлага Шийдэгч */}

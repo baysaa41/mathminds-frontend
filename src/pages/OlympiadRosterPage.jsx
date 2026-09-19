@@ -24,7 +24,7 @@ function OlympiadRosterPage() {
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
-    return s ? rows.filter((r) => `${r.full_name} ${r.school}`.toLowerCase().includes(s)) : rows;
+    return s ? rows.filter((r) => `${r.full_name} ${r.province} ${r.school}`.toLowerCase().includes(s)) : rows;
   }, [rows, q]);
 
   if (loading) return <Container className="py-5 text-center"><Spinner animation="border" /></Container>;
@@ -36,11 +36,11 @@ function OlympiadRosterPage() {
       {error && <Alert variant="danger">{error}</Alert>}
       <Form.Control className="mb-3" placeholder="Нэр, сургуулиар хайх" value={q} onChange={(e) => setQ(e.target.value)} />
       <Table striped hover size="sm">
-        <thead><tr><th>№</th><th>Овог нэр</th><th>Сургууль</th><th>Анги</th>{user?.is_staff && <th>Төлөв</th>}</tr></thead>
+        <thead><tr><th>№</th><th>Овог нэр</th><th>Аймаг/Дүүрэг</th><th>Сургууль</th><th>Анги</th>{user?.is_staff && <th>Төлөв</th>}</tr></thead>
         <tbody>
           {filtered.map((r, i) => (
             <tr key={`${r.participant_no}-${i}`}>
-              <td>{r.participant_no ?? '-'}</td><td>{r.full_name}</td><td>{r.school}</td><td>{r.grade}</td>
+              <td>{r.participant_no ?? '-'}</td><td>{r.full_name}</td><td>{r.province}</td><td>{r.school}</td><td>{r.grade_label}</td>
               {user?.is_staff && <td><Badge bg={r.status === 'PAID' ? 'success' : 'warning'}>{r.status}</Badge></td>}
             </tr>
           ))}
