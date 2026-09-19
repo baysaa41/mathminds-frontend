@@ -169,6 +169,10 @@ export default function AppHeader() {
                 <Users size={18} className="me-1" />
                 <span>Клубууд</span>
               </Nav.Link>
+              <Nav.Link as={Link} to="/olympiads" className="d-flex align-items-center">
+                <i className="bi bi-trophy me-1"></i>
+                <span>Олимпиад</span>
+              </Nav.Link>
               <Nav.Link as={Link} to="/info" className="d-flex align-items-center">
                 <Info size={18} className="me-1" />
                 <span>Танилцуулга</span>

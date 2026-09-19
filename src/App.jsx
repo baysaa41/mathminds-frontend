@@ -133,6 +133,11 @@ const StoreLayout = lazy(() => import('./pages/StoreLayout.jsx'));
 const ProductListPage = lazy(() => import('./pages/ProductListPage.jsx'));
 const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage.jsx'));
 const CartPage = lazy(() => import('./pages/CartPage.jsx'));
+const OlympiadsPage = lazy(() => import('./pages/OlympiadsPage.jsx'));
+const OlympiadDetailPage = lazy(() => import('./pages/OlympiadDetailPage.jsx'));
+const OlympiadRosterPage = lazy(() => import('./pages/OlympiadRosterPage.jsx'));
+const OlympiadAdminPage = lazy(() => import('./pages/OlympiadAdminPage.jsx'));
+const OlympiadPrintPage = lazy(() => import('./pages/OlympiadPrintPage.jsx'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage.jsx'));
 const MyPurchasesPage = lazy(() => import('./pages/MyPurchasesPage.jsx'));
 const MembershipPlansPage = lazy(() => import('./pages/MembershipPlansPage.jsx'));
@@ -193,6 +198,12 @@ function App() {
           <Route path="bookmarks" element={<BookmarksPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="messages" element={<MessagesPage />} />
+
+          {/* Олимпиад */}
+          <Route path="olympiads" element={<OlympiadsPage />} />
+          <Route path="olympiads/:slug" element={<OlympiadDetailPage />} />
+          <Route path="olympiads/:slug/roster" element={<OlympiadRosterPage />} />
+          <Route path="admin/olympiads/:slug" element={<AdminRoute><OlympiadAdminPage /></AdminRoute>} />
 
           {/* AI Ярилцлага Шийдэгч */}
           <Route path="solver" element={<SolverPage />} />
@@ -403,6 +414,16 @@ function App() {
             <ProtectedRoute>
               <MembershipPlansPage />
             </ProtectedRoute>
+          }
+        />
+
+        {/* Олимпиад: QR хуудас хэвлэх (Layout-гүй) */}
+        <Route
+          path="/admin/olympiads/:slug/print"
+          element={
+            <AdminRoute>
+              <OlympiadPrintPage />
+            </AdminRoute>
           }
         />
 
