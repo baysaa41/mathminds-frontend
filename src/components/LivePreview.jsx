@@ -276,7 +276,27 @@ function convertListEnv(text, envName, wrapTag) {
     // дотоод жагсаалтын \\item-үүд аль хэдийн <li>-д хувирсан байгаа тул холилдохгүй.
     const body = convertListEnv(span.body, envName, wrapTag);
     const parts = body.split(/\\item\s*/).map((s) => s.trim()).filter((s) => s.length > 0);
-    out += `<${wrapTag}>${parts.map((p) => `<li>${p}</li>`).join('')}</${wrapTag}>`;
+    // \item[(a)] — LaTeX-д тухайн зүйлийн дугаар/тэмдэгийг гараар зааж өгдөг. Ямар нэг
+    // зүйл шошготой бол браузерийн анхдагч дугаарлалтыг унтрааж, шошгыг өөрөө харуулна.
+    // Шошгогүй зүйлүүд LaTeX-ийн адил тоолуур ашиглана (\item[..] тоолуурыг нэмэгдүүлэхгүй).
+    const items = parts.map((p) => {
+      const m = p.match(/^\[([^\]]*)\]\s*([\s\S]*)$/);
+      return m ? { label: m[1].trim(), text: m[2] } : { label: null, text: p };
+    });
+    if (items.some((it) => it.label !== null)) {
+      let n = 0;
+      const lis = items.map((it) => {
+        let label = it.label;
+        if (label === null) {
+          label = wrapTag === 'ol' ? `${++n}.` : '•';
+        }
+        return `<li style="list-style:none;position:relative;">` +
+          `<span style="position:absolute;left:-2.2em;width:2em;text-align:right;">${label}</span>${it.text}</li>`;
+      });
+      out += `<${wrapTag} style="list-style:none;padding-left:2.5em;">${lis.join('')}</${wrapTag}>`;
+    } else {
+      out += `<${wrapTag}>${items.map((it) => `<li>${it.text}</li>`).join('')}</${wrapTag}>`;
+    }
     last = span.end;
   }
   out += text.slice(last);
