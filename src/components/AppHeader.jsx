@@ -159,6 +159,10 @@ export default function AppHeader() {
                 <i className="bi bi-rss me-1"></i>
                 <span>Feed</span>
               </Nav.Link>
+              <Nav.Link as={Link} to="/olympiads" className="d-flex align-items-center">
+                <i className="bi bi-trophy me-1"></i>
+                <span>Олимпиад</span>
+              </Nav.Link>
               {user && (user.is_staff || user.site_role === 'TEACHER') && (
                 <Nav.Link as={Link} to="/content/browse" className="d-flex align-items-center">
                   <i className="bi bi-collection me-1"></i>
@@ -168,10 +172,6 @@ export default function AppHeader() {
               <Nav.Link as={Link} to="/clubs/browse" className="d-flex align-items-center">
                 <Users size={18} className="me-1" />
                 <span>Клубууд</span>
-              </Nav.Link>
-              <Nav.Link as={Link} to="/olympiads" className="d-flex align-items-center">
-                <i className="bi bi-trophy me-1"></i>
-                <span>Олимпиад</span>
               </Nav.Link>
               <Nav.Link as={Link} to="/info" className="d-flex align-items-center">
                 <Info size={18} className="me-1" />
