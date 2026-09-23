@@ -37,6 +37,9 @@ function AllUsersPage() {
   const [eecInputs, setEecInputs] = useState({});
   const [savingEec, setSavingEec] = useState({});
 
+  // Үүрэг / admin эрх засах
+  const [savingRole, setSavingRole] = useState({});
+
   useEffect(() => {
     apiClient
       .get('/api/clubs/?include_inactive=1')
@@ -105,6 +108,24 @@ function AllUsersPage() {
     }
   };
 
+  const handleRoleUpdate = async (user, patch) => {
+    setSavingRole((prev) => ({ ...prev, [user.id]: true }));
+    try {
+      const response = await apiClient.patch(`/users/api/all-users/${user.id}/role/`, patch);
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === user.id
+            ? { ...u, site_role: response.data.site_role, is_staff: response.data.is_staff }
+            : u
+        )
+      );
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Эрх шинэчлэхэд алдаа гарлаа.');
+    } finally {
+      setSavingRole((prev) => ({ ...prev, [user.id]: false }));
+    }
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return '-';
     const date = new Date(dateString);
@@ -140,20 +161,6 @@ function AllUsersPage() {
         {config.label} {!isActiveMember && '(Дууссан)'}
       </Badge>
     );
-  };
-
-  const getRoleBadge = (role, isStaff) => {
-    if (isStaff) {
-      return <Badge bg="danger">ADMIN</Badge>;
-    }
-    switch (role) {
-      case 'TEACHER':
-        return <Badge bg="success">TEACHER</Badge>;
-      case 'PARENT':
-        return <Badge bg="info">PARENT</Badge>;
-      default:
-        return <Badge bg="secondary">STUDENT</Badge>;
-    }
   };
 
   const getRemainingDays = (expirationDate, membershipTier) => {
@@ -341,7 +348,31 @@ function AllUsersPage() {
                           <small className="text-muted">{formatDate(user.expiration)}</small>
                         </td>
                         <td>{getRemainingDays(user.expiration, user.membership_tier)}</td>
-                        <td>{getRoleBadge(user.site_role, user.is_staff)}</td>
+                        <td>
+                          <div className="d-flex align-items-center gap-1" style={{ minWidth: 150 }}>
+                            <Form.Select
+                              size="sm"
+                              value={user.site_role}
+                              disabled={savingRole[user.id]}
+                              onChange={(e) => handleRoleUpdate(user, { site_role: e.target.value })}
+                              style={{ width: 110 }}
+                            >
+                              <option value="STUDENT">STUDENT</option>
+                              <option value="TEACHER">TEACHER</option>
+                              <option value="PARENT">PARENT</option>
+                              <option value="OTHER">OTHER</option>
+                            </Form.Select>
+                            <Form.Check
+                              type="checkbox"
+                              label="ADMIN"
+                              checked={user.is_staff}
+                              disabled={savingRole[user.id]}
+                              onChange={(e) => handleRoleUpdate(user, { is_staff: e.target.checked })}
+                              title="Staff эрх — зөвхөн superuser өөрчилж чадна"
+                            />
+                            {savingRole[user.id] && <Spinner animation="border" size="sm" />}
+                          </div>
+                        </td>
                         <td>
                           <small className="text-muted">{formatDateTime(user.last_login)}</small>
                         </td>

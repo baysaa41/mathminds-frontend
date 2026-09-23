@@ -114,6 +114,8 @@ const CurriculumAdminPage = lazy(() => import('./pages/CurriculumAdminPage.jsx')
 const DjangoCommandsPage = lazy(() => import('./pages/DjangoCommandsPage.jsx'));
 const AIModelsPage = lazy(() => import('./pages/AIModelsPage.jsx'));
 const AILearningSystemPage = lazy(() => import('./pages/AILearningSystemPage.jsx'));
+const AlgorithmsPage = lazy(() => import('./pages/AlgorithmsPage.jsx'));
+const SystemSettingsPage = lazy(() => import('./pages/SystemSettingsPage.jsx'));
 const MathTermsPage = lazy(() => import('./pages/MathTermsPage.jsx'));
 const AITeachersAdminPage = lazy(() => import('./pages/AITeachersAdminPage.jsx'));
 const EECResultsPage = lazy(() => import('./pages/EECResultsPage.jsx'));
@@ -536,6 +538,26 @@ function App() {
           element={
             <AdminRoute>
               <AILearningSystemPage />
+            </AdminRoute>
+          }
+        />
+
+        {/* Алгоритмууд - Staff only */}
+        <Route
+          path="/admin/algorithms"
+          element={
+            <AdminRoute>
+              <AlgorithmsPage />
+            </AdminRoute>
+          }
+        />
+
+        {/* Системийн Тохиргоо - Staff only */}
+        <Route
+          path="/admin/system-settings"
+          element={
+            <AdminRoute>
+              <SystemSettingsPage />
             </AdminRoute>
           }
         />

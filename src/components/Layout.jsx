@@ -5,6 +5,7 @@ import RightSidebar from '../components/RightSidebar';
 import JoinClubModal from '../components/JoinClubModal';
 import ScrollRestoration from '../components/ScrollRestoration';
 import AppHeader from './AppHeader';
+import MaintenanceBanner from './MaintenanceBanner';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 
 import Container from 'react-bootstrap/Container';
@@ -113,6 +114,7 @@ const Layout = () => {
 
   return (
     <div className="min-vh-100 d-flex flex-column">
+      <MaintenanceBanner />
       <AppHeader />
 
       {/* Main Content Area */}
