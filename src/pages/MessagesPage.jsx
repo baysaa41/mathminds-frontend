@@ -59,6 +59,7 @@ import {
   GraduationCap,
   Lock,
   Unlock,
+  LayoutDashboard,
 } from 'lucide-react';
 
 // Services
@@ -300,6 +301,10 @@ const MessagesPage = ({ aiOnly = false }) => {
   const [solutionModal, setSolutionModal] = useState(null); // null | {loading, solution, explanation}
   // Polling loop-д closure асуудалгүйгээр detect хийх ref
   const examNeedsAiReplyRef = useRef(false);
+  // Dashboard-с (navigation state) ирсэн бодлого(ууд) — conversation солигдох
+  // reset useEffect-ийн ДАРАА идэвхжүүлэхийн тулд ref-д түр хадгална.
+  // Бүтэц: { problems: [...], index: number }
+  const pendingExamProblemRef = useRef(null);
   const [examAiReplied, setExamAiReplied] = useState(true); // false = AI хариулт хүлээж байна
 
   // AI харилцагчийн ID — ConversationSerializer user1/user2-д is_ai_teacher оруулдаг тул
@@ -335,6 +340,11 @@ const MessagesPage = ({ aiOnly = false }) => {
 
         // Check if we need to select a conversation by UUID (from /messages/conversation/:uuid)
         const selectUuid = location.state?.conversationUuid;
+        // Dashboard-ийн "Өнөөдрийн 5 бодлого"-ос ирсэн бол — тэрхэн бодлогуудыг
+        // шууд ЭЕШ бэлдэх горимоор (do_ai_chat_reply-ийн автомат үнэлгээтэй) идэвхжүүлнэ.
+        // "Дараагийн бодлого" товч ажиллахын тулд examProblems жагсаалт бүхэлдээ хэрэгтэй.
+        const startExamProblems = location.state?.startExamProblems;
+        const startExamIndex = location.state?.startExamIndex ?? 0;
         if (selectUuid) {
           const conv = convList.find((c) => c.uuid === selectUuid);
           if (conv) {
@@ -347,6 +357,12 @@ const MessagesPage = ({ aiOnly = false }) => {
             } catch (e) {
               console.error('Conversation татахад алдаа:', e);
             }
+          }
+          if (startExamProblems && startExamProblems.length) {
+            // selectedConversation солигдоход exam state-г reset хийдэг useEffect
+            // дараа нь ажиллах тул шууд биш ref-ээр дамжуулж, тэрхэн effect-ийн
+            // төгсгөлд идэвхжүүлнэ (эс тэгвээс reset нь үүнийг шууд дарж бичнэ).
+            pendingExamProblemRef.current = { problems: startExamProblems, index: startExamIndex };
           }
           navigate(location.pathname, { replace: true, state: {} });
         }
@@ -463,6 +479,22 @@ const MessagesPage = ({ aiOnly = false }) => {
     setChoiceRatings({});
     setExamAiReplied(true);
     examNeedsAiReplyRef.current = false;
+
+    // Dashboard-ийн "Өнөөдрийн 5 бодлого"-ос ирсэн бол — reset-ийн дараа шууд
+    // идэвхжүүлнэ (эс тэгвээс дээрх reset нь энэ горимыг шууд унтраадаг байсан).
+    // examProblems-г бүхэлд нь (зөвхөн 1 биш) тохируулснаар "Дараагийн бодлого"
+    // товч dashboard-ийн 5 бодлогыг chat дотроосоо дараалуулж чадна.
+    if (pendingExamProblemRef.current) {
+      const { problems, index } = pendingExamProblemRef.current;
+      pendingExamProblemRef.current = null;
+      setExamPrepMode(true);
+      setExamProblems(problems);
+      setExamProblemIndex(index);
+      setExamCurrentProblem(problems[index]);
+      setExamAnswered(false);
+      setExamLastCorrect(null);
+      setExamAiReplied(true);
+    }
   }, [selectedConversation?.uuid]);
 
 
@@ -1263,6 +1295,16 @@ const MessagesPage = ({ aiOnly = false }) => {
               />
               <ConversationHeader.Actions>
                 <div className="d-flex align-items-center gap-2">
+                  {aiOnly && (
+                    <button
+                      className="btn btn-sm btn-outline-secondary"
+                      onClick={() => navigate('/dashboard')}
+                      title="Миний өдөр рүү буцах"
+                    >
+                      <LayoutDashboard size={16} />
+                      <span className="d-none d-md-inline ms-1">Миний өдөр</span>
+                    </button>
+                  )}
                   {otherUser?.ai_program && (
                     <button
                       className="btn btn-sm btn-outline-primary"

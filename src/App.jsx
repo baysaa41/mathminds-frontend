@@ -17,6 +17,7 @@ const HomeRedirect = lazy(() => import('./components/HomeRedirect.jsx'));
 const OnboardingPage = lazy(() => import('./pages/OnboardingPage.jsx'));
 const MyDayPage = lazy(() => import('./pages/MyDayPage.jsx'));
 const TeacherDashboardPage = lazy(() => import('./pages/TeacherDashboardPage.jsx'));
+const TeacherStudentReportPage = lazy(() => import('./pages/TeacherStudentReportPage.jsx'));
 const ParentDashboardPage = lazy(() => import('./pages/ParentDashboardPage.jsx'));
 const BookmarksPage = lazy(() => import('./pages/BookmarksPage.jsx'));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage.jsx'));
@@ -283,6 +284,16 @@ function App() {
             element={
               <AdminRoute allowTeacher={true}>
                 <TeacherDashboardPage />
+              </AdminRoute>
+            }
+          />
+
+          {/* Сурагчийн сэдвийн чадварын тайлан (радар) - зөвхөн Admin болон Teacher */}
+          <Route
+            path="teacher-dashboard/students/:username"
+            element={
+              <AdminRoute allowTeacher={true}>
+                <TeacherStudentReportPage />
               </AdminRoute>
             }
           />

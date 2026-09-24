@@ -7,7 +7,7 @@ import Alert from 'react-bootstrap/Alert';
 import { UserPlus } from 'lucide-react';
 import { getChildren, linkChild, getChildDashboard } from '../services/parentService';
 import {
-  ReviewCard, StudyPlanCard, NextTopicCard, RecentQuizzesCard, UpcomingAssignmentsCard,
+  ReviewCard, StudyPlanCard, DailyRecommendationCard, NextTopicCard, RecentQuizzesCard, UpcomingAssignmentsCard,
 } from '../components/dashboard/DashboardCards';
 
 const SUBJECTS = [
@@ -141,6 +141,7 @@ const ParentDashboardPage = () => {
 
           {!loading && !error && data && (
             <>
+              <DailyRecommendationCard recommendation={data.daily_recommendations} />
               <ReviewCard review={data.review} />
               <StudyPlanCard plan={data.study_plan} />
               <NextTopicCard topic={data.next_topic} />

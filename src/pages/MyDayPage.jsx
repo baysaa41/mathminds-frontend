@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Spinner from 'react-bootstrap/Spinner';
 import Nav from 'react-bootstrap/Nav';
 import Button from 'react-bootstrap/Button';
+import Alert from 'react-bootstrap/Alert';
 import { Users, Copy, Check } from 'lucide-react';
-import { getStudentDashboard } from '../services/integralService';
+import { getStudentDashboard, startProblemChat } from '../services/integralService';
 import { getParentLinkCode } from '../services/parentService';
 import {
-  ReviewCard, StudyPlanCard, NextTopicCard, RecentQuizzesCard, UpcomingAssignmentsCard,
+  ReviewCard, StudyPlanCard, DailyRecommendationCard, NextTopicCard, RecentQuizzesCard, UpcomingAssignmentsCard,
 } from '../components/dashboard/DashboardCards';
 
 const SUBJECTS = [
@@ -54,10 +56,13 @@ const LinkCodeCard = () => {
 };
 
 const MyDayPage = () => {
+  const navigate = useNavigate();
   const [subject, setSubject] = useState('math');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
+  const [chatLoadingItemId, setChatLoadingItemId] = useState(null);
+  const [chatError, setChatError] = useState(null);
 
   const load = useCallback((subj) => {
     setLoading(true);
@@ -69,6 +74,25 @@ const MyDayPage = () => {
   }, []);
 
   useEffect(() => { load(subject); }, [subject, load]);
+
+  const handleSolveDailyItem = async (item) => {
+    if (chatLoadingItemId) return;
+    setChatError(null);
+    setChatLoadingItemId(item.id);
+    try {
+      const { conversation_uuid, problems, current_index } = await startProblemChat(item.problem_id);
+      navigate('/ai-chat/messages', {
+        state: {
+          conversationUuid: conversation_uuid,
+          startExamProblems: problems,
+          startExamIndex: current_index,
+        },
+      });
+    } catch (err) {
+      setChatError(err.response?.data?.error || 'Чат эхлүүлэхэд алдаа гарлаа.');
+      setChatLoadingItemId(null);
+    }
+  };
 
   return (
     <div className="py-3" style={{ maxWidth: 800 }}>
@@ -92,6 +116,16 @@ const MyDayPage = () => {
 
       {!loading && !error && data && (
         <>
+          {chatError && (
+            <Alert variant="danger" dismissible onClose={() => setChatError(null)} className="py-2 small">
+              {chatError}
+            </Alert>
+          )}
+          <DailyRecommendationCard
+            recommendation={data.daily_recommendations}
+            onItemClick={handleSolveDailyItem}
+            loadingItemId={chatLoadingItemId}
+          />
           <ReviewCard review={data.review} />
           <StudyPlanCard plan={data.study_plan} />
           <NextTopicCard topic={data.next_topic} />

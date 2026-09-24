@@ -36,6 +36,24 @@ export const getTeacherDashboard = async () => {
 };
 
 /**
+ * Багшийн клубуудын сурагчийг нэрээр хайх (зөвхөн багш/админ)
+ * GET /api/clubs/teacher_students/?q=
+ */
+export const searchTeacherStudents = async (q) => {
+  const response = await apiClient.get('/api/clubs/teacher_students/', { params: { q } });
+  return response.data;
+};
+
+/**
+ * Сурагчийн сэдэв тус бүрийн чадварын тайлан (зөвхөн багш/админ)
+ * GET /api/clubs/teacher_student_report/?username=
+ */
+export const getTeacherStudentReport = async (username) => {
+  const response = await apiClient.get('/api/clubs/teacher_student_report/', { params: { username } });
+  return response.data;
+};
+
+/**
  * Клубын дэлгэрэнгүй мэдээлэл авах
  * GET /api/clubs/:id/
  */

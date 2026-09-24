@@ -3,7 +3,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import Badge from 'react-bootstrap/Badge';
 import ProgressBar from 'react-bootstrap/ProgressBar';
-import { Repeat, Target, BookOpen, ListChecks, Clock } from 'lucide-react';
+import { Repeat, Target, BookOpen, ListChecks, Clock, Sparkles, CheckCircle2, Circle } from 'lucide-react';
 
 const ITEM_TYPE_LABEL = {
   learn: 'Сурах',
@@ -15,6 +15,12 @@ const STATUS_CONFIG = {
   pending: { label: 'Хийгээгүй', bg: 'secondary' },
   in_progress: { label: 'Явагдаж байна', bg: 'warning' },
   done: { label: 'Дууссан', bg: 'success' },
+};
+
+const DAILY_REC_SOURCE_LABEL = {
+  club_assignment: 'Клубын даалгаврын үр дүнд суурилав',
+  topic_mastery: 'Ерөнхий сул сэдвүүдэд суурилав',
+  cold_start: 'Шинэ сурагчид зориулсан санал',
 };
 
 const fmtDate = (iso) => iso ? new Date(iso).toLocaleDateString('mn-MN') : '—';
@@ -93,6 +99,85 @@ export const StudyPlanCard = ({ plan }) => (
                   </span>
                 </div>
               </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  </div>
+);
+
+/**
+ * onItemClick өгөгдсөн бол (сурагчийн өөрийн "Миний өдөр" хуудас) бодлого дээр
+ * дарахад тэрхэн callback ажиллана — AI чат горимоор үргэлжлүүлэхэд ашиглана.
+ * Өгөгдөөгүй бол (жишээ нь эцэг эхийн зөвхөн-унших dashboard) хуучин шигээ
+ * шууд бодлогын хуудас руу шилждэг Link хэвээр үлдэнэ.
+ */
+export const DailyRecommendationCard = ({ recommendation, onItemClick, loadingItemId }) => (
+  <div className="card border-0 shadow-sm mb-3">
+    <div className="card-header bg-white fw-semibold py-2 d-flex align-items-center gap-2" style={{ fontSize: '0.85rem' }}>
+      <Sparkles size={15} />
+      <span>Өнөөдрийн 5 бодлого</span>
+      <Badge bg="secondary" className="ms-1" style={{ fontSize: '0.65rem' }}>
+        {fmtDate(recommendation.date)}
+      </Badge>
+    </div>
+    <div className="card-body py-3">
+      <p className="text-muted mb-3" style={{ fontSize: '0.78rem' }}>
+        {DAILY_REC_SOURCE_LABEL[recommendation.source] || ''}
+      </p>
+      {recommendation.items.length === 0 ? (
+        <div className="text-muted text-center py-2" style={{ fontSize: '0.82rem' }}>
+          Өнөөдөр санал болгох бодлого алга
+        </div>
+      ) : (
+        <div className="list-group list-group-flush">
+          {recommendation.items.map((item) => {
+            const isLoading = loadingItemId === item.id;
+            const rowContent = (
+              <>
+                {isLoading ? (
+                  <span className="spinner-border spinner-border-sm text-muted flex-shrink-0" style={{ width: '1rem', height: '1rem' }} />
+                ) : item.status === 'done'
+                  ? <CheckCircle2 size={16} className="text-success flex-shrink-0" />
+                  : <Circle size={16} className="text-muted flex-shrink-0" />}
+                <span
+                  className="fw-medium text-truncate"
+                  style={{
+                    fontSize: '0.85rem',
+                    textDecoration: item.status === 'done' ? 'line-through' : 'none',
+                    opacity: item.status === 'done' ? 0.6 : 1,
+                  }}
+                >
+                  {item.title || `Бодлого #${item.problem_id}`}
+                </span>
+                {item.category_mn && (
+                  <Badge bg="light" text="dark" className="border ms-auto" style={{ fontSize: '0.65rem', color: item.category_color || undefined }}>
+                    {item.category_mn}
+                  </Badge>
+                )}
+              </>
+            );
+
+            if (onItemClick) {
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  disabled={isLoading}
+                  onClick={() => onItemClick(item)}
+                  className="list-group-item list-group-item-action px-0 py-2 border-0 border-top d-flex align-items-center gap-2 text-start bg-transparent"
+                >
+                  {rowContent}
+                </button>
+              );
+            }
+
+            return (
+              <Link key={item.id} to={`/problem/${item.problem_uuid}`}
+                className="list-group-item list-group-item-action px-0 py-2 border-0 border-top d-flex align-items-center gap-2">
+                {rowContent}
+              </Link>
             );
           })}
         </div>

@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Badge from 'react-bootstrap/Badge';
 import Spinner from 'react-bootstrap/Spinner';
-import { Users, ClipboardList, AlertTriangle } from 'lucide-react';
-import { getTeacherDashboard } from '../services/clubService';
+import { Users, ClipboardList, AlertTriangle, Radar } from 'lucide-react';
+import { getTeacherDashboard, searchTeacherStudents } from '../services/clubService';
 
 const fmtDate = (iso) => iso ? new Date(iso).toLocaleDateString('mn-MN') : '—';
 
@@ -34,6 +34,63 @@ const ClubsCard = ({ clubs }) => (
     )}
   </div>
 );
+
+const StudentReportSearchCard = () => {
+  const [q, setQ] = useState('');
+  const [results, setResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+
+  useEffect(() => {
+    const term = q.trim();
+    if (term.length < 2) {
+      setResults([]);
+      return undefined;
+    }
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      setSearching(true);
+      searchTeacherStudents(term)
+        .then((d) => { if (!cancelled) setResults(d.results || []); })
+        .catch(() => { if (!cancelled) setResults([]); })
+        .finally(() => { if (!cancelled) setSearching(false); });
+    }, 250);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [q]);
+
+  return (
+    <div className="card border-0 shadow-sm mb-3">
+      <div className="card-header bg-white fw-semibold py-2 d-flex align-items-center gap-2" style={{ fontSize: '0.85rem' }}>
+        <Radar size={15} />
+        <span>Сурагчийн чадварын тайлан</span>
+      </div>
+      <div className="card-body py-2">
+        <input
+          id="teacher-student-search"
+          type="search"
+          className="form-control form-control-sm"
+          placeholder="Сурагчийн нэр эсвэл username (2+ тэмдэгт)"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+      </div>
+      {searching && <div className="px-3 pb-2 text-muted" style={{ fontSize: '0.75rem' }}>Хайж байна...</div>}
+      {!searching && q.trim().length >= 2 && results.length === 0 && (
+        <div className="px-3 pb-2 text-muted" style={{ fontSize: '0.78rem' }}>Таны клубын сурагч олдсонгүй</div>
+      )}
+      {results.length > 0 && (
+        <div className="list-group list-group-flush">
+          {results.map((s) => (
+            <Link key={s.username} to={`/teacher-dashboard/students/${encodeURIComponent(s.username)}`}
+              className="list-group-item list-group-item-action border-0 border-top py-2 px-3">
+              <span className="fw-medium" style={{ fontSize: '0.85rem' }}>{s.name}</span>
+              <span className="text-muted ms-2" style={{ fontSize: '0.72rem' }}>@{s.username}</span>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const UngradedCard = ({ count, submissions }) => (
   <div className="card border-0 shadow-sm mb-3">
@@ -88,7 +145,10 @@ const WeakStudentsCard = ({ students }) => (
           <div key={`${s.student_username}-${s.topic_name}-${i}`}
             className="d-flex align-items-center justify-content-between py-2 px-3 border-top">
             <div>
-              <div className="fw-medium" style={{ fontSize: '0.85rem' }}>{s.student_name}</div>
+              <Link to={`/teacher-dashboard/students/${encodeURIComponent(s.student_username)}`}
+                className="fw-medium text-decoration-none" style={{ fontSize: '0.85rem' }}>
+                {s.student_name}
+              </Link>
               <div className="text-muted" style={{ fontSize: '0.72rem' }}>{s.topic_name}</div>
             </div>
             <span className="fw-semibold" style={{ fontSize: '0.85rem', color: masteryColor(s.mastery_score) }}>
@@ -121,6 +181,7 @@ const TeacherDashboardPage = () => {
     <div className="py-3" style={{ maxWidth: 800 }}>
       <h5 className="fw-bold mb-3">Багшийн хяналтын самбар</h5>
 
+      <StudentReportSearchCard />
       <UngradedCard count={data.ungraded_count} submissions={data.ungraded_submissions} />
       <WeakStudentsCard students={data.weak_students} />
       <ClubsCard clubs={data.clubs} />

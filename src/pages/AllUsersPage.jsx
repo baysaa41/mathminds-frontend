@@ -12,8 +12,10 @@ import {
   Row,
   Col,
   InputGroup,
+  Modal,
+  Button,
 } from 'react-bootstrap';
-import { Users, Search, Save } from 'lucide-react';
+import { Users, Search, Save, UserPlus } from 'lucide-react';
 import apiClient from '../api/axiosConfig';
 import { MEMBERSHIP_CONFIG } from '../constants/membership';
 
@@ -39,6 +41,20 @@ function AllUsersPage() {
 
   // Үүрэг / admin эрх засах
   const [savingRole, setSavingRole] = useState({});
+
+  // Шинэ хэрэглэгч нэмэх
+  const EMPTY_NEW_USER = {
+    username: '',
+    email: '',
+    password: '',
+    first_name: '',
+    last_name: '',
+    site_role: 'STUDENT',
+  };
+  const [showCreate, setShowCreate] = useState(false);
+  const [newUser, setNewUser] = useState(EMPTY_NEW_USER);
+  const [creating, setCreating] = useState(false);
+  const [createErrors, setCreateErrors] = useState({});
 
   useEffect(() => {
     apiClient
@@ -87,6 +103,37 @@ function AllUsersPage() {
       setError('Хэрэглэгчдийн мэдээлэл татахад алдаа гарлаа.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const openCreate = () => {
+    setNewUser(EMPTY_NEW_USER);
+    setCreateErrors({});
+    setShowCreate(true);
+  };
+
+  const handleCreateUser = async (e) => {
+    e.preventDefault();
+    setCreating(true);
+    setCreateErrors({});
+    try {
+      await apiClient.post('/users/api/all-users/create/', newUser);
+      setShowCreate(false);
+      setSearch('');
+      if (currentPage === 1) {
+        loadUsers();
+      } else {
+        setCurrentPage(1);
+      }
+    } catch (err) {
+      const data = err.response?.data;
+      if (data && typeof data === 'object' && !data.detail) {
+        setCreateErrors(data);
+      } else {
+        setCreateErrors({ detail: data?.detail || 'Хэрэглэгч нэмэхэд алдаа гарлаа.' });
+      }
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -196,6 +243,10 @@ function AllUsersPage() {
               <h2 className="mb-0">Бүх хэрэглэгчид</h2>
               <p className="text-muted mb-0">Нийт {totalCount} хэрэглэгч</p>
             </div>
+            <Button variant="primary" className="ms-auto d-flex align-items-center gap-2" onClick={openCreate}>
+              <UserPlus size={18} />
+              Хэрэглэгч нэмэх
+            </Button>
           </div>
         </Col>
       </Row>
@@ -438,6 +489,90 @@ function AllUsersPage() {
           )}
         </Card.Body>
       </Card>
+
+      <Modal show={showCreate} onHide={() => !creating && setShowCreate(false)} centered>
+        <Form onSubmit={handleCreateUser}>
+          <Modal.Header closeButton={!creating}>
+            <Modal.Title>Шинэ хэрэглэгч нэмэх</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            {createErrors.detail && <div className="alert alert-danger">{createErrors.detail}</div>}
+            <Form.Group className="mb-3">
+              <Form.Label>Хэрэглэгчийн нэр *</Form.Label>
+              <Form.Control
+                value={newUser.username}
+                onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
+                isInvalid={!!createErrors.username}
+                autoComplete="off"
+                required
+              />
+              <Form.Control.Feedback type="invalid">{createErrors.username}</Form.Control.Feedback>
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Имэйл *</Form.Label>
+              <Form.Control
+                type="email"
+                value={newUser.email}
+                onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                isInvalid={!!createErrors.email}
+                autoComplete="off"
+                required
+              />
+              <Form.Control.Feedback type="invalid">{createErrors.email}</Form.Control.Feedback>
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Нууц үг *</Form.Label>
+              <Form.Control
+                type="password"
+                value={newUser.password}
+                onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                isInvalid={!!createErrors.password}
+                autoComplete="new-password"
+                required
+              />
+              <Form.Control.Feedback type="invalid">{createErrors.password}</Form.Control.Feedback>
+            </Form.Group>
+            <Row className="g-3 mb-3">
+              <Col>
+                <Form.Label>Овог</Form.Label>
+                <Form.Control
+                  value={newUser.last_name}
+                  onChange={(e) => setNewUser({ ...newUser, last_name: e.target.value })}
+                />
+              </Col>
+              <Col>
+                <Form.Label>Нэр</Form.Label>
+                <Form.Control
+                  value={newUser.first_name}
+                  onChange={(e) => setNewUser({ ...newUser, first_name: e.target.value })}
+                />
+              </Col>
+            </Row>
+            <Form.Group>
+              <Form.Label>Үүрэг</Form.Label>
+              <Form.Select
+                value={newUser.site_role}
+                onChange={(e) => setNewUser({ ...newUser, site_role: e.target.value })}
+                isInvalid={!!createErrors.site_role}
+              >
+                <option value="STUDENT">STUDENT</option>
+                <option value="TEACHER">TEACHER</option>
+                <option value="PARENT">PARENT</option>
+                <option value="OTHER">OTHER</option>
+              </Form.Select>
+              <Form.Control.Feedback type="invalid">{createErrors.site_role}</Form.Control.Feedback>
+            </Form.Group>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="outline-secondary" onClick={() => setShowCreate(false)} disabled={creating}>
+              Болих
+            </Button>
+            <Button type="submit" variant="primary" disabled={creating}>
+              {creating ? <Spinner animation="border" size="sm" /> : 'Нэмэх'}
+            </Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
     </Container>
   );
 }
