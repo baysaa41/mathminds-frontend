@@ -4,12 +4,24 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Container, Card, Table, Form, Button, Alert, Spinner, Badge, Row, Col } from 'react-bootstrap';
+import { Container, Card, Table, Form, Button, ButtonGroup, ToggleButton, Alert, Spinner, Badge, Row, Col } from 'react-bootstrap';
 import PaymentModal from '../components/PaymentModal';
 import { getOlympiad, getOlympiadMyRegistrations, approveRegistration, registerForOlympiad, payRegistration, getPrefill, getProvinces, fmtDate } from '../services/olympiadService';
+import { toLatin, LATIN_NAME_RE } from '../utils/transliterate';
 
 const EMPTY_FORM = {
-  mmo_id: '', waive_fee: false, category_id: '', last_name: '', first_name: '', province: '', school: '', grade: '', phone: '', email: '',
+  register_for: 'self', mmo_id: '', waive_fee: false, category_id: '', last_name: '', first_name: '',
+  last_name_latin: '', first_name_latin: '', province: '', school: '', grade: '', phone: '', email: '',
+};
+
+// Кирилл нэр өөрчлөгдөхөд латиныг дагуулж шинэчилнэ — хэрэглэгч латиныг гараар засаагүй бол.
+const syncLatin = (prev, next) => {
+  const auto = (k) => !prev[`${k}_latin`] || prev[`${k}_latin`] === toLatin(prev[k]);
+  return {
+    ...next,
+    last_name_latin: auto('last_name') ? toLatin(next.last_name) : next.last_name_latin,
+    first_name_latin: auto('first_name') ? toLatin(next.first_name) : next.first_name_latin,
+  };
 };
 
 const GRADE_OPTIONS = [
@@ -53,14 +65,16 @@ function OlympiadDetailPage() {
       setOlympiad(data);
       getOlympiadMyRegistrations(slug).then(setMyRegs).catch(() => setMyRegs([]));
       const r = data.my_registration;
+      // «Өөр сурагч» горимд өөрийн мэдээллээр анкетыг бөглөхгүй (mmo_id бөглөгдвөл өөрийгөө бүртгэнэ)
       if (r) {
-        setForm((f) => ({
-          ...f, category_id: r.olympiad_category ? String(r.olympiad_category) : '', last_name: r.last_name, first_name: r.first_name, province: r.province,
+        setForm((f) => (f.register_for === 'other' ? f : {
+          ...f, category_id: r.olympiad_category ? String(r.olympiad_category) : '', last_name: r.last_name, first_name: r.first_name,
+          last_name_latin: r.last_name_latin || '', first_name_latin: r.first_name_latin || '', province: r.province,
           school: r.school, grade: r.category === 'STUDENT' ? String(r.grade ?? '') : r.category, phone: r.phone || '', email: r.email || '',
         }));
       }
       // Нэвтэрсэн хэрэглэгчийн профайлаар зөвхөн хоосон талбарыг нөхнө
-      getPrefill().then((p) => setForm((f) => ({
+      getPrefill().then((p) => setForm((f) => (f.register_for === 'other' ? f : syncLatin(f, {
         ...f,
         mmo_id: f.mmo_id || p.mmo_id || '',
         last_name: f.last_name || p.last_name || '',
@@ -70,7 +84,7 @@ function OlympiadDetailPage() {
         phone: f.phone || p.phone || '',
         email: f.email || p.email || '',
         grade: f.grade || p.grade || '',
-      }))).catch(() => {});
+      })))).catch(() => {});
     } catch {
       setError('Олимпиад олдсонгүй');
     } finally {
@@ -107,7 +121,7 @@ function OlympiadDetailPage() {
     try {
       const p = await getPrefill(form.mmo_id);
       // Ирээгүй мэдээллийг хоосон харуулна (өмнөх хүний мэдээлэл үлдэхгүй)
-      setForm((f) => ({
+      setForm((f) => syncLatin(f, {
         ...f,
         last_name: p.last_name || '',
         first_name: p.first_name || '',
@@ -139,6 +153,10 @@ function OlympiadDetailPage() {
       setError(mismatch);
       return;
     }
+    if (!LATIN_NAME_RE.test(form.last_name_latin.trim()) || !LATIN_NAME_RE.test(form.first_name_latin.trim())) {
+      setError('Латин овог, нэрийг зөвхөн латин үсгээр бичнэ үү.');
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -149,7 +167,10 @@ function OlympiadDetailPage() {
       if (noGrade) payload.grade = '';
       const r = await registerForOlympiad(slug, payload);
       await load();
-      if (!r.is_mine) setInfo(`${r.full_name} (№${r.participant_no ?? '-'}) бүртгэгдлээ.`);
+      if (!r.is_mine) {
+        setInfo(`${r.full_name} (№${r.participant_no ?? '-'}) бүртгэгдлээ. ${r.account_created
+          ? 'Сурагчид MathMinds бүртгэл шинээр үүсгэлээ.' : 'Сурагчийн байгаа MathMinds бүртгэлтэй холбогдлоо.'}`);
+      }
       if (r.status === 'PENDING' && fee > 0) await startPayment(r.id);
       else if (form.waive_fee) setInfo('Төлбөргүйгээр бүртгэгдэж, баталгаажлаа.');
     } catch (err) {
@@ -161,6 +182,17 @@ function OlympiadDetailPage() {
   };
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  const setName = (k) => (e) => setForm((f) => syncLatin(f, { ...f, [k]: e.target.value }));
+
+  // «Өөр сурагч» горимд өөрийн мэдээлэл үлдэхгүйгээр хоосон анкет; «Өөрийгөө» руу буцахад профайлаас дахин бөглөнө
+  const setRegisterFor = (value) => {
+    setError(null);
+    setInfo(null);
+    setForm((f) => ({ ...EMPTY_FORM, register_for: value, category_id: f.category_id }));
+    if (value === 'self') load();
+  };
+  const forOther = form.register_for === 'other';
+  const latinIsAuto = form.last_name_latin === toLatin(form.last_name) && form.first_name_latin === toLatin(form.first_name);
 
   const categories = olympiad?.categories || [];
   const selectedCat = categories.find((c) => String(c.id) === form.category_id);
@@ -288,7 +320,24 @@ function OlympiadDetailPage() {
               )}
             </Alert>
           )}
-          {reg?.status === 'PAID' ? null : olympiad.registration_open ? (
+          {olympiad.registration_open && user && (
+            <ButtonGroup className="w-100 mb-3">
+              {[['self', 'Өөрийгөө бүртгүүлэх'], ['other', 'Өөр сурагч бүртгүүлэх']].map(([value, label]) => (
+                <ToggleButton key={value} id={`register-for-${value}`} type="radio" variant="outline-primary"
+                              name="register-for" value={value} checked={form.register_for === value}
+                              onChange={() => setRegisterFor(value)}>
+                  {label}
+                </ToggleButton>
+              ))}
+            </ButtonGroup>
+          )}
+          {forOther && olympiad.registration_open && (
+            <Alert variant="light" className="border small">
+              Бүртгүүлсэн сурагч бүрт MathMinds бүртгэл автоматаар үүснэ. Ижил имэйл, овог, нэртэй бүртгэл аль хэдийн
+              байвал түүнийг ашиглана. Сурагч дараа нь энэ имэйлээр (Google эсвэл нууц үг сэргээх) нэвтэрнэ.
+            </Alert>
+          )}
+          {reg?.status === 'PAID' && !forOther ? null : olympiad.registration_open ? (
             <Form onSubmit={submit}>
               <Row className="g-2">
                 {categories.length > 0 && (
@@ -304,23 +353,45 @@ function OlympiadDetailPage() {
                     </Form.Select>
                   </Col>
                 )}
-                <Col md={12}>
-                  <Form.Label>MMO ID</Form.Label>
-                  <div className="input-group">
-                    <Form.Control type="number" placeholder={user?.is_staff ? 'Өөр хэрэглэгчийг MMO ID-аар бүртгэх' : 'Өөрийн MMO ID'}
-                                  value={form.mmo_id} onChange={set('mmo_id')} />
-                    <Button variant="outline-secondary" type="button" onClick={fillFromMmo} disabled={filling}>
-                      {filling ? <Spinner size="sm" animation="border" /> : 'Мэдээлэл татах'}
-                    </Button>
-                  </div>
-                </Col>
+                {(!forOther || user?.is_staff) && (
+                  <Col md={12}>
+                    <Form.Label>MMO ID</Form.Label>
+                    <div className="input-group">
+                      <Form.Control type="number"
+                                    placeholder={forOther ? 'Сурагчийн MMO ID (заавал биш)' : user?.is_staff ? 'Өөр хэрэглэгчийг MMO ID-аар бүртгэх' : 'Өөрийн MMO ID'}
+                                    value={form.mmo_id} onChange={set('mmo_id')} />
+                      <Button variant="outline-secondary" type="button" onClick={fillFromMmo} disabled={filling}>
+                        {filling ? <Spinner size="sm" animation="border" /> : 'Мэдээлэл татах'}
+                      </Button>
+                    </div>
+                  </Col>
+                )}
                 <Col md={6}>
                   <Form.Label>Овог</Form.Label>
-                  <Form.Control required value={form.last_name} onChange={set('last_name')} />
+                  <Form.Control required value={form.last_name} onChange={setName('last_name')} />
                 </Col>
                 <Col md={6}>
                   <Form.Label>Нэр</Form.Label>
-                  <Form.Control required value={form.first_name} onChange={set('first_name')} />
+                  <Form.Control required value={form.first_name} onChange={setName('first_name')} />
+                </Col>
+                <Col md={6}>
+                  <Form.Label>Овог (латинаар)</Form.Label>
+                  <Form.Control required placeholder="Жишээ: Batbold" value={form.last_name_latin} onChange={set('last_name_latin')}
+                                isInvalid={!!form.last_name_latin && !LATIN_NAME_RE.test(form.last_name_latin.trim())} />
+                  <Form.Control.Feedback type="invalid">Зөвхөн латин үсэг</Form.Control.Feedback>
+                </Col>
+                <Col md={6}>
+                  <Form.Label>Нэр (латинаар)</Form.Label>
+                  <Form.Control required placeholder="Жишээ: Munkh-Erdene" value={form.first_name_latin} onChange={set('first_name_latin')}
+                                isInvalid={!!form.first_name_latin && !LATIN_NAME_RE.test(form.first_name_latin.trim())} />
+                  <Form.Control.Feedback type="invalid">Зөвхөн латин үсэг</Form.Control.Feedback>
+                </Col>
+                <Col md={12}>
+                  <Alert variant="warning" className="py-2 px-3 mb-1 small">
+                    <strong>⚠️ Латин нэрээ заавал шалгана уу.</strong> Зарим сертификат дээр нэр латинаар бичигдэнэ.
+                    {latinIsAuto && form.last_name && ' Кирилл нэрээс автоматаар үүсгэсэн —'} Паспорт эсвэл төрсний
+                    гэрчилгээтэйгээ тулгаж, зөрвөл засна уу.
+                  </Alert>
                 </Col>
                 <Col md={12}>
                   <Form.Label>Аймаг / Дүүрэг</Form.Label>

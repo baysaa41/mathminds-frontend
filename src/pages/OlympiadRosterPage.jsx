@@ -87,7 +87,7 @@ function OlympiadRosterPage() {
         <tbody>
           {filtered.map((r, i) => (
             <tr key={`${r.participant_no}-${i}`}>
-              <td>{r.participant_no ?? '-'}</td><td>{r.full_name}</td><td>{r.province}</td><td>{r.school}</td><td>{r.olympiad_category_name ?? '-'}</td><td>{r.olympiad_category_name && r.grade_label === r.olympiad_category_name ? '-' : r.grade_label}</td>
+              <td>{r.participant_no ?? '-'}</td><td>{r.full_name}{r.full_name_latin && <div className="small text-muted">{r.full_name_latin}</div>}</td><td>{r.province}</td><td>{r.school}</td><td>{r.olympiad_category_name ?? '-'}</td><td>{r.olympiad_category_name && r.grade_label === r.olympiad_category_name ? '-' : r.grade_label}</td>
               {user?.is_staff && <td>{r.registered_by_name ?? '-'}</td>}
               {user?.is_staff && (
                 <td>

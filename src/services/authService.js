@@ -155,19 +155,15 @@ class AuthService {
         throw new Error(errorData.error || 'Failed to exchange code');
       }
       const data = await response.json();
-      // Шинэ session эхэлж байна — өмнөх хэрэглэгчийн кэшлэгдсэн GET
-      // хариу үлдвэл шинэ хэрэглэгчид харагдах эрсдэлтэй.
-      apiCache.clearAll();
-      setAccessToken(data.token);
-      if (data.refresh) {
-        setRefreshToken(data.refresh);
-      }
-      setUser(data.user);
-      localStorage.setItem('oauth_last_code', code);
       localStorage.removeItem('code_verifier');
       localStorage.removeItem('oauth_state');
       localStorage.removeItem('oauth_provider');
-      return { user: data.user, token: data.token };
+      // Google: ижил имэйлтэй олон бүртгэл — хэрэглэгч сонгоод chooseGoogleAccount() дуудна
+      if (data.account_choice) {
+        return { accountChoice: data.account_choice };
+      }
+      localStorage.setItem('oauth_last_code', code);
+      return this.storeSession(data);
     } catch (error) {
       console.error('Callback error:', error);
       localStorage.removeItem('code_verifier');
@@ -175,6 +171,32 @@ class AuthService {
       localStorage.removeItem('oauth_provider');
       throw error;
     }
+  }
+
+  // Шинэ session эхэлж байна — өмнөх хэрэглэгчийн кэшлэгдсэн GET
+  // хариу үлдвэл шинэ хэрэглэгчид харагдах эрсдэлтэй.
+  storeSession(data) {
+    apiCache.clearAll();
+    setAccessToken(data.token);
+    if (data.refresh) {
+      setRefreshToken(data.refresh);
+    }
+    setUser(data.user);
+    return { user: data.user, token: data.token };
+  }
+
+  // Google-ийн ижил имэйлтэй бүртгэлүүдээс сонгосныг (userId эсвэл 'new') холбож нэвтэрнэ
+  async chooseGoogleAccount(choiceToken, userId) {
+    const response = await fetch(`${BACKEND_URL}/users/api/google-choose-account/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: choiceToken, user_id: userId }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Бүртгэл сонгоход алдаа гарлаа');
+    }
+    return this.storeSession(data);
   }
 
   // Бодит логик нь `api/tokenRefresh.js`-д — тэр модуль нь `apiClient`-г

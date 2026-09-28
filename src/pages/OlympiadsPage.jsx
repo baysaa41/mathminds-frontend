@@ -63,9 +63,7 @@ function OlympiadsPage() {
               </div>
             )}
             {o.description && (
-              <div className="mt-2 small" style={{
-                whiteSpace: 'pre-wrap', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-              }}>{o.description}</div>
+              <div className="mt-2 small" style={{ whiteSpace: 'pre-wrap' }}>{o.description}</div>
             )}
             <div className="mt-3 d-flex gap-2">
               <Button as={Link} to={`/olympiads/${o.slug}`} size="sm" variant="primary">Дэлгэрэнгүй / Бүртгүүлэх</Button>
