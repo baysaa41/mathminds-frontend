@@ -60,6 +60,7 @@ function OlympiadDetailPage() {
   const [payment, setPayment] = useState(null);
   const [myRegs, setMyRegs] = useState([]);
   // «Өөр сурагч»: имэйлээр олдсон сурагчид (null — хайгаагүй) ба сонголт (id | 'new' | null)
+  const [query, setQuery] = useState('');  // сурагчийн имэйл эсвэл MMO ID
   const [candidates, setCandidates] = useState(null);
   const [picked, setPicked] = useState(null);
   const [looking, setLooking] = useState(false);
@@ -159,10 +160,10 @@ function OlympiadDetailPage() {
       return;
     }
     if (forOther && !picked) {
-      setError('Имэйлээр хайгаад сурагчаа сонгоно уу.');
+      setError('Имэйл эсвэл MMO ID-аар хайгаад сурагчаа сонгоно уу.');
       return;
     }
-    if (!pickedExisting
+    if (!pickedChosen
         && (!LATIN_NAME_RE.test(form.last_name_latin.trim()) || !LATIN_NAME_RE.test(form.first_name_latin.trim()))) {
       setError('Латин овог, нэрийг зөвхөн латин үсгээр бичнэ үү.');
       return;
@@ -175,8 +176,14 @@ function OlympiadDetailPage() {
       if (!payload.category_id) delete payload.category_id;
       if (!user?.is_staff) delete payload.waive_fee;
       if (noGrade) payload.grade = '';
+      if (forOther) delete payload.mmo_id;
       if (pickedExisting) {
-        payload.student_id = picked;  // нэрийг сонгосон сурагчийн profile-оос авна
+        payload.student_id = picked;
+        if (queryIsMmo) payload.mmo_id = Number(query.trim());  // сонгосон profile-ийг MMO ID-аар шалгана
+      }
+      if (pickedMmo) payload.mmo_id = Number(picked.slice(4));  // MMO-гийн мэдээллээр profile үүснэ
+      if (pickedChosen) {
+        // Нэрийг сонгосон сурагчийн profile/MMO-оос авна
         ['last_name', 'first_name', 'last_name_latin', 'first_name_latin'].forEach((k) => delete payload[k]);
       }
       const r = await registerForOlympiad(slug, payload);
@@ -203,12 +210,14 @@ function OlympiadDetailPage() {
     setLooking(true);
     setError(null);
     try {
-      const rows = await lookupStudents(slug, form.email.trim());
+      const q = query.trim();
+      const rows = await lookupStudents(slug, q);
+      setForm((f) => ({ ...f, email: q.includes('@') ? q : '' }));
       setCandidates(rows);
       setPicked(rows.length ? null : 'new');
     } catch (err) {
       const d = err.response?.data;
-      setError(d?.email?.[0] || d?.detail || 'Хайхад алдаа гарлаа');
+      setError(d?.query?.[0] || d?.detail || 'Хайхад алдаа гарлаа');
     } finally {
       setLooking(false);
     }
@@ -222,17 +231,37 @@ function OlympiadDetailPage() {
     setError(null);
     setInfo(null);
     setForm((f) => ({ ...EMPTY_FORM, register_for: value, category_id: f.category_id }));
+    setQuery('');
     setCandidates(null);
     setPicked(null);
     if (value === 'self') load();
   };
-  const setStudentEmail = (e) => {
-    setForm((f) => ({ ...f, email: e.target.value }));
-    setCandidates(null);  // имэйл өөрчлөгдвөл дахин хайна
+  // Сурагч сонгоход сургууль, анги, аймаг/дүүргийг бөглөнө (нэр, утас, имэйлийг хадгалах үед сервер нөхнө)
+  const pickStudent = (key) => {
+    setPicked(key);
+    const c = candidates?.find((x) => (x.id ?? `mmo-${x.mmo_id}`) === key);
+    if (!c) return;
+    const grade = c.grade ? String(c.grade) : '';
+    setForm((f) => ({
+      ...f,
+      school: c.school || f.school,
+      province: c.province || f.province,
+      grade: grade && !gradeMismatch(selectedCat, grade) ? grade : f.grade,
+    }));
+  };
+  const pickedCandidate = candidates?.find((x) => (x.id ?? `mmo-${x.mmo_id}`) === picked);
+
+  const changeQuery = (e) => {
+    setQuery(e.target.value);
+    setCandidates(null);  // хайлт өөрчлөгдвөл дахин хайна
     setPicked(null);
   };
   const forOther = form.register_for === 'other';
+  const queryIsEmail = query.includes('@');
+  const queryIsMmo = /^\d+$/.test(query.trim());
   const pickedExisting = forOther && typeof picked === 'number';
+  const pickedMmo = forOther && typeof picked === 'string' && picked.startsWith('mmo-');
+  const pickedChosen = pickedExisting || pickedMmo;  // нэр, холбоо барих мэдээллийг сервер нөхнө
   const showDetails = !forOther || picked !== null;
   const latinIsAuto = form.last_name_latin === toLatin(form.last_name) && form.first_name_latin === toLatin(form.first_name);
 
@@ -376,7 +405,8 @@ function OlympiadDetailPage() {
           )}
           {forOther && olympiad.registration_open && (
             <Alert variant="light" className="border small">
-              Эхлээд сурагчийн имэйлээр хайна уу — нэг имэйлийг хэд хэдэн сурагч (жишээ нь ах дүүс) ашиглаж болно.
+              Эхлээд сурагчийн имэйл эсвэл MMO ID-аар хайна уу — нэг имэйлийг хэд хэдэн сурагч (жишээ нь ах дүүс)
+              ашиглаж болно. MMO ID-аар олдвол нэр, холбоо барих мэдээлэл MMO-оос автоматаар бөглөгдөнө.
               Өмнө бүртгэгдсэн бол жагсаалтаас сонгож, үгүй бол шинээр бүртгэнэ. Сурагчид имэйлээр мэдэгдэл очих бөгөөд
               тэр link-ээр бүртгэлээ харж, өөрийн account-д нэмнэ.
             </Alert>
@@ -399,12 +429,12 @@ function OlympiadDetailPage() {
                 )}
                 {forOther && (
                   <Col md={12}>
-                    <Form.Label>Сурагчийн имэйл хаяг</Form.Label>
+                    <Form.Label>Сурагчийн имэйл эсвэл MMO ID</Form.Label>
                     <div className="input-group">
-                      <Form.Control required type="email" value={form.email} onChange={setStudentEmail}
+                      <Form.Control value={query} onChange={changeQuery} placeholder="жишээ: parent@gmail.com эсвэл 216786"
                                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); findStudents(); } }} />
                       <Button variant="outline-primary" type="button" onClick={findStudents}
-                              disabled={looking || !form.email.includes('@')}>
+                              disabled={looking || !(queryIsEmail || queryIsMmo)}>
                         {looking ? <Spinner size="sm" animation="border" /> : 'Хайх'}
                       </Button>
                     </div>
@@ -414,20 +444,23 @@ function OlympiadDetailPage() {
                   <Col md={12}>
                     {candidates.length > 0 ? (
                       <>
-                        <div className="small text-muted mb-1">Энэ имэйлтэй сурагчид — зөв сурагчаа сонгоно уу:</div>
-                        <StudentPicker candidates={candidates} value={picked} onChange={setPicked} />
+                        <div className="small text-muted mb-1">Хайлтад тохирох сурагчид — зөв сурагчаа сонгоно уу:</div>
+                        <StudentPicker candidates={candidates} value={picked} onChange={pickStudent} />
                       </>
                     ) : (
-                      <div className="small text-muted">Энэ имэйлтэй сурагч олдсонгүй — шинээр бүртгэнэ.</div>
+                      <div className="small text-muted">
+                        {queryIsMmo ? 'Энэ MMO ID-тай сурагч олдсонгүй — мэдээллийг гараар бөглөж шинээр бүртгэнэ.'
+                          : 'Энэ имэйлтэй сурагч олдсонгүй — шинээр бүртгэнэ.'}
+                      </div>
                     )}
                   </Col>
                 )}
-                {showDetails && (!forOther || user?.is_staff) && (
+                {showDetails && !forOther && (
                   <Col md={12}>
                     <Form.Label>MMO ID</Form.Label>
                     <div className="input-group">
                       <Form.Control type="number"
-                                    placeholder={forOther ? 'Сурагчийн MMO ID (заавал биш)' : user?.is_staff ? 'Өөр хэрэглэгчийг MMO ID-аар бүртгэх' : 'Өөрийн MMO ID'}
+                                    placeholder={user?.is_staff ? 'Өөр хэрэглэгчийг MMO ID-аар бүртгэх' : 'Өөрийн MMO ID'}
                                     value={form.mmo_id} onChange={set('mmo_id')} />
                       <Button variant="outline-secondary" type="button" onClick={fillFromMmo} disabled={filling}>
                         {filling ? <Spinner size="sm" animation="border" /> : 'Мэдээлэл татах'}
@@ -435,7 +468,17 @@ function OlympiadDetailPage() {
                     </div>
                   </Col>
                 )}
-                {showDetails && !pickedExisting && (<>
+                {pickedCandidate && (
+                  <Col md={12}>
+                    <Alert variant="success" className="py-2 px-3 mb-0 small">
+                      Сонгосон: <strong>{pickedCandidate.masked_name}</strong>
+                      {pickedCandidate.mmo_id && ` · MMO ID ${pickedCandidate.mmo_id}`} — нэр, утас, имэйл
+                      {pickedCandidate.source === 'mmo' ? ' MMO-оос' : ' сурагчийн бүртгэлээс'} автоматаар бөглөгдөнө.
+                      Доорх сургууль, анги, аймгийг шалгаад бүртгүүлнэ үү.
+                    </Alert>
+                  </Col>
+                )}
+                {showDetails && !pickedChosen && (<>
                 <Col md={6}>
                   <Form.Label>Овог</Form.Label>
                   <Form.Control required value={form.last_name} onChange={setName('last_name')} />
@@ -494,12 +537,14 @@ function OlympiadDetailPage() {
                 )}
                 <Col md={6}>
                   <Form.Label>Утас</Form.Label>
-                  <Form.Control required type="tel" value={form.phone} onChange={set('phone')} />
+                  <Form.Control required={!pickedChosen} type="tel" value={form.phone} onChange={set('phone')}
+                                placeholder={pickedChosen ? 'Хоосон бол сурагчийн бүртгэлтэй утас' : ''} />
                 </Col>
-                {!forOther && (
+                {(!forOther || !queryIsEmail) && (
                   <Col md={6}>
                     <Form.Label>Имэйл хаяг</Form.Label>
-                    <Form.Control required type="email" value={form.email} onChange={set('email')} />
+                    <Form.Control required={!pickedChosen} type="email" value={form.email} onChange={set('email')}
+                                  placeholder={pickedChosen ? 'Хоосон бол сурагчийн бүртгэлтэй имэйл' : ''} />
                   </Col>
                 )}
                 {user?.is_staff && fee > 0 && (

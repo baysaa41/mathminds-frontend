@@ -28,9 +28,10 @@ export const registerForOlympiad = async (slug, payload) =>
   (await apiClient.post(`${BASE}/${slug}/register/`, payload)).data;
 
 // ── Сурагчид (StudentProfile) ───────────────────────────────────────────────
-// Имэйлээр өмнө бүртгэгдсэн сурагчид — нэр далдлагдсан: [{id, masked_name, grade, school, phone_tail, already_registered}]
-export const lookupStudents = async (slug, email) =>
-  (await apiClient.post(`${BASE}/${slug}/students/lookup/`, { email }, { skipCache: true })).data;
+// Имэйл эсвэл MMO ID-аар сурагч хайх — нэр далдлагдсан:
+// [{id (MMO-оос бол null), source: 'profile'|'mmo', mmo_id, masked_name, grade, school, phone_tail, already_registered}]
+export const lookupStudents = async (slug, query) =>
+  (await apiClient.post(`${BASE}/${slug}/students/lookup/`, { query }, { skipCache: true })).data;
 export const getMyStudents = async () => (await apiClient.get(`${BASE}/my-students/`, { skipCache: true })).data;
 export const getStudent = async (id) => (await apiClient.get(`${BASE}/students/${id}/`, { skipCache: true })).data;
 export const updateStudent = async (id, payload) => (await apiClient.patch(`${BASE}/students/${id}/`, payload)).data;
