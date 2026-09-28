@@ -6,10 +6,10 @@ import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Container, Card, Table, Form, Button, Alert, Spinner, Badge, Row, Col } from 'react-bootstrap';
 import PaymentModal from '../components/PaymentModal';
-import { getOlympiad, registerForOlympiad, payRegistration, getPrefill, getProvinces, fmtDate } from '../services/olympiadService';
+import { getOlympiad, getOlympiadMyRegistrations, approveRegistration, registerForOlympiad, payRegistration, getPrefill, getProvinces, fmtDate } from '../services/olympiadService';
 
 const EMPTY_FORM = {
-  mmo_id: '', last_name: '', first_name: '', province: '', school: '', grade: '', phone: '', email: '',
+  mmo_id: '', waive_fee: false, category_id: '', last_name: '', first_name: '', province: '', school: '', grade: '', phone: '', email: '',
 };
 
 const GRADE_OPTIONS = [
@@ -18,6 +18,14 @@ const GRADE_OPTIONS = [
   { value: 'SHARED_TEACHER', label: 'Дундын багш' },
   { value: 'FREE', label: 'Чөлөөт' },
 ];
+
+// Сурагчийн анги сонгосон ангилалын хязгаарт орох эсэх. Зөрвөл тайлбар, таарвал ''.
+const gradeMismatch = (cat, grade) => {
+  if (!cat || cat.grade_from === null || !/^\d+$/.test(String(grade))) return '';
+  const g = Number(grade);
+  return g >= cat.grade_from && g <= cat.grade_to
+    ? '' : `${g}-р анги «${cat.name}» ангилалд (${cat.grade_from}–${cat.grade_to}-р анги) тохирохгүй байна.`;
+};
 
 const STATUS_LABEL = {
   PENDING: ['warning', 'Төлбөр хүлээгдэж буй'],
@@ -37,15 +45,17 @@ function OlympiadDetailPage() {
   const [filling, setFilling] = useState(false);
   const [busy, setBusy] = useState(false);
   const [payment, setPayment] = useState(null);
+  const [myRegs, setMyRegs] = useState([]);
 
   const load = useCallback(async () => {
     try {
       const data = await getOlympiad(slug);
       setOlympiad(data);
+      getOlympiadMyRegistrations(slug).then(setMyRegs).catch(() => setMyRegs([]));
       const r = data.my_registration;
       if (r) {
         setForm((f) => ({
-          ...f, last_name: r.last_name, first_name: r.first_name, province: r.province,
+          ...f, category_id: r.olympiad_category ? String(r.olympiad_category) : '', last_name: r.last_name, first_name: r.first_name, province: r.province,
           school: r.school, grade: r.category === 'STUDENT' ? String(r.grade ?? '') : r.category, phone: r.phone || '', email: r.email || '',
         }));
       }
@@ -79,6 +89,17 @@ function OlympiadDetailPage() {
     setPayment(data);
   };
 
+  const approve = async (r) => {
+    if (!window.confirm(`${r.full_name}-ийн бүртгэлийг төлбөрөөс чөлөөлж баталгаажуулах уу?`)) return;
+    setError(null);
+    try {
+      await approveRegistration(r.id);
+      await load();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Баталгаажуулахад алдаа гарлаа');
+    }
+  };
+
   const fillFromMmo = async () => {
     setFilling(true);
     setError(null);
@@ -96,7 +117,11 @@ function OlympiadDetailPage() {
         email: p.email || '',
         grade: p.grade || '',
       }));
-      if (!p.email) setError('Имэйл хаяг MMO-оос ирсэнгүй — гараар бөглөнө үү.');
+      const mismatch = gradeMismatch(selectedCat, p.grade);
+      if (mismatch) setForm((f) => ({ ...f, grade: '' }));
+      const warn = [!p.email && 'Имэйл хаяг MMO-оос ирсэнгүй — гараар бөглөнө үү.',
+        mismatch && `${mismatch} Ангиа эсвэл ангилалаа дахин сонгоно уу.`].filter(Boolean).join(' ');
+      if (warn) setError(warn);
       setInfo(p.last_name || p.first_name
         ? `${p.source === 'mmo' ? 'MMO' : 'MathMinds'} бүртгэлээс бөглөлөө: ${p.last_name} ${p.first_name}`
         : 'Хэрэглэгч олдсон боловч нэр бөглөөгүй байна');
@@ -109,15 +134,24 @@ function OlympiadDetailPage() {
 
   const submit = async (e) => {
     e.preventDefault();
+    const mismatch = gradeMismatch(selectedCat, form.grade);
+    if (mismatch) {
+      setError(mismatch);
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
       const payload = { ...form };
       if (!payload.mmo_id) delete payload.mmo_id;
+      if (!payload.category_id) delete payload.category_id;
+      if (!user?.is_staff) delete payload.waive_fee;
+      if (noGrade) payload.grade = '';
       const r = await registerForOlympiad(slug, payload);
       await load();
       if (!r.is_mine) setInfo(`${r.full_name} (№${r.participant_no ?? '-'}) бүртгэгдлээ.`);
       if (r.status === 'PENDING' && fee > 0) await startPayment(r.id);
+      else if (form.waive_fee) setInfo('Төлбөргүйгээр бүртгэгдэж, баталгаажлаа.');
     } catch (err) {
       const d = err.response?.data;
       setError(d?.error || (d && JSON.stringify(d)) || 'Бүртгэхэд алдаа гарлаа');
@@ -128,19 +162,95 @@ function OlympiadDetailPage() {
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
+  const categories = olympiad?.categories || [];
+  const selectedCat = categories.find((c) => String(c.id) === form.category_id);
+  // Ангилал сонгосон бол сурагчийн анги зөвхөн тухайн хязгаарт
+  const noGrade = !!selectedCat && selectedCat.grade_from === null; // багш, чөлөөт гэх мэт
+  const gradeOptions = categories.length === 0 ? GRADE_OPTIONS
+    : GRADE_OPTIONS.filter((o) => /^\d+$/.test(o.value)
+        && (!selectedCat || (Number(o.value) >= selectedCat.grade_from && Number(o.value) <= selectedCat.grade_to)));
+  const setCategory = (e) => {
+    const cat = categories.find((c) => String(c.id) === e.target.value);
+    const mismatch = gradeMismatch(cat, form.grade);
+    setError(mismatch ? `${mismatch} Ангиа дахин сонгоно уу.` : null);
+    const keep = cat && cat.grade_from !== null && !mismatch;
+    setForm((f) => ({ ...f, category_id: e.target.value, grade: keep ? f.grade : '' }));
+  };
+
   if (loading) return <Container className="py-5 text-center"><Spinner animation="border" /></Container>;
   if (!olympiad) return <Container className="py-4"><Alert variant="danger">{error}</Alert></Container>;
 
   return (
     <Container className="py-4" style={{ maxWidth: 900 }}>
       <Link to="/olympiads" className="small">← Бүх олимпиад</Link>
-      <h3 className="mt-2">{olympiad.title}</h3>
+      <div className="d-flex justify-content-between align-items-start flex-wrap gap-2 mt-2">
+        <h3 className="mb-0">{olympiad.title}</h3>
+        {user?.is_staff && (
+          <div className="d-flex gap-2">
+            <Button as={Link} to={`/admin/olympiads/${slug}/edit`} size="sm" variant="outline-primary">Засах</Button>
+            <Button as={Link} to={`/admin/olympiads/${slug}`} size="sm" variant="outline-dark">Админ</Button>
+          </div>
+        )}
+      </div>
       <div className="text-muted mb-3">
         {fmtDate(olympiad.exam_start)}{olympiad.venue ? ` · ${olympiad.venue}` : ''}
       </div>
 
       {olympiad.description && (
-        <Card className="mb-3"><Card.Body style={{ whiteSpace: 'pre-wrap' }}>{olympiad.description}</Card.Body></Card>
+        <Card className="mb-3">
+          <Card.Header>Олимпиадын танилцуулга</Card.Header>
+          <Card.Body style={{ whiteSpace: 'pre-wrap' }}>{olympiad.description}</Card.Body>
+        </Card>
+      )}
+
+      {categories.length > 0 && (
+        <Card className="mb-3">
+          <Card.Header>Оролцох ангилал</Card.Header>
+          <Table size="sm" className="mb-0">
+            <tbody>
+              {categories.map((c) => (
+                <tr key={c.id}>
+                  <td><strong>{c.name}</strong></td>
+                  <td className="text-muted">
+                    {c.grade_from === null ? 'Ангийн хязгааргүй'
+                      : c.grade_from === c.grade_to ? `${c.grade_from}-р анги` : `${c.grade_from}–${c.grade_to}-р анги`}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </Card>
+      )}
+
+      {myRegs.length > 0 && (
+        <Card className="mb-3">
+          <Card.Header>Миний бүртгэл <small className="text-muted">({myRegs.length})</small></Card.Header>
+          <Table size="sm" responsive className="mb-0 align-middle">
+            <thead><tr><th>№</th><th>Овог нэр</th><th>Ангилал / Анги</th><th>Төлөв</th><th /></tr></thead>
+            <tbody>
+              {myRegs.map((r) => (
+                <tr key={r.id}>
+                  <td>{r.participant_no ?? '-'}</td>
+                  <td>{r.full_name}{r.is_mine && <Badge bg="light" text="dark" className="ms-2">Би</Badge>}</td>
+                  <td>{r.olympiad_category_name && r.olympiad_category_name !== r.grade_label
+                    ? `${r.olympiad_category_name} · ${r.grade_label}` : (r.grade_label || r.olympiad_category_name || '-')}</td>
+                  <td>
+                    <Badge bg={STATUS_LABEL[r.status][0]}>{STATUS_LABEL[r.status][1]}</Badge>
+                    {r.fee_waived && <Badge bg="info" className="ms-1">Төлбөрөөс чөлөөлсөн</Badge>}
+                  </td>
+                  <td className="text-end">
+                    {user?.is_staff && r.status === 'PENDING' && (
+                      <Button size="sm" variant="outline-success" className="me-1" onClick={() => approve(r)}>Батлах (төлбөргүй)</Button>
+                    )}
+                    {r.status === 'PENDING' && fee > 0 && (
+                      <Button size="sm" onClick={() => startPayment(r.id)}>Төлбөр төлөх</Button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </Card>
       )}
 
       <Card className="mb-3">
@@ -170,6 +280,7 @@ function OlympiadDetailPage() {
             <Alert variant={STATUS_LABEL[reg.status][0]} className="d-flex justify-content-between align-items-center">
               <span>
                 <Badge bg={STATUS_LABEL[reg.status][0]}>{STATUS_LABEL[reg.status][1]}</Badge>
+                {reg.fee_waived && <Badge bg="info" className="ms-1">Төлбөрөөс чөлөөлсөн</Badge>}
                 {reg.participant_no && <> · Дугаар: <strong>{reg.participant_no}</strong></>}
               </span>
               {reg.status === 'PENDING' && fee > 0 && (
@@ -180,13 +291,26 @@ function OlympiadDetailPage() {
           {reg?.status === 'PAID' ? null : olympiad.registration_open ? (
             <Form onSubmit={submit}>
               <Row className="g-2">
+                {categories.length > 0 && (
+                  <Col md={12}>
+                    <Form.Label>Оролцох ангилал</Form.Label>
+                    <Form.Select required value={form.category_id} onChange={setCategory}>
+                      <option value="">— Сонгоно уу —</option>
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}{c.grade_from !== null && c.name !== (c.grade_from === c.grade_to ? `${c.grade_from}-р анги` : `${c.grade_from}–${c.grade_to}-р анги`) ? ` (${c.grade_from}–${c.grade_to}-р анги)` : ''}
+                        </option>
+                      ))}
+                    </Form.Select>
+                  </Col>
+                )}
                 <Col md={12}>
                   <Form.Label>MMO ID</Form.Label>
                   <div className="input-group">
                     <Form.Control type="number" placeholder={user?.is_staff ? 'Өөр хэрэглэгчийг MMO ID-аар бүртгэх' : 'Өөрийн MMO ID'}
                                   value={form.mmo_id} onChange={set('mmo_id')} />
                     <Button variant="outline-secondary" type="button" onClick={fillFromMmo} disabled={filling}>
-                      {filling ? <Spinner size="sm" animation="border" /> : 'Бөглөх'}
+                      {filling ? <Spinner size="sm" animation="border" /> : 'Мэдээлэл татах'}
                     </Button>
                   </div>
                 </Col>
@@ -216,13 +340,15 @@ function OlympiadDetailPage() {
                   <Form.Label>Сургууль</Form.Label>
                   <Form.Control required value={form.school} onChange={set('school')} />
                 </Col>
-                <Col md={4}>
-                  <Form.Label>Анги / Ангилал</Form.Label>
-                  <Form.Select required value={form.grade} onChange={set('grade')}>
-                    <option value="">— Сонгоно уу —</option>
-                    {GRADE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </Form.Select>
-                </Col>
+                {!noGrade && (
+                  <Col md={4}>
+                    <Form.Label>{categories.length > 0 ? 'Анги' : 'Анги / Ангилал'}</Form.Label>
+                    <Form.Select required value={form.grade} onChange={set('grade')}>
+                      <option value="">— Сонгоно уу —</option>
+                      {gradeOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </Form.Select>
+                  </Col>
+                )}
                 <Col md={6}>
                   <Form.Label>Утас</Form.Label>
                   <Form.Control required type="tel" value={form.phone} onChange={set('phone')} />
@@ -231,9 +357,18 @@ function OlympiadDetailPage() {
                   <Form.Label>Имэйл хаяг</Form.Label>
                   <Form.Control required type="email" value={form.email} onChange={set('email')} />
                 </Col>
+                {user?.is_staff && fee > 0 && (
+                  <Col md={12}>
+                    <Form.Check
+                      type="switch" id="waive-fee" checked={form.waive_fee}
+                      onChange={(e) => setForm((f) => ({ ...f, waive_fee: e.target.checked }))}
+                      label="Төлбөргүй бүртгэх (админ) — хураамж төлөхгүйгээр шууд баталгаажуулна"
+                    />
+                  </Col>
+                )}
                 <Col md={12} className="pt-2">
                   <Button type="submit" disabled={busy} className="w-100">
-                    {busy ? <Spinner size="sm" animation="border" /> : fee > 0 ? 'Бүртгэлийн хураамж төлж бүртгэл баталгаажуулах' : 'Бүртгүүлэх'}
+                    {busy ? <Spinner size="sm" animation="border" /> : fee > 0 && !form.waive_fee ? 'Бүртгэлийн хураамж төлж бүртгэл баталгаажуулах' : 'Бүртгүүлэх'}
                   </Button>
                 </Col>
               </Row>

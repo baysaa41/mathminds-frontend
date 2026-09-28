@@ -15,6 +15,14 @@ export default defineConfig({
       brotliSize: true,
     })
   ].filter(Boolean),
+  server: {
+    host: '0.0.0.0',
+    allowedHosts: ['mini', 'localhost', '192.168.1.74'],
+  },
+  preview: {
+    host: '0.0.0.0',
+    allowedHosts: ['mini', 'localhost', '192.168.1.74'],
+  },
   build: {
     // Optimize chunk splitting
     rollupOptions: {

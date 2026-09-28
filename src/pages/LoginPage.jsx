@@ -65,6 +65,17 @@ const LoginPage = () => {
     }
   };
 
+  // Google OAuth нэвтрэх / бүртгүүлэх
+  const handleGoogleLogin = async () => {
+    try {
+      setError('');
+      await authService.loginWithGoogle();
+    } catch (err) {
+      setError('Google нэвтрэхэд алдаа гарлаа. Дахин оролдоно уу.');
+      console.error('Google login error:', err);
+    }
+  };
+
   return (
     <Container
       fluid
@@ -117,6 +128,19 @@ const LoginPage = () => {
             <span style={{ fontSize: '18px' }}>🏆</span>
             MMO данс ашиглан нэвтрэх
           </Button>
+
+          {/* Google OAuth Товч */}
+          {authService.isGoogleConfigured() && (
+            <Button
+              onClick={handleGoogleLogin}
+              variant="outline-secondary"
+              className="w-100 py-2 mb-3 d-flex align-items-center justify-content-center gap-2 fw-semibold"
+              style={{ borderRadius: '8px' }}
+            >
+              <span style={{ fontSize: '18px' }}>G</span>
+              Google данс ашиглан нэвтрэх
+            </Button>
+          )}
 
           {/* Тусгаарлагч */}
           <div className="position-relative my-4">

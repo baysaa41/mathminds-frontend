@@ -9,8 +9,12 @@ export const fmtDate = (iso) =>
   iso ? new Date(iso).toLocaleString('mn-MN', { dateStyle: 'medium', timeStyle: 'short' }) : '';
 
 export const getOlympiads = async () => (await apiClient.get(`${BASE}/`)).data;
-export const getOlympiad = async (slug) => (await apiClient.get(`${BASE}/${slug}/`)).data;
+// skipCache: my_registration/төлбөрийн төлөв үйлдлийн дараа шууд шинэчлэгдэх ёстой
+export const getOlympiad = async (slug) => (await apiClient.get(`${BASE}/${slug}/`, { skipCache: true })).data;
 export const getRoster = async (slug) => (await apiClient.get(`${BASE}/${slug}/roster/`)).data;
+// Тухайн олимпиадад өөрийгөө болон өөрийн бүртгүүлсэн хүмүүсийн бүртгэл
+export const getOlympiadMyRegistrations = async (slug) =>
+  (await apiClient.get(`${BASE}/${slug}/my-registrations/`)).data;
 export const getMyRegistrations = async () => (await apiClient.get(`${BASE}/my-registrations/`)).data;
 
 export const registerForOlympiad = async (slug, payload) =>
@@ -19,6 +23,10 @@ export const registerForOlympiad = async (slug, payload) =>
 // QPay нэхэмжлэх үүсгэнэ -> { qpay_data, local_invoice_id } (PaymentModal-д дамжуулна)
 export const payRegistration = async (registrationId) =>
   (await apiClient.post(`${BASE}/registrations/${registrationId}/pay/`)).data;
+
+// Админ: төлбөр хүлээгдэж буй бүртгэлийг төлбөрөөс чөлөөлж баталгаажуулна
+export const approveRegistration = async (registrationId) =>
+  (await apiClient.post(`${BASE}/registrations/${registrationId}/approve/`)).data;
 
 // ── Админ ────────────────────────────────────────────────────────────────────
 export const generateSheets = async (slug) =>

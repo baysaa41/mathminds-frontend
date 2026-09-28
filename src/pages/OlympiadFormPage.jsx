@@ -28,6 +28,11 @@ const EMPTY = {
   title: '', slug: '', description: '', venue: '', registration_start: '', registration_end: '',
   exam_start: '', exam_end: '', fee: 0, problem_count: 6, is_published: false,
 };
+const EMPTY_CAT = { name: '', grade_from: 1, grade_to: 12 };
+const NO_LIMIT_PRESETS = ['Бага ангийн багш', 'Дунд ангийн багш', 'Чөлөөт'];
+const GRADES = Array.from({ length: 12 }, (_, i) => i + 1);
+// Нэр хоосон үед backend-тэй ижил дүрмээр автомат нэр
+const autoName = (a, b) => (a === null || a === '' ? '' : (Number(a) === Number(b) ? `${a}-р анги` : `${a}–${b}-р анги`));
 const EMPTY_ITEM = { starts_at: '', ends_at: '', title: '', description: '' };
 
 function OlympiadFormPage() {
@@ -37,6 +42,7 @@ function OlympiadFormPage() {
 
   const [form, setForm] = useState(EMPTY);
   const [schedule, setSchedule] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [slugTouched, setSlugTouched] = useState(isEdit);
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
@@ -53,6 +59,9 @@ function OlympiadFormPage() {
           exam_start: toLocalInput(o.exam_start), exam_end: toLocalInput(o.exam_end),
           fee: o.fee, problem_count: o.problem_count, is_published: o.is_published,
         });
+        setCategories((o.categories || []).map((c) => ({
+          id: c.id, name: c.name, grade_from: c.grade_from, grade_to: c.grade_to,
+        })));
         setSchedule(o.schedule.map((s) => ({
           starts_at: toLocalInput(s.starts_at), ends_at: toLocalInput(s.ends_at),
           title: s.title, description: s.description,
@@ -75,6 +84,21 @@ function OlympiadFormPage() {
   const setItem = (i, k) => (e) =>
     setSchedule((rows) => rows.map((r, idx) => (idx === i ? { ...r, [k]: e.target.value } : r)));
 
+  const setCat = (i, k) => (e) =>
+    setCategories((rows) => rows.map((r, idx) => (idx === i ? { ...r, [k]: e.target.value } : r)));
+
+  const toggleLimit = (i) => (e) =>
+    setCategories((rows) => rows.map((r, idx) => (idx === i
+      ? { ...r, grade_from: e.target.checked ? 1 : null, grade_to: e.target.checked ? 12 : null } : r)));
+
+  // Багш / чөлөөт гэх мэт ангийн хязгааргүй ангилалуудыг (байхгүйг нь) нэмнэ
+  const addNoLimitPresets = () =>
+    setCategories((rows) => [
+      ...rows,
+      ...NO_LIMIT_PRESETS.filter((n) => !rows.some((r) => r.name.trim() === n))
+        .map((name) => ({ name, grade_from: null, grade_to: null })),
+    ]);
+
   const submit = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -87,6 +111,11 @@ function OlympiadFormPage() {
       registration_end: toIso(form.registration_end),
       exam_start: toIso(form.exam_start),
       exam_end: toIso(form.exam_end),
+      categories: categories.map((c) => ({
+        ...(c.id ? { id: c.id } : {}), name: c.name.trim(),
+        grade_from: c.grade_from === null ? null : Number(c.grade_from),
+        grade_to: c.grade_to === null ? null : Number(c.grade_to),
+      })),
       schedule: schedule.filter((s) => s.title && s.starts_at).map((s) => ({
         ...s, starts_at: toIso(s.starts_at), ends_at: toIso(s.ends_at),
       })),
@@ -170,6 +199,56 @@ function OlympiadFormPage() {
                 <Form.Control type="number" min={1} max={30} value={form.problem_count} onChange={set('problem_count')} />
               </Col>
             </Row>
+          </Card.Body>
+        </Card>
+
+        <Card className="mb-3">
+          <Card.Header className="d-flex justify-content-between align-items-center">
+            <span>Оролцох ангилал</span>
+            <span className="d-flex gap-2">
+              <Button size="sm" variant="outline-secondary" type="button" onClick={addNoLimitPresets}>
+                + Багш / Чөлөөт
+              </Button>
+              <Button size="sm" variant="outline-primary" type="button" onClick={() => setCategories((r) => [...r, { ...EMPTY_CAT }])}>
+                + Ангилал нэмэх
+              </Button>
+            </span>
+          </Card.Header>
+          <Card.Body>
+            {categories.length === 0 && <div className="text-muted small">Ангилал алга.</div>}
+            {categories.map((c, i) => (
+              <Row className="g-2 mb-2 align-items-center" key={i}>
+                <Col md={4}>
+                  <Form.Control
+                    required={c.grade_from === null}
+                    placeholder={c.grade_from === null ? 'Нэр' : `Нэр (хоосон бол: ${autoName(c.grade_from, c.grade_to)})`}
+                    value={c.name} onChange={setCat(i, 'name')} maxLength={100}
+                  />
+                </Col>
+                <Col xs={12} md={2}>
+                  <Form.Check type="checkbox" id={`cat-limit-${i}`} label="Ангийн хязгаартай"
+                    checked={c.grade_from !== null} onChange={toggleLimit(i)} />
+                </Col>
+                <Col xs={5} md={2}>
+                  {c.grade_from !== null && (
+                    <Form.Select value={c.grade_from} onChange={setCat(i, 'grade_from')} aria-label="Доод анги">
+                      {GRADES.map((g) => <option key={g} value={g}>{g}-р анги</option>)}
+                    </Form.Select>
+                  )}
+                </Col>
+                <Col xs={5} md={2}>
+                  {c.grade_from !== null && (
+                    <Form.Select value={c.grade_to} onChange={setCat(i, 'grade_to')} aria-label="Дээд анги" isInvalid={Number(c.grade_from) > Number(c.grade_to)}>
+                      {GRADES.map((g) => <option key={g} value={g}>{g}-р анги</option>)}
+                    </Form.Select>
+                  )}
+                </Col>
+                <Col xs={2} md={2} className="text-end">
+                  <Button size="sm" variant="outline-danger" type="button" onClick={() => setCategories((r) => r.filter((_, idx) => idx !== i))}>Устгах</Button>
+                </Col>
+              </Row>
+            ))}
+            {fieldErr('categories') && <div className="text-danger small">Ангилалын анги буруу байна (доод анги дээд ангиас их байж болохгүй).</div>}
           </Card.Body>
         </Card>
 

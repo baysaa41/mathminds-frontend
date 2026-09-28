@@ -20,6 +20,14 @@ const MMO_CONFIG = {
   scope: import.meta.env.VITE_MMO_SCOPE || 'profile',
 };
 
+const GOOGLE_CONFIG = {
+  clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID || '',
+  authorizationUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+  // MMO-той адил /callback хуудсыг ашиглана (provider-ийг localStorage-д тэмдэглэнэ)
+  redirectUri: import.meta.env.VITE_GOOGLE_REDIRECT_URI || `${window.location.origin}/callback`,
+  scope: 'openid email profile',
+};
+
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
 
 class AuthService {
@@ -55,6 +63,7 @@ class AuthService {
       // sessionStorage алга болдог тул localStorage-д хадгална.
       localStorage.setItem('code_verifier', codeVerifier);
       localStorage.setItem('oauth_state', state);
+      localStorage.setItem('oauth_provider', 'mmo');
 
       const params = new URLSearchParams({
         response_type: 'code',
@@ -72,6 +81,31 @@ class AuthService {
       console.error('Login error:', error);
       throw error;
     }
+  }
+
+  isGoogleConfigured() {
+    return !!GOOGLE_CONFIG.clientId;
+  }
+
+  // Google нэвтрэх / бүртгүүлэх (хэрэглэгч байхгүй бол backend шинээр үүсгэнэ)
+  async loginWithGoogle() {
+    const { codeVerifier, codeChallenge } = await this.generatePKCE();
+    const state = this.generateState();
+    localStorage.setItem('code_verifier', codeVerifier);
+    localStorage.setItem('oauth_state', state);
+    localStorage.setItem('oauth_provider', 'google');
+
+    const params = new URLSearchParams({
+      response_type: 'code',
+      client_id: GOOGLE_CONFIG.clientId,
+      redirect_uri: GOOGLE_CONFIG.redirectUri,
+      scope: GOOGLE_CONFIG.scope,
+      code_challenge: codeChallenge,
+      code_challenge_method: 'S256',
+      state,
+      prompt: 'select_account',
+    });
+    window.location.href = `${GOOGLE_CONFIG.authorizationUrl}?${params.toString()}`;
   }
 
   // ... (Callback шийдэх хэвээрээ) ...
@@ -98,9 +132,13 @@ class AuthService {
       throw new Error('Missing code verifier. Please try logging in again.');
     }
 
+    const isGoogle = localStorage.getItem('oauth_provider') === 'google';
+    const exchangeUrl = isGoogle ? 'exchange-google-code' : 'exchange-code';
+    const redirectUri = isGoogle ? GOOGLE_CONFIG.redirectUri : MMO_CONFIG.redirectUri;
+
     try {
       // ✅ code_verifier буцааж илгээх (PKCE шаардлагатай)
-      const response = await fetch(`${BACKEND_URL}/users/api/exchange-code/`, {
+      const response = await fetch(`${BACKEND_URL}/users/api/${exchangeUrl}/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -108,7 +146,7 @@ class AuthService {
         body: JSON.stringify({
           code: code,
           code_verifier: codeVerifier,
-          redirect_uri: MMO_CONFIG.redirectUri,
+          redirect_uri: redirectUri,
         }),
       });
       if (!response.ok) {
@@ -128,11 +166,13 @@ class AuthService {
       localStorage.setItem('oauth_last_code', code);
       localStorage.removeItem('code_verifier');
       localStorage.removeItem('oauth_state');
+      localStorage.removeItem('oauth_provider');
       return { user: data.user, token: data.token };
     } catch (error) {
       console.error('Callback error:', error);
       localStorage.removeItem('code_verifier');
       localStorage.removeItem('oauth_state');
+      localStorage.removeItem('oauth_provider');
       throw error;
     }
   }

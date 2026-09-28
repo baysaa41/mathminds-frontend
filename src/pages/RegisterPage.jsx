@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import apiClient from '../api/axiosConfig';
+import authService from '../services/authService';
 
 // React Bootstrap
 import Container from 'react-bootstrap/Container';
@@ -129,6 +130,17 @@ const RegisterPage = () => {
     }
   };
 
+  // Google дансаар бүртгүүлэх (хэрэглэгч байхгүй бол автоматаар үүснэ)
+  const handleGoogleSignup = async () => {
+    try {
+      setError('');
+      await authService.loginWithGoogle();
+    } catch (err) {
+      setError('Google-ээр бүртгүүлэхэд алдаа гарлаа. Дахин оролдоно уу.');
+      console.error('Google signup error:', err);
+    }
+  };
+
   return (
     <Container
       fluid
@@ -169,6 +181,26 @@ const RegisterPage = () => {
             <Alert variant="danger" className="py-2 small">
               {error}
             </Alert>
+          )}
+
+          {authService.isGoogleConfigured() && (
+            <>
+              <Button
+                onClick={handleGoogleSignup}
+                variant="outline-secondary"
+                className="w-100 py-2 mb-3 d-flex align-items-center justify-content-center gap-2 fw-semibold"
+                style={{ borderRadius: '8px' }}
+              >
+                <span style={{ fontSize: '18px' }}>G</span>
+                Google данс ашиглан бүртгүүлэх
+              </Button>
+              <div className="position-relative my-4">
+                <hr className="m-0" />
+                <div className="position-absolute top-50 start-50 translate-middle bg-white px-3" style={{ fontSize: '14px' }}>
+                  <span className="text-muted">эсвэл</span>
+                </div>
+              </div>
+            </>
           )}
 
           {/* Registration Form */}

@@ -51,6 +51,9 @@ const NO_CACHE = [
   'hint-solution',
   'page-drawings',
   'current-user',
+  // олимпиадын бүртгэл: админы үйлдлээс хойш шууд шинэчлэгдэх ёстой (roster-т id, төлөв, дугаар)
+  '/roster/',
+  'my-registrations',
   // --- таталт (blob) ---
   'export_',
   'download',

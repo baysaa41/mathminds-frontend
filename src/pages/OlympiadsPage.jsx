@@ -51,11 +51,30 @@ function OlympiadsPage() {
                 </div>
               </div>
             </div>
+            {o.categories?.length > 0 && (
+              <div className="mt-2 d-flex flex-wrap gap-1 align-items-center">
+                <span className="small text-muted me-1">Ангилал:</span>
+                {o.categories.map((c) => (
+                  <Badge key={c.id} bg="light" text="dark" className="border fw-normal">
+                    {c.name}{c.grade_from !== null && c.name !== (c.grade_from === c.grade_to ? `${c.grade_from}-р анги` : `${c.grade_from}–${c.grade_to}-р анги`)
+                      ? ` (${c.grade_from}–${c.grade_to}-р анги)` : ''}
+                  </Badge>
+                ))}
+              </div>
+            )}
+            {o.description && (
+              <div className="mt-2 small" style={{
+                whiteSpace: 'pre-wrap', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+              }}>{o.description}</div>
+            )}
             <div className="mt-3 d-flex gap-2">
               <Button as={Link} to={`/olympiads/${o.slug}`} size="sm" variant="primary">Дэлгэрэнгүй / Бүртгүүлэх</Button>
               <Button as={Link} to={`/olympiads/${o.slug}/roster`} size="sm" variant="outline-secondary">Бүртгэлийн жагсаалт</Button>
               {user?.is_staff && (
-                <Button as={Link} to={`/admin/olympiads/${o.slug}`} size="sm" variant="outline-dark">Админ</Button>
+                <>
+                  <Button as={Link} to={`/admin/olympiads/${o.slug}/edit`} size="sm" variant="outline-primary">Засах</Button>
+                  <Button as={Link} to={`/admin/olympiads/${o.slug}`} size="sm" variant="outline-dark">Админ</Button>
+                </>
               )}
             </div>
           </Card.Body>
