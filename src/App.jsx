@@ -144,6 +144,8 @@ const OlympiadsAdminListPage = lazy(() => import('./pages/OlympiadsAdminListPage
 const OlympiadFormPage = lazy(() => import('./pages/OlympiadFormPage.jsx'));
 const OlympiadAdminPage = lazy(() => import('./pages/OlympiadAdminPage.jsx'));
 const OlympiadPrintPage = lazy(() => import('./pages/OlympiadPrintPage.jsx'));
+const MyStudentsPage = lazy(() => import('./pages/MyStudentsPage.jsx'));
+const StudentDetailPage = lazy(() => import('./pages/StudentDetailPage.jsx'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage.jsx'));
 const MyPurchasesPage = lazy(() => import('./pages/MyPurchasesPage.jsx'));
 const MembershipPlansPage = lazy(() => import('./pages/MembershipPlansPage.jsx'));
@@ -209,6 +211,8 @@ function App() {
           <Route path="olympiads" element={<OlympiadsPage />} />
           <Route path="olympiads/:slug" element={<OlympiadDetailPage />} />
           <Route path="olympiads/:slug/roster" element={<OlympiadRosterPage />} />
+          <Route path="my-students" element={<MyStudentsPage />} />
+          <Route path="my-students/:id" element={<StudentDetailPage />} />
           <Route path="admin/olympiads" element={<AdminRoute><OlympiadsAdminListPage /></AdminRoute>} />
           <Route path="admin/olympiads/new" element={<AdminRoute><OlympiadFormPage /></AdminRoute>} />
           <Route path="admin/olympiads/:slug/edit" element={<AdminRoute><OlympiadFormPage /></AdminRoute>} />

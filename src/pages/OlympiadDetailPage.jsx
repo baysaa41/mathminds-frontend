@@ -6,7 +6,8 @@ import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Container, Card, Table, Form, Button, ButtonGroup, ToggleButton, Alert, Spinner, Badge, Row, Col } from 'react-bootstrap';
 import PaymentModal from '../components/PaymentModal';
-import { getOlympiad, getOlympiadMyRegistrations, approveRegistration, registerForOlympiad, payRegistration, getPrefill, getProvinces, fmtDate } from '../services/olympiadService';
+import StudentPicker from '../components/StudentPicker';
+import { getOlympiad, getOlympiadMyRegistrations, approveRegistration, registerForOlympiad, payRegistration, getPrefill, getProvinces, lookupStudents, fmtDate } from '../services/olympiadService';
 import { toLatin, LATIN_NAME_RE } from '../utils/transliterate';
 
 const EMPTY_FORM = {
@@ -58,6 +59,10 @@ function OlympiadDetailPage() {
   const [busy, setBusy] = useState(false);
   const [payment, setPayment] = useState(null);
   const [myRegs, setMyRegs] = useState([]);
+  // «Өөр сурагч»: имэйлээр олдсон сурагчид (null — хайгаагүй) ба сонголт (id | 'new' | null)
+  const [candidates, setCandidates] = useState(null);
+  const [picked, setPicked] = useState(null);
+  const [looking, setLooking] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -153,7 +158,12 @@ function OlympiadDetailPage() {
       setError(mismatch);
       return;
     }
-    if (!LATIN_NAME_RE.test(form.last_name_latin.trim()) || !LATIN_NAME_RE.test(form.first_name_latin.trim())) {
+    if (forOther && !picked) {
+      setError('Имэйлээр хайгаад сурагчаа сонгоно уу.');
+      return;
+    }
+    if (!pickedExisting
+        && (!LATIN_NAME_RE.test(form.last_name_latin.trim()) || !LATIN_NAME_RE.test(form.first_name_latin.trim()))) {
       setError('Латин овог, нэрийг зөвхөн латин үсгээр бичнэ үү.');
       return;
     }
@@ -165,19 +175,42 @@ function OlympiadDetailPage() {
       if (!payload.category_id) delete payload.category_id;
       if (!user?.is_staff) delete payload.waive_fee;
       if (noGrade) payload.grade = '';
+      if (pickedExisting) {
+        payload.student_id = picked;  // нэрийг сонгосон сурагчийн profile-оос авна
+        ['last_name', 'first_name', 'last_name_latin', 'first_name_latin'].forEach((k) => delete payload[k]);
+      }
       const r = await registerForOlympiad(slug, payload);
       await load();
       if (!r.is_mine) {
-        setInfo(`${r.full_name} (№${r.participant_no ?? '-'}) бүртгэгдлээ. ${r.account_created
-          ? 'Сурагчид MathMinds бүртгэл шинээр үүсгэлээ.' : 'Сурагчийн байгаа MathMinds бүртгэлтэй холбогдлоо.'}`);
+        setInfo(`${r.full_name} (№${r.participant_no ?? '-'}) бүртгэгдлээ. ${r.student_created
+          ? 'Шинэ сурагч бүртгэгдлээ.' : 'Өмнөх бүртгэлтэй сурагчтай холбогдлоо.'}`);
       }
       if (r.status === 'PENDING' && fee > 0) await startPayment(r.id);
       else if (form.waive_fee) setInfo('Төлбөргүйгээр бүртгэгдэж, баталгаажлаа.');
     } catch (err) {
       const d = err.response?.data;
+      if (d?.existing_candidates) {  // ижил имэйл + овог нэртэй сурагч бий — шинээр үүсгэхгүй, сонгуулна
+        setCandidates(d.existing_candidates);
+        setPicked(null);
+      }
       setError(d?.error || (d && JSON.stringify(d)) || 'Бүртгэхэд алдаа гарлаа');
     } finally {
       setBusy(false);
+    }
+  };
+
+  const findStudents = async () => {
+    setLooking(true);
+    setError(null);
+    try {
+      const rows = await lookupStudents(slug, form.email.trim());
+      setCandidates(rows);
+      setPicked(rows.length ? null : 'new');
+    } catch (err) {
+      const d = err.response?.data;
+      setError(d?.email?.[0] || d?.detail || 'Хайхад алдаа гарлаа');
+    } finally {
+      setLooking(false);
     }
   };
 
@@ -189,9 +222,18 @@ function OlympiadDetailPage() {
     setError(null);
     setInfo(null);
     setForm((f) => ({ ...EMPTY_FORM, register_for: value, category_id: f.category_id }));
+    setCandidates(null);
+    setPicked(null);
     if (value === 'self') load();
   };
+  const setStudentEmail = (e) => {
+    setForm((f) => ({ ...f, email: e.target.value }));
+    setCandidates(null);  // имэйл өөрчлөгдвөл дахин хайна
+    setPicked(null);
+  };
   const forOther = form.register_for === 'other';
+  const pickedExisting = forOther && typeof picked === 'number';
+  const showDetails = !forOther || picked !== null;
   const latinIsAuto = form.last_name_latin === toLatin(form.last_name) && form.first_name_latin === toLatin(form.first_name);
 
   const categories = olympiad?.categories || [];
@@ -333,8 +375,9 @@ function OlympiadDetailPage() {
           )}
           {forOther && olympiad.registration_open && (
             <Alert variant="light" className="border small">
-              Бүртгүүлсэн сурагч бүрт MathMinds бүртгэл автоматаар үүснэ. Ижил имэйл, овог, нэртэй бүртгэл аль хэдийн
-              байвал түүнийг ашиглана. Сурагч дараа нь энэ имэйлээр (Google эсвэл нууц үг сэргээх) нэвтэрнэ.
+              Эхлээд сурагчийн имэйлээр хайна уу — нэг имэйлийг хэд хэдэн сурагч (жишээ нь ах дүүс) ашиглаж болно.
+              Өмнө бүртгэгдсэн бол жагсаалтаас сонгож, үгүй бол шинээр бүртгэнэ. Сурагчид имэйлээр мэдэгдэл очих бөгөөд
+              тэр link-ээр бүртгэлээ харж, өөрийн account-д нэмнэ.
             </Alert>
           )}
           {reg?.status === 'PAID' && !forOther ? null : olympiad.registration_open ? (
@@ -353,7 +396,32 @@ function OlympiadDetailPage() {
                     </Form.Select>
                   </Col>
                 )}
-                {(!forOther || user?.is_staff) && (
+                {forOther && (
+                  <Col md={12}>
+                    <Form.Label>Сурагчийн имэйл хаяг</Form.Label>
+                    <div className="input-group">
+                      <Form.Control required type="email" value={form.email} onChange={setStudentEmail}
+                                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); findStudents(); } }} />
+                      <Button variant="outline-primary" type="button" onClick={findStudents}
+                              disabled={looking || !form.email.includes('@')}>
+                        {looking ? <Spinner size="sm" animation="border" /> : 'Хайх'}
+                      </Button>
+                    </div>
+                  </Col>
+                )}
+                {forOther && candidates !== null && (
+                  <Col md={12}>
+                    {candidates.length > 0 ? (
+                      <>
+                        <div className="small text-muted mb-1">Энэ имэйлтэй сурагчид — зөв сурагчаа сонгоно уу:</div>
+                        <StudentPicker candidates={candidates} value={picked} onChange={setPicked} />
+                      </>
+                    ) : (
+                      <div className="small text-muted">Энэ имэйлтэй сурагч олдсонгүй — шинээр бүртгэнэ.</div>
+                    )}
+                  </Col>
+                )}
+                {showDetails && (!forOther || user?.is_staff) && (
                   <Col md={12}>
                     <Form.Label>MMO ID</Form.Label>
                     <div className="input-group">
@@ -366,6 +434,7 @@ function OlympiadDetailPage() {
                     </div>
                   </Col>
                 )}
+                {showDetails && !pickedExisting && (<>
                 <Col md={6}>
                   <Form.Label>Овог</Form.Label>
                   <Form.Control required value={form.last_name} onChange={setName('last_name')} />
@@ -393,6 +462,8 @@ function OlympiadDetailPage() {
                     гэрчилгээтэйгээ тулгаж, зөрвөл засна уу.
                   </Alert>
                 </Col>
+                </>)}
+                {showDetails && (<>
                 <Col md={12}>
                   <Form.Label>Аймаг / Дүүрэг</Form.Label>
                   {provinces.length > 0 ? (
@@ -424,10 +495,12 @@ function OlympiadDetailPage() {
                   <Form.Label>Утас</Form.Label>
                   <Form.Control required type="tel" value={form.phone} onChange={set('phone')} />
                 </Col>
-                <Col md={6}>
-                  <Form.Label>Имэйл хаяг</Form.Label>
-                  <Form.Control required type="email" value={form.email} onChange={set('email')} />
-                </Col>
+                {!forOther && (
+                  <Col md={6}>
+                    <Form.Label>Имэйл хаяг</Form.Label>
+                    <Form.Control required type="email" value={form.email} onChange={set('email')} />
+                  </Col>
+                )}
                 {user?.is_staff && fee > 0 && (
                   <Col md={12}>
                     <Form.Check
@@ -442,6 +515,7 @@ function OlympiadDetailPage() {
                     {busy ? <Spinner size="sm" animation="border" /> : fee > 0 && !form.waive_fee ? 'Бүртгэлийн хураамж төлж бүртгэл баталгаажуулах' : 'Бүртгүүлэх'}
                   </Button>
                 </Col>
+                </>)}
               </Row>
             </Form>
           ) : (

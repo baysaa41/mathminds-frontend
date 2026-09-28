@@ -8,6 +8,13 @@ const BASE = '/api/olympiads';
 export const fmtDate = (iso) =>
   iso ? new Date(iso).toLocaleString('mn-MN', { dateStyle: 'medium', timeStyle: 'short' }) : '';
 
+// Бүртгэлийн төлөв → [Badge өнгө, шошго]
+export const REG_STATUS = {
+  PENDING: ['warning', 'Төлбөр хүлээгдэж буй'],
+  PAID: ['success', 'Баталгаажсан'],
+  CANCELED: ['secondary', 'Цуцлагдсан'],
+};
+
 export const getOlympiads = async () => (await apiClient.get(`${BASE}/`)).data;
 // skipCache: my_registration/төлбөрийн төлөв үйлдлийн дараа шууд шинэчлэгдэх ёстой
 export const getOlympiad = async (slug) => (await apiClient.get(`${BASE}/${slug}/`, { skipCache: true })).data;
@@ -19,6 +26,14 @@ export const getMyRegistrations = async () => (await apiClient.get(`${BASE}/my-r
 
 export const registerForOlympiad = async (slug, payload) =>
   (await apiClient.post(`${BASE}/${slug}/register/`, payload)).data;
+
+// ── Сурагчид (StudentProfile) ───────────────────────────────────────────────
+// Имэйлээр өмнө бүртгэгдсэн сурагчид — нэр далдлагдсан: [{id, masked_name, grade, school, phone_tail, already_registered}]
+export const lookupStudents = async (slug, email) =>
+  (await apiClient.post(`${BASE}/${slug}/students/lookup/`, { email }, { skipCache: true })).data;
+export const getMyStudents = async () => (await apiClient.get(`${BASE}/my-students/`, { skipCache: true })).data;
+export const getStudent = async (id) => (await apiClient.get(`${BASE}/students/${id}/`, { skipCache: true })).data;
+export const updateStudent = async (id, payload) => (await apiClient.patch(`${BASE}/students/${id}/`, payload)).data;
 
 // QPay нэхэмжлэх үүсгэнэ -> { qpay_data, local_invoice_id } (PaymentModal-д дамжуулна)
 export const payRegistration = async (registrationId) =>
