@@ -42,3 +42,15 @@ export const getChildDashboard = async (username, subject = 'math') => {
   );
   return response.data;
 };
+
+/**
+ * Хүүхдийн явцын тайлан: сонгосон сарын өдрийн бодлого, клубын даалгаврын (сорилго)
+ * сар бүрийн дүн, сэдвийн чадварын радар
+ * @param {string} month - 'YYYY-MM' (хоосон бол энэ сар)
+ */
+export const getChildReport = async (username, { subject = 'math', month } = {}) => {
+  const response = await apiClient.get(`/api/integral/parent/child-report/${username}/`, {
+    params: { subject, month },
+  });
+  return response.data;
+};

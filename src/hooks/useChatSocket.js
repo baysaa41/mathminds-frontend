@@ -18,6 +18,7 @@ const wsBaseUrl = () => {
  * механизм энд хэрэггүй.
  *
  * onEvent(event) — {type:'message', message} | {type:'typing', typing} | {type:'error', message}
+ *   | {type:'suggest_problem'} (сурагч шинэ бодлого хүссэн → ЭЕШ widget)
  */
 export default function useChatSocket(conversationUuid, { active = true, onEvent } = {}) {
   const [connected, setConnected] = useState(false);

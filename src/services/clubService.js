@@ -54,6 +54,23 @@ export const getTeacherStudentReport = async (username) => {
 };
 
 /**
+ * Сурагчдын "Өдрийн 5 бодлого" — клуб/дэд бүлгээр, тухайн өдрөөр (зөвхөн багш/админ)
+ * @param {{club?: number, subgroup?: number, date?: string}} params
+ */
+export const getTeacherDailyProblems = async (params = {}) => {
+  const response = await apiClient.get('/api/clubs/teacher_daily_problems/', { params });
+  return response.data;
+};
+
+/**
+ * Нэг сурагчийн сүүлийн N хоногийн өдрийн бодлогууд (зөвхөн багш/админ)
+ */
+export const getTeacherStudentDaily = async (username, days = 7) => {
+  const response = await apiClient.get('/api/clubs/teacher_student_daily/', { params: { username, days } });
+  return response.data;
+};
+
+/**
  * Клубын дэлгэрэнгүй мэдээлэл авах
  * GET /api/clubs/:id/
  */

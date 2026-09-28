@@ -136,6 +136,16 @@ export const sendMessage = async ({
  * @param {string} subject - Хичээл (math/physics/chemistry/biology)
  * @param {number} limit - Бодлогын тоо
  */
+/**
+ * Шинэ бодлого сангаас дууссан үед одоогийн бодлоготой төстэйг AI-аар үүсгэнэ.
+ * Буцаана: { problem: {...eesh-problems-ийн бүтэцтэй} | null }
+ * @param {number|null} problemId - төстэй болгох бодлого (байхгүй бол сул сэдвээр)
+ */
+export const generateSimilarProblem = async (problemId = null, subject = 'math') => {
+  const response = await apiClient.post('/api/integral/similar-problem/', { problem_id: problemId, subject });
+  return response.data;
+};
+
 export const getEeshProblems = async (subject = 'math', limit = 20, categoryIds = [], keywordIds = []) => {
   let url = `/api/integral/eesh-problems/?subject=${subject}&limit=${limit}`;
   if (categoryIds.length > 0) {
@@ -189,10 +199,10 @@ export const explainWrongChoice = async (problemId, choiceLabel) => {
   return response.data;
 };
 
-export const sendExamProblem = async (conversationUuid, problemId) => {
+export const sendExamProblem = async (conversationUuid, problemId, { recordOnly = false } = {}) => {
   const response = await apiClient.post(
     `/api/minds/conversations/${conversationUuid}/send-exam-problem/`,
-    { problem_id: problemId }
+    { problem_id: problemId, record_only: recordOnly }
   );
   return response.data;
 };

@@ -3,7 +3,8 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import Badge from 'react-bootstrap/Badge';
 import ProgressBar from 'react-bootstrap/ProgressBar';
-import { Repeat, Target, BookOpen, ListChecks, Clock, Sparkles, CheckCircle2, Circle } from 'lucide-react';
+import MathText from '../MathText';
+import { Repeat, Target, BookOpen, ListChecks, Clock, Sparkles, CheckCircle2, Circle, Flame, PartyPopper } from 'lucide-react';
 
 const ITEM_TYPE_LABEL = {
   learn: 'Сурах',
@@ -25,7 +26,63 @@ const DAILY_REC_SOURCE_LABEL = {
 
 const fmtDate = (iso) => iso ? new Date(iso).toLocaleDateString('mn-MN') : '—';
 
-export const ReviewCard = ({ review }) => (
+// Бодлогын жагсаалт — onItemClick өгвөл AI чатаар бодуулна, үгүй бол (эцэг эхийн
+// dashboard) бодлогын хуудас руу холбоно. item: {id, problem_id, problem_uuid, title, ai_summary?, category_mn, category_color, status?}
+// AI товч гарчиг (ai_summary) байвал онцгүй гарчгийн ("Дасгал (Сонгох тест)") оронд харуулна.
+const ProblemItemList = ({ items, onItemClick, loadingItemId }) => (
+  <div className="list-group list-group-flush">
+    {items.map((item) => {
+      const isLoading = loadingItemId === item.id;
+      const rowContent = (
+        <>
+          {isLoading ? (
+            <span className="spinner-border spinner-border-sm text-muted flex-shrink-0" style={{ width: '1rem', height: '1rem' }} />
+          ) : item.status === 'done'
+            ? <CheckCircle2 size={16} className="text-success flex-shrink-0" />
+            : <Circle size={16} className="text-muted flex-shrink-0" />}
+          <span
+            className="fw-medium text-truncate"
+            style={{
+              fontSize: '0.85rem',
+              textDecoration: item.status === 'done' ? 'line-through' : 'none',
+              opacity: item.status === 'done' ? 0.6 : 1,
+            }}
+          >
+            <MathText>{item.ai_summary || item.title || `Бодлого #${item.problem_id}`}</MathText>
+          </span>
+          {item.category_mn && (
+            <Badge bg="light" text="dark" className="border ms-auto" style={{ fontSize: '0.65rem', color: item.category_color || undefined }}>
+              {item.category_mn}
+            </Badge>
+          )}
+        </>
+      );
+
+      if (onItemClick) {
+        return (
+          <button
+            key={item.id}
+            type="button"
+            disabled={isLoading}
+            onClick={() => onItemClick(item)}
+            className="list-group-item list-group-item-action px-0 py-2 border-0 border-top d-flex align-items-center gap-2 text-start bg-transparent"
+          >
+            {rowContent}
+          </button>
+        );
+      }
+
+      return (
+        <Link key={item.id} to={`/problem/${item.problem_uuid}`}
+          className="list-group-item list-group-item-action px-0 py-2 border-0 border-top d-flex align-items-center gap-2">
+          {rowContent}
+        </Link>
+      );
+    })}
+  </div>
+);
+
+export const ReviewCard = ({ review, onItemClick, loadingItemId }) => (
   <div className="card border-0 shadow-sm mb-3">
     <div className="card-header bg-white fw-semibold py-2 d-flex align-items-center gap-2" style={{ fontSize: '0.85rem' }}>
       <Repeat size={15} />
@@ -48,10 +105,18 @@ export const ReviewCard = ({ review }) => (
           <div className="text-muted" style={{ fontSize: '0.75rem' }}>Нийт</div>
         </div>
       </div>
-      {review.due_today === 0 && (
+      {review.due_today === 0 ? (
         <div className="text-muted text-center mt-2" style={{ fontSize: '0.8rem' }}>
           Өнөөдөр давтах бодлого байхгүй 🎉
         </div>
+      ) : review.items?.length > 0 && (
+        <>
+          <p className="text-muted mt-3 mb-2" style={{ fontSize: '0.78rem' }}>
+            Өмнө нь зөв бодсон бодлогоо дахин бодоорой — зөв бодвол дараагийн давталт хойшилно.
+            {review.due_today > review.items.length && <> (Эхний {review.items.length} нь)</>}
+          </p>
+          <ProblemItemList items={review.items} onItemClick={onItemClick} loadingItemId={loadingItemId} />
+        </>
       )}
     </div>
   </div>
@@ -68,7 +133,7 @@ export const StudyPlanCard = ({ plan }) => (
     </div>
     <div className="card-body py-3">
       {plan.ai_summary && (
-        <p className="text-muted mb-3" style={{ fontSize: '0.82rem' }}>{plan.ai_summary}</p>
+        <MathText as="p" className="text-muted mb-3" style={{ fontSize: '0.82rem' }}>{plan.ai_summary}</MathText>
       )}
       {plan.items.length === 0 ? (
         <div className="text-muted text-center py-2" style={{ fontSize: '0.82rem' }}>
@@ -84,7 +149,7 @@ export const StudyPlanCard = ({ plan }) => (
               <div key={item.id} className="border rounded-3 p-2">
                 <div className="d-flex align-items-center justify-content-between mb-1">
                   <div>
-                    <span className="fw-medium" style={{ fontSize: '0.85rem' }}>{item.topic_name}</span>
+                    <MathText className="fw-medium" style={{ fontSize: '0.85rem' }}>{item.topic_name}</MathText>
                     <Badge bg="light" text="dark" className="border ms-2" style={{ fontSize: '0.65rem' }}>
                       {ITEM_TYPE_LABEL[item.item_type] || item.item_type}
                     </Badge>
@@ -113,7 +178,7 @@ export const StudyPlanCard = ({ plan }) => (
  * Өгөгдөөгүй бол (жишээ нь эцэг эхийн зөвхөн-унших dashboard) хуучин шигээ
  * шууд бодлогын хуудас руу шилждэг Link хэвээр үлдэнэ.
  */
-export const DailyRecommendationCard = ({ recommendation, onItemClick, loadingItemId }) => (
+export const DailyRecommendationCard = ({ recommendation, onItemClick, loadingItemId, onMoreProblems, moreLoading }) => (
   <div className="card border-0 shadow-sm mb-3">
     <div className="card-header bg-white fw-semibold py-2 d-flex align-items-center gap-2" style={{ fontSize: '0.85rem' }}>
       <Sparkles size={15} />
@@ -121,8 +186,29 @@ export const DailyRecommendationCard = ({ recommendation, onItemClick, loadingIt
       <Badge bg="secondary" className="ms-1" style={{ fontSize: '0.65rem' }}>
         {fmtDate(recommendation.date)}
       </Badge>
+      {recommendation.streak > 0 && (
+        <Badge bg="warning" text="dark" className="ms-auto d-flex align-items-center gap-1" style={{ fontSize: '0.7rem' }}
+          title="Өдрийн бодлогоо бүрэн бодсон дараалсан өдрийн тоо">
+          <Flame size={12} /> {recommendation.streak} өдөр дараалан бодлоо
+        </Badge>
+      )}
     </div>
     <div className="card-body py-3">
+      {recommendation.today_done && (
+        <div className="alert alert-success py-2 px-3 mb-3 d-flex align-items-center gap-2 flex-wrap" style={{ fontSize: '0.82rem' }}>
+          <PartyPopper size={16} className="flex-shrink-0" />
+          <span className="me-auto">
+            <strong>Баяр хүргэе!</strong> Өнөөдрийн бүх бодлогоо бодож дуусгалаа.
+            {recommendation.streak >= 2 && <> {recommendation.streak} өдөр дараалан бодлоо — гайхалтай!</>}
+          </span>
+          {onMoreProblems && (
+            <button type="button" className="btn btn-sm btn-success" disabled={moreLoading} onClick={onMoreProblems}>
+              {moreLoading && <span className="spinner-border spinner-border-sm me-1" />}
+              Өөр бодлого бодох
+            </button>
+          )}
+        </div>
+      )}
       <p className="text-muted mb-3" style={{ fontSize: '0.78rem' }}>
         {DAILY_REC_SOURCE_LABEL[recommendation.source] || ''}
       </p>
@@ -131,56 +217,7 @@ export const DailyRecommendationCard = ({ recommendation, onItemClick, loadingIt
           Өнөөдөр санал болгох бодлого алга
         </div>
       ) : (
-        <div className="list-group list-group-flush">
-          {recommendation.items.map((item) => {
-            const isLoading = loadingItemId === item.id;
-            const rowContent = (
-              <>
-                {isLoading ? (
-                  <span className="spinner-border spinner-border-sm text-muted flex-shrink-0" style={{ width: '1rem', height: '1rem' }} />
-                ) : item.status === 'done'
-                  ? <CheckCircle2 size={16} className="text-success flex-shrink-0" />
-                  : <Circle size={16} className="text-muted flex-shrink-0" />}
-                <span
-                  className="fw-medium text-truncate"
-                  style={{
-                    fontSize: '0.85rem',
-                    textDecoration: item.status === 'done' ? 'line-through' : 'none',
-                    opacity: item.status === 'done' ? 0.6 : 1,
-                  }}
-                >
-                  {item.title || `Бодлого #${item.problem_id}`}
-                </span>
-                {item.category_mn && (
-                  <Badge bg="light" text="dark" className="border ms-auto" style={{ fontSize: '0.65rem', color: item.category_color || undefined }}>
-                    {item.category_mn}
-                  </Badge>
-                )}
-              </>
-            );
-
-            if (onItemClick) {
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  disabled={isLoading}
-                  onClick={() => onItemClick(item)}
-                  className="list-group-item list-group-item-action px-0 py-2 border-0 border-top d-flex align-items-center gap-2 text-start bg-transparent"
-                >
-                  {rowContent}
-                </button>
-              );
-            }
-
-            return (
-              <Link key={item.id} to={`/problem/${item.problem_uuid}`}
-                className="list-group-item list-group-item-action px-0 py-2 border-0 border-top d-flex align-items-center gap-2">
-                {rowContent}
-              </Link>
-            );
-          })}
-        </div>
+        <ProblemItemList items={recommendation.items} onItemClick={onItemClick} loadingItemId={loadingItemId} />
       )}
     </div>
   </div>
@@ -194,7 +231,7 @@ export const NextTopicCard = ({ topic }) => (
     </div>
     <div className="card-body py-3">
       {topic ? (
-        <div className="fw-medium" style={{ fontSize: '0.9rem' }}>{topic.name}</div>
+        <MathText as="div" className="fw-medium" style={{ fontSize: '0.9rem' }}>{topic.name}</MathText>
       ) : (
         <div className="text-muted" style={{ fontSize: '0.82rem' }}>
           Одоогоор санал болгох сэдэв алга — цааш үргэлжлүүлээрэй.
@@ -220,7 +257,7 @@ export const RecentQuizzesCard = ({ quizzes }) => (
           const content = (
             <div className="d-flex align-items-center justify-content-between py-2 px-3">
               <div>
-                <div className="fw-medium" style={{ fontSize: '0.85rem' }}>{qs.quiz_title || 'Quiz'}</div>
+                <MathText as="div" className="fw-medium" style={{ fontSize: '0.85rem' }}>{qs.quiz_title || 'Quiz'}</MathText>
                 <div className="text-muted" style={{ fontSize: '0.72rem' }}>{fmtDate(qs.started_at)}</div>
               </div>
               <span className="fw-semibold" style={{ fontSize: '0.9rem' }}>
@@ -259,7 +296,7 @@ export const UpcomingAssignmentsCard = ({ assignments }) => (
             className="list-group-item list-group-item-action p-0 border-0 border-top">
             <div className="d-flex align-items-center justify-content-between py-2 px-3">
               <div>
-                <div className="fw-medium" style={{ fontSize: '0.85rem' }}>{a.title}</div>
+                <MathText as="div" className="fw-medium" style={{ fontSize: '0.85rem' }}>{a.title}</MathText>
                 <div className="text-muted" style={{ fontSize: '0.72rem' }}>{a.club_name}</div>
               </div>
               <span className="text-muted" style={{ fontSize: '0.75rem' }}>{fmtDate(a.deadline)}</span>

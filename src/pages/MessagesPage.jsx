@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import UserAvatar from '../components/UserAvatar';
 import UserName from '../components/UserName';
 import LivePreview from '../components/LivePreview';
+import MathText from '../components/MathText';
 import { MathJax } from 'better-react-mathjax';
 import NewConversationModal from '../components/NewConversationModal';
 import ProgramProgressModal from '../components/ProgramProgressModal';
@@ -43,7 +44,6 @@ import {
   Image,
   Send,
   X,
-  AlertTriangle,
   Smile,
   Link2,
   Check,
@@ -60,7 +60,15 @@ import {
   Lock,
   Unlock,
   LayoutDashboard,
+  MoreVertical,
+  Archive,
+  ArchiveRestore,
+  Globe,
+  Lightbulb,
+  SkipForward,
+  BookOpenCheck,
 } from 'lucide-react';
+import Dropdown from 'react-bootstrap/Dropdown';
 
 // Services
 import {
@@ -75,6 +83,7 @@ import {
   reopenConversation,
   deleteConversation,
   getEeshProblems,
+  generateSimilarProblem,
   getEeshStats,
   getEeshTopics,
   sendExamProblem,
@@ -213,7 +222,7 @@ const MessageBubble = memo(function MessageBubble({ message, currentUserId, onRe
             <span className="ms-1 d-inline-flex gap-1 ai-rating-btns">
               <button
                 className={`btn btn-link btn-sm p-0 ${rating === 'like' ? 'text-success' : 'text-muted'}`}
-                onClick={() => onRate(rating === 'like' ? null : 'like')}
+                onClick={() => onRate(message.uuid, rating === 'like' ? null : 'like')}
                 title="Таалагдсан"
                 style={{ lineHeight: 1 }}
               >
@@ -221,7 +230,7 @@ const MessageBubble = memo(function MessageBubble({ message, currentUserId, onRe
               </button>
               <button
                 className={`btn btn-link btn-sm p-0 ${rating === 'dislike' ? 'text-danger' : 'text-muted'}`}
-                onClick={() => onRate(rating === 'dislike' ? null : 'dislike')}
+                onClick={() => onRate(message.uuid, rating === 'dislike' ? null : 'dislike')}
                 title="Таалагдаагүй"
                 style={{ lineHeight: 1 }}
               >
@@ -234,6 +243,28 @@ const MessageBubble = memo(function MessageBubble({ message, currentUserId, onRe
     </Message>
   );
 });
+
+// Backend чатын гарчигт дотоод тэмдэг хадгалдаг — "[day:YYYY-MM-DD] " ("Миний өдөр"-ийн
+// өдрийн чат) ба "[obj:<id>] " (curriculum зорилтын чат); чатыг гарчгаар нь олоход
+// ашигладаг тул хэрэглэгчид харуулахгүй.
+const displayTitle = (title) => (title || '').replace(/^\[(day|obj):[^\]]*\]\s*/, '');
+
+// ЭЕШ блок: аль нэг сонголт ийм урт (LaTeX эх текстээр) бол бүх сонголтыг нэг баганаар
+// харуулна — нарийн grid-д томьёо тасрахаас сэргийлнэ
+const LONG_CHOICE_LEN = 28;
+
+// Жагсаалтын товч агуулга: томьёо/markdown тэмдэгтийг цэвэрлэж нэг мөр болгоно
+const PREVIEW_LEN = 60;
+const messagePreview = (content) => {
+  const text = (content || '')
+    .replace(/\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]/g, ' [томьёо] ')
+    .replace(/\$[^$]+\$|\\\([\s\S]*?\\\)/g, '[томьёо]')
+    .replace(/\[(pst|img)[^\]]*\][\s\S]*?\[\/\1\]/gi, ' [зураг] ')
+    .replace(/(\*\*|__|`|^#+\s*|^>\s*)/gm, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return text.length > PREVIEW_LEN ? `${text.slice(0, PREVIEW_LEN)}…` : text;
+};
 
 const isAiConv = (conv) => conv?.user1?.is_ai_teacher || conv?.user2?.is_ai_teacher
 
@@ -294,6 +325,7 @@ const MessagesPage = ({ aiOnly = false }) => {
   const [wrongChoiceId, setWrongChoiceId] = useState(null);   // буруу сонгосон choice-ийн id
   const [wrongChoiceLoading, setWrongChoiceLoading] = useState(false);
   const [wrongChoiceFailed, setWrongChoiceFailed] = useState(false); // AI алдаа гарсан
+  const [wrongChoiceNeedsUpgrade, setWrongChoiceNeedsUpgrade] = useState(false); // FREE: тайлбар гишүүнчлэл шаардана
   // Бодолт харсны дараа дараагийн бодлого руу шилжих
   const [examSolutionViewed, setExamSolutionViewed] = useState(false);
   // Hint / Solution modal
@@ -305,6 +337,18 @@ const MessagesPage = ({ aiOnly = false }) => {
   // reset useEffect-ийн ДАРАА идэвхжүүлэхийн тулд ref-д түр хадгална.
   // Бүтэц: { problems: [...], index: number }
   const pendingExamProblemRef = useRef(null);
+  // Бодлого чатад AI мессежээр аль хэдийн нэмэгдсэн эсэх (problem id).
+  // Бодлого эхлээд зөвхөн оролтын дээрх ЭЕШ блокт харагдаж, сурагч хариулах
+  // үед л чатад нэмэгдэнэ (алгассан бодлого чатыг бөглөхгүй).
+  const examPostedProblemIdRef = useRef(null);
+  // ЭЕШ бодлогыг чатад шилжүүлэхдээ шууд харуулна (typewriter-гүй) — сурагч бодлогыг
+  // блокоос аль хэдийн уншсан. WS мессеж REST хариунаас өмнө ч, хойно ч ирж болох тул
+  // илгээж буй үеийн flag + илгээсэн мессежүүдийн uuid-ээр хоёуланг нь таньна.
+  // (AI багшийн хариулт typewriter-тэй хэвээр.)
+  const postingProblemRef = useRef(false);
+  const postedProblemMsgUuidsRef = useRef(new Set());
+  // "Миний өдөр"-ийн "Өөр бодлого бодох"-оос ирсэн бол чат сонгогдсоны дараа бодлого санал болгоно
+  const pendingSuggestRef = useRef(false);
   const [examAiReplied, setExamAiReplied] = useState(true); // false = AI хариулт хүлээж байна
 
   // AI харилцагчийн ID — ConversationSerializer user1/user2-д is_ai_teacher оруулдаг тул
@@ -325,6 +369,41 @@ const MessagesPage = ({ aiOnly = false }) => {
   const handleReuse = useCallback((text) => {
     setInput(text);
   }, []);
+  // АНХААР: inline arrow дамжуулбал memo эвдэрч, parent-ийн state солигдох бүрт
+  // БҮХ мессеж дахин render + MathJax дахин typeset хийгдэж (100+ мессежтэй чатад)
+  // хуудас гацаж, өндөр нь хэлбэлзсэнээс scroll дээш үсэрдэг байсан.
+  const handleTypewritingDone = useCallback(() => {
+    setTypewriterMsgId(null);
+  }, []);
+
+  // Stick-to-bottom: chatscope-ийн autoScrollToBottom нь MathJax/зураг зэрэг
+  // ХОЖУУ өндөр өөрчлөгдөхийг хянадаггүй тул хэрэглэгч доод хэсэгт байсан бол
+  // контентын өндөр өсөх бүрт доош нь барина.
+  useEffect(() => {
+    const wrapper = document.querySelector('.cs-message-list__scroll-wrapper');
+    if (!wrapper) return undefined;
+    let atBottom = true;
+    const onScroll = () => {
+      atBottom = wrapper.scrollHeight - wrapper.scrollTop - wrapper.clientHeight < 80;
+    };
+    const stick = () => {
+      if (atBottom) wrapper.scrollTop = wrapper.scrollHeight;
+    };
+    wrapper.addEventListener('scroll', onScroll, { passive: true });
+    const ro = new ResizeObserver(stick);
+    Array.from(wrapper.children).forEach((c) => ro.observe(c));
+    const mo = new MutationObserver(() => {
+      Array.from(wrapper.children).forEach((c) => ro.observe(c));
+      stick();
+    });
+    mo.observe(wrapper, { childList: true });
+    stick();
+    return () => {
+      wrapper.removeEventListener('scroll', onScroll);
+      ro.disconnect();
+      mo.disconnect();
+    };
+  }, [selectedConversation?.uuid, loadingMessages]);
 
   // Fetch conversations
   useEffect(() => {
@@ -364,6 +443,7 @@ const MessagesPage = ({ aiOnly = false }) => {
             // төгсгөлд идэвхжүүлнэ (эс тэгвээс reset нь үүнийг шууд дарж бичнэ).
             pendingExamProblemRef.current = { problems: startExamProblems, index: startExamIndex };
           }
+          if (location.state?.suggestProblem) pendingSuggestRef.current = true;
           navigate(location.pathname, { replace: true, state: {} });
         }
 
@@ -466,7 +546,7 @@ const MessagesPage = ({ aiOnly = false }) => {
     setExamLastCorrect(null);
     setWrongChoiceExplanation(null);
     setWrongChoiceLoading(false);
-    setWrongChoiceFailed(false);
+    setWrongChoiceFailed(false); setWrongChoiceNeedsUpgrade(false);
     setExamSolutionViewed(false);
     setHintModal(null);
     setSolutionModal(null);
@@ -479,6 +559,7 @@ const MessagesPage = ({ aiOnly = false }) => {
     setChoiceRatings({});
     setExamAiReplied(true);
     examNeedsAiReplyRef.current = false;
+    examPostedProblemIdRef.current = null;
 
     // Dashboard-ийн "Өнөөдрийн 5 бодлого"-ос ирсэн бол — reset-ийн дараа шууд
     // идэвхжүүлнэ (эс тэгвээс дээрх reset нь энэ горимыг шууд унтраадаг байсан).
@@ -495,11 +576,19 @@ const MessagesPage = ({ aiOnly = false }) => {
       setExamLastCorrect(null);
       setExamAiReplied(true);
     }
+    if (pendingSuggestRef.current && selectedConversation) {
+      pendingSuggestRef.current = false;
+      handleSuggestedProblem();
+    }
   }, [selectedConversation?.uuid]);
 
 
   // AI мессежэд like/dislike
+  // Хамаарлыг ref-ээр уншиж callback-ийг тогтвортой байлгана (MessageBubble memo)
+  const rateCtxRef = useRef({});
+  rateCtxRef.current = { messageRatings, examPrepMode, examCurrentProblem, examProblems, examProblemIndex };
   const handleRateMessage = useCallback(async (messageUuid, rating) => {
+    const { messageRatings, examPrepMode, examCurrentProblem, examProblems, examProblemIndex } = rateCtxRef.current;
     const prev = messageRatings[messageUuid] ?? null;
     setMessageRatings((s) => ({ ...s, [messageUuid]: rating }));
     try {
@@ -511,7 +600,7 @@ const MessagesPage = ({ aiOnly = false }) => {
     } catch {
       setMessageRatings((s) => ({ ...s, [messageUuid]: prev }));
     }
-  }, [messageRatings, examPrepMode, examCurrentProblem, examProblems, examProblemIndex]);
+  }, []);
 
   // Сонголтын тайлбарт like/dislike
   const handleRateChoice = useCallback(async (choiceId, rating) => {
@@ -561,28 +650,39 @@ const MessagesPage = ({ aiOnly = false }) => {
     }
   };
 
-  // Бодлогыг чатад AI мессежээр илгээх
+  const ensureProblemPosted = async (prob) => {
+    if (!prob || !selectedConversation || examPostedProblemIdRef.current === prob.id) return;
+    postingProblemRef.current = true;
+    let problemMsg;
+    try {
+      problemMsg = await sendExamProblem(selectedConversation.uuid, prob.id);
+    } finally {
+      postingProblemRef.current = false;
+    }
+    examPostedProblemIdRef.current = prob.id;
+    if (problemMsg?.uuid) postedProblemMsgUuidsRef.current.add(problemMsg.uuid);
+    if (problemMsg?.id) {
+      setMessages((prev) => (prev.some((m) => m.id === problemMsg.id) ? prev : [...prev, problemMsg]));
+      lastMessageIdRef.current = Math.max(lastMessageIdRef.current, problemMsg.id);
+    }
+  };
+
+  // Бодлогыг ЭЕШ блокт харуулах (чатад хараахан нэмэхгүй, зөвхөн "харуулсан" гэж бүртгэнэ)
   const sendProblemToChat = async (problems, index) => {
     const prob = problems[index];
     if (!prob || !selectedConversation) return;
     setExamSending(true);
     try {
-      const problemMsg = await sendExamProblem(selectedConversation.uuid, prob.id);
-      // Бодлогын мессежийг шууд messages-д нэм (polling хүлээхгүй)
-      if (problemMsg?.id) {
-        setMessages((prev) => {
-          const exists = prev.some((m) => m.id === problemMsg.id);
-          return exists ? prev : [...prev, problemMsg];
-        });
-        if (problemMsg.id) lastMessageIdRef.current = Math.max(lastMessageIdRef.current, problemMsg.id);
-      }
-      setExamCurrentProblem(prob);
+      const recorded = await sendExamProblem(selectedConversation.uuid, prob.id, { recordOnly: true });
+      examPostedProblemIdRef.current = null;
+      // Жагсаалт татсаны дараа background-д үүссэн AI товч гарчгийг авна
+      setExamCurrentProblem(recorded?.ai_summary ? { ...prob, ai_summary: recorded.ai_summary } : prob);
       setExamProblemIndex(index);
       setExamAnswered(false);
       setExamLastCorrect(null);
       setWrongChoiceExplanation(null);
       setWrongChoiceLoading(false);
-      setWrongChoiceFailed(false);
+      setWrongChoiceFailed(false); setWrongChoiceNeedsUpgrade(false);
       setExamSolutionViewed(false);
       setHintModal(null);
       setSolutionModal(null);
@@ -628,6 +728,49 @@ const MessagesPage = ({ aiOnly = false }) => {
     const nextIndex = examProblemIndex + 1;
     if (nextIndex >= examProblems.length) return;
     await sendProblemToChat(examProblems, nextIndex);
+  };
+
+  // Сурагч чатаар шинэ бодлого хүссэн (backend-ийн 'suggest_problem' WS event) —
+  // AI бодлого зохиож текстээр бичихийн оронд DB-ийн бодлогыг widget-ээр харуулна.
+  // ЭЕШ горим идэвхтэй бол дараагийн бодлого, эс бөгөөс одоогийн категорийг
+  // (байвал) хадгалж eesh-problems алгоритмаар шинэ жагсаалт татна.
+  const handleSuggestedProblem = async () => {
+    if (examSending) return;
+    if (examPrepMode && examProblemIndex + 1 < examProblems.length) {
+      await sendProblemToChat(examProblems, examProblemIndex + 1);
+      return;
+    }
+    const catIds = examCurrentProblem?.category_id ? [examCurrentProblem.category_id] : [];
+    // Чатад аль хэдийн гарсан бодлогыг backend (ChatShownProblem) хасна — энд
+    // одоогийн жагсаалтынхыг давхар хасаж, сэдэвт шинэ бодлого дуусвал AI-аар төстэйг үүсгэнэ.
+    const seen = new Set(examProblems.map((p) => p.id));
+    if (examCurrentProblem?.id) seen.add(examCurrentProblem.id);
+    try {
+      let data = await getEeshProblems('math', 20, catIds, []);
+      let problems = (data.problems || []).filter((p) => !seen.has(p.id));
+      if (!problems.length) {
+        setExamPrepMode(true);
+        setExamSending(true);
+        try {
+          const gen = await generateSimilarProblem(examCurrentProblem?.id ?? null, 'math');
+          if (gen?.problem) problems = [gen.problem];
+        } catch (e) {
+          console.error('Төстэй бодлого үүсгэхэд алдаа:', e);
+        } finally {
+          setExamSending(false);
+        }
+      }
+      if (!problems.length && catIds.length) {
+        data = await getEeshProblems('math', 20, [], []);
+        problems = (data.problems || []).filter((p) => !seen.has(p.id));
+      }
+      if (!problems.length) return;
+      setExamPrepMode(true);
+      setExamProblems(problems);
+      await sendProblemToChat(problems, 0);
+    } catch (e) {
+      console.error('Санал болгох бодлого татахад алдаа:', e);
+    }
   };
 
   // Одоогийн бодлогыг алгасаж дараагийн рүү шилжих
@@ -701,14 +844,14 @@ const MessagesPage = ({ aiOnly = false }) => {
       setExamAnswered(true);
       setExamCurrentProblem(null);
       setWrongChoiceExplanation(null);
-      setWrongChoiceFailed(false);
+      setWrongChoiceFailed(false); setWrongChoiceNeedsUpgrade(false);
       setExamAiReplied(false);
       examNeedsAiReplyRef.current = true;
     } else {
       // Буруу: хариулт сонгох товч хэвээр, алдааны тайлбар авах
       setWrongChoiceExplanation(null);
       setWrongChoiceId(null);
-      setWrongChoiceFailed(false);
+      setWrongChoiceFailed(false); setWrongChoiceNeedsUpgrade(false);
       if (problemRef.choices?.length) {
         const choiceObj = problemRef.choices?.find(
           (c) => (c.label || '').trim().toUpperCase() === choiceLabel.trim().toUpperCase()
@@ -719,6 +862,8 @@ const MessagesPage = ({ aiOnly = false }) => {
           .then((data) => {
             if (data.explanation) {
               setWrongChoiceExplanation(data.explanation);
+            } else if (data.source === 'no_access') {
+              setWrongChoiceNeedsUpgrade(true);
             } else {
               setWrongChoiceFailed(true);
             }
@@ -726,6 +871,13 @@ const MessagesPage = ({ aiOnly = false }) => {
           .catch((err) => { console.error('explainWrongChoice алдаа:', err); setWrongChoiceFailed(true); })
           .finally(() => setWrongChoiceLoading(false));
       }
+    }
+
+    try {
+      setSending(true);
+      await ensureProblemPosted(problemRef);
+    } catch (err) {
+      console.error('Бодлогыг чатад нэмэхэд алдаа:', err);
     }
 
     const tempId = 'temp-' + Date.now();
@@ -778,6 +930,11 @@ const MessagesPage = ({ aiOnly = false }) => {
         setAiTyping(false)
         return
       }
+      if (evt.type === 'suggest_problem') {
+        setAiTyping(false)
+        handleSuggestedProblem()
+        return
+      }
       if (evt.type !== 'message' || !evt.message) return
 
       const incoming = evt.message
@@ -797,8 +954,10 @@ const MessagesPage = ({ aiOnly = false }) => {
         return [...prev, incoming]
       })
       if (incoming.id) lastMessageIdRef.current = Math.max(lastMessageIdRef.current, incoming.id)
-      // AI мессеж ирвэл typewriter эффект эхлүүлнэ
-      if (aiUserId && incoming.author?.id === aiUserId) {
+      // AI мессеж ирвэл typewriter эффект эхлүүлнэ (ЭЕШ бодлогыг чатад нэмж буй мессежээс бусад)
+      const isPostedProblem = postingProblemRef.current
+        || postedProblemMsgUuidsRef.current.has(incoming.uuid)
+      if (aiUserId && incoming.author?.id === aiUserId && !isPostedProblem) {
         setAiTyping(false)
         setTypewriterMsgId(incoming.uuid)
         // Зөв хариулсны дараа багшийн хариулт ирсэн → товч харуулна
@@ -927,6 +1086,15 @@ const MessagesPage = ({ aiOnly = false }) => {
     const inputText = input.trim()
     if (!inputText && uploadedImages.length === 0) return
     if (!selectedConversation) return
+
+    // ЭЕШ блокийн бодлогод бичгээр хариулж байвал — эхлээд бодлогыг чатад нэмнэ
+    if (examPrepMode && !examAnswered && examCurrentProblem) {
+      try {
+        await ensureProblemPosted(examCurrentProblem)
+      } catch (err) {
+        console.error('Бодлогыг чатад нэмэхэд алдаа:', err)
+      }
+    }
 
     // Optimistic: мессежийг шууд харуулах
     const tempId = 'temp-' + Date.now()
@@ -1145,6 +1313,16 @@ const MessagesPage = ({ aiOnly = false }) => {
 
   const otherUser = selectedConversation ? getOtherUser(selectedConversation) : null;
 
+  const stopExam = () => {
+    setExamPrepMode(false);
+    setExamProblems([]);
+    setExamProblemIndex(0);
+    setExamCurrentProblem(null);
+    setExamAnswered(false);
+    setExamLastCorrect(null);
+    setExamSolutionViewed(false);
+  };
+
   return (
     <MainContainer responsive className="private-messages-container">
       {/* Conversations List */}
@@ -1213,16 +1391,12 @@ const MessagesPage = ({ aiOnly = false }) => {
             const partner = getOtherUser(conversation);
             const lastMsg = conversation.last_message;
             const unreadCount = conversation.unread_count || 0;
-            const preview = lastMsg?.content
-              ?.replace(/\$[^$]+\$/g, '[math]')
-              ?.replace(/\\\([^)]+\\\)/g, '[math]')
-              ?.substring(0, 50);
 
             return (
               <Conversation
                 key={conversation.uuid}
-                name={conversation.title || <UserName user={partner} showLink={false} />}
-                info={lastMsg ? `${preview}${lastMsg.content?.length > 50 ? '...' : ''}` : undefined}
+                name={displayTitle(conversation.title) || <UserName user={partner} showLink={false} />}
+                info={lastMsg ? messagePreview(lastMsg.content) : undefined}
                 lastActivityTime={lastMsg ? formatMessageTime(lastMsg.created_at) : undefined}
                 unreadCnt={unreadCount}
                 active={selectedConversation?.uuid === conversation.uuid}
@@ -1281,15 +1455,25 @@ const MessagesPage = ({ aiOnly = false }) => {
                 <UserAvatar user={otherUser} size={40} />
               </ChatAvatar>
               <ConversationHeader.Content
-                userName={selectedConversation.title || <UserName user={otherUser} showLink={false} />}
+                userName={displayTitle(selectedConversation.title) || <UserName user={otherUser} showLink={false} />}
                 info={
-                  <span
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => navigate(`/profile/${otherUser?.username}`)}
-                  >
-                    {otherUser?.is_ai_teacher && otherUser?.ai_model_label
-                      ? otherUser.ai_model_label
-                      : `@${otherUser?.username}`}
+                  <span className="d-inline-flex align-items-center gap-2 flex-wrap">
+                    <span
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => navigate(`/profile/${otherUser?.username}`)}
+                    >
+                      {/* AI загварын нэрийг (DeepSeek г.м.) хэрэглэгчид харуулахгүй */}
+                      {otherUser?.is_ai_teacher ? 'AI багш' : `@${otherUser?.username}`}
+                    </span>
+                    {selectedConversation?.is_closed ? (
+                      <span className="conv-status" title="Энэ харилцаа хаагдсан">
+                        <Lock size={11} /> Хаагдсан
+                      </span>
+                    ) : (
+                      <span className="conv-status" title="Энэ харилцааг бусад хэрэглэгчид харах боломжтой">
+                        <Globe size={11} /> Нийтэд нээлттэй
+                      </span>
+                    )}
                   </span>
                 }
               />
@@ -1325,83 +1509,52 @@ const MessagesPage = ({ aiOnly = false }) => {
                       <span className="d-none d-md-inline ms-1">ЭЕШ</span>
                     </button>
                   )}
-                  {selectedConversation?.is_closed ? (
-                    <div className="text-secondary small d-flex align-items-center gap-1">
-                      <Lock size={14} />
-                      <span className="d-none d-md-inline">Хаагдсан</span>
-                    </div>
-                  ) : (
-                    <div className="text-secondary small d-flex align-items-center gap-1">
-                      <AlertTriangle size={14} />
-                      <span className="d-none d-md-inline">Нийтэд нээлттэй</span>
-                    </div>
-                  )}
-                  <button
-                    className="btn btn-sm btn-outline-primary"
-                    onClick={() => navigate(`/profile/${otherUser?.username}`)}
-                    title="Профайл харах"
-                  >
-                    <User size={16} />
-                  </button>
-                  <button
-                    className="btn btn-sm btn-outline-secondary"
-                    onClick={copyConversationLink}
-                    title="Харилцааны линк хуулах"
-                  >
-                    {linkCopied ? <Check size={16} /> : <Link2 size={16} />}
-                  </button>
-                  <button
-                    className={`btn btn-sm ${selectedConversation?.is_closed ? 'btn-warning' : 'btn-outline-secondary'}`}
-                    onClick={() => {
-                      if (selectedConversation?.is_closed) {
-                        handleReopen(selectedConversation);
-                      } else {
-                        handleClose(selectedConversation);
-                      }
-                    }}
-                    disabled={closingConv === selectedConversation?.uuid}
-                    title={selectedConversation?.is_closed ? 'Дахин нээх' : 'Хаах'}
-                  >
-                    {closingConv === selectedConversation?.uuid ? (
-                      <Spinner animation="border" size="sm" />
-                    ) : selectedConversation?.is_closed ? (
-                      <Unlock size={16} />
-                    ) : (
-                      <Lock size={16} />
-                    )}
-                  </button>
-                  <button
-                    className={`btn btn-sm ${selectedConversation?.is_archived_by_user ? 'btn-warning' : 'btn-outline-secondary'}`}
-                    onClick={() => {
-                      if (selectedConversation?.is_archived_by_user) {
-                        handleUnarchive(selectedConversation);
-                      } else {
-                        handleArchive(selectedConversation);
-                      }
-                    }}
-                    disabled={archivingConv === selectedConversation?.uuid}
-                    title={selectedConversation?.is_archived_by_user ? 'Архиваас гаргах' : 'Архивлах'}
-                  >
-                    {archivingConv === selectedConversation?.uuid ? (
-                      <Spinner animation="border" size="sm" />
-                    ) : selectedConversation?.is_archived_by_user ? (
-                      '↩'
-                    ) : (
-                      '📦'
-                    )}
-                  </button>
-                  <button
-                    className="btn btn-sm btn-outline-danger"
-                    onClick={() => handleDelete(selectedConversation)}
-                    disabled={deletingConv === selectedConversation?.uuid}
-                    title="Харилцан яриа устгах"
-                  >
-                    {deletingConv === selectedConversation?.uuid ? (
-                      <Spinner animation="border" size="sm" />
-                    ) : (
-                      <Trash2 size={16} />
-                    )}
-                  </button>
+                  <Dropdown align="end">
+                    <Dropdown.Toggle
+                      variant="light"
+                      size="sm"
+                      className="conv-menu-toggle"
+                      title="Бусад үйлдэл"
+                      disabled={closingConv === selectedConversation?.uuid || archivingConv === selectedConversation?.uuid || deletingConv === selectedConversation?.uuid}
+                    >
+                      {(closingConv === selectedConversation?.uuid || archivingConv === selectedConversation?.uuid || deletingConv === selectedConversation?.uuid) ? (
+                        <Spinner animation="border" size="sm" />
+                      ) : (
+                        <MoreVertical size={16} />
+                      )}
+                    </Dropdown.Toggle>
+                    <Dropdown.Menu popperConfig={{ strategy: 'fixed' }} className="conv-menu shadow-sm">
+                      <Dropdown.Item onClick={() => navigate(`/profile/${otherUser?.username}`)}>
+                        <User size={15} /> Профайл харах
+                      </Dropdown.Item>
+                      <Dropdown.Item onClick={copyConversationLink}>
+                        {linkCopied ? <Check size={15} /> : <Link2 size={15} />}
+                        {linkCopied ? ' Хуулагдлаа' : ' Линк хуулах'}
+                      </Dropdown.Item>
+                      <Dropdown.Item
+                        onClick={() => (selectedConversation?.is_closed
+                          ? handleReopen(selectedConversation)
+                          : handleClose(selectedConversation))}
+                      >
+                        {selectedConversation?.is_closed
+                          ? <><Unlock size={15} /> Дахин нээх</>
+                          : <><Lock size={15} /> Хаах</>}
+                      </Dropdown.Item>
+                      <Dropdown.Item
+                        onClick={() => (selectedConversation?.is_archived_by_user
+                          ? handleUnarchive(selectedConversation)
+                          : handleArchive(selectedConversation))}
+                      >
+                        {selectedConversation?.is_archived_by_user
+                          ? <><ArchiveRestore size={15} /> Архиваас гаргах</>
+                          : <><Archive size={15} /> Архивлах</>}
+                      </Dropdown.Item>
+                      <Dropdown.Divider />
+                      <Dropdown.Item className="text-danger" onClick={() => handleDelete(selectedConversation)}>
+                        <Trash2 size={15} /> Устгах
+                      </Dropdown.Item>
+                    </Dropdown.Menu>
+                  </Dropdown>
                 </div>
               </ConversationHeader.Actions>
             </ConversationHeader>
@@ -1426,21 +1579,9 @@ const MessagesPage = ({ aiOnly = false }) => {
                   (examAnswered && examLastCorrect === true && examAiReplied && !typewriterMsgId)
                   || examSolutionViewed
                 );
-                // Бодлого харагдаж байх үед, хариулаагүй → Алгасах / Болих
-                const showSkip = examPrepMode && !examAnswered && !examSolutionViewed
-                  && !examSending && !typewriterMsgId && examProblems.length > 0;
-                const lastAiMsgUuid = (showExamNext || showSkip)
+                const lastAiMsgUuid = showExamNext
                   ? [...messages].reverse().find((m) => aiUserId && m.author?.id === aiUserId)?.uuid
                   : null;
-                const stopExam = () => {
-                  setExamPrepMode(false);
-                  setExamProblems([]);
-                  setExamProblemIndex(0);
-                  setExamCurrentProblem(null);
-                  setExamAnswered(false);
-                  setExamLastCorrect(null);
-                  setExamSolutionViewed(false);
-                };
                 return messages.map((message) => (
                   <Fragment key={message.uuid}>
                     <MessageBubble
@@ -1448,12 +1589,12 @@ const MessagesPage = ({ aiOnly = false }) => {
                       currentUserId={user?.id}
                       onReuse={handleReuse}
                       isTypewriting={message.uuid === typewriterMsgId}
-                      onTypewritingDone={() => setTypewriterMsgId(null)}
+                      onTypewritingDone={handleTypewritingDone}
                       rating={messageRatings[message.uuid] ?? message.my_rating ?? null}
-                      onRate={isAiConv(selectedConversation) ? (r) => handleRateMessage(message.uuid, r) : null}
+                      onRate={isAiConv(selectedConversation) ? handleRateMessage : null}
                     />
                     {message.uuid === lastAiMsgUuid && showExamNext && (
-                      <div className="d-flex gap-2 flex-wrap px-3 pb-3 pt-1" style={{ marginLeft: '2.5rem' }}>
+                      <div className="exam-inline-actions">
                         <button
                           type="button"
                           className="btn btn-success btn-sm"
@@ -1481,27 +1622,6 @@ const MessagesPage = ({ aiOnly = false }) => {
                         </button>
                       </div>
                     )}
-                    {message.uuid === lastAiMsgUuid && showSkip && (
-                      <div className="d-flex gap-2 flex-wrap px-3 pb-3 pt-1" style={{ marginLeft: '2.5rem' }}>
-                        <button
-                          type="button"
-                          className="btn btn-outline-warning btn-sm"
-                          onClick={handleSkipProblem}
-                          disabled={examSending || !!typewriterMsgId || examProblemIndex >= examProblems.length - 1}
-                        >
-                          {examSending ? <Spinner animation="border" size="sm" className="me-1" /> : null}
-                          Алгасах
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-outline-secondary btn-sm"
-                          onClick={stopExam}
-                          disabled={examSending}
-                        >
-                          Болих
-                        </button>
-                      </div>
-                    )}
                   </Fragment>
                 ));
               })()}
@@ -1511,20 +1631,20 @@ const MessagesPage = ({ aiOnly = false }) => {
             <InputToolbox className="chat-input-area">
               {/* ЭЕШ: дараагийн бодлого ачаалж байна */}
               {examPrepMode && examSending && (
-                <div className="border-top py-3 d-flex justify-content-center align-items-center gap-2 text-muted" style={{ background: '#f8f9fa', fontSize: '0.85rem' }}>
+                <div className="exam-loading-bar">
                   <Spinner animation="border" size="sm" />
                   <span>Бодлого ачаалж байна...</span>
                 </div>
               )}
               {/* ЭЕШ: бодлогын өгүүлбэр + хариулт сонголт + товчнууд — нэг блокт */}
               {examPrepMode && examCurrentProblem && !examAnswered && !examSolutionViewed && !examSending && (
-                <div className="exam-problem-block border-top" style={{ background: '#f8f9fa' }}>
-                  {/* Өгүүлбэр */}
-                  <div className="px-3 pt-2 pb-1" style={{ fontSize: '1.05rem', maxHeight: '200px', overflowY: 'auto' }}>
-                    <div className="d-flex align-items-center gap-2 mb-1">
-                      <span className="fw-semibold text-muted small flex-grow-1">
-                        {examCurrentProblem.title || `#${examCurrentProblem.id}`}
-                      </span>
+                <div className="exam-problem-block">
+                  <div className="exam-problem-card">
+                    {/* Толгой: гарчиг + түвшин/сэдэв + дугаар */}
+                    <div className="exam-problem-head">
+                      <MathText className="exam-problem-title">
+                        {examCurrentProblem.ai_summary || examCurrentProblem.title || `Бодлого #${examCurrentProblem.id}`}
+                      </MathText>
                       {examCurrentProblem.level_name && (() => {
                         const mnName = examCurrentProblem.level_name.replace(/\s*\(.*?\)/, '').trim();
                         const levelColors = { 1: '#198754', 2: '#0dcaf0', 3: '#0d6efd', 4: '#ffc107', 5: '#fd7e14', 6: '#dc3545' };
@@ -1532,30 +1652,16 @@ const MessagesPage = ({ aiOnly = false }) => {
                         const bg = levelColors[examCurrentProblem.level_id] || '#6c757d';
                         const color = levelTextColors[examCurrentProblem.level_id] || '#fff';
                         return (
-                          <span
-                            className="badge"
-                            style={{ fontSize: '0.65rem', background: bg, color }}
-                            title={examCurrentProblem.level_name}
-                          >
+                          <span className="exam-chip" style={{ background: bg, color }} title={examCurrentProblem.level_name}>
                             {mnName}
                           </span>
                         );
                       })()}
                       {examCurrentProblem.topic_name && (
-                        <span
-                          className="badge"
-                          style={{ fontSize: '0.65rem', background: '#6c757d', color: '#fff' }}
-                        >
-                          {examCurrentProblem.topic_name}
-                        </span>
+                        <MathText className="exam-chip exam-chip-muted">{examCurrentProblem.topic_name}</MathText>
                       )}
                       {examCurrentProblem.is_eesh && (
-                        <span
-                          className="badge"
-                          style={{ fontSize: '0.65rem', background: '#e8a700', color: '#000' }}
-                        >
-                          ЭЕШ жишиг
-                        </span>
+                        <span className="exam-chip" style={{ background: '#e8a700', color: '#000' }}>ЭЕШ жишиг</span>
                       )}
                       {user?.is_staff && (
                         <a
@@ -1569,53 +1675,88 @@ const MessagesPage = ({ aiOnly = false }) => {
                           ✏️
                         </a>
                       )}
+                      {examProblems.length > 1 && (
+                        <span className="exam-problem-counter" title="Энэ цувралын хэддүгээр бодлого">
+                          {examProblemIndex + 1}/{examProblems.length}
+                        </span>
+                      )}
                     </div>
-                    <LivePreview content={examCurrentProblem.statement} />
-                  </div>
-                  {/* Хариулт сонголт + hint/solution товчнууд — нэг мөрт */}
-                  <div ref={examChoicesRef} className="px-2 pb-2 d-flex align-items-center gap-2 flex-wrap">
-                    {examCurrentProblem.choices?.map((c) => (
+
+                    {/* Өгүүлбэр */}
+                    <div className="exam-problem-statement">
+                      <LivePreview content={examCurrentProblem.statement} />
+                    </div>
+
+                    {/* Хариулт сонголт */}
+                    <div
+                      ref={examChoicesRef}
+                      className={`exam-choices${
+                        examCurrentProblem.choices?.some((c) => (c.value || '').length > LONG_CHOICE_LEN) ? ' is-long' : ''
+                      }`}
+                    >
+                      {examCurrentProblem.choices?.length ? (
+                        examCurrentProblem.choices.map((c) => (
+                          <button
+                            key={c.label}
+                            type="button"
+                            className={`exam-choice-btn${wrongChoiceId && c.id === wrongChoiceId ? ' is-wrong' : ''}`}
+                            onClick={() => handleSendChoiceAnswer(c.label)}
+                            disabled={sending}
+                          >
+                            <span className="exam-choice-label">{c.label}</span>
+                            <MathJax dynamic inline>{c.value}</MathJax>
+                          </button>
+                        ))
+                      ) : (
+                        <span className="exam-fill-hint">
+                          Хариултаа доорх талбарт бичээд илгээнэ үү.
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Туслах товчнууд */}
+                    <div className="exam-tools">
                       <button
-                        key={c.label}
                         type="button"
-                        className="btn btn-outline-primary btn-sm exam-choice-btn"
-                        onClick={() => handleSendChoiceAnswer(c.label)}
-                        disabled={sending}
+                        className="exam-tool-btn text-warning-emphasis"
+                        onClick={handleOpenHint}
+                        disabled={sending || aiTyping}
+                        title="Зөвлөгөө авах"
                       >
-                        <strong>{c.label})</strong> <MathJax dynamic inline>{c.value}</MathJax>
+                        <Lightbulb size={14} /><span>Зөвлөгөө</span>
                       </button>
-                    ))}
-                    <button
-                      type="button"
-                      className="btn btn-outline-warning btn-sm ms-auto"
-                      onClick={handleOpenHint}
-                      disabled={sending || aiTyping}
-                      title="Зөвлөгөө авах"
-                    >
-                      💡 Hint
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-outline-secondary btn-sm"
-                      onClick={handleOpenSolution}
-                      disabled={sending || aiTyping}
-                      title="Бодолт харах"
-                    >
-                      📖 Бодолт
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-outline-danger btn-sm"
-                      onClick={handleSkipProblem}
-                      disabled={sending || examSending || !!typewriterMsgId || examProblemIndex >= examProblems.length - 1}
-                      title="Алгасах"
-                    >
-                      ⏭
-                    </button>
-                  </div>
+                      <button
+                        type="button"
+                        className="exam-tool-btn"
+                        onClick={handleOpenSolution}
+                        disabled={sending || aiTyping}
+                        title="Бодолт харах"
+                      >
+                        <BookOpenCheck size={14} /><span>Бодолт</span>
+                      </button>
+                      <span className="flex-grow-1" />
+                      <button
+                        type="button"
+                        className="exam-tool-btn"
+                        onClick={handleSkipProblem}
+                        disabled={sending || examSending || !!typewriterMsgId || examProblemIndex >= examProblems.length - 1}
+                        title="Энэ бодлогыг алгасах"
+                      >
+                        <SkipForward size={14} /><span>Алгасах</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="exam-tool-btn"
+                        onClick={stopExam}
+                        disabled={examSending}
+                        title="ЭЕШ горимоос гарах"
+                      >
+                        <X size={14} /><span>Болих</span>
+                      </button>
+                    </div>
                   {/* Буруу хариулт сонгосны дараа алдааны тайлбар */}
-                  {(wrongChoiceLoading || wrongChoiceExplanation || wrongChoiceFailed) && (
-                    <div className="px-3 pb-2">
+                  {(wrongChoiceLoading || wrongChoiceExplanation || wrongChoiceFailed || wrongChoiceNeedsUpgrade) && (
+                    <div className="exam-wrong-explanation-wrap">
                       <div
                         className="wrong-choice-explanation border-start border-danger ps-2"
                         style={{ fontSize: '0.82rem', color: '#b00020' }}
@@ -1624,6 +1765,11 @@ const MessagesPage = ({ aiOnly = false }) => {
                           <span className="text-muted">
                             <span className="spinner-border spinner-border-sm me-1" role="status" />
                             Тайлбарлаж байна...
+                          </span>
+                        ) : wrongChoiceNeedsUpgrade ? (
+                          <span>
+                            Буруу сонголтын AI тайлбар гишүүнчлэлтэй хэрэглэгчид нээлттэй.{' '}
+                            <Link to="/membership" className="fw-semibold">Гишүүнчлэл авах →</Link>
                           </span>
                         ) : wrongChoiceFailed ? (
                           <span className="text-muted fst-italic">AI багш тайлбар үүсгэж чадсангүй. Бодолтыг харна уу.</span>
@@ -1657,6 +1803,7 @@ const MessagesPage = ({ aiOnly = false }) => {
                       </div>
                     </div>
                   )}
+                  </div>
                 </div>
               )}
 
@@ -1793,7 +1940,7 @@ const MessagesPage = ({ aiOnly = false }) => {
               <div className="modal-header border-bottom-0 pb-1">
                 <h5 className="modal-title d-flex align-items-center gap-2">
                   <BookOpen size={20} className="text-warning" />
-                  {eeshModalStep === 'category' ? 'ЭЕШ бэлдэх — чиглэл сонгох' : 'Сэдэв сонгох'}
+                  {eeshModalStep === 'category' ? 'ЭЕШ бэлдэх — сэдэв сонгох' : 'Дэд сэдэв сонгох'}
                 </h5>
                 <button type="button" className="btn-close" onClick={() => setShowEeshModal(false)} />
               </div>
@@ -1801,11 +1948,11 @@ const MessagesPage = ({ aiOnly = false }) => {
               {/* Step indicator */}
               <div className="px-3 pb-1 d-flex align-items-center gap-1" style={{ fontSize: '0.75rem' }}>
                 <span className={eeshModalStep === 'category' ? 'fw-bold text-warning' : 'text-muted'}>
-                  1. Чиглэл
+                  1. Сэдэв
                 </span>
                 <span className="text-muted mx-1">›</span>
                 <span className={eeshModalStep === 'topic' ? 'fw-bold text-warning' : 'text-muted'}>
-                  2. Сэдэв
+                  2. Дэд сэдэв
                 </span>
               </div>
 
@@ -1818,6 +1965,21 @@ const MessagesPage = ({ aiOnly = false }) => {
                 ) : eeshModalStep === 'category' ? (
                   /* ── Step 1: Category selection ── */
                   <>
+                    {/* Автоматаар сонгох — хамгийн дээр (статистикийн өмнө) */}
+                    <button
+                      type="button"
+                      className="btn btn-warning btn-sm text-start d-flex align-items-center gap-2 w-100 mb-3"
+                      style={{ borderRadius: '8px', padding: '6px 10px' }}
+                      onClick={handleStartExamPrep}
+                    >
+                      <Zap size={14} className="flex-shrink-0" />
+                      <span className="flex-grow-1 small fw-medium">Автоматаар сонгох</span>
+                      <span className="small" style={{ opacity: 0.75 }}>
+                        {eeshStats?.auto_category_name
+                          ? `(${eeshStats.auto_category_name} гэх мэт)`
+                          : '(сул сэдвийг тэргүүлнэ)'}
+                      </span>
+                    </button>
                     {/* Дасгалын статистик — үргэлж харуулна */}
                     {eeshStats && (() => {
                       const rate = eeshStats.overall_rate || 0;
@@ -1861,7 +2023,7 @@ const MessagesPage = ({ aiOnly = false }) => {
                         </div>
                       );
                     })()}
-                    <p className="text-muted small mb-2">Дадлага хийх чиглэл сонгох:</p>
+                    <p className="text-muted small mb-2">Эсвэл дадлага хийх сэдвээ сонгоно уу:</p>
 
                     {/* Category list — practiced + unpracticed categories */}
                     <div className="d-flex flex-column gap-1">
@@ -1896,21 +2058,6 @@ const MessagesPage = ({ aiOnly = false }) => {
                           </button>
                         );
                       })}
-                      {/* "Any category" option */}
-                      <button
-                        type="button"
-                        className="btn btn-outline-warning btn-sm text-start d-flex align-items-center gap-2 w-100 mt-1"
-                        style={{ borderRadius: '8px', padding: '6px 10px' }}
-                        onClick={handleStartExamPrep}
-                      >
-                        <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', backgroundColor: '#ffc107', flexShrink: 0 }} />
-                        <span className="flex-grow-1 small fw-medium">Автоматаар сонгох</span>
-                        <span className="text-muted small">
-                          {eeshStats?.auto_category_name
-                            ? `(${eeshStats.auto_category_name} гэх мэт)`
-                            : '(сул сэдвийг тэргүүлнэ)'}
-                        </span>
-                      </button>
                     </div>
                   </>
                 ) : (
@@ -1943,7 +2090,7 @@ const MessagesPage = ({ aiOnly = false }) => {
                     ) : (
                       <>
                         <p className="text-muted small mb-2">
-                          Дадлага хийх сэдэв сонгох
+                          Дадлага хийх дэд сэдэв сонгох
                           <span className="ms-1" style={{ fontSize: '0.72rem' }}>(олон сонгож болно)</span>
                         </p>
                         <div className="d-flex flex-wrap gap-1">

@@ -1,22 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Spinner from 'react-bootstrap/Spinner';
-import Nav from 'react-bootstrap/Nav';
 import Button from 'react-bootstrap/Button';
 import Alert from 'react-bootstrap/Alert';
 import { Users, Copy, Check } from 'lucide-react';
-import { getStudentDashboard, startProblemChat } from '../services/integralService';
+import { getStudentDashboard, startProblemChat, startMoreProblemsChat } from '../services/integralService';
 import { getParentLinkCode } from '../services/parentService';
 import {
   ReviewCard, StudyPlanCard, DailyRecommendationCard, NextTopicCard, RecentQuizzesCard, UpcomingAssignmentsCard,
 } from '../components/dashboard/DashboardCards';
 
-const SUBJECTS = [
-  { code: 'math', label: 'Математик' },
-  { code: 'physics', label: 'Физик' },
-  { code: 'chemistry', label: 'Хими' },
-  { code: 'biology', label: 'Биологи' },
-];
 
 const LinkCodeCard = () => {
   const [code, setCode] = useState(null);
@@ -57,12 +50,15 @@ const LinkCodeCard = () => {
 
 const MyDayPage = () => {
   const navigate = useNavigate();
-  const [subject, setSubject] = useState('math');
+  // Одоогоор зөвхөн математик (Физик/Хими/Биологийн таб хасагдсан)
+  const subject = 'math';
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
-  const [chatLoadingItemId, setChatLoadingItemId] = useState(null);
+  // {list: 'daily'|'review', id} — хоёр жагсаалтын item id давхцаж болох тул ялгана
+  const [chatLoading, setChatLoading] = useState(null);
   const [chatError, setChatError] = useState(null);
+  const [moreLoading, setMoreLoading] = useState(false);
 
   const load = useCallback((subj) => {
     setLoading(true);
@@ -75,10 +71,13 @@ const MyDayPage = () => {
 
   useEffect(() => { load(subject); }, [subject, load]);
 
-  const handleSolveDailyItem = async (item) => {
-    if (chatLoadingItemId) return;
+  const loadingIdFor = (list) => (chatLoading?.list === list ? chatLoading.id : null);
+
+  // Өдрийн 5 бодлого болон "Давталт" хоёулаа ижил AI чатаар бодогдоно
+  const handleSolveItem = (list) => async (item) => {
+    if (chatLoading) return;
     setChatError(null);
-    setChatLoadingItemId(item.id);
+    setChatLoading({ list, id: item.id });
     try {
       const { conversation_uuid, problems, current_index } = await startProblemChat(item.problem_id);
       navigate('/ai-chat/messages', {
@@ -90,21 +89,30 @@ const MyDayPage = () => {
       });
     } catch (err) {
       setChatError(err.response?.data?.error || 'Чат эхлүүлэхэд алдаа гарлаа.');
-      setChatLoadingItemId(null);
+      setChatLoading(null);
+    }
+  };
+
+  // Өдрийн бодлого дууссаны дараа: өнөөдрийн чатыг нээж, MessagesPage нь
+  // хувийн тохируулгатай (eesh-problems) бодлогыг widget-ээр илгээнэ.
+  const handleMoreProblems = async () => {
+    if (moreLoading) return;
+    setChatError(null);
+    setMoreLoading(true);
+    try {
+      const { conversation_uuid } = await startMoreProblemsChat(subject);
+      navigate('/ai-chat/messages', {
+        state: { conversationUuid: conversation_uuid, suggestProblem: true },
+      });
+    } catch (err) {
+      setChatError(err.response?.data?.error || 'Чат эхлүүлэхэд алдаа гарлаа.');
+      setMoreLoading(false);
     }
   };
 
   return (
     <div className="py-3" style={{ maxWidth: 800 }}>
       <h5 className="fw-bold mb-3">Миний өдөр</h5>
-
-      <Nav variant="pills" className="mb-3 gap-2" activeKey={subject} onSelect={setSubject}>
-        {SUBJECTS.map((s) => (
-          <Nav.Item key={s.code}>
-            <Nav.Link eventKey={s.code} style={{ fontSize: '0.82rem' }}>{s.label}</Nav.Link>
-          </Nav.Item>
-        ))}
-      </Nav>
 
       {loading && (
         <div className="text-center py-5"><Spinner animation="border" size="sm" /></div>
@@ -123,10 +131,16 @@ const MyDayPage = () => {
           )}
           <DailyRecommendationCard
             recommendation={data.daily_recommendations}
-            onItemClick={handleSolveDailyItem}
-            loadingItemId={chatLoadingItemId}
+            onItemClick={handleSolveItem('daily')}
+            loadingItemId={loadingIdFor('daily')}
+            onMoreProblems={subject === 'math' ? handleMoreProblems : null}
+            moreLoading={moreLoading}
           />
-          <ReviewCard review={data.review} />
+          <ReviewCard
+            review={data.review}
+            onItemClick={handleSolveItem('review')}
+            loadingItemId={loadingIdFor('review')}
+          />
           <StudyPlanCard plan={data.study_plan} />
           <NextTopicCard topic={data.next_topic} />
           <RecentQuizzesCard quizzes={data.recent_quizzes} />

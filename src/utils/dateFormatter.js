@@ -66,7 +66,8 @@ export function formatMessageTime(dateString) {
   const now = new Date();
   const diffInHours = (now - date) / (1000 * 60 * 60);
   if (diffInHours < 24) {
-    return date.toLocaleTimeString('mn-MN', { hour: '2-digit', minute: '2-digit' });
+    // hourCycle: mn-MN locale-гүй browser (Chrome) en-ийн "11:12 PM" руу унадаг тул 24 цагаар
+    return date.toLocaleTimeString('mn-MN', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
   } else if (diffInHours < 48) {
     return 'Өчигдөр';
   }
@@ -125,4 +126,13 @@ export function formatRelativeDate(date) {
 
   // Хэт эртний пост - огноог харуулах
   return formatDate(date);
+}
+
+/**
+ * 'YYYY-MM' → '9-р сар'
+ * @param {string} key
+ * @returns {string}
+ */
+export function monthLabel(key) {
+  return `${Number(key.slice(5))}-р сар`;
 }

@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import Badge from 'react-bootstrap/Badge';
 import Spinner from 'react-bootstrap/Spinner';
-import { ArrowLeft } from 'lucide-react';
-import { getTeacherStudentReport } from '../services/clubService';
+import { ArrowLeft, CheckCircle2, Circle, Flame } from 'lucide-react';
+import { getTeacherStudentReport, getTeacherStudentDaily } from '../services/clubService';
+import MathText from '../components/MathText';
 import RadarChart from '../components/charts/RadarChart';
-
-const f1 = (v) => (v == null ? '—' : `${v.toFixed(1)}%`);
+import { f1, buildSkillRadarAxes, skillRadarAriaLabel } from '../components/charts/skillRadarAxes';
 const diffText = (v, peer) => {
   if (v == null || peer == null) return '—';
   const d = v - peer;
@@ -17,6 +17,63 @@ const StatusBadge = ({ attempted, reliable }) => {
   if (reliable) return <Badge bg="primary" style={{ fontSize: '0.68rem' }}>Найдвартай</Badge>;
   if (attempted > 0) return <Badge bg="warning" text="dark" style={{ fontSize: '0.68rem' }}>Дата хангалтгүй</Badge>;
   return <Badge bg="secondary" style={{ fontSize: '0.68rem' }}>Хариулт алга</Badge>;
+};
+
+// Сурагчийн сүүлийн 7 хоногийн "Өдрийн 5 бодлого"
+const DailyHistoryCard = ({ username }) => {
+  const [data, setData] = useState(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    getTeacherStudentDaily(username, 7).then(setData).catch(() => setError(true));
+  }, [username]);
+
+  return (
+    <div className="card border-0 shadow-sm mb-3">
+      <div className="card-header bg-white fw-semibold py-2 d-flex align-items-center gap-2" style={{ fontSize: '0.85rem' }}>
+        <span>Өдрийн бодлого — сүүлийн 7 хоног</span>
+        {data?.streak > 0 && (
+          <Badge bg="warning" text="dark" className="ms-auto d-flex align-items-center gap-1" style={{ fontSize: '0.7rem' }}>
+            <Flame size={12} /> {data.streak} өдөр дараалан бодлоо
+          </Badge>
+        )}
+      </div>
+      {error && <div className="card-body text-danger small">Ачааллахад алдаа гарлаа.</div>}
+      {!error && !data && <div className="card-body text-center"><Spinner animation="border" size="sm" /></div>}
+      {data && data.history.length === 0 && (
+        <div className="card-body text-muted text-center py-3" style={{ fontSize: '0.82rem' }}>
+          Сүүлийн 7 хоногт өдрийн бодлого үүсээгүй
+        </div>
+      )}
+      {data && data.history.length > 0 && (
+        <div className="list-group list-group-flush">
+          {data.history.map((day) => (
+            <div key={day.date} className="list-group-item border-0 border-top py-2">
+              <div className="d-flex align-items-center gap-2 mb-1" style={{ fontSize: '0.8rem' }}>
+                <span className="fw-semibold">{new Date(`${day.date}T00:00:00`).toLocaleDateString('mn-MN')}</span>
+                <Badge bg={day.total && day.done === day.total ? 'success' : day.done ? 'primary' : 'secondary'}
+                  style={{ fontSize: '0.68rem' }}>
+                  {day.done}/{day.total}
+                </Badge>
+              </div>
+              {day.items.length === 0 ? (
+                <div className="text-muted" style={{ fontSize: '0.75rem' }}>Санал болгох бодлого олдоогүй</div>
+              ) : day.items.map((it) => (
+                <Link key={it.problem_id} to={`/problem/${it.problem_uuid}`}
+                  className="d-flex align-items-center gap-2 text-decoration-none text-body py-1" style={{ fontSize: '0.8rem' }}>
+                  {it.status === 'done'
+                    ? <CheckCircle2 size={14} className="text-success flex-shrink-0" />
+                    : <Circle size={14} className="text-muted flex-shrink-0" />}
+                  <MathText>{it.title}</MathText>
+                  {it.category_mn && <span className="badge bg-light text-dark border ms-auto" style={{ fontSize: '0.65rem' }}>{it.category_mn}</span>}
+                </Link>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 };
 
 const TeacherStudentReportPage = () => {
@@ -46,26 +103,9 @@ const TeacherStudentReportPage = () => {
   if (!data) return null;
 
   const { axes, totals, min_reliable: minReliable, peer_students: peerStudents } = data;
-  const chartAxes = axes.map((a) => ({
-    key: a.key,
-    label: a.label,
-    sub: a.attempted > 0 ? `n = ${a.attempted}` : (a.peer_pct != null ? 'хариулаагүй' : 'дата алга'),
-    value: a.pct,
-    peer: a.peer_pct,
-    reliable: a.reliable,
-    tooltip: [
-      a.pct == null
-        ? 'Сурагч: хариулт бүртгэгдээгүй'
-        : `Сурагч: ${a.correct} / ${a.attempted} зөв · ${f1(a.pct)}${a.reliable ? '' : ` (дата хангалтгүй, n < ${minReliable})`}`,
-      a.peer_pct == null
-        ? 'Үе тэнгийнхэн: хариулт байхгүй'
-        : `Үе тэнгийнхэн: ${f1(a.peer_pct)} · ${a.peer_attempted} хариулт`,
-    ],
-  }));
+  const chartAxes = buildSkillRadarAxes(axes, minReliable);
   const reliableCount = axes.filter((a) => a.reliable).length;
-  const ariaLabel = `Сэдэв тус бүрийн зөв хариултын хувийн радар: ${axes
-    .map((a) => `${a.label} ${a.pct == null ? 'хариулт алга' : f1(a.pct)}`)
-    .join(', ')}`;
+  const ariaLabel = skillRadarAriaLabel(axes);
 
   return (
     <div className="py-3" style={{ maxWidth: 960 }}>
@@ -155,6 +195,8 @@ const TeacherStudentReportPage = () => {
           </table>
         </div>
       </div>
+
+      <DailyHistoryCard username={username} />
 
       <p className="text-muted" style={{ fontSize: '0.75rem' }}>
         Эх сурвалж: шалгалт, клубын даалгаврын шалгагдсан хариулт. Үе тэнгийн дундаж нь энэ сурагчийн бөглөсөн

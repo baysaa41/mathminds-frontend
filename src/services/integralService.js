@@ -32,6 +32,16 @@ export const getDailyRecommendations = async (subject = 'math') => {
 };
 
 /**
+ * Өдрийн бодлогоо дуусгасны дараа "Өөр бодлого бодох" — өнөөдрийн чатыг буцаана.
+ * Буцаана: { conversation_uuid }
+ * @param {string} subject
+ */
+export const startMoreProblemsChat = async (subject = 'math') => {
+  const response = await apiClient.post('/api/integral/daily-recommendations/more-chat/', { subject });
+  return response.data;
+};
+
+/**
  * Тухайн бодлогыг AI багштай чат горимоор эхлүүлнэ (dashboard-ийн "Өнөөдрийн
  * 5 бодлого" гэх мэт жагсаалтаас дарахад ашиглана).
  * Буцаана: { conversation_uuid, problem, problems, current_index, message }
@@ -41,6 +51,7 @@ export const getDailyRecommendations = async (subject = 'math') => {
  * @param {number} problemId
  */
 export const startProblemChat = async (problemId) => {
-  const response = await apiClient.post(`/api/integral/problems/${problemId}/start-chat/`);
+  // defer_message: бодлого чатын ЭЕШ блокт харагдаж, хариулсны дараа л чатад нэмэгдэнэ
+  const response = await apiClient.post(`/api/integral/problems/${problemId}/start-chat/`, { defer_message: true });
   return response.data;
 };

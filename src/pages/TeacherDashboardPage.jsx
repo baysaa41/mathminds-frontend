@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Badge from 'react-bootstrap/Badge';
 import Spinner from 'react-bootstrap/Spinner';
-import { Users, ClipboardList, AlertTriangle, Radar } from 'lucide-react';
+import { Users, ClipboardList, AlertTriangle, Radar, Sparkles, ChevronRight } from 'lucide-react';
 import { getTeacherDashboard, searchTeacherStudents } from '../services/clubService';
+import MathText from '../components/MathText';
 
 const fmtDate = (iso) => iso ? new Date(iso).toLocaleDateString('mn-MN') : '—';
 
@@ -149,7 +150,7 @@ const WeakStudentsCard = ({ students }) => (
                 className="fw-medium text-decoration-none" style={{ fontSize: '0.85rem' }}>
                 {s.student_name}
               </Link>
-              <div className="text-muted" style={{ fontSize: '0.72rem' }}>{s.topic_name}</div>
+              <MathText as="div" className="text-muted" style={{ fontSize: '0.72rem' }}>{s.topic_name}</MathText>
             </div>
             <span className="fw-semibold" style={{ fontSize: '0.85rem', color: masteryColor(s.mastery_score) }}>
               {Math.round(s.mastery_score * 100)}%
@@ -159,6 +160,21 @@ const WeakStudentsCard = ({ students }) => (
       </div>
     )}
   </div>
+);
+
+const DailyProblemsLinkCard = () => (
+  <Link to="/teacher-dashboard/daily" className="card border-0 shadow-sm mb-3 text-decoration-none">
+    <div className="card-body py-2 px-3 d-flex align-items-center gap-2">
+      <Sparkles size={15} className="text-primary" />
+      <div className="flex-grow-1">
+        <div className="fw-semibold text-body" style={{ fontSize: '0.85rem' }}>Сурагчдын өдрийн бодлого</div>
+        <div className="text-muted" style={{ fontSize: '0.75rem' }}>
+          Клуб, дэд бүлгээр болон сурагч тус бүрээр — хэн хэдийг бодсон, аль бодлого хүндрэлтэй байна
+        </div>
+      </div>
+      <ChevronRight size={16} className="text-muted" />
+    </div>
+  </Link>
 );
 
 const TeacherDashboardPage = () => {
@@ -181,6 +197,7 @@ const TeacherDashboardPage = () => {
     <div className="py-3" style={{ maxWidth: 800 }}>
       <h5 className="fw-bold mb-3">Багшийн хяналтын самбар</h5>
 
+      <DailyProblemsLinkCard />
       <StudentReportSearchCard />
       <UngradedCard count={data.ungraded_count} submissions={data.ungraded_submissions} />
       <WeakStudentsCard students={data.weak_students} />
