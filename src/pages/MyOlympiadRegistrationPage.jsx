@@ -44,6 +44,7 @@ function MyOlympiadRegistrationPage() {
         </Card.Body>
         <Table size="sm" className="mb-0">
           <tbody>
+            <tr><td className="text-muted">MMO ID</td><td>{reg.mmo_id ?? '-'}</td></tr>
             <tr><td className="text-muted">Анги / ангилал</td><td>{reg.grade_label || reg.olympiad_category_name || '-'}</td></tr>
             <tr><td className="text-muted">Сургууль</td><td>{reg.school}</td></tr>
             <tr><td className="text-muted">Шалгалт</td><td>{fmtDate(o.exam_start)}{o.venue ? ` · ${o.venue}` : ''}</td></tr>

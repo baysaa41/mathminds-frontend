@@ -83,11 +83,11 @@ function OlympiadRosterPage() {
         />
       )}
       <Table striped hover size="sm" responsive>
-        <thead><tr><th>№</th><th>Овог нэр</th><th>Аймаг/Дүүрэг</th><th>Сургууль</th><th>Ангилал</th><th>Анги</th>{user?.is_staff && <th>Бүртгэсэн</th>}{user?.is_staff && <th>Төлөв</th>}{user?.is_staff && <th />}</tr></thead>
+        <thead><tr><th>№</th><th>Овог нэр</th>{user?.is_staff && <th>MMO ID</th>}<th>Аймаг/Дүүрэг</th><th>Сургууль</th><th>Ангилал</th><th>Анги</th>{user?.is_staff && <th>Бүртгэсэн</th>}{user?.is_staff && <th>Төлөв</th>}{user?.is_staff && <th />}</tr></thead>
         <tbody>
           {filtered.map((r, i) => (
             <tr key={`${r.participant_no}-${i}`}>
-              <td>{r.participant_no ?? '-'}</td><td>{r.full_name}{r.full_name_latin && <div className="small text-muted">{r.full_name_latin}</div>}</td><td>{r.province}</td><td>{r.school}</td><td>{r.olympiad_category_name ?? '-'}</td><td>{r.olympiad_category_name && r.grade_label === r.olympiad_category_name ? '-' : r.grade_label}</td>
+              <td>{r.participant_no ?? '-'}</td><td>{r.full_name}{r.full_name_latin && <div className="small text-muted">{r.full_name_latin}</div>}</td>{user?.is_staff && <td>{r.mmo_id ?? '-'}</td>}<td>{r.province}</td><td>{r.school}</td><td>{r.olympiad_category_name ?? '-'}</td><td>{r.olympiad_category_name && r.grade_label === r.olympiad_category_name ? '-' : r.grade_label}</td>
               {user?.is_staff && <td>{r.registered_by_name ?? '-'}</td>}
               {user?.is_staff && (
                 <td>

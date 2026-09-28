@@ -300,12 +300,13 @@ function OlympiadDetailPage() {
         <Card className="mb-3">
           <Card.Header>Миний бүртгэл <small className="text-muted">({myRegs.length})</small></Card.Header>
           <Table size="sm" responsive className="mb-0 align-middle">
-            <thead><tr><th>№</th><th>Овог нэр</th><th>Ангилал / Анги</th><th>Төлөв</th><th /></tr></thead>
+            <thead><tr><th>№</th><th>Овог нэр</th><th>MMO ID</th><th>Ангилал / Анги</th><th>Төлөв</th><th /></tr></thead>
             <tbody>
               {myRegs.map((r) => (
                 <tr key={r.id}>
                   <td>{r.participant_no ?? '-'}</td>
                   <td>{r.full_name}{r.is_mine && <Badge bg="light" text="dark" className="ms-2">Би</Badge>}</td>
+                  <td>{r.mmo_id ?? '-'}</td>
                   <td>{r.olympiad_category_name && r.olympiad_category_name !== r.grade_label
                     ? `${r.olympiad_category_name} · ${r.grade_label}` : (r.grade_label || r.olympiad_category_name || '-')}</td>
                   <td>

@@ -79,7 +79,7 @@ function StudentDetailPage() {
         <div>
           <h3 className="mb-0">{student.full_name}</h3>
           <div className="text-muted small">
-            {[student.last_name_latin && `${student.last_name_latin} ${student.first_name_latin}`, student.grade && `${student.grade}-р анги`, student.school]
+            {[student.last_name_latin && `${student.last_name_latin} ${student.first_name_latin}`, student.grade && `${student.grade}-р анги`, student.school, student.mmo_id && `MMO ID: ${student.mmo_id}`]
               .filter(Boolean).join(' · ')}
           </div>
         </div>
