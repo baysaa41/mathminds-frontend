@@ -5,7 +5,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Container, Card, Table, Form, Button, Alert, Spinner, Badge, Row, Col } from 'react-bootstrap';
 import PaymentModal from '../components/PaymentModal';
-import { getStudent, updateStudent, payRegistration, REG_STATUS } from '../services/olympiadService';
+import { getStudent, updateStudent, payRegistration, resendRegistrationLink, REG_STATUS } from '../services/olympiadService';
 import { LATIN_NAME_RE } from '../utils/transliterate';
 
 const FIELDS = [
@@ -58,6 +58,15 @@ function StudentDetailPage() {
   };
 
   const pay = async (r) => setPayment({ ...(await payRegistration(r.id)), amount: Number(r.fee) });
+  const resend = async (r) => {
+    setError(null);
+    try {
+      const { sent_to: to } = await resendRegistrationLink(r.id);
+      setInfo(`${to} хаяг руу шинэ link илгээлээ. Өмнөх link-үүд хүчингүй боллоо.`);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Link илгээхэд алдаа гарлаа');
+    }
+  };
 
   if (!student) {
     return <Container className="py-4">{error ? <Alert variant="danger">{error}</Alert> : <Spinner animation="border" />}</Container>;
@@ -133,6 +142,9 @@ function StudentDetailPage() {
                   {r.fee_waived && <Badge bg="info" className="ms-1">Төлбөрөөс чөлөөлсөн</Badge>}
                 </td>
                 <td className="text-end">
+                  {!student.has_account && (
+                    <Button size="sm" variant="outline-secondary" className="me-1" onClick={() => resend(r)}>Link дахин илгээх</Button>
+                  )}
                   {r.status === 'PENDING' && Number(r.fee) > 0 && <Button size="sm" onClick={() => pay(r)}>Төлбөр төлөх</Button>}
                 </td>
               </tr>

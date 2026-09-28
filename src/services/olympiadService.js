@@ -34,6 +34,19 @@ export const lookupStudents = async (slug, email) =>
 export const getMyStudents = async () => (await apiClient.get(`${BASE}/my-students/`, { skipCache: true })).data;
 export const getStudent = async (id) => (await apiClient.get(`${BASE}/students/${id}/`, { skipCache: true })).data;
 export const updateStudent = async (id, payload) => (await apiClient.patch(`${BASE}/students/${id}/`, payload)).data;
+// Шинэ link илгээнэ (өмнөх link-үүд хүчингүй болно)
+export const resendRegistrationLink = async (registrationId) =>
+  (await apiClient.post(`${BASE}/registrations/${registrationId}/resend-link/`)).data;
+
+// ── Имэйлийн link (token) ба «Миний олимпиадууд» ────────────────────────────
+// Token-ийг URL-д биш body-д илгээнэ (сервер лог-д үлдэхгүй)
+export const getRegistrationAccess = async (token) => (await apiClient.post(`${BASE}/access/`, { token })).data;
+export const claimRegistrationAccess = async (token) =>
+  (await apiClient.post(`${BASE}/access/claim/`, { token })).data;
+export const getMeRegistrations = async () =>
+  (await apiClient.get(`${BASE}/me/registrations/`, { skipCache: true })).data;
+export const getMeRegistration = async (id) =>
+  (await apiClient.get(`${BASE}/me/registrations/${id}/`, { skipCache: true })).data;
 
 // QPay нэхэмжлэх үүсгэнэ -> { qpay_data, local_invoice_id } (PaymentModal-д дамжуулна)
 export const payRegistration = async (registrationId) =>

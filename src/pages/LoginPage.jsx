@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import apiClient from '../api/axiosConfig.js';
 import authService from '../services/authService.js';
+import { consumePostLoginRedirect } from '../utils/postLoginRedirect';
 
 // React Bootstrap
 import Container from 'react-bootstrap/Container';
@@ -37,7 +38,7 @@ const LoginPage = () => {
 
       const { token, user } = response.data;
       login(user, token);
-      navigate('/');
+      navigate(consumePostLoginRedirect('/'));
     } catch (err) {
       // --- (!!!) ЗАСВАР: Алдааны мсж ---
       if (err.response?.data?.detail) {

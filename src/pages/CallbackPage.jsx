@@ -6,6 +6,7 @@ import { Container, Card, ListGroup, Button, Alert, Spinner, Badge } from 'react
 import authService from '../services/authService';
 import { useAuth } from '../context/AuthContext'; // <<< 1. AuthContext-г ИМПОРТЛОХ
 import { fmtDate } from '../services/olympiadService';
+import { consumePostLoginRedirect } from '../utils/postLoginRedirect';
 
 function CallbackPage() {
   const [searchParams] = useSearchParams();
@@ -63,8 +64,8 @@ function CallbackPage() {
           // Энэ нь LeftSidebar дээр мэдээллийг харуулна
           login(user, token);
 
-          // 5. Home хуудас руу redirect
-          navigate('/');
+          // 5. Нэвтрэхээс өмнөх хуудас (жишээ нь имэйлийн link) эсвэл Home руу
+          navigate(consumePostLoginRedirect('/'));
         } else {
           throw new Error('Auth service-с хэрэглэгч эсвэл токен олдсонгүй.');
         }
@@ -86,7 +87,7 @@ function CallbackPage() {
     try {
       const { user, token } = await authService.chooseGoogleAccount(accountChoice.token, userId);
       login(user, token);
-      navigate('/');
+      navigate(consumePostLoginRedirect('/'));
     } catch (err) {
       setError(err.message);
       setChoosing(null);

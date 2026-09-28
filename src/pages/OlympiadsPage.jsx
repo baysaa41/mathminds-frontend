@@ -26,7 +26,10 @@ function OlympiadsPage() {
     <Container className="py-4" style={{ maxWidth: 900 }}>
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h3 className="mb-0">Олимпиад</h3>
-        <Link to="/my-students" className="btn btn-outline-primary btn-sm">Миний сурагчид</Link>
+        <div className="d-flex gap-2">
+          <Link to="/my-olympiads" className="btn btn-outline-primary btn-sm">Миний олимпиадууд</Link>
+          <Link to="/my-students" className="btn btn-outline-primary btn-sm">Миний сурагчид</Link>
+        </div>
       </div>
       {error && <Alert variant="danger">{error}</Alert>}
       {!error && items.length === 0 && <Alert variant="info">Одоогоор зарлагдсан олимпиад байхгүй.</Alert>}

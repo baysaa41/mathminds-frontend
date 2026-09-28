@@ -146,6 +146,9 @@ const OlympiadAdminPage = lazy(() => import('./pages/OlympiadAdminPage.jsx'));
 const OlympiadPrintPage = lazy(() => import('./pages/OlympiadPrintPage.jsx'));
 const MyStudentsPage = lazy(() => import('./pages/MyStudentsPage.jsx'));
 const StudentDetailPage = lazy(() => import('./pages/StudentDetailPage.jsx'));
+const ClaimPage = lazy(() => import('./pages/ClaimPage.jsx'));
+const MyOlympiadsPage = lazy(() => import('./pages/MyOlympiadsPage.jsx'));
+const MyOlympiadRegistrationPage = lazy(() => import('./pages/MyOlympiadRegistrationPage.jsx'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage.jsx'));
 const MyPurchasesPage = lazy(() => import('./pages/MyPurchasesPage.jsx'));
 const MembershipPlansPage = lazy(() => import('./pages/MembershipPlansPage.jsx'));
@@ -162,6 +165,8 @@ function App() {
         {/* Нууц үг баталгаажуулах/шинэчлэх зам. uidb64 болон token-г URL-аас авна */}
         <Route path="/reset-password/:uidb64/:token" element={<PasswordResetConfirmPage />} />
         <Route path="/callback" element={<CallbackPage />} />
+        {/* Олимпиадын имэйлийн link: /r#<token> */}
+        <Route path="/r" element={<ClaimPage />} />
 
         {/* Шинэ хэрэглэгчийн 3 алхамт танилцуулга */}
         <Route
@@ -213,6 +218,8 @@ function App() {
           <Route path="olympiads/:slug/roster" element={<OlympiadRosterPage />} />
           <Route path="my-students" element={<MyStudentsPage />} />
           <Route path="my-students/:id" element={<StudentDetailPage />} />
+          <Route path="my-olympiads" element={<MyOlympiadsPage />} />
+          <Route path="my-olympiads/:id" element={<MyOlympiadRegistrationPage />} />
           <Route path="admin/olympiads" element={<AdminRoute><OlympiadsAdminListPage /></AdminRoute>} />
           <Route path="admin/olympiads/new" element={<AdminRoute><OlympiadFormPage /></AdminRoute>} />
           <Route path="admin/olympiads/:slug/edit" element={<AdminRoute><OlympiadFormPage /></AdminRoute>} />
