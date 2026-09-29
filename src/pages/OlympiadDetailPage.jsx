@@ -71,6 +71,7 @@ function OlympiadDetailPage() {
   const [candidates, setCandidates] = useState(null);
   const [picked, setPicked] = useState(null);
   const [looking, setLooking] = useState(false);
+  const [needEmail, setNeedEmail] = useState(false);  // MMO/profile-д имэйл байхгүй бол гараар
 
   const load = useCallback(async () => {
     try {
@@ -177,6 +178,7 @@ function OlympiadDetailPage() {
       else if (form.waive_fee) setInfo('Төлбөргүйгээр бүртгэгдэж, баталгаажлаа.');
     } catch (err) {
       const d = err.response?.data;
+      if (d?.email && mmoMode) setNeedEmail(true);
       if (d?.existing_candidates) {  // ижил имэйл + овог нэртэй сурагч бий — шинээр үүсгэхгүй, сонгуулна
         setCandidates(d.existing_candidates);
         setPicked(null);
@@ -220,9 +222,20 @@ function OlympiadDetailPage() {
   // Сурагч сонгоход сургууль, анги, аймаг/дүүргийг бөглөнө (нэр, утас, имэйлийг хадгалах үед сервер нөхнө)
   const pickStudent = (key) => {
     setPicked(key);
+    setNeedEmail(false);
     const c = candidates?.find((x) => (x.id ?? `mmo-${x.mmo_id}`) === key);
     if (!c) return;
     const grade = c.grade ? String(c.grade) : '';
+    if (queryIsMmo) {
+      // MMO ID-аар: анги MMO-оос тогтмол (засахгүй) — ангилалыг ангид тааруулна, дараа нь сольж болно
+      setForm((f) => {
+        const current = categories.find((x) => String(x.id) === f.category_id);
+        const fits = current && (current.grade_from === null || !gradeMismatch(current, grade));
+        return { ...f, school: c.school, province: c.province, grade,
+          category_id: fits ? f.category_id : autoCategoryId(categories, '', grade) };
+      });
+      return;
+    }
     setForm((f) => ({
       ...f,
       school: c.school || f.school,
@@ -235,6 +248,7 @@ function OlympiadDetailPage() {
 
   const changeQuery = (e) => {
     setQuery(e.target.value);
+    setNeedEmail(false);
     setCandidates(null);  // хайлт өөрчлөгдвөл дахин хайна
     setPicked(null);
   };
@@ -244,6 +258,8 @@ function OlympiadDetailPage() {
   const pickedExisting = forOther && typeof picked === 'number';
   const pickedMmo = forOther && typeof picked === 'string' && picked.startsWith('mmo-');
   const pickedChosen = pickedExisting || pickedMmo;  // нэр, холбоо барих мэдээллийг сервер нөхнө
+  // MMO ID-аар сонгосон: бүртгэгч зөвхөн ангилал сонгоно; бусад мэдээллийг MMO/profile-оос сервер нөхнө
+  const mmoMode = forOther && queryIsMmo && pickedChosen;
   const showDetails = !forOther || picked !== null;
   const latinIsAuto = form.last_name_latin === toLatin(form.last_name) && form.first_name_latin === toLatin(form.first_name);
 
@@ -263,6 +279,11 @@ function OlympiadDetailPage() {
   const setCategory = (e) => {
     const cat = categories.find((c) => String(c.id) === e.target.value);
     const mismatch = gradeMismatch(cat, form.grade);
+    if (mmoMode) {  // анги MMO-оос тогтмол — арилгахгүй
+      setError(mismatch ? `${mismatch} Өөр ангилал сонгоно уу.` : null);
+      setForm((f) => ({ ...f, category_id: e.target.value }));
+      return;
+    }
     setError(mismatch ? `${mismatch} Ангиа дахин сонгоно уу.` : null);
     const keep = cat && cat.grade_from !== null && !mismatch;
     setForm((f) => ({ ...f, category_id: e.target.value, grade: keep ? f.grade : '' }));
@@ -443,7 +464,25 @@ function OlympiadDetailPage() {
                     )}
                   </Col>
                 )}
-                {pickedCandidate && (
+                {pickedCandidate && mmoMode && (
+                  <Col md={12}>
+                    <Card className="border-success">
+                      <Card.Body className="py-2 px-3 small">
+                        <div className="text-success fw-semibold mb-1">
+                          Сонгосон сурагч{pickedCandidate.mmo_id && ` · MMO ID ${pickedCandidate.mmo_id}`}
+                        </div>
+                        <Row className="g-1">
+                          <Col xs={6}><span className="text-muted">Овог:</span> {pickedCandidate.last_name || '-'}</Col>
+                          <Col xs={6}><span className="text-muted">Нэр:</span> {pickedCandidate.first_name || '-'}</Col>
+                          <Col xs={6}><span className="text-muted">Сургууль:</span> {pickedCandidate.school || '-'}</Col>
+                          <Col xs={6}><span className="text-muted">Анги:</span> {pickedCandidate.grade ? `${pickedCandidate.grade}-р анги` : '-'}</Col>
+                        </Row>
+                        <div className="text-muted mt-1">Дээрээс оролцох ангилалаа сонгоод бүртгүүлнэ үү. Бусад мэдээлэл MMO-оос бөглөгдөнө.</div>
+                      </Card.Body>
+                    </Card>
+                  </Col>
+                )}
+                {pickedCandidate && !mmoMode && (
                   <Col md={12}>
                     <Alert variant="success" className="py-2 px-3 mb-0 small">
                       Сонгосон: <strong>{pickedCandidate.masked_name}</strong>
@@ -483,6 +522,7 @@ function OlympiadDetailPage() {
                 </Col>
                 </>)}
                 {showDetails && (<>
+                {!mmoMode && (<>
                 <Col md={12}>
                   <Form.Label>Аймаг / Дүүрэг</Form.Label>
                   {provinces.length > 0 ? (
@@ -515,7 +555,8 @@ function OlympiadDetailPage() {
                   <Form.Control required={!pickedChosen} type="tel" value={form.phone} onChange={set('phone')}
                                 placeholder={pickedChosen ? 'Хоосон бол сурагчийн бүртгэлтэй утас' : ''} />
                 </Col>
-                {(!forOther || !queryIsEmail) && (
+                </>)}
+                {(!forOther || !queryIsEmail) && (!mmoMode || needEmail) && (
                   <Col md={6}>
                     <Form.Label>Имэйл хаяг</Form.Label>
                     <Form.Control required={!pickedChosen} type="email" value={form.email} onChange={set('email')}

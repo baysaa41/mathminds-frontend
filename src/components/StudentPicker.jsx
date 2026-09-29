@@ -17,7 +17,7 @@ function StudentPicker({ candidates, value, onChange }) {
           onClick={() => onChange(candidateKey(c))} className="d-flex justify-content-between align-items-center"
         >
           <div>
-            <div className="fw-semibold">{c.masked_name}</div>
+            <div className="fw-semibold">{c.display_name || c.masked_name}</div>
             <div className="small">
               {[c.grade && `${c.grade}-р анги`, c.school, c.phone_tail && `Утас: ${c.phone_tail}`, c.mmo_id && `MMO ID: ${c.mmo_id}`]
                 .filter(Boolean).join(' · ')}
