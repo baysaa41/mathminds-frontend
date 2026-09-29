@@ -5,6 +5,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Container, Card, Table, Form, Button, Alert, Spinner, Badge, Row, Col } from 'react-bootstrap';
 import PaymentModal from '../components/PaymentModal';
+import useSiteGrades from '../hooks/useSiteGrades';
 import { apiErrorText, getStudent, updateStudent, payRegistration, resendRegistrationLink, REG_STATUS } from '../services/olympiadService';
 import { LATIN_NAME_RE } from '../utils/transliterate';
 
@@ -23,6 +24,7 @@ function StudentDetailPage() {
   const [error, setError] = useState(null);
   const [info, setInfo] = useState(null);
   const [payment, setPayment] = useState(null);
+  const siteGrades = useSiteGrades();
 
   const load = useCallback(async () => {
     try {
@@ -79,7 +81,7 @@ function StudentDetailPage() {
         <div>
           <h3 className="mb-0">{student.full_name}</h3>
           <div className="text-muted small">
-            {[student.last_name_latin && `${student.last_name_latin} ${student.first_name_latin}`, student.grade && `${student.grade}-р анги`, student.school, student.mmo_id && `MMO ID: ${student.mmo_id}`]
+            {[student.last_name_latin && `${student.last_name_latin} ${student.first_name_latin}`, student.grade && student.grade_label, student.school, student.mmo_id && `MMO ID: ${student.mmo_id}`]
               .filter(Boolean).join(' · ')}
           </div>
         </div>
@@ -107,7 +109,7 @@ function StudentDetailPage() {
                   {k === 'grade' ? (
                     <Form.Select disabled={!editing} value={form.grade} onChange={(e) => setForm((f) => ({ ...f, grade: e.target.value }))}>
                       <option value="">—</option>
-                      {Array.from({ length: 12 }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}-р анги</option>)}
+                      {siteGrades.map((g) => <option key={g.value} value={g.value}>{g.label}</option>)}
                     </Form.Select>
                   ) : (
                     <Form.Control disabled={!editing} type={k === 'email' ? 'email' : 'text'} value={form[k]}

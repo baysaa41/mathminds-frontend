@@ -51,7 +51,7 @@ function MyStudentsPage() {
                     <Link to={`/my-students/${st.id}`} className="fw-semibold">{st.full_name}</Link>
                     <div className="small text-muted">{st.email}{st.mmo_id && ` · MMO ID: ${st.mmo_id}`}</div>
                   </td>
-                  <td className="small">{[st.grade && `${st.grade}-р анги`, st.school].filter(Boolean).join(' · ') || '-'}</td>
+                  <td className="small">{[st.grade && st.grade_label, st.school].filter(Boolean).join(' · ') || '-'}</td>
                   <td className="small">
                     {st.registrations.map((r) => (
                       <div key={r.id}>

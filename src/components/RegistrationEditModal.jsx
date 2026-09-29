@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { Modal, Form, Button, Row, Col, Alert, Spinner } from 'react-bootstrap';
 import { apiErrorText, getAdminRegistration, updateAdminRegistration, categoryFitsGrade, bestCategoryForGrade } from '../services/olympiadService';
 import { LATIN_NAME_RE } from '../utils/transliterate';
+import useSiteGrades from '../hooks/useSiteGrades';
 
 const TEXT_FIELDS = [
   ['last_name', 'Овог', 6], ['first_name', 'Нэр', 6],
@@ -18,6 +19,7 @@ function RegistrationEditModal({ registrationId, onClose, onSaved }) {
   const [categories, setCategories] = useState([]);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
+  const siteGrades = useSiteGrades();
 
   useEffect(() => {
     if (!registrationId) return;
@@ -92,7 +94,7 @@ function RegistrationEditModal({ registrationId, onClose, onSaved }) {
                   <Form.Label className="small mb-0">Анги</Form.Label>
                   <Form.Select value={form.grade} onChange={setGrade}>
                     <option value="">—</option>
-                    {Array.from({ length: 12 }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}-р анги</option>)}
+                    {siteGrades.map((g) => <option key={g.value} value={g.value}>{g.label}</option>)}
                   </Form.Select>
                 </Col>
               )}

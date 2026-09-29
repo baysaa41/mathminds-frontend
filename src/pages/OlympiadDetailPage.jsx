@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { Container, Card, Table, Form, Button, ButtonGroup, ToggleButton, Alert, Spinner, Badge, Row, Col } from 'react-bootstrap';
 import PaymentModal from '../components/PaymentModal';
 import StudentPicker from '../components/StudentPicker';
+import useSiteGrades from '../hooks/useSiteGrades';
 import { apiErrorText, categoryFitsGrade, bestCategoryForGrade, getOlympiad, getOlympiadMyRegistrations, approveRegistration, registerForOlympiad, payRegistration, getPrefill, getProvinces, lookupStudents, fmtDate } from '../services/olympiadService';
 import { toLatin, LATIN_NAME_RE } from '../utils/transliterate';
 
@@ -25,8 +26,8 @@ const syncLatin = (prev, next) => {
   };
 };
 
-const GRADE_OPTIONS = [
-  ...Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: `${i + 1}-р анги` })),
+// Ангилалгүй олимпиадад сайтын ангиудын дараа нэмэгдэх тусгай сонголтууд
+const SPECIAL_GRADE_OPTIONS = [
   { value: 'TEAM_TEACHER', label: 'Багийн багш' },
   { value: 'SHARED_TEACHER', label: 'Дундын багш' },
   { value: 'FREE', label: 'Чөлөөт' },
@@ -58,6 +59,7 @@ const STATUS_LABEL = {
 function OlympiadDetailPage() {
   const { slug } = useParams();
   const { user } = useAuth();
+  const siteGrades = useSiteGrades();
   const [olympiad, setOlympiad] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -293,7 +295,8 @@ function OlympiadDetailPage() {
   const selectedCat = categories.find((c) => String(c.id) === form.category_id);
   const noGrade = !!selectedCat && selectedCat.grade_from === null; // багш, чөлөөт гэх мэт
   // Анги хязгааргүй (1–12); ангилалын сонголт ангиасаа хамаарна (анги ≤ дээд хязгаар)
-  const gradeOptions = categories.length === 0 ? GRADE_OPTIONS : GRADE_OPTIONS.filter((o) => /^\d+$/.test(o.value));
+  // Сайтын бүх ангийн сонголт (1–12, Оюутан, багш, Сонирхогч); ангилалгүй бол тусгай сонголтууд нэмэгдэнэ
+  const gradeOptions = categories.length === 0 ? [...siteGrades, ...SPECIAL_GRADE_OPTIONS] : siteGrades;
   const categoryOptions = categories.filter((c) => categoryFitsGrade(c, form.grade));
   const setGrade = (e) => {
     const grade = e.target.value;
@@ -499,7 +502,7 @@ function OlympiadDetailPage() {
                           <Col xs={6}><span className="text-muted">Овог:</span> {pickedCandidate.last_name || '-'}</Col>
                           <Col xs={6}><span className="text-muted">Нэр:</span> {pickedCandidate.first_name || '-'}</Col>
                           <Col xs={6}><span className="text-muted">Сургууль:</span> {pickedCandidate.school || '-'}</Col>
-                          <Col xs={6}><span className="text-muted">Анги:</span> {pickedCandidate.grade ? `${pickedCandidate.grade}-р анги` : '-'}</Col>
+                          <Col xs={6}><span className="text-muted">Анги:</span> {pickedCandidate.grade_label || '-'}</Col>
                         </Row>
                         <div className="text-muted mt-1">Дээрээс оролцох ангилалаа сонгож, латин нэрийг шалгаад бүртгүүлнэ үү. Бусад мэдээлэл MMO-оос бөглөгдөнө.</div>
                       </Card.Body>

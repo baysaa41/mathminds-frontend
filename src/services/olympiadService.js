@@ -136,5 +136,8 @@ export const deleteOlympiad = async (slug) => (await apiClient.delete(`${BASE}/$
 export const getPrefill = async (mmoId) =>
   (await apiClient.get(`${BASE}/prefill/`, { params: mmoId ? { mmo_id: mmoId } : {} })).data;
 
+// Сайтын ангийн сонголтууд [{value, label}] — hooks/useSiteGrades-ээр ашиглана
+export const getSiteGrades = async () => (await apiClient.get(`${BASE}/grades/`)).data;
+
 // MMO-ийн аймаг/дүүргийн нэрсийн жагсаалт (хоосон бол MMO-той холбогдож чадаагүй)
 export const getProvinces = async () => (await apiClient.get(`${BASE}/provinces/`)).data;

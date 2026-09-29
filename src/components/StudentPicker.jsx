@@ -19,7 +19,7 @@ function StudentPicker({ candidates, value, onChange }) {
           <div>
             <div className="fw-semibold">{c.display_name || c.masked_name}</div>
             <div className="small">
-              {[c.grade && `${c.grade}-р анги`, c.school, c.phone_tail && `Утас: ${c.phone_tail}`, c.mmo_id && `MMO ID: ${c.mmo_id}`]
+              {[c.grade && (c.grade_label || `${c.grade}-р анги`), c.school, c.phone_tail && `Утас: ${c.phone_tail}`, c.mmo_id && `MMO ID: ${c.mmo_id}`]
                 .filter(Boolean).join(' · ')}
             </div>
           </div>

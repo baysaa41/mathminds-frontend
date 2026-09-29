@@ -5,6 +5,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Container, Card, Table, Button, Badge, Spinner, Alert, Form } from 'react-bootstrap';
 import PaymentModal from '../components/PaymentModal';
+import useSiteGrades from '../hooks/useSiteGrades';
 import { getMeRegistration, updateMeRegistration, payRegistration, fmtDate, fmtRange, REG_STATUS,
   apiErrorText, categoryFitsGrade, bestCategoryForGrade } from '../services/olympiadService';
 
@@ -13,6 +14,7 @@ function MyOlympiadRegistrationPage() {
   const [reg, setReg] = useState(null);
   const [error, setError] = useState(null);
   const [payment, setPayment] = useState(null);
+  const siteGrades = useSiteGrades();
   const [edit, setEdit] = useState(null);  // {olympiad_category, grade} — анги, ангилал засах үед
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState(null);
@@ -87,7 +89,7 @@ function MyOlympiadRegistrationPage() {
                       <Form.Select size="sm" style={{ maxWidth: 160 }} value={edit.grade}
                                    onChange={(e) => changeGrade(e.target.value)}>
                         <option value="">— Анги —</option>
-                        {Array.from({ length: 12 }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}-р анги</option>)}
+                        {siteGrades.map((g) => <option key={g.value} value={g.value}>{g.label}</option>)}
                       </Form.Select>
                     )}
                     {cats.length > 0 && (
@@ -112,7 +114,7 @@ function MyOlympiadRegistrationPage() {
                   {reg.can_edit && <Button size="sm" variant="link" className="py-0" onClick={startEdit}>Анги, ангилал засах</Button>}
                 </td>
               </tr>
-              <tr><td className="text-muted">Анги</td><td>{reg.grade ? `${reg.grade}-р анги` : '-'}</td></tr>
+              <tr><td className="text-muted">Анги</td><td>{reg.grade ? reg.grade_label : '-'}</td></tr>
             </>)}
             <tr><td className="text-muted">Сургууль</td><td>{reg.school}</td></tr>
             <tr><td className="text-muted">Олимпиадын хугацаа</td><td>{fmtRange(o.exam_start, o.exam_end)}{o.venue ? ` · ${o.venue}` : ''}</td></tr>
