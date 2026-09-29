@@ -219,8 +219,10 @@ function OlympiadFormPage() {
                 <Form.Control value={form.bank_name} onChange={set('bank_name')} placeholder="Жишээ: Хаан банк" />
               </Col>
               <Col md={4}>
-                <Form.Label>Дансны дугаар</Form.Label>
-                <Form.Control value={form.bank_account} onChange={set('bank_account')} />
+                <Form.Label>Дансны дугаар (IBAN)</Form.Label>
+                <Form.Control value={form.bank_account} onChange={set('bank_account')}
+                              placeholder="MN12 0005 0050 0012 3456" isInvalid={!!errors?.bank_account} />
+                <Form.Text muted>IBAN дугаарыг бүтнээр нь (MN + 18 орон) оруулна.</Form.Text>
                 {fieldErr('bank_account')}
               </Col>
               <Col md={4}>

@@ -118,6 +118,9 @@ export const payRegistration = async (registrationId) =>
 export const payRegistrationsBulk = async (registrationIds) =>
   (await apiClient.post(`${BASE}/registrations/pay-bulk/`, { registration_ids: registrationIds })).data;
 
+// IBAN-ийг 4 оронгоор бүлэглэж харуулна: MN300005005000123456 → "MN30 0005 0050 0012 3456"
+export const formatIban = (iban) => String(iban || '').replace(/\s+/g, '').replace(/(.{4})(?=.)/g, '$1 ');
+
 // Төлбөрийн хүсэлт (components/RegistrationPayment): нэг эсвэл хэд хэдэн бүртгэл
 export const paymentRequestFor = (regs) => {
   const list = Array.isArray(regs) ? regs : [regs];

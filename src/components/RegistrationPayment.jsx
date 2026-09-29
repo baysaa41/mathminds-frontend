@@ -7,13 +7,17 @@ import React, { useEffect, useState } from 'react';
 import { Modal, Button, Alert, Spinner, Form, Table } from 'react-bootstrap';
 import PaymentModal from './PaymentModal';
 import {
-  apiErrorText, createBankTransfer, getBankTransfer, payRegistration, payRegistrationsBulk, submitBankTransfer,
+  apiErrorText, createBankTransfer, formatIban, getBankTransfer, payRegistration, payRegistrationsBulk, submitBankTransfer,
 } from '../services/olympiadService';
 
-function CopyRow({ label, value }) {
+function CopyRow({ label, value, copyValue }) {
   const [copied, setCopied] = useState(false);
   const copy = async () => {
-    try { await navigator.clipboard.writeText(String(value)); setCopied(true); setTimeout(() => setCopied(false), 1500); }
+    try {
+      await navigator.clipboard.writeText(String(copyValue ?? value));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }
     catch { /* clipboard эрхгүй */ }
   };
   return (
@@ -139,7 +143,7 @@ function RegistrationPayment({ request, onClose, onChanged }) {
             <Table size="sm" className="align-middle">
               <tbody>
                 <CopyRow label="Банк" value={transfer.bank.name || '-'} />
-                <CopyRow label="Дансны дугаар" value={transfer.bank.account} />
+                <CopyRow label="Дансны дугаар (IBAN)" value={formatIban(transfer.bank.account)} copyValue={transfer.bank.account} />
                 <CopyRow label="Хүлээн авагч" value={transfer.bank.holder || '-'} />
                 <CopyRow label="Дүн" value={`${Number(transfer.amount).toLocaleString()}₮`} />
                 <CopyRow label="Гүйлгээний утга" value={transfer.reference} />
