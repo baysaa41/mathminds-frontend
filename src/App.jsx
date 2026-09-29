@@ -8,6 +8,7 @@ import 'bootstrap-icons/font/bootstrap-icons.css';
 // Critical components - loaded immediately
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
+import PublicOrAppLayout from './components/PublicOrAppLayout';
 import AdminRoute from './components/AdminRoute';
 import LoadingState from './components/common/LoadingState';
 
@@ -194,6 +195,13 @@ function App() {
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/teachers" element={<Navigate to="/info/teachers" replace />} />
 
+        {/* Олимпиад: нэвтрэлтгүй үзнэ; бүртгүүлэх гэх мэт үйлдэлд нэвтрэлт шаардана */}
+        <Route element={<PublicOrAppLayout />}>
+          <Route path="/olympiads" element={<OlympiadsPage />} />
+          <Route path="/olympiads/:slug" element={<OlympiadDetailPage />} />
+          <Route path="/olympiads/:slug/roster" element={<OlympiadRosterPage />} />
+        </Route>
+
         {/* Хамгаалагдсан хуудсууд - Layout дотор */}
         <Route
           path="/"
@@ -212,10 +220,7 @@ function App() {
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="messages" element={<MessagesPage />} />
 
-          {/* Олимпиад */}
-          <Route path="olympiads" element={<OlympiadsPage />} />
-          <Route path="olympiads/:slug" element={<OlympiadDetailPage />} />
-          <Route path="olympiads/:slug/roster" element={<OlympiadRosterPage />} />
+          {/* Олимпиад (нийтэд нээлттэй хуудсууд доорх PublicOrAppLayout-д) */}
           <Route path="my-students" element={<MyStudentsPage />} />
           <Route path="my-students/:id" element={<StudentDetailPage />} />
           <Route path="my-olympiads" element={<MyOlympiadsPage />} />

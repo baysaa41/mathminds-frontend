@@ -2,12 +2,13 @@
 // Олимпиадын мэдээлэл, хуваарь, бүртгэл, төлбөр
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Container, Card, Table, Form, Button, ButtonGroup, ToggleButton, Alert, Spinner, Badge, Row, Col } from 'react-bootstrap';
 import PaymentModal from '../components/PaymentModal';
 import StudentPicker from '../components/StudentPicker';
 import useSiteGrades from '../hooks/useSiteGrades';
+import { setPostLoginRedirect } from '../utils/postLoginRedirect';
 import { apiErrorText, categoryFitsGrade, bestCategoryForGrade, getOlympiad, getOlympiadMyRegistrations, approveRegistration, registerForOlympiad, payRegistration, getPrefill, getProvinces, lookupStudents, fmtDate } from '../services/olympiadService';
 import { toLatin, LATIN_NAME_RE } from '../utils/transliterate';
 
@@ -59,6 +60,7 @@ const STATUS_LABEL = {
 function OlympiadDetailPage() {
   const { slug } = useParams();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const siteGrades = useSiteGrades();
   const [olympiad, setOlympiad] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -85,6 +87,7 @@ function OlympiadDetailPage() {
     try {
       const data = await getOlympiad(slug);
       setOlympiad(data);
+      if (!user) return;  // зочин: нэвтрэлт шаардсан дуудлага хийхгүй (401 нь /login руу шилжүүлнэ)
       getOlympiadMyRegistrations(slug).then(setMyRegs).catch(() => setMyRegs([]));
       const r = data.my_registration;
       // «Өөр сурагч» горимд өөрийн мэдээллээр анкетыг бөглөхгүй (mmo_id бөглөгдвөл өөрийгөө бүртгэнэ)
@@ -120,7 +123,7 @@ function OlympiadDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [slug]);
+  }, [slug, user]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { getProvinces().then(setProvinces).catch(() => {}); }, []);
@@ -431,7 +434,17 @@ function OlympiadDetailPage() {
               тэр link-ээр бүртгэлээ харж, өөрийн account-д нэмнэ.
             </Alert>
           )}
-          {reg?.status === 'PAID' && !forOther && !extraSelf ? (olympiad.registration_open && (
+          {!user && olympiad.registration_open ? (
+            <div className="text-center py-3">
+              <p className="mb-3">Олимпиадад бүртгүүлэхийн тулд MathMinds account-аараа нэвтэрнэ үү.</p>
+              <div className="d-flex justify-content-center gap-2">
+                <Button onClick={() => { setPostLoginRedirect(`/olympiads/${slug}`); navigate('/login'); }}>Нэвтрэх</Button>
+                <Button variant="outline-primary" onClick={() => { setPostLoginRedirect(`/olympiads/${slug}`); navigate('/register'); }}>
+                  Account үүсгэх
+                </Button>
+              </div>
+            </div>
+          ) : reg?.status === 'PAID' && !forOther && !extraSelf ? (olympiad.registration_open && (
             <Button variant="outline-primary" size="sm" onClick={() => setExtraSelf(true)}>
               Өөр ангилалд давхар бүртгүүлэх
             </Button>

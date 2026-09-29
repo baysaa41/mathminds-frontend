@@ -1,5 +1,6 @@
 // frontend/src/api/axiosConfig.js (БҮРЭН ЗАСВАРЛАСАН)
 
+import { rememberCurrentPage } from '../utils/postLoginRedirect';
 import axios from 'axios';
 import * as cache from './apiCache';
 import { getToken } from './tokenStore';
@@ -143,6 +144,7 @@ apiClient.interceptors.response.use(
         // Хуудсыг дахин ачаалж, нэвтрэх хуудас руу шилжүүлнэ.
         // '/callback'-с шилжүүлэхгүй — тэнд MMO-гийн code солилцож байгаа.
         if (window.location.pathname !== '/callback') {
+          rememberCurrentPage();  // нэвтэрсний дараа энэ хуудас руу буцна
           window.location.replace('/login');
         }
         return Promise.reject(error);
@@ -164,6 +166,7 @@ apiClient.interceptors.response.use(
         // хэрэглэгчийг нэвтрэх хуудас руу шилжүүлнэ.
         console.error('Token refresh failed:', refreshError);
         if (window.location.pathname !== '/login' && window.location.pathname !== '/callback') {
+          rememberCurrentPage();  // нэвтэрсний дараа энэ хуудас руу буцна
           window.location.replace('/login');
         }
         return Promise.reject(refreshError);

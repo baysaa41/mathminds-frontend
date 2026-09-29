@@ -1,8 +1,9 @@
 // src/components/AdminRoute.jsx
 
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import authService from '../services/authService';
+import { setPostLoginRedirect } from '../utils/postLoginRedirect';
 
 /**
  * AdminRoute - Admin эсвэл Teacher нарт л хандах боломжтой route
@@ -11,8 +12,10 @@ import authService from '../services/authService';
 function AdminRoute({ children, allowTeacher = false }) {
   const isAuthenticated = authService.isAuthenticated();
   const user = authService.getUser();
+  const location = useLocation();
 
   if (!isAuthenticated) {
+    setPostLoginRedirect(location.pathname + location.search + location.hash);  // нэвтэрсний дараа буцна
     return <Navigate to="/login" replace />;
   }
 
