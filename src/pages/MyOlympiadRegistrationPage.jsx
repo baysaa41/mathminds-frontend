@@ -2,15 +2,26 @@
 // Миний сурагчийн нэг олимпиадын бүртгэл: мэдээлэл, хуваарь, төлбөр
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { Container, Card, Table, Button, Badge, Spinner, Alert, Form } from 'react-bootstrap';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Container, Card, Table, Button, Badge, Spinner, Alert, Form, Tabs, Tab } from 'react-bootstrap';
 import PaymentModal from '../components/PaymentModal';
 import useSiteGrades from '../hooks/useSiteGrades';
 import { getMeRegistration, updateMeRegistration, payRegistration, fmtDate, fmtRange, REG_STATUS,
   apiErrorText, categoryFitsGrade, bestCategoryForGrade } from '../services/olympiadService';
 
+// Дараагийн үе шатанд хийгдэнэ (оноо, дүн, материал, бодолт хамгаалах) — одоохондоо зөвхөн байршил
+const PLACEHOLDER_TABS = [
+  ['scores', 'Миний оноо', 'Дүн нийтлэгдсэний дараа бодлого бүрийн оноо, нийт оноо, ангилал доторх байр энд харагдана.'],
+  ['results', 'Дүнгийн хуудас', 'Дүн нийтлэгдсэний дараа ангилал бүрийн дүнгийн хуудас энд харагдана.'],
+  ['materials', 'Материал', 'Олимпиадын бодлого, бодолт болон таны скан хийгдсэн бодолтын хуудас энд харагдана.'],
+  ['defense', 'Бодолт хамгаалах', 'Дүн нийтлэгдсэний дараа тогтоосон хугацаанд бодлого бүрээр оноогоо хамгаалах хүсэлт гаргана.'],
+];
+
 function MyOlympiadRegistrationPage() {
   const { id } = useParams();
+  // ?tab=scores|results|materials|defense — tab бүр холбоосоор нээгдэнэ
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = searchParams.get('tab') || 'info';
   const [reg, setReg] = useState(null);
   const [error, setError] = useState(null);
   const [payment, setPayment] = useState(null);
@@ -65,6 +76,8 @@ function MyOlympiadRegistrationPage() {
       <h3 className="mt-2 mb-0">{o.title}</h3>
       <div className="text-muted mb-3">{reg.student_name}{reg.last_name_latin ? ` · ${reg.last_name_latin} ${reg.first_name_latin}` : ''}</div>
 
+      <Tabs activeKey={tab} onSelect={(k) => setSearchParams(k === 'info' ? {} : { tab: k })} className="mb-3">
+        <Tab eventKey="info" title="Мэдээлэл">
       <Card className="mb-3">
         <Card.Body className="d-flex justify-content-between align-items-center flex-wrap gap-2">
           <div>
@@ -139,6 +152,16 @@ function MyOlympiadRegistrationPage() {
       )}
 
       <Link to={`/olympiads/${o.slug}`} className="small">Олимпиадын танилцуулга →</Link>
+        </Tab>
+        {PLACEHOLDER_TABS.map(([key, title, text]) => (
+          <Tab key={key} eventKey={key} title={title}>
+            <Alert variant="light" className="border">
+              <div className="fw-semibold mb-1">Удахгүй</div>
+              <div className="small">{text}</div>
+            </Alert>
+          </Tab>
+        ))}
+      </Tabs>
 
       <PaymentModal
         show={!!payment}
