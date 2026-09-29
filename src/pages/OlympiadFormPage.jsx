@@ -4,7 +4,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Container, Card, Form, Row, Col, Button, Alert, Spinner } from 'react-bootstrap';
-import { getOlympiad, createOlympiad, updateOlympiad } from '../services/olympiadService';
+import { apiErrorText, getOlympiad, createOlympiad, updateOlympiad } from '../services/olympiadService';
 
 const CYR = {
   а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'yo', ж: 'j', з: 'z', и: 'i', й: 'i', к: 'k', л: 'l',
@@ -101,6 +101,10 @@ function OlympiadFormPage() {
 
   const submit = async (e) => {
     e.preventDefault();
+    if (form.exam_end && form.exam_start && form.exam_end < form.exam_start) {
+      setErrors({ exam_end: 'Шалгалт дуусах нь эхлэхээс өмнө байж болохгүй' });
+      return;
+    }
     setSaving(true);
     setErrors(null);
     const payload = {
@@ -187,7 +191,9 @@ function OlympiadFormPage() {
               </Col>
               <Col md={6}>
                 <Form.Label>Шалгалт дуусах</Form.Label>
-                <Form.Control type="datetime-local" value={form.exam_end} onChange={set('exam_end')} />
+                <Form.Control type="datetime-local" value={form.exam_end} onChange={set('exam_end')}
+                              min={form.exam_start || undefined} isInvalid={!!errors?.exam_end} />
+                {fieldErr('exam_end')}
               </Col>
               <Col md={6}>
                 <Form.Label>Бүртгэлийн төлбөр (₮, 0 = үнэгүй)</Form.Label>
@@ -280,6 +286,9 @@ function OlympiadFormPage() {
           type="switch" id="is_published" className="mb-3"
           label="Нийтлэх (хэрэглэгчдэд харагдана)" checked={form.is_published} onChange={set('is_published')}
         />
+        {errors && !errors.detail && (  // хадгалаагүй шалтгааныг товчны дээр заавал харуулна
+          <Alert variant="danger">Хадгалагдсангүй: {apiErrorText(errors)}</Alert>
+        )}
         <Button type="submit" disabled={saving}>
           {saving ? <Spinner size="sm" animation="border" /> : isEdit ? 'Хадгалах' : 'Үүсгэх'}
         </Button>
