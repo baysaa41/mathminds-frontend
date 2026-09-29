@@ -77,7 +77,8 @@ function OlympiadDetailPage() {
   const [picked, setPicked] = useState(null);
   const [looking, setLooking] = useState(false);
   const [needEmail, setNeedEmail] = useState(false);  // MMO/profile-д имэйл байхгүй бол гараар
-  const [latinConfirmed, setLatinConfirmed] = useState(false);  // MMO ID-аар бүртгэхэд латин нэрийг баталгаажуулна
+  const [latinConfirmed, setLatinConfirmed] = useState(false);
+  const [myMmoId, setMyMmoId] = useState(null);  // «Өөрийгөө бүртгүүлэх»-д харуулах өөрийн MMO ID  // MMO ID-аар бүртгэхэд латин нэрийг баталгаажуулна
 
   const load = useCallback(async () => {
     try {
@@ -94,7 +95,7 @@ function OlympiadDetailPage() {
         }));
       }
       // Хоосон талбарыг нөхнө: өмнөх олимпиадын бүртгэл → өөрийн profile → MMO (MMO ID-тай бол) → account
-      getPrefill().then((p) => setForm((f) => {
+      getPrefill().then((p) => { setMyMmoId(p.mmo_id || null); return p; }).then((p) => setForm((f) => {
         if (f.register_for === 'other') return f;
         const next = syncLatin(f, {
           ...f,
@@ -530,6 +531,13 @@ function OlympiadDetailPage() {
                       {pickedCandidate.source === 'mmo' ? ' MMO-оос' : ' сурагчийн бүртгэлээс'} автоматаар бөглөгдөнө.
                       Доорх сургууль, анги, аймгийг шалгаад бүртгүүлнэ үү.
                     </Alert>
+                  </Col>
+                )}
+                {!forOther && myMmoId && (
+                  <Col md={12}>
+                    <Form.Label>MMO ID</Form.Label>
+                    <Form.Control plaintext readOnly value={myMmoId} className="fw-semibold" />
+                    <Form.Text muted>Таны account-тай холбогдсон MMO ID бүртгэлд хадгалагдана.</Form.Text>
                   </Col>
                 )}
                 {showDetails && !pickedChosen && (<>

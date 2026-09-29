@@ -4,7 +4,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Container, Table, Form, Spinner, Alert, Badge, Row, Col, Button } from 'react-bootstrap';
-import { getRoster, approveRegistration } from '../services/olympiadService';
+import { getRoster, approveRegistration, removeAdminRegistration } from '../services/olympiadService';
+import RegistrationEditModal from '../components/RegistrationEditModal';
 import { useAuth } from '../context/AuthContext';
 
 function OlympiadRosterPage() {
@@ -17,6 +18,7 @@ function OlympiadRosterPage() {
   const [onlyMine, setOnlyMine] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [editingId, setEditingId] = useState(null);
 
   useEffect(() => {
     getRoster(slug)
@@ -32,6 +34,17 @@ function OlympiadRosterPage() {
       setRows(await getRoster(slug)); // дугаар шинээр оноогдсон тул дахин татна
     } catch (err) {
       setError(err.response?.data?.error || 'Баталгаажуулахад алдаа гарлаа');
+    }
+  };
+
+  // Жагсаалтаас хасах — бүртгэл цуцлагдана (төлбөр, хуудас хадгалагдана; сурагч дахин бүртгүүлж болно)
+  const remove = async (r) => {
+    if (!window.confirm(`${r.full_name}-ийн бүртгэлийг жагсаалтаас хасах уу? (Бүртгэл цуцлагдана)`)) return;
+    try {
+      await removeAdminRegistration(r.id);
+      setRows((rs) => rs.filter((x) => x.id !== r.id));
+    } catch (err) {
+      setError(err.response?.data?.error || 'Хасахад алдаа гарлаа');
     }
   };
 
@@ -97,9 +110,13 @@ function OlympiadRosterPage() {
               )}
               {user?.is_staff && (
                 <td className="text-end">
-                  {r.status === 'PENDING' && (
-                    <Button size="sm" variant="outline-success" onClick={() => approve(r)}>Батлах (төлбөргүй)</Button>
-                  )}
+                  <div className="d-flex gap-1 justify-content-end flex-wrap">
+                    {r.status === 'PENDING' && (
+                      <Button size="sm" variant="outline-success" onClick={() => approve(r)}>Батлах (төлбөргүй)</Button>
+                    )}
+                    <Button size="sm" variant="outline-primary" onClick={() => setEditingId(r.id)}>Засах</Button>
+                    <Button size="sm" variant="outline-danger" onClick={() => remove(r)}>Хасах</Button>
+                  </div>
                 </td>
               )}
             </tr>
@@ -107,6 +124,13 @@ function OlympiadRosterPage() {
         </tbody>
       </Table>
       {filtered.length === 0 && <Alert variant="info">Жагсаалт хоосон байна.</Alert>}
+      {user?.is_staff && (
+        <RegistrationEditModal
+          registrationId={editingId}
+          onClose={() => setEditingId(null)}
+          onSaved={async () => { setEditingId(null); setRows(await getRoster(slug)); }}
+        />
+      )}
     </Container>
   );
 }

@@ -53,6 +53,13 @@ export const getMeRegistration = async (id) =>
 export const payRegistration = async (registrationId) =>
   (await apiClient.post(`${BASE}/registrations/${registrationId}/pay/`)).data;
 
+// Админ: бүртгэл засах (ангилалуудын хамт буцаана) / жагсаалтаас хасах (CANCELED)
+export const getAdminRegistration = async (id) =>
+  (await apiClient.get(`${BASE}/registrations/${id}/admin/`, { skipCache: true })).data;
+export const updateAdminRegistration = async (id, payload) =>
+  (await apiClient.patch(`${BASE}/registrations/${id}/admin/`, payload)).data;
+export const removeAdminRegistration = async (id) => apiClient.delete(`${BASE}/registrations/${id}/admin/`);
+
 // Админ: төлбөр хүлээгдэж буй бүртгэлийг төлбөрөөс чөлөөлж баталгаажуулна
 export const approveRegistration = async (registrationId) =>
   (await apiClient.post(`${BASE}/registrations/${registrationId}/approve/`)).data;
