@@ -151,7 +151,7 @@ function MyOlympiadRegistrationPage() {
         </Card>
       )}
 
-      <Link to={`/olympiads/${o.slug}`} className="small">Олимпиадын танилцуулга →</Link>
+      <Link to={`/olympiads/${o.slug}`} className="small">Олимпиадын бүртгэл →</Link>
         </Tab>
         {PLACEHOLDER_TABS.map(([key, title, text]) => (
           <Tab key={key} eventKey={key} title={title}>
