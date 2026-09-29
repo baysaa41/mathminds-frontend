@@ -4,7 +4,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Container, Table, Form, Spinner, Alert, Badge, Row, Col, Button } from 'react-bootstrap';
-import { getRoster, approveRegistration, removeAdminRegistration } from '../services/olympiadService';
+import { getRoster, approveRegistration, removeAdminRegistration, REG_STATUS } from '../services/olympiadService';
 import RegistrationEditModal from '../components/RegistrationEditModal';
 import { useAuth } from '../context/AuthContext';
 
@@ -16,6 +16,7 @@ function OlympiadRosterPage() {
   const [province, setProvince] = useState('');
   const [school, setSchool] = useState('');
   const [category, setCategory] = useState('');
+  const [status, setStatus] = useState('');  // админ: PAID / PENDING / WAIVED (төлбөрөөс чөлөөлсөн)
   const [onlyMine, setOnlyMine] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -65,8 +66,9 @@ function OlympiadRosterPage() {
       && (!province || r.province === province)
       && (!school || r.school === school)
       && (!category || r.olympiad_category_name === category)
+      && (!status || (status === 'WAIVED' ? r.fee_waived : r.status === status))
       && (!s || `${r.full_name} ${r.province} ${r.school}`.toLowerCase().includes(s)));
-  }, [rows, q, province, school, category, onlyMine]);
+  }, [rows, q, province, school, category, status, onlyMine]);
   const hasMine = rows.some((r) => r.is_mine);
 
   if (loading) return <Container className="py-5 text-center"><Spinner animation="border" /></Container>;
@@ -77,27 +79,37 @@ function OlympiadRosterPage() {
       <h3 className="mt-2">Бүртгэлийн жагсаалт <small className="text-muted">({filtered.length}{filtered.length !== rows.length ? ` / ${rows.length}` : ''})</small></h3>
       {error && <Alert variant="danger">{error}</Alert>}
       <Row className="g-2 mb-3">
+        {user?.is_staff && (
+          <Col md>
+            <Form.Select aria-label="Төлөв" value={status} onChange={(e) => setStatus(e.target.value)}>
+              <option value="">Бүх төлөв</option>
+              <option value="PAID">{REG_STATUS.PAID[1]}</option>
+              <option value="PENDING">{REG_STATUS.PENDING[1]}</option>
+              <option value="WAIVED">Төлбөрөөс чөлөөлсөн</option>
+            </Form.Select>
+          </Col>
+        )}
         {categories.length > 0 && (
-          <Col md={3}>
+          <Col md>
             <Form.Select aria-label="Ангилал" value={category} onChange={(e) => setCategory(e.target.value)}>
               <option value="">Бүх ангилал</option>
               {categories.map((c) => <option key={c} value={c}>{c}</option>)}
             </Form.Select>
           </Col>
         )}
-        <Col md={3}>
+        <Col md>
           <Form.Select aria-label="Аймаг/Дүүрэг" value={province} onChange={(e) => { setProvince(e.target.value); setSchool(''); }}>
             <option value="">Бүх аймаг/дүүрэг</option>
             {provinces.map((p) => <option key={p} value={p}>{p}</option>)}
           </Form.Select>
         </Col>
-        <Col md={3}>
+        <Col md>
           <Form.Select aria-label="Сургууль" value={school} onChange={(e) => setSchool(e.target.value)}>
             <option value="">Бүх сургууль</option>
             {schools.map((n) => <option key={n} value={n}>{n}</option>)}
           </Form.Select>
         </Col>
-        <Col md={3}>
+        <Col md>
           <Form.Control placeholder="Нэр, сургуулиар хайх" value={q} onChange={(e) => setQ(e.target.value)} />
         </Col>
       </Row>
@@ -116,7 +128,7 @@ function OlympiadRosterPage() {
               {user?.is_staff && <td>{r.registered_by_name ?? '-'}</td>}
               {user?.is_staff && (
                 <td>
-                  <Badge bg={r.status === 'PAID' ? 'success' : 'warning'}>{r.status}</Badge>
+                  <Badge bg={REG_STATUS[r.status]?.[0] || 'secondary'}>{REG_STATUS[r.status]?.[1] || r.status}</Badge>
                   {r.fee_waived && <Badge bg="info" className="ms-1">Төлбөрөөс чөлөөлсөн</Badge>}
                 </td>
               )}
