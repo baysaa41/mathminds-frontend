@@ -11,7 +11,7 @@ import { getOlympiad, getOlympiadMyRegistrations, approveRegistration, registerF
 import { toLatin, LATIN_NAME_RE } from '../utils/transliterate';
 
 const EMPTY_FORM = {
-  register_for: 'self', mmo_id: '', waive_fee: false, category_id: '', last_name: '', first_name: '',
+  register_for: 'self', waive_fee: false, category_id: '', last_name: '', first_name: '',
   last_name_latin: '', first_name_latin: '', province: '', school: '', grade: '', phone: '', email: '',
 };
 
@@ -55,7 +55,6 @@ function OlympiadDetailPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [info, setInfo] = useState(null);
   const [provinces, setProvinces] = useState([]);
-  const [filling, setFilling] = useState(false);
   const [busy, setBusy] = useState(false);
   const [payment, setPayment] = useState(null);
   const [myRegs, setMyRegs] = useState([]);
@@ -79,18 +78,25 @@ function OlympiadDetailPage() {
           school: r.school, grade: r.category === 'STUDENT' ? String(r.grade ?? '') : r.category, phone: r.phone || '', email: r.email || '',
         }));
       }
-      // Нэвтэрсэн хэрэглэгчийн профайлаар зөвхөн хоосон талбарыг нөхнө
-      getPrefill().then((p) => setForm((f) => (f.register_for === 'other' ? f : syncLatin(f, {
-        ...f,
-        mmo_id: f.mmo_id || p.mmo_id || '',
-        last_name: f.last_name || p.last_name || '',
-        first_name: f.first_name || p.first_name || '',
-        province: f.province || p.province || '',
-        school: f.school || p.school || '',
-        phone: f.phone || p.phone || '',
-        email: f.email || p.email || '',
-        grade: f.grade || p.grade || '',
-      })))).catch(() => {});
+      // Хоосон талбарыг нөхнө: өмнөх олимпиадын бүртгэл → өөрийн profile → MMO (MMO ID-тай бол) → account
+      getPrefill().then((p) => setForm((f) => {
+        if (f.register_for === 'other') return f;
+        const next = syncLatin(f, {
+          ...f,
+          last_name: f.last_name || p.last_name || '',
+          first_name: f.first_name || p.first_name || '',
+          province: f.province || p.province || '',
+          school: f.school || p.school || '',
+          phone: f.phone || p.phone || '',
+          email: f.email || p.email || '',
+          grade: f.grade || p.grade || '',
+        });
+        return {  // өмнөх бүртгэлийн (шалгагдсан) латин нэр автомат хөрвүүлгээс давуу
+          ...next,
+          last_name_latin: f.last_name_latin || p.last_name_latin || next.last_name_latin,
+          first_name_latin: f.first_name_latin || p.first_name_latin || next.first_name_latin,
+        };
+      })).catch(() => {});
     } catch {
       setError('Олимпиад олдсонгүй');
     } finally {
@@ -120,38 +126,6 @@ function OlympiadDetailPage() {
     }
   };
 
-  const fillFromMmo = async () => {
-    setFilling(true);
-    setError(null);
-    setInfo(null);
-    try {
-      const p = await getPrefill(form.mmo_id);
-      // Ирээгүй мэдээллийг хоосон харуулна (өмнөх хүний мэдээлэл үлдэхгүй)
-      setForm((f) => syncLatin(f, {
-        ...f,
-        last_name: p.last_name || '',
-        first_name: p.first_name || '',
-        province: p.province || '',
-        school: p.school || '',
-        phone: p.phone || '',
-        email: p.email || '',
-        grade: p.grade || '',
-      }));
-      const mismatch = gradeMismatch(selectedCat, p.grade);
-      if (mismatch) setForm((f) => ({ ...f, grade: '' }));
-      const warn = [!p.email && 'Имэйл хаяг MMO-оос ирсэнгүй — гараар бөглөнө үү.',
-        mismatch && `${mismatch} Ангиа эсвэл ангилалаа дахин сонгоно уу.`].filter(Boolean).join(' ');
-      if (warn) setError(warn);
-      setInfo(p.last_name || p.first_name
-        ? `${p.source === 'mmo' ? 'MMO' : 'MathMinds'} бүртгэлээс бөглөлөө: ${p.last_name} ${p.first_name}`
-        : 'Хэрэглэгч олдсон боловч нэр бөглөөгүй байна');
-    } catch (err) {
-      setError(err.response?.data?.error || 'MMO ID-аар хайхад алдаа гарлаа');
-    } finally {
-      setFilling(false);
-    }
-  };
-
   const submit = async (e) => {
     e.preventDefault();
     const mismatch = gradeMismatch(selectedCat, form.grade);
@@ -172,11 +146,9 @@ function OlympiadDetailPage() {
     setError(null);
     try {
       const payload = { ...form };
-      if (!payload.mmo_id) delete payload.mmo_id;
       if (!payload.category_id) delete payload.category_id;
       if (!user?.is_staff) delete payload.waive_fee;
       if (noGrade) payload.grade = '';
-      if (forOther) delete payload.mmo_id;
       if (pickedExisting) {
         payload.student_id = picked;
         if (queryIsMmo) payload.mmo_id = Number(query.trim());  // сонгосон profile-ийг MMO ID-аар шалгана
@@ -269,9 +241,10 @@ function OlympiadDetailPage() {
   const selectedCat = categories.find((c) => String(c.id) === form.category_id);
   // Ангилал сонгосон бол сурагчийн анги зөвхөн тухайн хязгаарт
   const noGrade = !!selectedCat && selectedCat.grade_from === null; // багш, чөлөөт гэх мэт
+  // Ангилалтай бол аль нэг ангилалд багтах ангиуд (анги сонгоход ангилал автоматаар солигдоно)
   const gradeOptions = categories.length === 0 ? GRADE_OPTIONS
     : GRADE_OPTIONS.filter((o) => /^\d+$/.test(o.value)
-        && (!selectedCat || (Number(o.value) >= selectedCat.grade_from && Number(o.value) <= selectedCat.grade_to)));
+        && categories.some((c) => c.grade_from !== null && Number(o.value) >= c.grade_from && Number(o.value) <= c.grade_to));
   const setCategory = (e) => {
     const cat = categories.find((c) => String(c.id) === e.target.value);
     const mismatch = gradeMismatch(cat, form.grade);
@@ -279,6 +252,17 @@ function OlympiadDetailPage() {
     const keep = cat && cat.grade_from !== null && !mismatch;
     setForm((f) => ({ ...f, category_id: e.target.value, grade: keep ? f.grade : '' }));
   };
+
+  // Анги мэдэгдэж байвал тохирох ангилалыг автоматаар сонгоно (одоогийн ангилалд багтвал хэвээр)
+  useEffect(() => {
+    const cats = olympiad?.categories || [];
+    if (!cats.length || !/^\d+$/.test(String(form.grade))) return;
+    const current = cats.find((c) => String(c.id) === form.category_id);
+    if (current && current.grade_from !== null && !gradeMismatch(current, form.grade)) return;
+    if (current && current.grade_from === null) return;  // багш, чөлөөт гэх мэт гараар сонгосон
+    const match = cats.find((c) => c.grade_from !== null && !gradeMismatch(c, form.grade));
+    if (match) setForm((f) => ({ ...f, category_id: String(match.id) }));
+  }, [olympiad, form.grade, form.category_id]);
 
   if (loading) return <Container className="py-5 text-center"><Spinner animation="border" /></Container>;
   if (!olympiad) return <Container className="py-4"><Alert variant="danger">{error}</Alert></Container>;
@@ -416,7 +400,7 @@ function OlympiadDetailPage() {
               <Row className="g-2">
                 {categories.length > 0 && (
                   <Col md={12}>
-                    <Form.Label>Оролцох ангилал</Form.Label>
+                    <Form.Label>Оролцох ангилал <small className="text-muted">(ангиар автоматаар сонгогдоно)</small></Form.Label>
                     <Form.Select required value={form.category_id} onChange={setCategory}>
                       <option value="">— Сонгоно уу —</option>
                       {categories.map((c) => (
@@ -453,19 +437,6 @@ function OlympiadDetailPage() {
                           : 'Энэ имэйлтэй сурагч олдсонгүй — шинээр бүртгэнэ.'}
                       </div>
                     )}
-                  </Col>
-                )}
-                {showDetails && !forOther && (
-                  <Col md={12}>
-                    <Form.Label>MMO ID</Form.Label>
-                    <div className="input-group">
-                      <Form.Control type="number"
-                                    placeholder={user?.is_staff ? 'Өөр хэрэглэгчийг MMO ID-аар бүртгэх' : 'Өөрийн MMO ID'}
-                                    value={form.mmo_id} onChange={set('mmo_id')} />
-                      <Button variant="outline-secondary" type="button" onClick={fillFromMmo} disabled={filling}>
-                        {filling ? <Spinner size="sm" animation="border" /> : 'Мэдээлэл татах'}
-                      </Button>
-                    </div>
                   </Col>
                 )}
                 {pickedCandidate && (
