@@ -15,6 +15,7 @@ function OlympiadRosterPage() {
   const [q, setQ] = useState('');
   const [province, setProvince] = useState('');
   const [school, setSchool] = useState('');
+  const [category, setCategory] = useState('');
   const [onlyMine, setOnlyMine] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -56,36 +57,47 @@ function OlympiadRosterPage() {
     [rows, province],
   );
 
+  const categories = useMemo(() => uniq(rows.map((r) => r.olympiad_category_name)), [rows]);
+
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
     return rows.filter((r) => (!onlyMine || r.is_mine)
       && (!province || r.province === province)
       && (!school || r.school === school)
+      && (!category || r.olympiad_category_name === category)
       && (!s || `${r.full_name} ${r.province} ${r.school}`.toLowerCase().includes(s)));
-  }, [rows, q, province, school, onlyMine]);
+  }, [rows, q, province, school, category, onlyMine]);
   const hasMine = rows.some((r) => r.is_mine);
 
   if (loading) return <Container className="py-5 text-center"><Spinner animation="border" /></Container>;
 
   return (
-    <Container className="py-4" style={{ maxWidth: 900 }}>
+    <Container fluid className="py-4 px-md-4" style={{ maxWidth: 1400 }}>
       <Link to={`/olympiads/${slug}`} className="small">← Олимпиад</Link>
       <h3 className="mt-2">Бүртгэлийн жагсаалт <small className="text-muted">({filtered.length}{filtered.length !== rows.length ? ` / ${rows.length}` : ''})</small></h3>
       {error && <Alert variant="danger">{error}</Alert>}
       <Row className="g-2 mb-3">
-        <Col md={4}>
+        {categories.length > 0 && (
+          <Col md={3}>
+            <Form.Select aria-label="Ангилал" value={category} onChange={(e) => setCategory(e.target.value)}>
+              <option value="">Бүх ангилал</option>
+              {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+            </Form.Select>
+          </Col>
+        )}
+        <Col md={3}>
           <Form.Select aria-label="Аймаг/Дүүрэг" value={province} onChange={(e) => { setProvince(e.target.value); setSchool(''); }}>
             <option value="">Бүх аймаг/дүүрэг</option>
             {provinces.map((p) => <option key={p} value={p}>{p}</option>)}
           </Form.Select>
         </Col>
-        <Col md={4}>
+        <Col md={3}>
           <Form.Select aria-label="Сургууль" value={school} onChange={(e) => setSchool(e.target.value)}>
             <option value="">Бүх сургууль</option>
             {schools.map((n) => <option key={n} value={n}>{n}</option>)}
           </Form.Select>
         </Col>
-        <Col md={4}>
+        <Col md={3}>
           <Form.Control placeholder="Нэр, сургуулиар хайх" value={q} onChange={(e) => setQ(e.target.value)} />
         </Col>
       </Row>
