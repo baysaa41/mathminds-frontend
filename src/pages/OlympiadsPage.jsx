@@ -56,7 +56,7 @@ function OlympiadsPage() {
                   return <Badge bg={c.variant}>{c.text}</Badge>;
                 })()}
                 <div className="small mt-1">
-                  {Number(o.fee) > 0 ? `${Number(o.fee).toLocaleString()}₮` : 'Үнэгүй'} · {o.registered_count} оролцогч
+                  {Number(o.fee) > 0 ? `${Number(o.fee).toLocaleString()}₮` : 'Үнэгүй'}
                 </div>
               </div>
             </div>

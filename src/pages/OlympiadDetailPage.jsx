@@ -9,6 +9,7 @@ import RegistrationPayment from '../components/RegistrationPayment';
 import StudentPicker from '../components/StudentPicker';
 import useSiteGrades from '../hooks/useSiteGrades';
 import { setPostLoginRedirect } from '../utils/postLoginRedirect';
+import authService from '../services/authService';
 import { apiErrorText, categoryFitsGrade, bestCategoryForGrade, getOlympiad, getOlympiadMyRegistrations, approveRegistration, registerForOlympiad, paymentRequestFor, transferUnderReview, getPrefill, getProvinces, lookupStudents, fmtRange, registrationCountdown } from '../services/olympiadService';
 import { toLatin, LATIN_NAME_RE } from '../utils/transliterate';
 
@@ -65,6 +66,18 @@ function OlympiadDetailPage() {
   const [olympiad, setOlympiad] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [oauthError, setOauthError] = useState(null);
+
+  // Зочин: MMO/Google-ээр нэвтэрч, callback-ийн дараа энэ хуудас руу буцна
+  const oauthLogin = async (provider) => {
+    setOauthError(null);
+    setPostLoginRedirect(`/olympiads/${slug}`);
+    try {
+      await (provider === 'google' ? authService.loginWithGoogle() : authService.login());
+    } catch {
+      setOauthError(`${provider === 'google' ? 'Google' : 'MMO'} нэвтрэхэд алдаа гарлаа. Дахин оролдоно уу.`);
+    }
+  };
   const [form, setForm] = useState(EMPTY_FORM);
   const [info, setInfo] = useState(null);
   const [provinces, setProvinces] = useState([]);
@@ -402,6 +415,17 @@ function OlympiadDetailPage() {
           <span>{fee > 0 ? `Төлбөр: ${fee.toLocaleString()}₮` : 'Үнэгүй'}</span>
         </Card.Header>
         <Card.Body>
+          {olympiad.contact_phone && (
+            <div className="small mb-3">
+              <span className="text-muted">Холбоо барих: </span>
+              {olympiad.contact_phone.split(',').map((p) => p.trim()).filter(Boolean).map((p, i) => (
+                <React.Fragment key={p}>
+                  {i > 0 && ', '}
+                  <a href={`tel:${p.replace(/[^\d+]/g, '')}`} className="fw-semibold">{p}</a>
+                </React.Fragment>
+              ))}
+            </div>
+          )}
           {error && !(formShown && showDetails) && <Alert variant="danger">{error}</Alert>}
           {info && <Alert variant="info" dismissible onClose={() => setInfo(null)}>{info}</Alert>}
           {reg && (
@@ -440,6 +464,17 @@ function OlympiadDetailPage() {
           {!user && olympiad.registration_open ? (
             <div className="text-center py-3">
               <p className="mb-3">Олимпиадад бүртгүүлэхийн тулд MathMinds account-аараа нэвтэрнэ үү.</p>
+              {oauthError && <Alert variant="danger" className="small">{oauthError}</Alert>}
+              <div className="d-grid gap-2 mx-auto mb-3" style={{ maxWidth: 360 }}>
+                <Button variant="outline-primary" className="fw-semibold" onClick={() => oauthLogin('mmo')}>
+                  🏆 MMO данс ашиглан нэвтрэх
+                </Button>
+                {authService.isGoogleConfigured() && (
+                  <Button variant="outline-secondary" className="fw-semibold" onClick={() => oauthLogin('google')}>
+                    G&nbsp; Google данс ашиглан нэвтрэх
+                  </Button>
+                )}
+              </div>
               <div className="d-flex justify-content-center gap-2">
                 <Button onClick={() => { setPostLoginRedirect(`/olympiads/${slug}`); navigate('/login'); }}>Нэвтрэх</Button>
                 <Button variant="outline-primary" onClick={() => { setPostLoginRedirect(`/olympiads/${slug}`); navigate('/register'); }}>

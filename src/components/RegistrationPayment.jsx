@@ -146,7 +146,7 @@ function RegistrationPayment({ request, onClose, onChanged }) {
                 <CopyRow label="Дансны дугаар (IBAN)" value={formatIban(transfer.bank.account)} copyValue={transfer.bank.account} />
                 <CopyRow label="Хүлээн авагч" value={transfer.bank.holder || '-'} />
                 <CopyRow label="Дүн" value={`${Number(transfer.amount).toLocaleString()}₮`} />
-                <CopyRow label="Гүйлгээний утга" value={transfer.reference} />
+                <CopyRow label="Гүйлгээний утга" value={transfer.description || transfer.reference} />
               </tbody>
             </Table>
             {transfer.registrations.length > 1 && (

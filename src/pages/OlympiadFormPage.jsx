@@ -25,7 +25,7 @@ const toLocalInput = (iso) => {
 const toIso = (local) => (local ? new Date(local).toISOString() : null);
 
 const EMPTY = {
-  title: '', slug: '', description: '', venue: '', registration_start: '', registration_end: '',
+  title: '', slug: '', description: '', venue: '', contact_phone: '', registration_start: '', registration_end: '',
   exam_start: '', exam_end: '', fee: 0, problem_count: 6, is_published: false,
   bank_name: '', bank_account: '', bank_account_holder: '',
 };
@@ -54,7 +54,7 @@ function OlympiadFormPage() {
     getOlympiad(editSlug)
       .then((o) => {
         setForm({
-          title: o.title, slug: o.slug, description: o.description, venue: o.venue,
+          title: o.title, slug: o.slug, description: o.description, venue: o.venue, contact_phone: o.contact_phone || '',
           registration_start: toLocalInput(o.registration_start),
           registration_end: toLocalInput(o.registration_end),
           exam_start: toLocalInput(o.exam_start), exam_end: toLocalInput(o.exam_end),
@@ -167,6 +167,11 @@ function OlympiadFormPage() {
               <Col md={12}>
                 <Form.Label>Болох газар</Form.Label>
                 <Form.Control value={form.venue} onChange={set('venue')} />
+              </Col>
+              <Col md={12}>
+                <Form.Label>Холбоо барих утас</Form.Label>
+                <Form.Control value={form.contact_phone} onChange={set('contact_phone')} placeholder="Жишээ: 9911 2233, 8800 1122" />
+                <Form.Text muted>Бүртгэлийн хэсэгт харагдана. Хэд хэдэн дугаарыг таслалаар тусгаарлана.</Form.Text>
               </Col>
             </Row>
           </Card.Body>

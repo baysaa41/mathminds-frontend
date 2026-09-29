@@ -44,7 +44,7 @@ function BankTransferReviewModal({ transferId, onClose, onDone }) {
           <>
             <Table size="sm">
               <tbody>
-                <tr><td className="text-muted">Гүйлгээний утга</td><td className="fw-bold">{t.reference}</td></tr>
+                <tr><td className="text-muted">Гүйлгээний утга</td><td className="fw-bold">{t.description || t.reference}</td></tr>
                 <tr><td className="text-muted">Дүн</td><td className="fw-bold">{Number(t.amount).toLocaleString()}₮</td></tr>
                 <tr><td className="text-muted">Төлөгч</td><td>{t.payer_name || '-'}</td></tr>
                 <tr><td className="text-muted">Төлөв</td><td>{t.status_label}{t.submitted_at && ` · ${fmtDate(t.submitted_at)}`}</td></tr>
