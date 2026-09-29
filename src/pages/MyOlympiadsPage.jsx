@@ -45,7 +45,12 @@ function MyOlympiadsPage() {
                     {[r.olympiad_category_name, r.grade && r.grade_label].filter(Boolean).join(' · ')}
                   </div>
                 </div>
-                <Badge bg={REG_STATUS[r.status][0]}>{REG_STATUS[r.status][1]}</Badge>
+                {r.result ? (
+                  <div className="text-end">
+                    <div className="fw-semibold">{r.result.total} / {r.result.max_total}</div>
+                    {r.result.rank && <div className="small text-muted">{r.result.rank}-р байр / {r.result.rank_of}</div>}
+                  </div>
+                ) : <Badge bg={REG_STATUS[r.status][0]}>{REG_STATUS[r.status][1]}</Badge>}
               </ListGroup.Item>
             ))}
           </ListGroup>

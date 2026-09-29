@@ -22,7 +22,7 @@ function OlympiadsAdminListPage() {
   useEffect(() => { load(); }, [load]);
 
   const remove = async (o) => {
-    const hasRegs = o.registered_count > 0;
+    const hasRegs = o.has_registrations;  // сервер төлөгдөөгүй, цуцлагдсан бүртгэлийг ч тооцож нууна
     const ok = window.confirm(
       hasRegs
         ? `"${o.title}" олимпиадад бүртгэлтэй хэрэглэгч байгаа тул устгахгүй, зөвхөн нууна. Үргэлжлүүлэх үү?`
@@ -63,12 +63,12 @@ function OlympiadsAdminListPage() {
               <td>{o.registered_count}</td>
               <td>{!o.is_published && <Badge bg="warning" text="dark" className="me-1">Ноорог</Badge>}<Badge bg={o.registration_open ? 'success' : 'secondary'}>{o.registration_open ? 'Нээлттэй' : 'Хаалттай'}</Badge></td>
               <td className="text-nowrap">
-                <Button as={Link} to={`/olympiads/${o.slug}/roster`} size="sm" variant="outline-secondary" className="me-1">Жагсаалт</Button>
-                <Button as={Link} to={`/admin/olympiads/${o.slug}`} size="sm" variant="outline-dark" className="me-1">QR / Upload</Button>
+                <Button as={Link} to={`/olympiads/${o.slug}/roster`} size="sm" variant="outline-secondary" className="me-1">Бүртгэл</Button>
+                <Button as={Link} to={`/admin/olympiads/${o.slug}`} size="sm" variant="outline-dark" className="me-1">Админ</Button>
                 <Button as={Link} to={`/admin/olympiads/${o.slug}/edit`} size="sm" variant="outline-primary" className="me-1">Засах</Button>
-                {o.is_published || o.registered_count === 0 ? (
+                {o.is_published || !o.has_registrations ? (
                   <Button size="sm" variant="outline-danger" onClick={() => remove(o)}>
-                    {o.registered_count > 0 ? 'Нуух' : 'Устгах'}
+                    {o.has_registrations ? 'Нуух' : 'Устгах'}
                   </Button>
                 ) : null}
               </td>

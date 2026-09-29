@@ -132,13 +132,14 @@ function StudentDetailPage() {
       <Card>
         <Card.Header>Олимпиадын бүртгэлүүд <small className="text-muted">({student.registrations.length})</small></Card.Header>
         <Table responsive size="sm" className="mb-0 align-middle">
-          <thead><tr><th>Олимпиад</th><th>№</th><th>Анги / Ангилал</th><th>Төлөв</th><th /></tr></thead>
+          <thead><tr><th>Олимпиад</th><th>№</th><th>Ангилал / Анги</th><th>Төлөв</th><th /></tr></thead>
           <tbody>
             {student.registrations.map((r) => (
               <tr key={r.id}>
                 <td><Link to={`/olympiads/${r.olympiad_slug}`}>{r.olympiad_title}</Link></td>
                 <td>{r.participant_no ?? '-'}</td>
-                <td>{r.grade_label || r.olympiad_category_name || '-'}</td>
+                <td>{r.olympiad_category_name && r.olympiad_category_name !== r.grade_label
+                  ? `${r.olympiad_category_name} · ${r.grade_label}` : (r.olympiad_category_name || r.grade_label || '-')}</td>
                 <td>
                   <Badge bg={REG_STATUS[r.status][0]}>{REG_STATUS[r.status][1]}</Badge>
                   {r.fee_waived && <Badge bg="info" className="ms-1">Төлбөрөөс чөлөөлсөн</Badge>}

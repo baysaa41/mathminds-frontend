@@ -2,7 +2,7 @@
 // Сурагч × бодлого бүрийн QR-тай бодолтын хуудас (A4, нэг хуудас = нэг бодлого)
 
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import { Spinner } from 'react-bootstrap';
 import { getPrintSheets } from '../services/olympiadService';
 
@@ -21,8 +21,11 @@ const css = `
 function OlympiadPrintPage() {
   const { slug } = useParams();
   const [sheets, setSheets] = useState(null);
+  // Админ хуудасны шүүлтүүр router state-ээр ирнэ (URL-д биш); «Буцах» үед буцааж дамжуулна
+  const location = useLocation();
+  const [filters] = useState(() => location.state?.sheetFilters || {});
 
-  useEffect(() => { getPrintSheets(slug).then(setSheets).catch(() => setSheets([])); }, [slug]);
+  useEffect(() => { getPrintSheets(slug, false, filters).then(setSheets).catch(() => setSheets([])); }, [slug, filters]);
 
   if (!sheets) return <div className="p-5 text-center"><Spinner animation="border" /></div>;
 
@@ -30,8 +33,8 @@ function OlympiadPrintPage() {
     <div style={{ background: '#eee' }}>
       <style>{css}</style>
       <div className="no-print p-3 d-flex gap-2 align-items-center">
-        <Link to={`/admin/olympiads/${slug}`}>← Буцах</Link>
-        <button className="btn btn-primary btn-sm" onClick={async () => { await getPrintSheets(slug, true); window.print(); }}>
+        <Link to={`/admin/olympiads/${slug}`} state={{ sheetFilters: filters }}>← Буцах</Link>
+        <button className="btn btn-primary btn-sm" onClick={async () => { await getPrintSheets(slug, true, filters); window.print(); }}>
           Хэвлэх ({sheets.length} хуудас)
         </button>
       </div>

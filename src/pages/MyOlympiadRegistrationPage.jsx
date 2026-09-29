@@ -1,21 +1,14 @@
 // src/pages/MyOlympiadRegistrationPage.jsx
-// Миний сурагчийн нэг олимпиадын бүртгэл: мэдээлэл, хуваарь, төлбөр
+// Миний сурагчийн нэг олимпиадын бүртгэл: мэдээлэл, хуваарь, төлбөр, оноо, дүн, материал, бодолт хамгаалах
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Container, Card, Table, Button, Badge, Spinner, Alert, Form, Tabs, Tab } from 'react-bootstrap';
 import RegistrationPayment from '../components/RegistrationPayment';
+import { MyDefenseTab, MyMaterialsTab, MyResultsTab, MyScoresTab } from '../components/olympiad/MyResultTabs';
 import useSiteGrades from '../hooks/useSiteGrades';
 import { getMeRegistration, updateMeRegistration, paymentRequestFor, transferUnderReview, fmtDate, fmtRange, REG_STATUS,
   apiErrorText, categoryFitsGrade, bestCategoryForGrade } from '../services/olympiadService';
-
-// Дараагийн үе шатанд хийгдэнэ (оноо, дүн, материал, бодолт хамгаалах) — одоохондоо зөвхөн байршил
-const PLACEHOLDER_TABS = [
-  ['scores', 'Миний оноо', 'Дүн нийтлэгдсэний дараа бодлого бүрийн оноо, нийт оноо, ангилал доторх байр энд харагдана.'],
-  ['results', 'Дүнгийн хуудас', 'Дүн нийтлэгдсэний дараа ангилал бүрийн дүнгийн хуудас энд харагдана.'],
-  ['materials', 'Материал', 'Олимпиадын бодлого, бодолт болон таны скан хийгдсэн бодолтын хуудас энд харагдана.'],
-  ['defense', 'Бодолт хамгаалах', 'Дүн нийтлэгдсэний дараа тогтоосон хугацаанд бодлого бүрээр оноогоо хамгаалах хүсэлт гаргана.'],
-];
 
 function MyOlympiadRegistrationPage() {
   const { id } = useParams();
@@ -29,6 +22,7 @@ function MyOlympiadRegistrationPage() {
   const [edit, setEdit] = useState(null);  // {olympiad_category, grade} — анги, ангилал засах үед
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState(null);
+  const [defendProblem, setDefendProblem] = useState(null);  // «Хамгаалах» дарсан бодлого
 
   const load = useCallback(() => {
     getMeRegistration(id).then(setReg).catch(() => setError('Бүртгэл олдсонгүй'));
@@ -99,22 +93,22 @@ function MyOlympiadRegistrationPage() {
             <tr><td className="text-muted">MMO ID</td><td>{reg.mmo_id ?? '-'}</td></tr>
             {edit ? (
               <tr>
-                <td className="text-muted">Анги / Ангилал</td>
+                <td className="text-muted">Ангилал / Анги</td>
                 <td>
                   <div className="d-flex flex-wrap gap-2 align-items-center">
-                    {!(editCat && editCat.grade_from === null) && (
-                      <Form.Select size="sm" style={{ maxWidth: 160 }} value={edit.grade}
-                                   onChange={(e) => changeGrade(e.target.value)}>
-                        <option value="">— Анги —</option>
-                        {siteGrades.map((g) => <option key={g.value} value={g.value}>{g.label}</option>)}
-                      </Form.Select>
-                    )}
                     {cats.length > 0 && (
                       <Form.Select size="sm" style={{ maxWidth: 260 }} value={edit.olympiad_category}
                                    onChange={(e) => setEdit({ ...edit, olympiad_category: e.target.value })}>
                         {/* Анги ≤ дээд хязгаар (өгсөж орж болно) */}
                         {cats.filter((c) => categoryFitsGrade(c, edit.grade) || String(c.id) === String(edit.olympiad_category))
                           .map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </Form.Select>
+                    )}
+                    {!(editCat && editCat.grade_from === null) && (
+                      <Form.Select size="sm" style={{ maxWidth: 160 }} value={edit.grade}
+                                   onChange={(e) => changeGrade(e.target.value)}>
+                        <option value="">— Анги —</option>
+                        {siteGrades.map((g) => <option key={g.value} value={g.value}>{g.label}</option>)}
                       </Form.Select>
                     )}
                     <Button size="sm" onClick={save} disabled={saving}>{saving ? <Spinner size="sm" animation="border" /> : 'Хадгалах'}</Button>
@@ -157,14 +151,20 @@ function MyOlympiadRegistrationPage() {
 
       <Link to={`/olympiads/${o.slug}`} className="small">Олимпиадын бүртгэл →</Link>
         </Tab>
-        {PLACEHOLDER_TABS.map(([key, title, text]) => (
-          <Tab key={key} eventKey={key} title={title}>
-            <Alert variant="light" className="border">
-              <div className="fw-semibold mb-1">Удахгүй</div>
-              <div className="small">{text}</div>
-            </Alert>
-          </Tab>
-        ))}
+        <Tab eventKey="scores" title="Миний оноо">
+          <MyScoresTab registrationId={reg.id} active={tab === 'scores'}
+                       onDefend={(n) => { setDefendProblem(n); setSearchParams({ tab: 'defense' }); }} />
+        </Tab>
+        <Tab eventKey="results" title="Дүнгийн хуудас">
+          <MyResultsTab registrationId={reg.id} active={tab === 'results'} />
+        </Tab>
+        <Tab eventKey="materials" title="Материал">
+          <MyMaterialsTab registrationId={reg.id} active={tab === 'materials'} />
+        </Tab>
+        <Tab eventKey="defense" title="Бодолт хамгаалах">
+          <MyDefenseTab registrationId={reg.id} active={tab === 'defense'} problemCount={o.problem_count}
+                        initialProblem={defendProblem} />
+        </Tab>
       </Tabs>
 
       <RegistrationPayment request={payReq} onClose={() => setPayReq(null)} onChanged={load} />

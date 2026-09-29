@@ -86,8 +86,10 @@ export const registerForOlympiad = async (slug, payload) =>
   (await apiClient.post(`${BASE}/${slug}/register/`, payload)).data;
 
 // ── Сурагчид (StudentProfile) ───────────────────────────────────────────────
-// Имэйл эсвэл MMO ID-аар сурагч хайх — нэр далдлагдсан:
-// [{id (MMO-оос бол null), source: 'profile'|'mmo', mmo_id, masked_name, grade, school, phone_tail, already_registered}]
+// Имэйл эсвэл MMO ID-аар сурагч хайх — бүтэн нэр, латин нэртэй (бүртгэгч латин нэрийг баталгаажуулна):
+// [{id (MMO-оос бол null), source: 'profile'|'mmo', mmo_id, display_name, last_name, first_name, last_name_latin, first_name_latin, grade, school, phone_tail, already_registered}]
+// Сонголтын түлхүүр: profile — id (тоо), account — 'user-<id>', MMO — 'mmo-<id>'
+export const candidateKey = (c) => c.id ?? (c.user_id ? `user-${c.user_id}` : `mmo-${c.mmo_id}`);
 export const lookupStudents = async (slug, query) =>
   (await apiClient.post(`${BASE}/${slug}/students/lookup/`, { query }, { skipCache: true })).data;
 export const getMyStudents = async () => (await apiClient.get(`${BASE}/my-students/`, { skipCache: true })).data;
@@ -145,7 +147,8 @@ export const getBankTransfer = async (id) => (await apiClient.get(`${BASE}/bank-
 export const submitBankTransfer = async (id, { receipt, note }) => {
   const form = new FormData();
   if (receipt) form.append('receipt', receipt);
-  if (note) form.append('note', note);
+  // Хоосон FormData (баримт, тайлбаргүй) хүсэлт сервер хүртэл хүрэхгүй «Network Error» болдог — талбар үргэлж илгээнэ
+  form.append('note', note || '');
   return (await apiClient.post(`${BASE}/bank-transfers/${id}/submit/`, form,
     { headers: { 'Content-Type': 'multipart/form-data' } })).data;
 };
@@ -162,28 +165,59 @@ export const updateAdminRegistration = async (id, payload) =>
   (await apiClient.patch(`${BASE}/registrations/${id}/admin/`, payload)).data;
 export const removeAdminRegistration = async (id) => apiClient.delete(`${BASE}/registrations/${id}/admin/`);
 
+// Бүртгэсэн багш / эцэг эх төлөгдөөгүй бүртгэлээ цуцална (төлөгдсөнийг зөвхөн админ)
+export const cancelRegistration = async (registrationId) =>
+  (await apiClient.post(`${BASE}/registrations/${registrationId}/cancel/`)).data;
+
 // Админ: төлбөр хүлээгдэж буй бүртгэлийг төлбөрөөс чөлөөлж баталгаажуулна
 export const approveRegistration = async (registrationId) =>
   (await apiClient.post(`${BASE}/registrations/${registrationId}/approve/`)).data;
 
 // ── Админ ────────────────────────────────────────────────────────────────────
-export const generateSheets = async (slug) =>
-  (await apiClient.post(`${BASE}/${slug}/admin/generate-sheets/`)).data;
+// Хуудасны шүүлтүүр: {category, problem, last_name, first_name} — хоосон утгыг илгээхгүй
+export const sheetFilterParams = (filters = {}) =>
+  Object.fromEntries(Object.entries(filters).filter(([, v]) => String(v ?? '').trim() !== ''));
 
-export const getPrintSheets = async (slug, markPrinted = false) =>
+export const generateSheets = async (slug, filters) =>
+  (await apiClient.post(`${BASE}/${slug}/admin/generate-sheets/`, sheetFilterParams(filters))).data;
+
+export const getPrintSheets = async (slug, markPrinted = false, filters = {}) =>
   (await apiClient.get(`${BASE}/${slug}/admin/sheets/`, {
-    params: markPrinted ? { mark_printed: 1 } : {},
+    params: { ...sheetFilterParams(filters), ...(markPrinted ? { mark_printed: 1 } : {}) }, skipCache: true,
   })).data;
+
+// Бүх бодолтын хуудсыг нэг PDF-ээр татаж хадгална (серверт үүснэ — QR байрлал хэвлэх харагдацтай ижил)
+export const downloadSheetsPdf = async (slug, filters = {}, markPrinted = true) => {
+  const res = await apiClient.get(`${BASE}/${slug}/admin/sheets.pdf`, {
+    params: { ...sheetFilterParams(filters), ...(markPrinted ? { mark_printed: 1 } : {}) },
+    responseType: 'blob', skipCache: true, timeout: 10 * 60 * 1000,
+  });
+  const url = URL.createObjectURL(res.data);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${slug}-bodoltyn-khuudas.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+};
 
 export const uploadSheetImages = async (slug, files, onProgress) => {
   const form = new FormData();
   files.forEach((f) => form.append('files', f));
   return (await apiClient.post(`${BASE}/${slug}/admin/upload/`, form, {
     headers: { 'Content-Type': 'multipart/form-data' },
-    timeout: 0,
+    // 0 гэвэл axiosConfig-ийн interceptor «тохируулаагүй» гэж үзээд 30с болгодог — олон хуудастай PDF (хуудас бүрийг
+    // зураг болгож, QR уншиж, S3-д хадгална) үүнээс удаан тул тодорхой урт хугацаа өгнө
+    timeout: 15 * 60 * 1000,
     onUploadProgress: (e) => onProgress && e.total && onProgress(Math.round((e.loaded * 100) / e.total)),
   })).data;
 };
+
+// Upload-ын боловсруулалтын явц: {status: PENDING|PROCESSING|DONE|FAILED, total_pages, processed_pages, duplicates,
+// total, matched, unmatched, error}
+export const getUploadBatch = async (slug, batchId) =>
+  (await apiClient.get(`${BASE}/${slug}/admin/uploads/batches/${batchId}/`, { skipCache: true })).data;
 
 export const getUploadedImages = async (slug, unmatchedOnly = false) =>
   (await apiClient.get(`${BASE}/${slug}/admin/uploads/`, {
@@ -206,3 +240,78 @@ export const getSiteGrades = async () => (await apiClient.get(`${BASE}/grades/`)
 
 // MMO-ийн аймаг/дүүргийн нэрсийн жагсаалт (хоосон бол MMO-той холбогдож чадаагүй)
 export const getProvinces = async () => (await apiClient.get(`${BASE}/provinces/`)).data;
+
+// ── Оноо, дүн, материал, бодолт хамгаалах ───────────────────────────────────
+const multipart = { headers: { 'Content-Type': 'multipart/form-data' } };
+const toForm = (obj) => {
+  const form = new FormData();
+  Object.entries(obj).forEach(([k, v]) => {
+    if (Array.isArray(v)) v.forEach((x) => form.append(k, x));
+    else if (v !== undefined && v !== null) form.append(k, v);
+  });
+  return form;
+};
+
+// Оноо: 7 → "7", 6.5 → "6.5", null → "–"
+export const fmtScore = (v) => (v === null || v === undefined ? '–' : String(v));
+
+export const DEFENSE_STATUS = {
+  SUBMITTED: ['primary', 'Илгээсэн'],
+  IN_REVIEW: ['info', 'Хянагдаж буй'],
+  ACCEPTED: ['success', 'Хүлээн авсан'],
+  REJECTED: ['danger', 'Татгалзсан'],
+  WITHDRAWN: ['secondary', 'Цуцалсан'],
+};
+
+// Сурагч / эцэг эх (claim хийсэн бүртгэл)
+export const getMeScores = async (id) =>
+  (await apiClient.get(`${BASE}/me/registrations/${id}/scores/`, { skipCache: true })).data;
+export const getMeResults = async (id) =>
+  (await apiClient.get(`${BASE}/me/registrations/${id}/results/`, { skipCache: true })).data;
+export const getMeMaterials = async (id) =>
+  (await apiClient.get(`${BASE}/me/registrations/${id}/materials/`, { skipCache: true })).data;
+export const getMeDefenseRequests = async (id) =>
+  (await apiClient.get(`${BASE}/me/registrations/${id}/defense-requests/`, { skipCache: true })).data;
+// {problem_no, reason, images: File[] ≤3}
+export const createDefenseRequest = async (id, payload) =>
+  (await apiClient.post(`${BASE}/me/registrations/${id}/defense-requests/`, toForm(payload), multipart)).data;
+export const withdrawDefenseRequest = async (requestId) =>
+  (await apiClient.delete(`${BASE}/me/defense-requests/${requestId}/`)).data;
+
+// Нийтэд нээлттэй материал (олимпиадын хуудсанд)
+export const getPublicMaterials = async (slug) => (await apiClient.get(`${BASE}/${slug}/materials/`)).data;
+
+// Админ: оноо
+export const getAdminScores = async (slug) =>
+  (await apiClient.get(`${BASE}/${slug}/admin/scores/`, { skipCache: true })).data;
+// changes: [{registration_id, problem_no, score}] — score '' бол устгана
+export const saveAdminScores = async (slug, changes) =>
+  (await apiClient.put(`${BASE}/${slug}/admin/scores/`, { scores: changes })).data;
+// Алдаатай үед 400 + {errors: [{line, error}]} — алдааг дуудагч талд харуулна
+export const importScoresCsv = async (slug, file, dryRun) =>
+  (await apiClient.post(`${BASE}/${slug}/admin/scores/import/`, toForm({ file, dry_run: dryRun ? '1' : '0' }),
+    { ...multipart, validateStatus: (s) => s === 200 || s === 400 })).data;
+export const publishResults = async (slug, publish, defenseWindowHours) =>
+  (await apiClient.post(`${BASE}/${slug}/admin/publish-results/`,
+    { publish, defense_window_hours: defenseWindowHours })).data;
+// Нэг бодлогын дээд оноо (тавьсан онооноос бага болгохгүй)
+export const setMaxScore = async (slug, maxScore) =>
+  (await apiClient.post(`${BASE}/${slug}/admin/max-score/`, { max_score: maxScore })).data;
+export const getAdminResults = async (slug) =>
+  (await apiClient.get(`${BASE}/${slug}/admin/results/`, { skipCache: true })).data;
+
+// Админ: материал
+export const getAdminMaterials = async (slug) =>
+  (await apiClient.get(`${BASE}/${slug}/admin/materials/`, { skipCache: true })).data;
+export const createAdminMaterial = async (slug, payload) =>
+  (await apiClient.post(`${BASE}/${slug}/admin/materials/`, toForm(payload), multipart)).data;
+export const updateAdminMaterial = async (id, payload) =>
+  (await apiClient.patch(`${BASE}/admin/materials/${id}/`, toForm(payload), multipart)).data;
+export const deleteAdminMaterial = async (id) => apiClient.delete(`${BASE}/admin/materials/${id}/`);
+
+// Админ: бодолт хамгаалах хүсэлт. status: 'open' (шийдээгүй) | '' (бүгд) | SUBMITTED…
+export const getAdminDefenseRequests = async (slug, status = 'open') =>
+  (await apiClient.get(`${BASE}/${slug}/admin/defense-requests/`, { params: { status }, skipCache: true })).data;
+// {status: 'IN_REVIEW'|'ACCEPTED'|'REJECTED', response, new_score}
+export const decideDefenseRequest = async (requestId, payload) =>
+  (await apiClient.post(`${BASE}/admin/defense-requests/${requestId}/decide/`, payload)).data;
