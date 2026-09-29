@@ -4,7 +4,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Container, Card, ListGroup, Badge, Spinner, Alert } from 'react-bootstrap';
-import { getMeRegistrations, REG_STATUS } from '../services/olympiadService';
+import { getMeRegistrations, fmtRange, REG_STATUS } from '../services/olympiadService';
 
 function MyOlympiadsPage() {
   const [groups, setGroups] = useState(null);
@@ -37,6 +37,10 @@ function MyOlympiadsPage() {
                               className="d-flex justify-content-between align-items-center">
                 <div>
                   <div>{r.olympiad_title}</div>
+                  <div className="small">
+                    📅 {fmtRange(r.exam_start, r.exam_end)}
+                    {new Date(r.exam_end || r.exam_start) < new Date() && <span className="text-muted"> · Дууссан</span>}
+                  </div>
                   <div className="small text-muted">
                     {[r.participant_no && `№${r.participant_no}`, r.grade_label].filter(Boolean).join(' · ')}
                   </div>

@@ -5,7 +5,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Container, Card, Table, Button, Badge, Spinner, Alert } from 'react-bootstrap';
 import PaymentModal from '../components/PaymentModal';
-import { getMeRegistration, payRegistration, fmtDate, REG_STATUS } from '../services/olympiadService';
+import { getMeRegistration, payRegistration, fmtDate, fmtRange, REG_STATUS } from '../services/olympiadService';
 
 function MyOlympiadRegistrationPage() {
   const { id } = useParams();
@@ -47,7 +47,7 @@ function MyOlympiadRegistrationPage() {
             <tr><td className="text-muted">MMO ID</td><td>{reg.mmo_id ?? '-'}</td></tr>
             <tr><td className="text-muted">Анги / ангилал</td><td>{reg.grade_label || reg.olympiad_category_name || '-'}</td></tr>
             <tr><td className="text-muted">Сургууль</td><td>{reg.school}</td></tr>
-            <tr><td className="text-muted">Шалгалт</td><td>{fmtDate(o.exam_start)}{o.venue ? ` · ${o.venue}` : ''}</td></tr>
+            <tr><td className="text-muted">Олимпиадын хугацаа</td><td>{fmtRange(o.exam_start, o.exam_end)}{o.venue ? ` · ${o.venue}` : ''}</td></tr>
           </tbody>
         </Table>
       </Card>

@@ -8,6 +8,15 @@ const BASE = '/api/olympiads';
 export const fmtDate = (iso) =>
   iso ? new Date(iso).toLocaleString('mn-MN', { dateStyle: 'medium', timeStyle: 'short' }) : '';
 
+// Олимпиадын хугацаа: "эхлэх – дуусах"; нэг өдөр бол дуусах цагийг л
+export const fmtRange = (start, end) => {
+  if (!start) return '';
+  if (!end) return fmtDate(start);
+  const sameDay = new Date(start).toDateString() === new Date(end).toDateString();
+  return `${fmtDate(start)} – ${sameDay
+    ? new Date(end).toLocaleTimeString('mn-MN', { timeStyle: 'short' }) : fmtDate(end)}`;
+};
+
 // Бүртгэлийн төлөв → [Badge өнгө, шошго]
 export const REG_STATUS = {
   PENDING: ['warning', 'Төлбөр хүлээгдэж буй'],
