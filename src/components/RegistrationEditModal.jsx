@@ -3,7 +3,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Modal, Form, Button, Row, Col, Alert, Spinner } from 'react-bootstrap';
-import { getAdminRegistration, updateAdminRegistration } from '../services/olympiadService';
+import { getAdminRegistration, updateAdminRegistration, categoryFitsGrade, bestCategoryForGrade } from '../services/olympiadService';
 import { LATIN_NAME_RE } from '../utils/transliterate';
 
 const TEXT_FIELDS = [
@@ -34,6 +34,16 @@ function RegistrationEditModal({ registrationId, onClose, onSaved }) {
 
   const cat = categories.find((c) => String(c.id) === String(form?.olympiad_category));
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  // Анги хязгааргүй; ангилал ангиасаа хамаарна
+  const setGrade = (e) => {
+    const grade = e.target.value;
+    setForm((f) => {
+      const current = categories.find((c) => String(c.id) === String(f.olympiad_category));
+      const best = bestCategoryForGrade(categories, grade);
+      const keep = current && categoryFitsGrade(current, grade);
+      return { ...f, grade, olympiad_category: keep ? f.olympiad_category : (best ? best.id : f.olympiad_category) };
+    });
+  };
 
   const save = async (e) => {
     e.preventDefault();
@@ -72,19 +82,17 @@ function RegistrationEditModal({ registrationId, onClose, onSaved }) {
                   <Form.Label className="small mb-0">Оролцох ангилал</Form.Label>
                   <Form.Select value={form.olympiad_category} onChange={set('olympiad_category')}>
                     <option value="">—</option>
-                    {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    {categories.filter((c) => categoryFitsGrade(c, form.grade) || String(c.id) === String(form.olympiad_category))
+                      .map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </Form.Select>
                 </Col>
               )}
               {!(cat && cat.grade_from === null) && (
                 <Col md={4}>
                   <Form.Label className="small mb-0">Анги</Form.Label>
-                  <Form.Select value={form.grade} onChange={set('grade')}>
+                  <Form.Select value={form.grade} onChange={setGrade}>
                     <option value="">—</option>
-                    {/* Өгсөж орж болно — ангилалын дээд хязгаар хүртэл */}
-                    {Array.from({ length: cat?.grade_to ?? 12 }, (_, i) => (
-                      <option key={i + 1} value={i + 1}>{i + 1}-р анги</option>
-                    ))}
+                    {Array.from({ length: 12 }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}-р анги</option>)}
                   </Form.Select>
                 </Col>
               )}

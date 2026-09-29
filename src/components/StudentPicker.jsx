@@ -13,7 +13,7 @@ function StudentPicker({ candidates, value, onChange }) {
     <ListGroup className="mb-2">
       {candidates.map((c) => (
         <ListGroup.Item
-          key={candidateKey(c)} action type="button" disabled={c.already_registered} active={value === candidateKey(c)}
+          key={candidateKey(c)} action type="button" active={value === candidateKey(c)}
           onClick={() => onChange(candidateKey(c))} className="d-flex justify-content-between align-items-center"
         >
           <div>
@@ -24,7 +24,10 @@ function StudentPicker({ candidates, value, onChange }) {
             </div>
           </div>
           <div className="text-end">
-            {c.already_registered && <Badge bg="secondary">Энэ олимпиадад бүртгэгдсэн</Badge>}
+            {/* Өөр ангилалд бүртгүүлж болох тул сонгохыг хориглохгүй */}
+            {c.already_registered && (
+              <Badge bg="secondary">Бүртгэлтэй{c.registered_categories?.length ? `: ${c.registered_categories.join(', ')}` : ''}</Badge>
+            )}
             {!c.already_registered && c.has_account && <Badge bg="light" text="dark" className="border">Account-тай</Badge>}
             {c.source === 'mmo' && <Badge bg="info">MMO-оос</Badge>}
           </div>

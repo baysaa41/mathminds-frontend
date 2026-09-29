@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { Container, Card, Table, Form, Button, ButtonGroup, ToggleButton, Alert, Spinner, Badge, Row, Col } from 'react-bootstrap';
 import PaymentModal from '../components/PaymentModal';
 import StudentPicker from '../components/StudentPicker';
-import { getOlympiad, getOlympiadMyRegistrations, approveRegistration, registerForOlympiad, payRegistration, getPrefill, getProvinces, lookupStudents, fmtDate } from '../services/olympiadService';
+import { categoryFitsGrade, bestCategoryForGrade, getOlympiad, getOlympiadMyRegistrations, approveRegistration, registerForOlympiad, payRegistration, getPrefill, getProvinces, lookupStudents, fmtDate } from '../services/olympiadService';
 import { toLatin, LATIN_NAME_RE } from '../utils/transliterate';
 
 const EMPTY_FORM = {
@@ -44,12 +44,8 @@ const gradeMismatch = (cat, grade) => {
 // Ангилал сонгоогүй бол ангид тохирох ангилалыг автоматаар санал болгоно. Сонгосон бол (гараар ч, автоматаар ч)
 // хэрэглэгчийн сонголтыг хадгална — сольж болно.
 const autoCategoryId = (cats, categoryId, grade) => {
-  if (categoryId || !cats?.length || !/^\d+$/.test(String(grade))) return categoryId;
-  const g = Number(grade);
-  const graded = cats.filter((c) => c.grade_from !== null);
-  // Яг тохирох ангилал, байхгүй бол өгсөж орох хамгийн ойрын ангилал
-  const match = graded.find((c) => g >= c.grade_from && g <= c.grade_to)
-    || [...graded].sort((a, b) => a.grade_to - b.grade_to).find((c) => g <= c.grade_to);
+  if (categoryId) return categoryId;
+  const match = bestCategoryForGrade(cats, grade);
   return match ? String(match.id) : categoryId;
 };
 
@@ -78,7 +74,10 @@ function OlympiadDetailPage() {
   const [looking, setLooking] = useState(false);
   const [needEmail, setNeedEmail] = useState(false);  // MMO/profile-д имэйл байхгүй бол гараар
   const [latinConfirmed, setLatinConfirmed] = useState(false);
-  const [myMmoId, setMyMmoId] = useState(null);  // «Өөрийгөө бүртгүүлэх»-д харуулах өөрийн MMO ID  // MMO ID-аар бүртгэхэд латин нэрийг баталгаажуулна
+  const [myMmoId, setMyMmoId] = useState(null);
+  // Сурагч өөр ангилалд бүртгэлтэй — хоёр ангилалд оролцох уу, эсвэл буруу ангилалыг засах уу гэж лавлана
+  const [secondCat, setSecondCat] = useState(null);
+  const [extraSelf, setExtraSelf] = useState(false);  // өөрийн бүртгэл баталгаажсан ч өөр ангилалд бүртгүүлэх  // «Өөрийгөө бүртгүүлэх»-д харуулах өөрийн MMO ID  // MMO ID-аар бүртгэхэд латин нэрийг баталгаажуулна
 
   const load = useCallback(async () => {
     try {
@@ -163,10 +162,16 @@ function OlympiadDetailPage() {
       setError('Латин нэрийг шалгаад «Латин нэр зөв» гэдгийг баталгаажуулна уу.');
       return;
     }
+    await send({});
+  };
+
+  // extra: {confirm_second_category: true} эсвэл {replace_registration_id: id}
+  const send = async (extra) => {
     setBusy(true);
     setError(null);
+    setSecondCat(null);
     try {
-      const payload = { ...form };
+      const payload = { ...form, ...extra };
       if (!payload.category_id) delete payload.category_id;
       if (!user?.is_staff) delete payload.waive_fee;
       if (noGrade) payload.grade = '';
@@ -182,7 +187,9 @@ function OlympiadDetailPage() {
       }
       const r = await registerForOlympiad(slug, payload);
       await load();
-      if (!r.is_mine) {
+      setExtraSelf(false);
+      if (r.moved) setInfo(`Бүртгэлийг «${r.olympiad_category_name}» ангилал руу заслаа.`);
+      else if (!r.is_mine) {
         setInfo(`${r.full_name} (№${r.participant_no ?? '-'}) бүртгэгдлээ. ${r.student_created
           ? 'Шинэ сурагч бүртгэгдлээ.' : 'Өмнөх бүртгэлтэй сурагчтай холбогдлоо.'}`);
       }
@@ -190,6 +197,10 @@ function OlympiadDetailPage() {
       else if (form.waive_fee) setInfo('Төлбөргүйгээр бүртгэгдэж, баталгаажлаа.');
     } catch (err) {
       const d = err.response?.data;
+      if (err.response?.status === 409 && d?.code === 'second_category') {
+        setSecondCat(d);
+        return;
+      }
       if (d?.email && mmoMode) setNeedEmail(true);
       if (d?.existing_candidates) {  // ижил имэйл + овог нэртэй сурагч бий — шинээр үүсгэхгүй, сонгуулна
         setCandidates(d.existing_candidates);
@@ -251,13 +262,13 @@ function OlympiadDetailPage() {
       });
       return;
     }
-    setForm((f) => ({
-      ...f,
-      school: c.school || f.school,
-      province: c.province || f.province,
-      grade: grade && !gradeMismatch(selectedCat, grade) ? grade : f.grade,
-      category_id: autoCategoryId(categories, f.category_id, grade),
-    }));
+    setForm((f) => {
+      const g = grade || f.grade;
+      const current = categories.find((x) => String(x.id) === f.category_id);
+      const keep = current && categoryFitsGrade(current, g) ? f.category_id : '';
+      return { ...f, school: c.school || f.school, province: c.province || f.province, grade: g,
+        category_id: autoCategoryId(categories, keep, g) };
+    });
   };
   const pickedCandidate = candidates?.find((x) => (x.id ?? `mmo-${x.mmo_id}`) === picked);
 
@@ -281,28 +292,22 @@ function OlympiadDetailPage() {
   const formShown = !!olympiad?.registration_open && !(reg?.status === 'PAID' && !forOther);
   const categories = olympiad?.categories || [];
   const selectedCat = categories.find((c) => String(c.id) === form.category_id);
-  // Ангилал сонгосон бол сурагчийн анги зөвхөн тухайн хязгаарт
   const noGrade = !!selectedCat && selectedCat.grade_from === null; // багш, чөлөөт гэх мэт
-  // Ангилал сонгосон бол зөвхөн тухайн хязгаарын анги; сонгоогүй бол аль нэг ангилалд багтах ангиуд
-  const gradeOptions = categories.length === 0 ? GRADE_OPTIONS
-    : GRADE_OPTIONS.filter((o) => /^\d+$/.test(o.value) && (selectedCat?.grade_from != null
-      ? !gradeMismatch(selectedCat, o.value)
-      : categories.some((c) => c.grade_from !== null && !gradeMismatch(c, o.value))));
+  // Анги хязгааргүй (1–12); ангилалын сонголт ангиасаа хамаарна (анги ≤ дээд хязгаар)
+  const gradeOptions = categories.length === 0 ? GRADE_OPTIONS : GRADE_OPTIONS.filter((o) => /^\d+$/.test(o.value));
+  const categoryOptions = categories.filter((c) => categoryFitsGrade(c, form.grade));
   const setGrade = (e) => {
     const grade = e.target.value;
-    setForm((f) => ({ ...f, grade, category_id: autoCategoryId(categories, f.category_id, grade) }));
+    setForm((f) => {
+      const current = categories.find((c) => String(c.id) === f.category_id);
+      // Одоогийн ангилал шинэ ангид тохирохгүй бол хамгийн тохирохыг сонгоно
+      const keep = current && categoryFitsGrade(current, grade) ? f.category_id : '';
+      return { ...f, grade, category_id: autoCategoryId(categories, keep, grade) };
+    });
   };
   const setCategory = (e) => {
-    const cat = categories.find((c) => String(c.id) === e.target.value);
-    const mismatch = gradeMismatch(cat, form.grade);
-    if (mmoMode) {  // анги MMO-оос тогтмол — арилгахгүй
-      setError(mismatch ? `${mismatch} Өөр ангилал сонгоно уу.` : null);
-      setForm((f) => ({ ...f, category_id: e.target.value }));
-      return;
-    }
-    setError(mismatch ? `${mismatch} Ангиа дахин сонгоно уу.` : null);
-    const keep = cat && cat.grade_from !== null && !mismatch;
-    setForm((f) => ({ ...f, category_id: e.target.value, grade: keep ? f.grade : '' }));
+    setError(null);
+    setForm((f) => ({ ...f, category_id: e.target.value }));
   };
 
   if (loading) return <Container className="py-5 text-center"><Spinner animation="border" /></Container>;
@@ -436,15 +441,19 @@ function OlympiadDetailPage() {
               тэр link-ээр бүртгэлээ харж, өөрийн account-д нэмнэ.
             </Alert>
           )}
-          {reg?.status === 'PAID' && !forOther ? null : olympiad.registration_open ? (
+          {reg?.status === 'PAID' && !forOther && !extraSelf ? (olympiad.registration_open && (
+            <Button variant="outline-primary" size="sm" onClick={() => setExtraSelf(true)}>
+              Өөр ангилалд давхар бүртгүүлэх
+            </Button>
+          )) : olympiad.registration_open ? (
             <Form onSubmit={submit}>
               <Row className="g-2">
                 {categories.length > 0 && (
                   <Col md={12}>
-                    <Form.Label>Оролцох ангилал <small className="text-muted">(ангиар автоматаар сонгогдоно, сольж болно)</small></Form.Label>
+                    <Form.Label>Оролцох ангилал <small className="text-muted">(ангиас хамаарч сонгогдоно, сольж болно)</small></Form.Label>
                     <Form.Select required value={form.category_id} onChange={setCategory}>
                       <option value="">— Сонгоно уу —</option>
-                      {categories.map((c) => (
+                      {categoryOptions.map((c) => (
                         <option key={c.id} value={c.id}>
                           {c.name}{c.grade_from !== null && c.name !== (c.grade_from === c.grade_to ? `${c.grade_from}-р анги` : `${c.grade_from}–${c.grade_to}-р анги`) ? ` (${c.grade_from}–${c.grade_to}-р анги)` : ''}
                         </option>
@@ -618,6 +627,37 @@ function OlympiadDetailPage() {
                       onChange={(e) => setForm((f) => ({ ...f, waive_fee: e.target.checked }))}
                       label="Төлбөргүй бүртгэх (админ) — хураамж төлөхгүйгээр шууд баталгаажуулна"
                     />
+                  </Col>
+                )}
+                {secondCat && (
+                  <Col md={12} className="pt-2">
+                    <Alert variant="warning" className="mb-0">
+                      <div className="fw-semibold">{secondCat.error}</div>
+                      <ul className="mb-2 small">
+                        {secondCat.existing.map((x) => (
+                          <li key={x.id}>
+                            «{x.category_name || 'Ангилалгүй'}» ангилал
+                            {x.status === 'PAID' ? ' — баталгаажсан' : ' — төлбөр хүлээгдэж буй'}
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="mb-2">
+                        Үнэхээр <strong>«{selectedCat?.name || 'энэ'}»</strong> ангилалд давхар оролцох уу? Хэрэв өмнө нь
+                        буруу ангилал сонгосон бол өмнөх бүртгэлээ засна уу.
+                      </div>
+                      <div className="d-flex flex-wrap gap-2">
+                        <Button size="sm" variant="warning" disabled={busy} onClick={() => send({ confirm_second_category: true })}>
+                          Тийм, хоёр ангилалд оролцоно
+                        </Button>
+                        {secondCat.existing.filter((x) => x.can_edit).map((x) => (
+                          <Button key={x.id} size="sm" variant="outline-dark" disabled={busy}
+                                  onClick={() => send({ replace_registration_id: x.id })}>
+                            «{x.category_name}» бүртгэлийг «{selectedCat?.name}» болгож засах
+                          </Button>
+                        ))}
+                        <Button size="sm" variant="link" onClick={() => setSecondCat(null)}>Болих</Button>
+                      </div>
+                    </Alert>
                   </Col>
                 )}
                 {error && (  // алдааг баталгаажуулах товчны яг дээр

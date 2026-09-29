@@ -17,6 +17,20 @@ export const fmtRange = (start, end) => {
     ? new Date(end).toLocaleTimeString('mn-MN', { timeStyle: 'short' }) : fmtDate(end)}`;
 };
 
+// Ангилал ангиасаа хамаарна: анги хязгааргүй (1–12), ангилал нь анги ≤ дээд хязгаар (өгсөж орж болно),
+// эсвэл ангийн хязгааргүй (багш, чөлөөт) ангилал.
+export const categoryFitsGrade = (cat, grade) =>
+  !cat || cat.grade_from === null || !/^\d+$/.test(String(grade ?? '')) || Number(grade) <= cat.grade_to;
+
+// Ангид хамгийн тохирох ангилал: яг багтах, эс бөгөөс өгсөж орох хамгийн ойрын
+export const bestCategoryForGrade = (cats, grade) => {
+  if (!cats?.length || !/^\d+$/.test(String(grade ?? ''))) return null;
+  const g = Number(grade);
+  const graded = cats.filter((c) => c.grade_from !== null);
+  return graded.find((c) => g >= c.grade_from && g <= c.grade_to)
+    || [...graded].sort((a, b) => a.grade_to - b.grade_to).find((c) => g <= c.grade_to) || null;
+};
+
 // Бүртгэлийн төлөв → [Badge өнгө, шошго]
 export const REG_STATUS = {
   PENDING: ['warning', 'Төлбөр хүлээгдэж буй'],
@@ -57,6 +71,9 @@ export const getMeRegistrations = async () =>
   (await apiClient.get(`${BASE}/me/registrations/`, { skipCache: true })).data;
 export const getMeRegistration = async (id) =>
   (await apiClient.get(`${BASE}/me/registrations/${id}/`, { skipCache: true })).data;
+// Бүртгэлийн хугацаанд зөвхөн анги, ангилалыг засна: {grade, olympiad_category}
+export const updateMeRegistration = async (id, payload) =>
+  (await apiClient.patch(`${BASE}/me/registrations/${id}/`, payload)).data;
 
 // QPay нэхэмжлэх үүсгэнэ -> { qpay_data, local_invoice_id } (PaymentModal-д дамжуулна)
 export const payRegistration = async (registrationId) =>

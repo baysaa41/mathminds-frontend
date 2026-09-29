@@ -42,7 +42,7 @@ function MyOlympiadsPage() {
                     {new Date(r.exam_end || r.exam_start) < new Date() && <span className="text-muted"> · Дууссан</span>}
                   </div>
                   <div className="small text-muted">
-                    {[r.participant_no && `№${r.participant_no}`, r.grade_label].filter(Boolean).join(' · ')}
+                    {[r.olympiad_category_name, r.grade && `${r.grade}-р анги`].filter(Boolean).join(' · ')}
                   </div>
                 </div>
                 <Badge bg={REG_STATUS[r.status][0]}>{REG_STATUS[r.status][1]}</Badge>
