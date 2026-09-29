@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { Container, Card, Table, Form, Button, ButtonGroup, ToggleButton, Alert, Spinner, Badge, Row, Col } from 'react-bootstrap';
 import PaymentModal from '../components/PaymentModal';
 import StudentPicker from '../components/StudentPicker';
-import { categoryFitsGrade, bestCategoryForGrade, getOlympiad, getOlympiadMyRegistrations, approveRegistration, registerForOlympiad, payRegistration, getPrefill, getProvinces, lookupStudents, fmtDate } from '../services/olympiadService';
+import { apiErrorText, categoryFitsGrade, bestCategoryForGrade, getOlympiad, getOlympiadMyRegistrations, approveRegistration, registerForOlympiad, payRegistration, getPrefill, getProvinces, lookupStudents, fmtDate } from '../services/olympiadService';
 import { toLatin, LATIN_NAME_RE } from '../utils/transliterate';
 
 const EMPTY_FORM = {
@@ -206,7 +206,7 @@ function OlympiadDetailPage() {
         setCandidates(d.existing_candidates);
         setPicked(null);
       }
-      setError(d?.error || (d && JSON.stringify(d)) || 'Бүртгэхэд алдаа гарлаа');
+      setError(apiErrorText(d, 'Бүртгэхэд алдаа гарлаа'));
     } finally {
       setBusy(false);
     }
@@ -287,7 +287,6 @@ function OlympiadDetailPage() {
   // MMO ID-аар сонгосон: бүртгэгч зөвхөн ангилал сонгоно; бусад мэдээллийг MMO/profile-оос сервер нөхнө
   const mmoMode = forOther && queryIsMmo && pickedChosen;
   const showDetails = !forOther || picked !== null;
-  const latinIsAuto = form.last_name_latin === toLatin(form.last_name) && form.first_name_latin === toLatin(form.first_name);
 
   const formShown = !!olympiad?.registration_open && !(reg?.status === 'PAID' && !forOther);
   const categories = olympiad?.categories || [];
@@ -524,8 +523,8 @@ function OlympiadDetailPage() {
                   </Col>
                   <Col md={12}>
                     <Alert variant="warning" className="py-2 px-3 mb-1 small">
-                      <strong>⚠️ Латин нэрийг заавал шалгана уу.</strong> Зарим сертификат дээр нэр латинаар бичигдэнэ.
-                      Кирилл нэрээс автоматаар үүсгэсэн тул паспорт эсвэл төрсний гэрчилгээтэй тулгаж, зөрвөл засна уу.
+                      <strong>⚠️ Латин нэрийг заавал шалгана уу.</strong> Англиар сертификат хэвлэхэд ашиглана.
+                      Гадаад паспортын нэртэй тулгаарай.
                       <Form.Check className="mt-2" id="latin-confirmed" checked={latinConfirmed}
                                   onChange={(e) => setLatinConfirmed(e.target.checked)}
                                   label={<strong>Латин нэр зөв гэдгийг шалгасан</strong>} />
@@ -572,13 +571,21 @@ function OlympiadDetailPage() {
                 </Col>
                 <Col md={12}>
                   <Alert variant="warning" className="py-2 px-3 mb-1 small">
-                    <strong>⚠️ Латин нэрээ заавал шалгана уу.</strong> Зарим сертификат дээр нэр латинаар бичигдэнэ.
-                    {latinIsAuto && form.last_name && ' Кирилл нэрээс автоматаар үүсгэсэн —'} Паспорт эсвэл төрсний
-                    гэрчилгээтэйгээ тулгаж, зөрвөл засна уу.
+                    <strong>⚠️ Латин нэрээ заавал шалгана уу.</strong> Англиар сертификат хэвлэхэд ашиглана.
+                    Гадаад паспортын нэртэй тулгаарай.
                   </Alert>
                 </Col>
                 </>)}
                 {showDetails && (<>
+                {mmoMode && !noGrade && !pickedCandidate?.grade && (
+                  <Col md={4}>
+                    <Form.Label>Анги <small className="text-muted">(MMO-д бүртгэлгүй)</small></Form.Label>
+                    <Form.Select required value={form.grade} onChange={setGrade}>
+                      <option value="">— Сонгоно уу —</option>
+                      {gradeOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </Form.Select>
+                  </Col>
+                )}
                 {!mmoMode && (<>
                 <Col md={12}>
                   <Form.Label>Аймаг / Дүүрэг</Form.Label>

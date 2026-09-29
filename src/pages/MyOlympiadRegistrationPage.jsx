@@ -6,7 +6,7 @@ import { Link, useParams } from 'react-router-dom';
 import { Container, Card, Table, Button, Badge, Spinner, Alert, Form } from 'react-bootstrap';
 import PaymentModal from '../components/PaymentModal';
 import { getMeRegistration, updateMeRegistration, payRegistration, fmtDate, fmtRange, REG_STATUS,
-  categoryFitsGrade, bestCategoryForGrade } from '../services/olympiadService';
+  apiErrorText, categoryFitsGrade, bestCategoryForGrade } from '../services/olympiadService';
 
 function MyOlympiadRegistrationPage() {
   const { id } = useParams();
@@ -51,7 +51,7 @@ function MyOlympiadRegistrationPage() {
       setEdit(null);
     } catch (err) {
       const d = err.response?.data;
-      setEditError(d?.error || (d && Object.values(d).flat().join(' ')) || 'Хадгалахад алдаа гарлаа');
+      setEditError(apiErrorText(d, 'Хадгалахад алдаа гарлаа'));
     } finally {
       setSaving(false);
     }

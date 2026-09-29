@@ -5,7 +5,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Container, Card, Table, Form, Button, Alert, Spinner, Badge, Row, Col } from 'react-bootstrap';
 import PaymentModal from '../components/PaymentModal';
-import { getStudent, updateStudent, payRegistration, resendRegistrationLink, REG_STATUS } from '../services/olympiadService';
+import { apiErrorText, getStudent, updateStudent, payRegistration, resendRegistrationLink, REG_STATUS } from '../services/olympiadService';
 import { LATIN_NAME_RE } from '../utils/transliterate';
 
 const FIELDS = [
@@ -51,7 +51,7 @@ function StudentDetailPage() {
       setInfo('Хадгаллаа. Дараагийн бүртгэлүүдэд шинэ мэдээлэл ашиглагдана.');
     } catch (err) {
       const d = err.response?.data;
-      setError(d?.error || (d && JSON.stringify(d)) || 'Хадгалахад алдаа гарлаа');
+      setError(apiErrorText(d, 'Хадгалахад алдаа гарлаа'));
     } finally {
       setBusy(false);
     }

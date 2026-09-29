@@ -31,6 +31,17 @@ export const bestCategoryForGrade = (cats, grade) => {
     || [...graded].sort((a, b) => a.grade_to - b.grade_to).find((c) => g <= c.grade_to) || null;
 };
 
+// API-ийн алдааны хариуг хүнд уншигдах текст болгоно: {error}, {detail}, эсвэл {field: ['...']} → зөвхөн мессежүүд
+export const apiErrorText = (data, fallback = 'Алдаа гарлаа') => {
+  if (!data) return fallback;
+  if (typeof data === 'string') return data;
+  if (data.error) return data.error;
+  if (data.detail) return data.detail;
+  const flat = (v) => (Array.isArray(v) ? v.flatMap(flat) : v && typeof v === 'object' ? Object.values(v).flatMap(flat) : [v]);
+  const msgs = flat(data).filter((m) => typeof m === 'string' && m.trim());
+  return msgs.length ? msgs.join(' ') : fallback;
+};
+
 // Бүртгэлийн төлөв → [Badge өнгө, шошго]
 export const REG_STATUS = {
   PENDING: ['warning', 'Төлбөр хүлээгдэж буй'],

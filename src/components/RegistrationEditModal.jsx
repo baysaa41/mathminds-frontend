@@ -3,7 +3,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Modal, Form, Button, Row, Col, Alert, Spinner } from 'react-bootstrap';
-import { getAdminRegistration, updateAdminRegistration, categoryFitsGrade, bestCategoryForGrade } from '../services/olympiadService';
+import { apiErrorText, getAdminRegistration, updateAdminRegistration, categoryFitsGrade, bestCategoryForGrade } from '../services/olympiadService';
 import { LATIN_NAME_RE } from '../utils/transliterate';
 
 const TEXT_FIELDS = [
@@ -63,7 +63,7 @@ function RegistrationEditModal({ registrationId, onClose, onSaved }) {
       onSaved();
     } catch (err) {
       const d = err.response?.data;
-      setError(d?.error || (d && Object.values(d).flat().join(' ')) || 'Хадгалахад алдаа гарлаа');
+      setError(apiErrorText(d, 'Хадгалахад алдаа гарлаа'));
     } finally {
       setBusy(false);
     }
