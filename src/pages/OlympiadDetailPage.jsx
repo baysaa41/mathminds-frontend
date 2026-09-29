@@ -9,7 +9,7 @@ import PaymentModal from '../components/PaymentModal';
 import StudentPicker from '../components/StudentPicker';
 import useSiteGrades from '../hooks/useSiteGrades';
 import { setPostLoginRedirect } from '../utils/postLoginRedirect';
-import { apiErrorText, categoryFitsGrade, bestCategoryForGrade, getOlympiad, getOlympiadMyRegistrations, approveRegistration, registerForOlympiad, payRegistration, getPrefill, getProvinces, lookupStudents, fmtRange } from '../services/olympiadService';
+import { apiErrorText, categoryFitsGrade, bestCategoryForGrade, getOlympiad, getOlympiadMyRegistrations, approveRegistration, registerForOlympiad, payRegistration, getPrefill, getProvinces, lookupStudents, fmtRange, registrationCountdown } from '../services/olympiadService';
 import { toLatin, LATIN_NAME_RE } from '../utils/transliterate';
 
 const EMPTY_FORM = {
@@ -347,7 +347,10 @@ function OlympiadDetailPage() {
         </div>
         <div>
           <span className="text-muted">Бүртгэл:</span> {fmtRange(olympiad.registration_start, olympiad.registration_end)}
-          {!olympiad.registration_open && <span className="text-muted"> (хаалттай)</span>}
+          {(() => {
+            const c = registrationCountdown(olympiad.registration_start, olympiad.registration_end);
+            return <Badge bg={c.variant} className="ms-2">{c.text}</Badge>;
+          })()}
         </div>
         {olympiad.schedule.map((it) => (
           <div key={it.id}>

@@ -4,7 +4,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Container, Card, Badge, Spinner, Alert, Button } from 'react-bootstrap';
-import { getOlympiads, fmtDate } from '../services/olympiadService';
+import { getOlympiads, fmtRange, registrationCountdown } from '../services/olympiadService';
 import { useAuth } from '../context/AuthContext';
 
 function OlympiadsPage() {
@@ -44,16 +44,17 @@ function OlympiadsPage() {
                   <Link to={`/olympiads/${o.slug}`} className="text-decoration-none">{o.title}</Link>
                 </Card.Title>
                 <div className="text-muted small">
-                  Шалгалт: {fmtDate(o.exam_start)}{o.venue ? ` · ${o.venue}` : ''}
+                  Олимпиад: {fmtRange(o.exam_start, o.exam_end)}{o.venue ? ` · ${o.venue}` : ''}
                 </div>
                 <div className="text-muted small">
-                  Бүртгэл: {fmtDate(o.registration_start)} – {fmtDate(o.registration_end)}
+                  Бүртгэл: {fmtRange(o.registration_start, o.registration_end)}
                 </div>
               </div>
               <div className="text-end">
-                <Badge bg={o.registration_open ? 'success' : 'secondary'}>
-                  {o.registration_open ? 'Бүртгэл нээлттэй' : 'Бүртгэл хаалттай'}
-                </Badge>
+                {(() => {  // Бүртгэл дуусахад / эхлэхэд үлдсэн хугацаа
+                  const c = registrationCountdown(o.registration_start, o.registration_end);
+                  return <Badge bg={c.variant}>{c.text}</Badge>;
+                })()}
                 <div className="small mt-1">
                   {Number(o.fee) > 0 ? `${Number(o.fee).toLocaleString()}₮` : 'Үнэгүй'} · {o.registered_count} оролцогч
                 </div>

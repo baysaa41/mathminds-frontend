@@ -8,6 +8,28 @@ const BASE = '/api/olympiads';
 export const fmtDate = (iso) =>
   iso ? new Date(iso).toLocaleString('mn-MN', { dateStyle: 'medium', timeStyle: 'short' }) : '';
 
+// Одооноос хүртэлх хугацаа: "15 хоног", "5 цаг", "20 минут"
+export const timeUntil = (iso, now = Date.now()) => {
+  const ms = new Date(iso).getTime() - now;
+  if (ms <= 0) return '';
+  const minutes = Math.ceil(ms / 60000);
+  if (minutes < 60) return `${minutes} минут`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} цаг`;
+  return `${Math.floor(hours / 24)} хоног`;
+};
+
+// Бүртгэлийн төлөв: {text, variant} — "Бүртгэл дуусахад 15 хоног үлдлээ" гэх мэт
+export const registrationCountdown = (start, end, now = Date.now()) => {
+  if (now < new Date(start).getTime()) return { text: `Бүртгэл эхлэхэд ${timeUntil(start, now)}`, variant: 'info' };
+  if (now <= new Date(end).getTime()) {
+    const left = timeUntil(end, now);
+    const soon = new Date(end).getTime() - now < 3 * 24 * 3600 * 1000;  // 3 хоногоос бага — анхааруулна
+    return { text: `Бүртгэл дуусахад ${left} үлдлээ`, variant: soon ? 'danger' : 'success' };
+  }
+  return { text: 'Бүртгэл хаалттай', variant: 'secondary' };
+};
+
 // Олимпиадын хугацаа: "эхлэх – дуусах"; нэг өдөр бол дуусах цагийг л
 export const fmtRange = (start, end) => {
   if (!start) return '';
