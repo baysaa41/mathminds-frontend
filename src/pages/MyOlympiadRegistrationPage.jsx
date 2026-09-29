@@ -24,7 +24,7 @@ function MyOlympiadRegistrationPage() {
   const fee = Number(reg.fee || 0);
 
   return (
-    <Container className="py-4" style={{ maxWidth: 800 }}>
+    <Container fluid className="py-4 px-md-4" style={{ maxWidth: 1400 }}>
       <Link to="/my-olympiads" className="small">← Миний олимпиадууд</Link>
       <h3 className="mt-2 mb-0">{o.title}</h3>
       <div className="text-muted mb-3">{reg.student_name}{reg.last_name_latin ? ` · ${reg.last_name_latin} ${reg.first_name_latin}` : ''}</div>

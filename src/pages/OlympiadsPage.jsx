@@ -23,7 +23,7 @@ function OlympiadsPage() {
   if (loading) return <Container className="py-5 text-center"><Spinner animation="border" /></Container>;
 
   return (
-    <Container className="py-4" style={{ maxWidth: 900 }}>
+    <Container fluid className="py-4 px-md-4" style={{ maxWidth: 1400 }}>
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h3 className="mb-0">Олимпиад</h3>
         <div className="d-flex gap-2">

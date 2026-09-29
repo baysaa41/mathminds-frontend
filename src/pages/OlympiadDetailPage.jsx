@@ -309,7 +309,7 @@ function OlympiadDetailPage() {
   if (!olympiad) return <Container className="py-4"><Alert variant="danger">{error}</Alert></Container>;
 
   return (
-    <Container className="py-4" style={{ maxWidth: 900 }}>
+    <Container fluid className="py-4 px-md-4" style={{ maxWidth: 1400 }}>
       <Link to="/olympiads" className="small">← Бүх олимпиад</Link>
       <div className="d-flex justify-content-between align-items-start flex-wrap gap-2 mt-2">
         <h3 className="mb-0">{olympiad.title}</h3>

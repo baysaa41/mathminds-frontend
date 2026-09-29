@@ -26,7 +26,7 @@ function MyStudentsPage() {
   if (!students) return <Container className="py-5 text-center"><Spinner animation="border" /></Container>;
 
   return (
-    <Container className="py-4" style={{ maxWidth: 960 }}>
+    <Container fluid className="py-4 px-md-4" style={{ maxWidth: 1400 }}>
       <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
         <h3 className="mb-0">Миний сурагчид <small className="text-muted">({students.length})</small></h3>
         <Link to="/olympiads" className="btn btn-primary btn-sm">Олимпиадад бүртгүүлэх</Link>

@@ -135,7 +135,7 @@ function OlympiadFormPage() {
   const fieldErr = (k) => errors?.[k] && <div className="text-danger small">{[].concat(errors[k]).join(' ')}</div>;
 
   return (
-    <Container className="py-4" style={{ maxWidth: 800 }}>
+    <Container fluid className="py-4 px-md-4" style={{ maxWidth: 1400 }}>
       <Link to="/admin/olympiads" className="small">← Олимпиад удирдлага</Link>
       <h3 className="mt-2 mb-3">{isEdit ? 'Олимпиад засах' : 'Шинэ олимпиад'}</h3>
       {errors?.detail && <Alert variant="danger">{errors.detail}</Alert>}

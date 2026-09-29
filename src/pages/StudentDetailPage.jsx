@@ -73,7 +73,7 @@ function StudentDetailPage() {
   }
 
   return (
-    <Container className="py-4" style={{ maxWidth: 900 }}>
+    <Container fluid className="py-4 px-md-4" style={{ maxWidth: 1400 }}>
       <Link to="/my-students" className="small">← Миний сурагчид</Link>
       <div className="d-flex justify-content-between align-items-start flex-wrap gap-2 mt-2 mb-3">
         <div>

@@ -18,7 +18,7 @@ function MyOlympiadsPage() {
   if (!groups) return <Container className="py-5 text-center"><Spinner animation="border" /></Container>;
 
   return (
-    <Container className="py-4" style={{ maxWidth: 800 }}>
+    <Container fluid className="py-4 px-md-4" style={{ maxWidth: 1400 }}>
       <h3 className="mb-3">Миний олимпиадууд</h3>
       {groups.every((g) => g.registrations.length === 0) && (
         <Alert variant="light" className="border">
