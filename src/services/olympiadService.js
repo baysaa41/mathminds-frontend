@@ -90,6 +90,10 @@ export const updateMeRegistration = async (id, payload) =>
 export const payRegistration = async (registrationId) =>
   (await apiClient.post(`${BASE}/registrations/${registrationId}/pay/`)).data;
 
+// Сонгосон бүртгэлүүдийн төлбөрийг нэг нэхэмжлэхээр → { qpay_data, local_invoice_id, amount, count }
+export const payRegistrationsBulk = async (registrationIds) =>
+  (await apiClient.post(`${BASE}/registrations/pay-bulk/`, { registration_ids: registrationIds })).data;
+
 // Админ: бүртгэл засах (ангилалуудын хамт буцаана) / жагсаалтаас хасах (CANCELED)
 export const getAdminRegistration = async (id) =>
   (await apiClient.get(`${BASE}/registrations/${id}/admin/`, { skipCache: true })).data;

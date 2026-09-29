@@ -222,7 +222,8 @@ function OlympiadDetailPage() {
       const rows = await lookupStudents(slug, q);
       setForm((f) => ({ ...f, email: q.includes('@') ? q : '' }));
       setCandidates(rows);
-      setPicked(rows.length ? null : 'new');
+      if (rows.length) setPicked(null);
+      else pickStudent('new');  // олдоогүй — хоосон маягтаар шинэ сурагч
     } catch (err) {
       const d = err.response?.data;
       setError(d?.query?.[0] || d?.detail || 'Хайхад алдаа гарлаа');
@@ -249,6 +250,14 @@ function OlympiadDetailPage() {
     setPicked(key);
     setNeedEmail(false);
     setLatinConfirmed(false);
+    if (key === 'new') {
+      // Шинэ сурагч: өмнө сонгосон сурагчийн мэдээлэл (латин нэр, сургууль, анги…) үлдэхгүй
+      setForm((f) => ({
+        ...f, last_name: '', first_name: '', last_name_latin: '', first_name_latin: '', province: '', school: '',
+        grade: '', phone: '', email: queryIsEmail ? query.trim() : '',
+      }));
+      return;
+    }
     const c = candidates?.find((x) => (x.id ?? `mmo-${x.mmo_id}`) === key);
     if (!c) return;
     const grade = c.grade ? String(c.grade) : '';
@@ -331,35 +340,14 @@ function OlympiadDetailPage() {
         {fmtDate(olympiad.exam_start)}{olympiad.venue ? ` · ${olympiad.venue}` : ''}
       </div>
 
-      {olympiad.description && (
-        <Card className="mb-3">
-          <Card.Header>Олимпиадын танилцуулга</Card.Header>
-          <Card.Body style={{ whiteSpace: 'pre-wrap' }}>{olympiad.description}</Card.Body>
-        </Card>
-      )}
-
-      {categories.length > 0 && (
-        <Card className="mb-3">
-          <Card.Header>Оролцох ангилал</Card.Header>
-          <Table size="sm" className="mb-0">
-            <tbody>
-              {categories.map((c) => (
-                <tr key={c.id}>
-                  <td><strong>{c.name}</strong></td>
-                  <td className="text-muted">
-                    {c.grade_from === null ? 'Ангийн хязгааргүй'
-                      : c.grade_from === c.grade_to ? `${c.grade_from}-р анги` : `${c.grade_from}–${c.grade_to}-р анги`}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        </Card>
-      )}
-
       {myRegs.length > 0 && (
         <Card className="mb-3">
-          <Card.Header>Миний бүртгэл <small className="text-muted">({myRegs.length})</small></Card.Header>
+          <Card.Header className="d-flex justify-content-between align-items-center">
+            <span>Миний бүртгэл <small className="text-muted">({myRegs.length})</small></span>
+            {fee > 0 && myRegs.filter((r) => r.status === 'PENDING').length > 1 && (
+              <Link to="/my-students" className="btn btn-sm btn-warning">Төлбөрийг бөөнд төлөх</Link>
+            )}
+          </Card.Header>
           <Table size="sm" responsive className="mb-0 align-middle">
             <thead><tr><th>№</th><th>Овог нэр</th><th>MMO ID</th><th>Ангилал / Анги</th><th>Төлөв</th><th /></tr></thead>
             <tbody>
