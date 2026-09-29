@@ -40,6 +40,14 @@ const gradeMismatch = (cat, grade) => {
     ? '' : `${g}-р анги «${cat.name}» ангилалд (${cat.grade_from}–${cat.grade_to}-р анги) тохирохгүй байна.`;
 };
 
+// Ангилал сонгоогүй бол ангид тохирох ангилалыг автоматаар санал болгоно. Сонгосон бол (гараар ч, автоматаар ч)
+// хэрэглэгчийн сонголтыг хадгална — сольж болно.
+const autoCategoryId = (cats, categoryId, grade) => {
+  if (categoryId || !cats?.length || !/^\d+$/.test(String(grade))) return categoryId;
+  const match = cats.find((c) => c.grade_from !== null && !gradeMismatch(c, grade));
+  return match ? String(match.id) : categoryId;
+};
+
 const STATUS_LABEL = {
   PENDING: ['warning', 'Төлбөр хүлээгдэж буй'],
   PAID: ['success', 'Бүртгэл баталгаажсан'],
@@ -93,6 +101,7 @@ function OlympiadDetailPage() {
         });
         return {  // өмнөх бүртгэлийн (шалгагдсан) латин нэр автомат хөрвүүлгээс давуу
           ...next,
+          category_id: autoCategoryId(data.categories, next.category_id, next.grade),
           last_name_latin: f.last_name_latin || p.last_name_latin || next.last_name_latin,
           first_name_latin: f.first_name_latin || p.first_name_latin || next.first_name_latin,
         };
@@ -219,6 +228,7 @@ function OlympiadDetailPage() {
       school: c.school || f.school,
       province: c.province || f.province,
       grade: grade && !gradeMismatch(selectedCat, grade) ? grade : f.grade,
+      category_id: autoCategoryId(categories, f.category_id, grade),
     }));
   };
   const pickedCandidate = candidates?.find((x) => (x.id ?? `mmo-${x.mmo_id}`) === picked);
@@ -241,10 +251,15 @@ function OlympiadDetailPage() {
   const selectedCat = categories.find((c) => String(c.id) === form.category_id);
   // Ангилал сонгосон бол сурагчийн анги зөвхөн тухайн хязгаарт
   const noGrade = !!selectedCat && selectedCat.grade_from === null; // багш, чөлөөт гэх мэт
-  // Ангилалтай бол аль нэг ангилалд багтах ангиуд (анги сонгоход ангилал автоматаар солигдоно)
+  // Ангилал сонгосон бол зөвхөн тухайн хязгаарын анги; сонгоогүй бол аль нэг ангилалд багтах ангиуд
   const gradeOptions = categories.length === 0 ? GRADE_OPTIONS
-    : GRADE_OPTIONS.filter((o) => /^\d+$/.test(o.value)
-        && categories.some((c) => c.grade_from !== null && Number(o.value) >= c.grade_from && Number(o.value) <= c.grade_to));
+    : GRADE_OPTIONS.filter((o) => /^\d+$/.test(o.value) && (selectedCat?.grade_from != null
+      ? !gradeMismatch(selectedCat, o.value)
+      : categories.some((c) => c.grade_from !== null && !gradeMismatch(c, o.value))));
+  const setGrade = (e) => {
+    const grade = e.target.value;
+    setForm((f) => ({ ...f, grade, category_id: autoCategoryId(categories, f.category_id, grade) }));
+  };
   const setCategory = (e) => {
     const cat = categories.find((c) => String(c.id) === e.target.value);
     const mismatch = gradeMismatch(cat, form.grade);
@@ -252,17 +267,6 @@ function OlympiadDetailPage() {
     const keep = cat && cat.grade_from !== null && !mismatch;
     setForm((f) => ({ ...f, category_id: e.target.value, grade: keep ? f.grade : '' }));
   };
-
-  // Анги мэдэгдэж байвал тохирох ангилалыг автоматаар сонгоно (одоогийн ангилалд багтвал хэвээр)
-  useEffect(() => {
-    const cats = olympiad?.categories || [];
-    if (!cats.length || !/^\d+$/.test(String(form.grade))) return;
-    const current = cats.find((c) => String(c.id) === form.category_id);
-    if (current && current.grade_from !== null && !gradeMismatch(current, form.grade)) return;
-    if (current && current.grade_from === null) return;  // багш, чөлөөт гэх мэт гараар сонгосон
-    const match = cats.find((c) => c.grade_from !== null && !gradeMismatch(c, form.grade));
-    if (match) setForm((f) => ({ ...f, category_id: String(match.id) }));
-  }, [olympiad, form.grade, form.category_id]);
 
   if (loading) return <Container className="py-5 text-center"><Spinner animation="border" /></Container>;
   if (!olympiad) return <Container className="py-4"><Alert variant="danger">{error}</Alert></Container>;
@@ -400,7 +404,7 @@ function OlympiadDetailPage() {
               <Row className="g-2">
                 {categories.length > 0 && (
                   <Col md={12}>
-                    <Form.Label>Оролцох ангилал <small className="text-muted">(ангиар автоматаар сонгогдоно)</small></Form.Label>
+                    <Form.Label>Оролцох ангилал <small className="text-muted">(ангиар автоматаар сонгогдоно, сольж болно)</small></Form.Label>
                     <Form.Select required value={form.category_id} onChange={setCategory}>
                       <option value="">— Сонгоно уу —</option>
                       {categories.map((c) => (
@@ -500,7 +504,7 @@ function OlympiadDetailPage() {
                 {!noGrade && (
                   <Col md={4}>
                     <Form.Label>{categories.length > 0 ? 'Анги' : 'Анги / Ангилал'}</Form.Label>
-                    <Form.Select required value={form.grade} onChange={set('grade')}>
+                    <Form.Select required value={form.grade} onChange={setGrade}>
                       <option value="">— Сонгоно уу —</option>
                       {gradeOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </Form.Select>
