@@ -33,18 +33,23 @@ const GRADE_OPTIONS = [
 ];
 
 // Сурагчийн анги сонгосон ангилалын хязгаарт орох эсэх. Зөрвөл тайлбар, таарвал ''.
+// Ангилалд өгсөж орж болно (доод хязгаараас доош анги), дээд хязгаараас давж болохгүй
 const gradeMismatch = (cat, grade) => {
   if (!cat || cat.grade_from === null || !/^\d+$/.test(String(grade))) return '';
   const g = Number(grade);
-  return g >= cat.grade_from && g <= cat.grade_to
-    ? '' : `${g}-р анги «${cat.name}» ангилалд (${cat.grade_from}–${cat.grade_to}-р анги) тохирохгүй байна.`;
+  return g <= cat.grade_to
+    ? '' : `${g}-р анги «${cat.name}» ангилалд оролцох боломжгүй (дээд хязгаар ${cat.grade_to}-р анги).`;
 };
 
 // Ангилал сонгоогүй бол ангид тохирох ангилалыг автоматаар санал болгоно. Сонгосон бол (гараар ч, автоматаар ч)
 // хэрэглэгчийн сонголтыг хадгална — сольж болно.
 const autoCategoryId = (cats, categoryId, grade) => {
   if (categoryId || !cats?.length || !/^\d+$/.test(String(grade))) return categoryId;
-  const match = cats.find((c) => c.grade_from !== null && !gradeMismatch(c, grade));
+  const g = Number(grade);
+  const graded = cats.filter((c) => c.grade_from !== null);
+  // Яг тохирох ангилал, байхгүй бол өгсөж орох хамгийн ойрын ангилал
+  const match = graded.find((c) => g >= c.grade_from && g <= c.grade_to)
+    || [...graded].sort((a, b) => a.grade_to - b.grade_to).find((c) => g <= c.grade_to);
   return match ? String(match.id) : categoryId;
 };
 
@@ -263,6 +268,7 @@ function OlympiadDetailPage() {
   const showDetails = !forOther || picked !== null;
   const latinIsAuto = form.last_name_latin === toLatin(form.last_name) && form.first_name_latin === toLatin(form.first_name);
 
+  const formShown = !!olympiad?.registration_open && !(reg?.status === 'PAID' && !forOther);
   const categories = olympiad?.categories || [];
   const selectedCat = categories.find((c) => String(c.id) === form.category_id);
   // Ангилал сонгосон бол сурагчийн анги зөвхөн тухайн хязгаарт
@@ -387,7 +393,7 @@ function OlympiadDetailPage() {
           <span>{fee > 0 ? `Төлбөр: ${fee.toLocaleString()}₮` : 'Үнэгүй'}</span>
         </Card.Header>
         <Card.Body>
-          {error && <Alert variant="danger">{error}</Alert>}
+          {error && !(formShown && showDetails) && <Alert variant="danger">{error}</Alert>}
           {info && <Alert variant="info" dismissible onClose={() => setInfo(null)}>{info}</Alert>}
           {reg && (
             <Alert variant={STATUS_LABEL[reg.status][0]} className="d-flex justify-content-between align-items-center">
@@ -570,6 +576,11 @@ function OlympiadDetailPage() {
                       onChange={(e) => setForm((f) => ({ ...f, waive_fee: e.target.checked }))}
                       label="Төлбөргүй бүртгэх (админ) — хураамж төлөхгүйгээр шууд баталгаажуулна"
                     />
+                  </Col>
+                )}
+                {error && (  // алдааг баталгаажуулах товчны яг дээр
+                  <Col md={12} className="pt-2">
+                    <Alert variant="danger" className="mb-0">{error}</Alert>
                   </Col>
                 )}
                 <Col md={12} className="pt-2">
