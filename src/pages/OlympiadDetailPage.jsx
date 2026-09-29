@@ -9,7 +9,7 @@ import PaymentModal from '../components/PaymentModal';
 import StudentPicker from '../components/StudentPicker';
 import useSiteGrades from '../hooks/useSiteGrades';
 import { setPostLoginRedirect } from '../utils/postLoginRedirect';
-import { apiErrorText, categoryFitsGrade, bestCategoryForGrade, getOlympiad, getOlympiadMyRegistrations, approveRegistration, registerForOlympiad, payRegistration, getPrefill, getProvinces, lookupStudents, fmtDate } from '../services/olympiadService';
+import { apiErrorText, categoryFitsGrade, bestCategoryForGrade, getOlympiad, getOlympiadMyRegistrations, approveRegistration, registerForOlympiad, payRegistration, getPrefill, getProvinces, lookupStudents, fmtRange } from '../services/olympiadService';
 import { toLatin, LATIN_NAME_RE } from '../utils/transliterate';
 
 const EMPTY_FORM = {
@@ -339,8 +339,22 @@ function OlympiadDetailPage() {
           </div>
         )}
       </div>
-      <div className="text-muted mb-3">
-        {fmtDate(olympiad.exam_start)}{olympiad.venue ? ` · ${olympiad.venue}` : ''}
+      {/* Ерөнхий мэдээлэл: олимпиадын хугацаа, газар, бүртгэлийн хугацаа, хуваарь */}
+      <div className="small mt-1 mb-3">
+        <div>
+          <span className="text-muted">Олимпиад:</span> {fmtRange(olympiad.exam_start, olympiad.exam_end)}
+          {olympiad.venue ? ` · ${olympiad.venue}` : ''}
+        </div>
+        <div>
+          <span className="text-muted">Бүртгэл:</span> {fmtRange(olympiad.registration_start, olympiad.registration_end)}
+          {!olympiad.registration_open && <span className="text-muted"> (хаалттай)</span>}
+        </div>
+        {olympiad.schedule.map((it) => (
+          <div key={it.id}>
+            <span className="text-muted">{it.title}:</span> {fmtRange(it.starts_at, it.ends_at)}
+            {it.description && <span className="text-muted"> — {it.description}</span>}
+          </div>
+        ))}
       </div>
 
       {myRegs.length > 0 && (
@@ -379,21 +393,6 @@ function OlympiadDetailPage() {
           </Table>
         </Card>
       )}
-
-      <Card className="mb-3">
-        <Card.Header>Хуваарь</Card.Header>
-        <Table size="sm" className="mb-0">
-          <tbody>
-            <tr><td>Бүртгэл</td><td>{fmtDate(olympiad.registration_start)} – {fmtDate(olympiad.registration_end)}</td></tr>
-            {olympiad.schedule.map((s) => (
-              <tr key={s.id}>
-                <td>{fmtDate(s.starts_at)}{s.ends_at ? ` – ${fmtDate(s.ends_at)}` : ''}</td>
-                <td><strong>{s.title}</strong>{s.description && <div className="small text-muted">{s.description}</div>}</td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
-      </Card>
 
       <Card className="mb-3">
         <Card.Header className="d-flex justify-content-between">
