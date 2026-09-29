@@ -77,6 +77,7 @@ function OlympiadDetailPage() {
   const [picked, setPicked] = useState(null);
   const [looking, setLooking] = useState(false);
   const [needEmail, setNeedEmail] = useState(false);  // MMO/profile-д имэйл байхгүй бол гараар
+  const [latinConfirmed, setLatinConfirmed] = useState(false);  // MMO ID-аар бүртгэхэд латин нэрийг баталгаажуулна
 
   const load = useCallback(async () => {
     try {
@@ -152,9 +153,13 @@ function OlympiadDetailPage() {
       setError('Имэйл эсвэл MMO ID-аар хайгаад сурагчаа сонгоно уу.');
       return;
     }
-    if (!pickedChosen
+    if ((!pickedChosen || mmoMode)
         && (!LATIN_NAME_RE.test(form.last_name_latin.trim()) || !LATIN_NAME_RE.test(form.first_name_latin.trim()))) {
       setError('Латин овог, нэрийг зөвхөн латин үсгээр бичнэ үү.');
+      return;
+    }
+    if (mmoMode && !latinConfirmed) {
+      setError('Латин нэрийг шалгаад «Латин нэр зөв» гэдгийг баталгаажуулна уу.');
       return;
     }
     setBusy(true);
@@ -170,8 +175,9 @@ function OlympiadDetailPage() {
       }
       if (pickedMmo) payload.mmo_id = Number(picked.slice(4));  // MMO-гийн мэдээллээр profile үүснэ
       if (pickedChosen) {
-        // Нэрийг сонгосон сурагчийн profile/MMO-оос авна
-        ['last_name', 'first_name', 'last_name_latin', 'first_name_latin'].forEach((k) => delete payload[k]);
+        // Нэрийг сонгосон сурагчийн profile/MMO-оос авна; MMO ID-аар бол бүртгэгчийн баталгаажуулсан латин нэр явна
+        ['last_name', 'first_name', ...(mmoMode ? [] : ['last_name_latin', 'first_name_latin'])]
+          .forEach((k) => delete payload[k]);
       }
       const r = await registerForOlympiad(slug, payload);
       await load();
@@ -228,6 +234,7 @@ function OlympiadDetailPage() {
   const pickStudent = (key) => {
     setPicked(key);
     setNeedEmail(false);
+    setLatinConfirmed(false);
     const c = candidates?.find((x) => (x.id ?? `mmo-${x.mmo_id}`) === key);
     if (!c) return;
     const grade = c.grade ? String(c.grade) : '';
@@ -237,6 +244,8 @@ function OlympiadDetailPage() {
         const current = categories.find((x) => String(x.id) === f.category_id);
         const fits = current && (current.grade_from === null || !gradeMismatch(current, grade));
         return { ...f, school: c.school, province: c.province, grade,
+          last_name_latin: c.last_name_latin || toLatin(c.last_name),
+          first_name_latin: c.first_name_latin || toLatin(c.first_name),
           category_id: fits ? f.category_id : autoCategoryId(categories, '', grade) };
       });
       return;
@@ -483,11 +492,36 @@ function OlympiadDetailPage() {
                           <Col xs={6}><span className="text-muted">Сургууль:</span> {pickedCandidate.school || '-'}</Col>
                           <Col xs={6}><span className="text-muted">Анги:</span> {pickedCandidate.grade ? `${pickedCandidate.grade}-р анги` : '-'}</Col>
                         </Row>
-                        <div className="text-muted mt-1">Дээрээс оролцох ангилалаа сонгоод бүртгүүлнэ үү. Бусад мэдээлэл MMO-оос бөглөгдөнө.</div>
+                        <div className="text-muted mt-1">Дээрээс оролцох ангилалаа сонгож, латин нэрийг шалгаад бүртгүүлнэ үү. Бусад мэдээлэл MMO-оос бөглөгдөнө.</div>
                       </Card.Body>
                     </Card>
                   </Col>
                 )}
+                {mmoMode && (<>
+                  <Col md={6}>
+                    <Form.Label>Овог (латинаар)</Form.Label>
+                    <Form.Control required value={form.last_name_latin}
+                                  onChange={(e) => { set('last_name_latin')(e); setLatinConfirmed(false); }}
+                                  isInvalid={!!form.last_name_latin && !LATIN_NAME_RE.test(form.last_name_latin.trim())} />
+                    <Form.Control.Feedback type="invalid">Зөвхөн латин үсэг</Form.Control.Feedback>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Label>Нэр (латинаар)</Form.Label>
+                    <Form.Control required value={form.first_name_latin}
+                                  onChange={(e) => { set('first_name_latin')(e); setLatinConfirmed(false); }}
+                                  isInvalid={!!form.first_name_latin && !LATIN_NAME_RE.test(form.first_name_latin.trim())} />
+                    <Form.Control.Feedback type="invalid">Зөвхөн латин үсэг</Form.Control.Feedback>
+                  </Col>
+                  <Col md={12}>
+                    <Alert variant="warning" className="py-2 px-3 mb-1 small">
+                      <strong>⚠️ Латин нэрийг заавал шалгана уу.</strong> Зарим сертификат дээр нэр латинаар бичигдэнэ.
+                      Кирилл нэрээс автоматаар үүсгэсэн тул паспорт эсвэл төрсний гэрчилгээтэй тулгаж, зөрвөл засна уу.
+                      <Form.Check className="mt-2" id="latin-confirmed" checked={latinConfirmed}
+                                  onChange={(e) => setLatinConfirmed(e.target.checked)}
+                                  label={<strong>Латин нэр зөв гэдгийг шалгасан</strong>} />
+                    </Alert>
+                  </Col>
+                </>)}
                 {pickedCandidate && !mmoMode && (
                   <Col md={12}>
                     <Alert variant="success" className="py-2 px-3 mb-0 small">
