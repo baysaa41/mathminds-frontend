@@ -21,13 +21,15 @@ export const timeUntil = (iso, now = Date.now()) => {
 
 // Бүртгэлийн төлөв: {text, variant} — "Бүртгэл дуусахад 15 хоног үлдлээ" гэх мэт
 export const registrationCountdown = (start, end, now = Date.now()) => {
-  if (now < new Date(start).getTime()) return { text: `Бүртгэл эхлэхэд ${timeUntil(start, now)}`, variant: 'info' };
+  if (now < new Date(start).getTime()) {
+    return { text: `Бүртгэл эхлээгүй · эхлэхэд ${timeUntil(start, now)}`, variant: 'info', state: 'not_started' };
+  }
   if (now <= new Date(end).getTime()) {
     const left = timeUntil(end, now);
     const soon = new Date(end).getTime() - now < 3 * 24 * 3600 * 1000;  // 3 хоногоос бага — анхааруулна
-    return { text: `Бүртгэл дуусахад ${left} үлдлээ`, variant: soon ? 'danger' : 'success' };
+    return { text: `Бүртгэл дуусахад ${left} үлдлээ`, variant: soon ? 'danger' : 'success', state: 'open' };
   }
-  return { text: 'Бүртгэл хаалттай', variant: 'secondary' };
+  return { text: 'Бүртгэл дууссан', variant: 'secondary', state: 'ended' };
 };
 
 // Олимпиадын хугацаа: "эхлэх – дуусах"; нэг өдөр бол дуусах цагийг л

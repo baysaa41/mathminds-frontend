@@ -687,7 +687,11 @@ function OlympiadDetailPage() {
               </Row>
             </Form>
           ) : (
-            <Alert variant="secondary" className="mb-0">Бүртгэлийн хугацаа дууссан эсвэл эхлээгүй байна.</Alert>
+            <Alert variant="secondary" className="mb-0">
+              {registrationCountdown(olympiad.registration_start, olympiad.registration_end).state === 'not_started'
+                ? `Бүртгэл эхлээгүй байна. Бүртгэлийн хугацаа: ${fmtRange(olympiad.registration_start, olympiad.registration_end)}.`
+                : 'Бүртгэл дууссан.'}
+            </Alert>
           )}
         </Card.Body>
       </Card>
