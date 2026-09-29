@@ -27,6 +27,7 @@ const toIso = (local) => (local ? new Date(local).toISOString() : null);
 const EMPTY = {
   title: '', slug: '', description: '', venue: '', registration_start: '', registration_end: '',
   exam_start: '', exam_end: '', fee: 0, problem_count: 6, is_published: false,
+  bank_name: '', bank_account: '', bank_account_holder: '',
 };
 const EMPTY_CAT = { name: '', grade_from: 1, grade_to: 12 };
 const NO_LIMIT_PRESETS = ['Бага ангийн багш', 'Дунд ангийн багш', 'Чөлөөт'];
@@ -58,6 +59,7 @@ function OlympiadFormPage() {
           registration_end: toLocalInput(o.registration_end),
           exam_start: toLocalInput(o.exam_start), exam_end: toLocalInput(o.exam_end),
           fee: o.fee, problem_count: o.problem_count, is_published: o.is_published,
+          bank_name: o.bank_name || '', bank_account: o.bank_account || '', bank_account_holder: o.bank_account_holder || '',
         });
         setCategories((o.categories || []).map((c) => ({
           id: c.id, name: c.name, grade_from: c.grade_from, grade_to: c.grade_to,
@@ -203,6 +205,27 @@ function OlympiadFormPage() {
               <Col md={6}>
                 <Form.Label>Бодлогын тоо</Form.Label>
                 <Form.Control type="number" min={1} max={30} value={form.problem_count} onChange={set('problem_count')} />
+              </Col>
+            </Row>
+          </Card.Body>
+        </Card>
+
+        <Card className="mb-3">
+          <Card.Header>Дансаар төлөх <small className="text-muted">(QPay-ийн хоёр дахь сонголт — дансны дугааргүй бол харагдахгүй)</small></Card.Header>
+          <Card.Body>
+            <Row className="g-3">
+              <Col md={4}>
+                <Form.Label>Банк</Form.Label>
+                <Form.Control value={form.bank_name} onChange={set('bank_name')} placeholder="Жишээ: Хаан банк" />
+              </Col>
+              <Col md={4}>
+                <Form.Label>Дансны дугаар</Form.Label>
+                <Form.Control value={form.bank_account} onChange={set('bank_account')} />
+                {fieldErr('bank_account')}
+              </Col>
+              <Col md={4}>
+                <Form.Label>Данс эзэмшигч</Form.Label>
+                <Form.Control value={form.bank_account_holder} onChange={set('bank_account_holder')} />
               </Col>
             </Row>
           </Card.Body>

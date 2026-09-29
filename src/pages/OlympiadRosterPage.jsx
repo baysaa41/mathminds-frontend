@@ -6,6 +6,7 @@ import { Link, useParams } from 'react-router-dom';
 import { Container, Table, Form, Spinner, Alert, Badge, Row, Col, Button } from 'react-bootstrap';
 import { getRoster, approveRegistration, removeAdminRegistration, REG_STATUS } from '../services/olympiadService';
 import RegistrationEditModal from '../components/RegistrationEditModal';
+import BankTransferReviewModal from '../components/BankTransferReviewModal';
 import { useAuth } from '../context/AuthContext';
 
 function OlympiadRosterPage() {
@@ -21,6 +22,7 @@ function OlympiadRosterPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [editingId, setEditingId] = useState(null);
+  const [reviewTransferId, setReviewTransferId] = useState(null);  // дансаар шилжүүлэг шалгах
 
   useEffect(() => {
     getRoster(slug)
@@ -66,7 +68,8 @@ function OlympiadRosterPage() {
       && (!province || r.province === province)
       && (!school || r.school === school)
       && (!category || r.olympiad_category_name === category)
-      && (!status || (status === 'WAIVED' ? r.fee_waived : r.status === status))
+      && (!status || (status === 'WAIVED' ? r.fee_waived
+        : status === 'BANK' ? r.bank_transfer?.status === 'SUBMITTED' : r.status === status))
       && (!s || `${r.full_name} ${r.province} ${r.school}`.toLowerCase().includes(s)));
   }, [rows, q, province, school, category, status, onlyMine]);
   const hasMine = rows.some((r) => r.is_mine);
@@ -86,6 +89,7 @@ function OlympiadRosterPage() {
               <option value="PAID">{REG_STATUS.PAID[1]}</option>
               <option value="PENDING">{REG_STATUS.PENDING[1]}</option>
               <option value="WAIVED">Төлбөрөөс чөлөөлсөн</option>
+              <option value="BANK">Дансаар: шалгах шаардлагатай</option>
             </Form.Select>
           </Col>
         )}
@@ -130,6 +134,9 @@ function OlympiadRosterPage() {
                 <td>
                   <Badge bg={REG_STATUS[r.status]?.[0] || 'secondary'}>{REG_STATUS[r.status]?.[1] || r.status}</Badge>
                   {r.fee_waived && <Badge bg="info" className="ms-1">Төлбөрөөс чөлөөлсөн</Badge>}
+                  {r.bank_transfer && r.status !== 'PAID' && (
+                    <Badge bg="light" text="dark" className="border ms-1">{r.bank_transfer.reference}: {r.bank_transfer.status_label}</Badge>
+                  )}
                 </td>
               )}
               {user?.is_staff && (
@@ -137,6 +144,9 @@ function OlympiadRosterPage() {
                   <div className="d-flex gap-1 justify-content-end flex-wrap">
                     {r.status === 'PENDING' && (
                       <Button size="sm" variant="outline-success" onClick={() => approve(r)}>Батлах (төлбөргүй)</Button>
+                    )}
+                    {r.bank_transfer?.status === 'SUBMITTED' && r.status === 'PENDING' && (
+                      <Button size="sm" variant="warning" onClick={() => setReviewTransferId(r.bank_transfer.id)}>Дансаар: шалгах</Button>
                     )}
                     <Button size="sm" variant="outline-primary" onClick={() => setEditingId(r.id)}>Засах</Button>
                     <Button size="sm" variant="outline-danger" onClick={() => remove(r)}>Хасах</Button>
@@ -153,6 +163,13 @@ function OlympiadRosterPage() {
           registrationId={editingId}
           onClose={() => setEditingId(null)}
           onSaved={async () => { setEditingId(null); setRows(await getRoster(slug)); }}
+        />
+      )}
+      {user?.is_staff && (
+        <BankTransferReviewModal
+          transferId={reviewTransferId}
+          onClose={() => setReviewTransferId(null)}
+          onDone={async () => { setReviewTransferId(null); setRows(await getRoster(slug)); }}
         />
       )}
     </Container>

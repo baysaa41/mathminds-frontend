@@ -4,9 +4,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Container, Card, Table, Form, Button, Alert, Spinner, Badge, Row, Col } from 'react-bootstrap';
-import PaymentModal from '../components/PaymentModal';
+import RegistrationPayment from '../components/RegistrationPayment';
 import useSiteGrades from '../hooks/useSiteGrades';
-import { apiErrorText, getStudent, updateStudent, payRegistration, resendRegistrationLink, REG_STATUS } from '../services/olympiadService';
+import { apiErrorText, getStudent, updateStudent, paymentRequestFor, transferUnderReview, resendRegistrationLink, REG_STATUS } from '../services/olympiadService';
 import { LATIN_NAME_RE } from '../utils/transliterate';
 
 const FIELDS = [
@@ -23,7 +23,7 @@ function StudentDetailPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [info, setInfo] = useState(null);
-  const [payment, setPayment] = useState(null);
+  const [payReq, setPayReq] = useState(null);
   const siteGrades = useSiteGrades();
 
   const load = useCallback(async () => {
@@ -59,7 +59,7 @@ function StudentDetailPage() {
     }
   };
 
-  const pay = async (r) => setPayment({ ...(await payRegistration(r.id)), amount: Number(r.fee) });
+  const pay = (r) => setPayReq(paymentRequestFor(r));
   const resend = async (r) => {
     setError(null);
     try {
@@ -147,7 +147,9 @@ function StudentDetailPage() {
                   {!student.has_account && (
                     <Button size="sm" variant="outline-secondary" className="me-1" onClick={() => resend(r)}>Link дахин илгээх</Button>
                   )}
-                  {r.status === 'PENDING' && Number(r.fee) > 0 && <Button size="sm" onClick={() => pay(r)}>Төлбөр төлөх</Button>}
+                  {r.status === 'PENDING' && Number(r.fee) > 0 && (transferUnderReview(r)
+                    ? <Badge bg="info">Дансаар: шалгаж буй</Badge>
+                    : <Button size="sm" onClick={() => pay(r)}>Төлбөр төлөх</Button>)}
                 </td>
               </tr>
             ))}
@@ -155,15 +157,7 @@ function StudentDetailPage() {
         </Table>
       </Card>
 
-      <PaymentModal
-        show={!!payment}
-        paymentData={payment}
-        localInvoiceId={payment?.local_invoice_id}
-        amount={payment?.amount}
-        title="Бүртгэлийн хураамж төлөх"
-        successMessage="Төлбөр амжилттай төлөгдлөө, бүртгэл баталгаажлаа."
-        onClose={() => { setPayment(null); load(); }}
-      />
+      <RegistrationPayment request={payReq} onClose={() => setPayReq(null)} onChanged={load} />
     </Container>
   );
 }

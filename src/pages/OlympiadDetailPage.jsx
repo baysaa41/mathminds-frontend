@@ -5,11 +5,11 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Container, Card, Table, Form, Button, ButtonGroup, ToggleButton, Alert, Spinner, Badge, Row, Col } from 'react-bootstrap';
-import PaymentModal from '../components/PaymentModal';
+import RegistrationPayment from '../components/RegistrationPayment';
 import StudentPicker from '../components/StudentPicker';
 import useSiteGrades from '../hooks/useSiteGrades';
 import { setPostLoginRedirect } from '../utils/postLoginRedirect';
-import { apiErrorText, categoryFitsGrade, bestCategoryForGrade, getOlympiad, getOlympiadMyRegistrations, approveRegistration, registerForOlympiad, payRegistration, getPrefill, getProvinces, lookupStudents, fmtRange, registrationCountdown } from '../services/olympiadService';
+import { apiErrorText, categoryFitsGrade, bestCategoryForGrade, getOlympiad, getOlympiadMyRegistrations, approveRegistration, registerForOlympiad, paymentRequestFor, transferUnderReview, getPrefill, getProvinces, lookupStudents, fmtRange, registrationCountdown } from '../services/olympiadService';
 import { toLatin, LATIN_NAME_RE } from '../utils/transliterate';
 
 const EMPTY_FORM = {
@@ -69,7 +69,7 @@ function OlympiadDetailPage() {
   const [info, setInfo] = useState(null);
   const [provinces, setProvinces] = useState([]);
   const [busy, setBusy] = useState(false);
-  const [payment, setPayment] = useState(null);
+  const [payReq, setPayReq] = useState(null);  // төлбөрийн сонголт (QPay / данс)
   const [myRegs, setMyRegs] = useState([]);
   // «Өөр сурагч»: имэйлээр олдсон сурагчид (null — хайгаагүй) ба сонголт (id | 'new' | null)
   const [query, setQuery] = useState('');  // сурагчийн имэйл эсвэл MMO ID
@@ -131,10 +131,7 @@ function OlympiadDetailPage() {
   const reg = olympiad?.my_registration;
   const fee = Number(olympiad?.fee || 0);
 
-  const startPayment = async (registrationId) => {
-    const data = await payRegistration(registrationId);
-    setPayment(data);
-  };
+  const startPayment = (registration) => setPayReq(paymentRequestFor(registration));
 
   const approve = async (r) => {
     if (!window.confirm(`${r.full_name}-ийн бүртгэлийг төлбөрөөс чөлөөлж баталгаажуулах уу?`)) return;
@@ -198,7 +195,7 @@ function OlympiadDetailPage() {
         setInfo(`${r.full_name} (№${r.participant_no ?? '-'}) бүртгэгдлээ. ${r.student_created
           ? 'Шинэ сурагч бүртгэгдлээ.' : 'Өмнөх бүртгэлтэй сурагчтай холбогдлоо.'}`);
       }
-      if (r.status === 'PENDING' && fee > 0) await startPayment(r.id);
+      if (r.status === 'PENDING' && fee > 0) startPayment(r);
       else if (form.waive_fee) setInfo('Төлбөргүйгээр бүртгэгдэж, баталгаажлаа.');
     } catch (err) {
       const d = err.response?.data;
@@ -387,7 +384,9 @@ function OlympiadDetailPage() {
                       <Button size="sm" variant="outline-success" className="me-1" onClick={() => approve(r)}>Батлах (төлбөргүй)</Button>
                     )}
                     {r.status === 'PENDING' && fee > 0 && (
-                      <Button size="sm" onClick={() => startPayment(r.id)}>Төлбөр төлөх</Button>
+                      transferUnderReview(r)
+                        ? <Badge bg="info">Дансаар: шалгаж буй</Badge>
+                        : <Button size="sm" onClick={() => startPayment(r)}>Төлбөр төлөх</Button>
                     )}
                   </td>
                 </tr>
@@ -413,7 +412,9 @@ function OlympiadDetailPage() {
                 {reg.participant_no && <> · Дугаар: <strong>{reg.participant_no}</strong></>}
               </span>
               {reg.status === 'PENDING' && fee > 0 && (
-                <Button size="sm" onClick={() => startPayment(reg.id)}>Бүртгэлийн хураамж төлж бүртгэл баталгаажуулах</Button>
+                transferUnderReview(reg)
+                  ? <Badge bg="info">Дансаар шилжүүлсэн — админ шалгаж байна ({reg.bank_transfer.reference})</Badge>
+                  : <Button size="sm" onClick={() => startPayment(reg)}>Бүртгэлийн хураамж төлж бүртгэл баталгаажуулах</Button>
               )}
             </Alert>
           )}
@@ -698,15 +699,7 @@ function OlympiadDetailPage() {
 
       <Button as={Link} to={`/olympiads/${slug}/roster`} variant="outline-secondary">Бүртгэлийн жагсаалт харах</Button>
 
-      <PaymentModal
-        show={!!payment}
-        paymentData={payment}
-        localInvoiceId={payment?.local_invoice_id}
-        amount={fee}
-        title="Бүртгэлийн хураамж төлөх"
-        successMessage="Төлбөр амжилттай төлөгдлөө, таны бүртгэл баталгаажлаа."
-        onClose={() => { setPayment(null); load(); }}
-      />
+      <RegistrationPayment request={payReq} onClose={() => setPayReq(null)} onChanged={load} />
     </Container>
   );
 }

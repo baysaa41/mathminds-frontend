@@ -4,9 +4,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Container, Card, Table, Button, Badge, Spinner, Alert, Form, Tabs, Tab } from 'react-bootstrap';
-import PaymentModal from '../components/PaymentModal';
+import RegistrationPayment from '../components/RegistrationPayment';
 import useSiteGrades from '../hooks/useSiteGrades';
-import { getMeRegistration, updateMeRegistration, payRegistration, fmtDate, fmtRange, REG_STATUS,
+import { getMeRegistration, updateMeRegistration, paymentRequestFor, transferUnderReview, fmtDate, fmtRange, REG_STATUS,
   apiErrorText, categoryFitsGrade, bestCategoryForGrade } from '../services/olympiadService';
 
 // Дараагийн үе шатанд хийгдэнэ (оноо, дүн, материал, бодолт хамгаалах) — одоохондоо зөвхөн байршил
@@ -24,7 +24,7 @@ function MyOlympiadRegistrationPage() {
   const tab = searchParams.get('tab') || 'info';
   const [reg, setReg] = useState(null);
   const [error, setError] = useState(null);
-  const [payment, setPayment] = useState(null);
+  const [payReq, setPayReq] = useState(null);
   const siteGrades = useSiteGrades();
   const [edit, setEdit] = useState(null);  // {olympiad_category, grade} — анги, ангилал засах үед
   const [saving, setSaving] = useState(false);
@@ -85,9 +85,13 @@ function MyOlympiadRegistrationPage() {
             {reg.fee_waived && <Badge bg="info" className="ms-1">Төлбөрөөс чөлөөлсөн</Badge>}
           </div>
           {reg.status === 'PENDING' && fee > 0 && (
-            <Button size="sm" onClick={async () => setPayment(await payRegistration(reg.id))}>
+            transferUnderReview(reg)
+              ? <Badge bg="info">Дансаар шилжүүлсэн — админ шалгаж байна ({reg.bank_transfer.reference})</Badge>
+              : (
+                <Button size="sm" onClick={() => setPayReq(paymentRequestFor(reg))}>
               Бүртгэлийн хураамж төлөх ({fee.toLocaleString()}₮)
-            </Button>
+                </Button>
+              )
           )}
         </Card.Body>
         <Table size="sm" className="mb-0">
@@ -163,15 +167,7 @@ function MyOlympiadRegistrationPage() {
         ))}
       </Tabs>
 
-      <PaymentModal
-        show={!!payment}
-        paymentData={payment}
-        localInvoiceId={payment?.local_invoice_id}
-        amount={fee}
-        title="Бүртгэлийн хураамж төлөх"
-        successMessage="Төлбөр амжилттай төлөгдлөө, бүртгэл баталгаажлаа."
-        onClose={() => { setPayment(null); load(); }}
-      />
+      <RegistrationPayment request={payReq} onClose={() => setPayReq(null)} onChanged={load} />
     </Container>
   );
 }

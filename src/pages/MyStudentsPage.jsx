@@ -4,18 +4,18 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Container, Card, Table, Form, Badge, Spinner, Alert, Button } from 'react-bootstrap';
-import PaymentModal from '../components/PaymentModal';
-import { apiErrorText, getMyStudents, payRegistrationsBulk, REG_STATUS } from '../services/olympiadService';
+import RegistrationPayment from '../components/RegistrationPayment';
+import { getMyStudents, paymentRequestFor, transferUnderReview, REG_STATUS } from '../services/olympiadService';
 
-const payable = (r) => r.status === 'PENDING' && Number(r.fee) > 0;
+// Дансаар шилжүүлээд шалгагдаж буйг дахин төлүүлэхгүй
+const payable = (r) => r.status === 'PENDING' && Number(r.fee) > 0 && !transferUnderReview(r);
 
 function MyStudentsPage() {
   const [students, setStudents] = useState(null);
   const [error, setError] = useState(null);
   const [q, setQ] = useState('');
   const [selected, setSelected] = useState(() => new Set());  // бөөнд төлөх бүртгэлийн id-ууд
-  const [paying, setPaying] = useState(false);
-  const [payment, setPayment] = useState(null);
+  const [payReq, setPayReq] = useState(null);
 
   const load = useCallback(() => {
     getMyStudents().then(setStudents).catch(() => setError('Сурагчдын жагсаалтыг ачаалж чадсангүй'));
@@ -34,17 +34,8 @@ function MyStudentsPage() {
   const toggleAll = () => setSelected(
     selectedRegs.length === payableRegs.length ? new Set() : new Set(payableRegs.map((r) => r.id)));
 
-  const payBulk = async () => {
-    setPaying(true);
-    setError(null);
-    try {
-      setPayment(await payRegistrationsBulk(selectedRegs.map((r) => r.id)));
-    } catch (err) {
-      setError(apiErrorText(err.response?.data, 'Нэхэмжлэх үүсгэхэд алдаа гарлаа'));
-    } finally {
-      setPaying(false);
-    }
-  };
+  // QPay (нэг нэхэмжлэх) эсвэл дансаар (нэг гүйлгээний утга) — RegistrationPayment сонгуулна
+  const payBulk = () => setPayReq({ ...paymentRequestFor(selectedRegs), transferId: null });
 
   const rows = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -73,8 +64,8 @@ function MyStudentsPage() {
             <Button size="sm" variant="outline-dark" onClick={toggleAll}>
               {selectedRegs.length === payableRegs.length ? 'Сонголтыг арилгах' : 'Бүгдийг сонгох'}
             </Button>
-            <Button size="sm" disabled={!selectedRegs.length || paying} onClick={payBulk}>
-              {paying ? <Spinner size="sm" animation="border" /> : `Сонгосныг бөөнд төлөх (${total.toLocaleString()}₮)`}
+            <Button size="sm" disabled={!selectedRegs.length} onClick={payBulk}>
+              {`Сонгосныг бөөнд төлөх (${total.toLocaleString()}₮)`}
             </Button>
           </div>
         </Alert>
@@ -109,6 +100,7 @@ function MyStudentsPage() {
                         )}
                         <span>{r.olympiad_title}{r.olympiad_category_name ? ` · ${r.olympiad_category_name}` : ''}</span>
                         <Badge bg={REG_STATUS[r.status][0]}>{REG_STATUS[r.status][1]}</Badge>
+                        {transferUnderReview(r) && <Badge bg="info">Дансаар: шалгаж буй</Badge>}
                       </div>
                     ))}
                   </td>
@@ -121,15 +113,7 @@ function MyStudentsPage() {
           </Table>
         </Card>
       )}
-      <PaymentModal
-        show={!!payment}
-        paymentData={payment}
-        localInvoiceId={payment?.local_invoice_id}
-        amount={Number(payment?.amount || 0)}
-        title={`${payment?.count || ''} бүртгэлийн хураамж бөөнд төлөх`}
-        successMessage="Төлбөр амжилттай төлөгдлөө, сонгосон бүртгэлүүд баталгаажлаа."
-        onClose={() => { setPayment(null); setSelected(new Set()); load(); }}
-      />
+      <RegistrationPayment request={payReq} onClose={() => { setPayReq(null); setSelected(new Set()); }} onChanged={load} />
     </Container>
   );
 }

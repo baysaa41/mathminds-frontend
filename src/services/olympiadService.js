@@ -118,6 +118,40 @@ export const payRegistration = async (registrationId) =>
 export const payRegistrationsBulk = async (registrationIds) =>
   (await apiClient.post(`${BASE}/registrations/pay-bulk/`, { registration_ids: registrationIds })).data;
 
+// Төлбөрийн хүсэлт (components/RegistrationPayment): нэг эсвэл хэд хэдэн бүртгэл
+export const paymentRequestFor = (regs) => {
+  const list = Array.isArray(regs) ? regs : [regs];
+  const t = list.length === 1 ? list[0].bank_transfer : null;
+  return {
+    ids: list.map((r) => r.id),
+    amount: list.reduce((sum, r) => sum + Number(r.fee || 0), 0),
+    // Дансаар зөвхөн нэг олимпиадын, данс тохируулсан бүртгэлүүдийг хамт
+    bankAvailable: list.every((r) => r.bank_transfer_available) && new Set(list.map((r) => r.olympiad_slug)).size === 1,
+    transferId: t && ['AWAITING', 'REJECTED'].includes(t.status) ? t.id : null,
+  };
+};
+// Дансаар шилжүүлсэн, админ шалгаж буй — дахин төлүүлэхгүй
+export const transferUnderReview = (r) => r?.bank_transfer?.status === 'SUBMITTED';
+
+// ── Дансаар төлөх ────────────────────────────────────────────────────────────
+// Сонгосон бүртгэлүүдэд гүйлгээний утга (OLY-<id>), нийт дүн, дансны мэдээлэл үүсгэнэ
+export const createBankTransfer = async (registrationIds) =>
+  (await apiClient.post(`${BASE}/registrations/bank-transfer/`, { registration_ids: registrationIds })).data;
+export const getBankTransfer = async (id) => (await apiClient.get(`${BASE}/bank-transfers/${id}/`)).data;
+// «Шилжүүлсэн» гэж мэдэгдэх — баримт (зураг/PDF) заавал биш
+export const submitBankTransfer = async (id, { receipt, note }) => {
+  const form = new FormData();
+  if (receipt) form.append('receipt', receipt);
+  if (note) form.append('note', note);
+  return (await apiClient.post(`${BASE}/bank-transfers/${id}/submit/`, form,
+    { headers: { 'Content-Type': 'multipart/form-data' } })).data;
+};
+// Админ: action = 'confirm' | 'reject'
+export const reviewBankTransfer = async (id, action, note = '') =>
+  (await apiClient.post(`${BASE}/bank-transfers/${id}/${action}/`, { note })).data;
+export const getAdminBankTransfers = async (slug, status) =>
+  (await apiClient.get(`${BASE}/${slug}/admin/bank-transfers/`, { params: status ? { status } : {} })).data;
+
 // Админ: бүртгэл засах (ангилалуудын хамт буцаана) / жагсаалтаас хасах (CANCELED)
 export const getAdminRegistration = async (id) =>
   (await apiClient.get(`${BASE}/registrations/${id}/admin/`, { skipCache: true })).data;
