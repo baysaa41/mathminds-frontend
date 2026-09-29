@@ -1,10 +1,11 @@
 // frontend/src/pages/RegisterPage.jsx
 
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import apiClient from '../api/axiosConfig';
 import authService from '../services/authService';
+import { consumePostLoginRedirect } from '../utils/postLoginRedirect';
 
 // React Bootstrap
 import Container from 'react-bootstrap/Container';
@@ -17,13 +18,15 @@ import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 
 const RegisterPage = () => {
+  // Олимпиадын имэйлийн link-ээс ирсэн бол сурагчийн нэр, имэйлээр урьдчилан бөглөнө
+  const prefill = useLocation().state?.prefill || {};
   const [formData, setFormData] = useState({
     username: '',
-    email: '',
+    email: prefill.email || '',
     password: '',
     password_confirm: '',
-    first_name: '',
-    last_name: '',
+    first_name: prefill.first_name || '',
+    last_name: prefill.last_name || '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -102,8 +105,8 @@ const RegisterPage = () => {
       // Автоматаар нэвтрүүлэх
       login(user, token);
 
-      // Шинэ хэрэглэгчийн танилцуулга руу очих
-      navigate('/onboarding');
+      // Имэйлийн link-ээс ирсэн бол тэнд буцна, үгүй бол шинэ хэрэглэгчийн танилцуулга
+      navigate(consumePostLoginRedirect('/onboarding'));
     } catch (err) {
       setLoading(false);
 

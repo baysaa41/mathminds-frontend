@@ -36,6 +36,7 @@ const NO_CACHE = [
   '/teacher_dashboard/',
   '/student-dashboard/',
   // --- зөв бусаар хуучирвал асуудалтай ---
+  '/api/olympiads/',  // бүртгэл, төлбөрийн төлөв, ангилал байнга өөрчлөгдөнө — үргэлж шинээр
   '/api/v1/payments/',
   '/api/v1/cart/',
   '/api/coins/',

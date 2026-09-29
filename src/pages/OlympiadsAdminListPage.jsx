@@ -41,7 +41,7 @@ function OlympiadsAdminListPage() {
   if (loading) return <Container className="py-5 text-center"><Spinner animation="border" /></Container>;
 
   return (
-    <Container className="py-4">
+    <Container fluid className="py-4 px-md-4" style={{ maxWidth: 1400 }}>
       <Link to="/admin" className="small">← Admin Dashboard</Link>
       <div className="d-flex justify-content-between align-items-center mt-2 mb-3">
         <h3 className="mb-0">Олимпиад удирдлага</h3>

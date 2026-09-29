@@ -43,7 +43,7 @@ function OlympiadAdminPage() {
   };
 
   return (
-    <Container className="py-4" style={{ maxWidth: 900 }}>
+    <Container fluid className="py-4 px-md-4" style={{ maxWidth: 1400 }}>
       <Link to="/olympiads" className="small">← Олимпиад</Link>
       <h3 className="mt-2">Олимпиадын админ</h3>
       {msg && <Alert variant="success" dismissible onClose={() => setMsg(null)}>{msg}</Alert>}

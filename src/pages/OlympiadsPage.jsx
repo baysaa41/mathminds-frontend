@@ -4,7 +4,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Container, Card, Badge, Spinner, Alert, Button } from 'react-bootstrap';
-import { getOlympiads, fmtDate } from '../services/olympiadService';
+import { getOlympiads, fmtRange, registrationCountdown } from '../services/olympiadService';
 import { useAuth } from '../context/AuthContext';
 
 function OlympiadsPage() {
@@ -23,8 +23,16 @@ function OlympiadsPage() {
   if (loading) return <Container className="py-5 text-center"><Spinner animation="border" /></Container>;
 
   return (
-    <Container className="py-4" style={{ maxWidth: 900 }}>
-      <h3 className="mb-3">Олимпиад</h3>
+    <Container fluid className="py-4 px-md-4" style={{ maxWidth: 1400 }}>
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h3 className="mb-0">Олимпиад</h3>
+        {user && (
+          <div className="d-flex gap-2">
+            <Link to="/my-olympiads" className="btn btn-outline-primary btn-sm">Миний олимпиадууд</Link>
+            <Link to="/my-students" className="btn btn-outline-primary btn-sm">Миний сурагчид</Link>
+          </div>
+        )}
+      </div>
       {error && <Alert variant="danger">{error}</Alert>}
       {!error && items.length === 0 && <Alert variant="info">Одоогоор зарлагдсан олимпиад байхгүй.</Alert>}
       {items.map((o) => (
@@ -36,16 +44,17 @@ function OlympiadsPage() {
                   <Link to={`/olympiads/${o.slug}`} className="text-decoration-none">{o.title}</Link>
                 </Card.Title>
                 <div className="text-muted small">
-                  Шалгалт: {fmtDate(o.exam_start)}{o.venue ? ` · ${o.venue}` : ''}
+                  Олимпиад: {fmtRange(o.exam_start, o.exam_end)}{o.venue ? ` · ${o.venue}` : ''}
                 </div>
                 <div className="text-muted small">
-                  Бүртгэл: {fmtDate(o.registration_start)} – {fmtDate(o.registration_end)}
+                  Бүртгэл: {fmtRange(o.registration_start, o.registration_end)}
                 </div>
               </div>
               <div className="text-end">
-                <Badge bg={o.registration_open ? 'success' : 'secondary'}>
-                  {o.registration_open ? 'Бүртгэл нээлттэй' : 'Бүртгэл хаалттай'}
-                </Badge>
+                {(() => {  // Бүртгэл дуусахад / эхлэхэд үлдсэн хугацаа
+                  const c = registrationCountdown(o.registration_start, o.registration_end);
+                  return <Badge bg={c.variant}>{c.text}</Badge>;
+                })()}
                 <div className="small mt-1">
                   {Number(o.fee) > 0 ? `${Number(o.fee).toLocaleString()}₮` : 'Үнэгүй'} · {o.registered_count} оролцогч
                 </div>
@@ -63,9 +72,7 @@ function OlympiadsPage() {
               </div>
             )}
             {o.description && (
-              <div className="mt-2 small" style={{
-                whiteSpace: 'pre-wrap', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-              }}>{o.description}</div>
+              <div className="mt-2 small" style={{ whiteSpace: 'pre-wrap' }}>{o.description}</div>
             )}
             <div className="mt-3 d-flex gap-2">
               <Button as={Link} to={`/olympiads/${o.slug}`} size="sm" variant="primary">Дэлгэрэнгүй / Бүртгүүлэх</Button>

@@ -8,6 +8,71 @@ const BASE = '/api/olympiads';
 export const fmtDate = (iso) =>
   iso ? new Date(iso).toLocaleString('mn-MN', { dateStyle: 'medium', timeStyle: 'short' }) : '';
 
+// Одооноос хүртэлх хугацаа: "15 хоног", "5 цаг", "20 минут"
+export const timeUntil = (iso, now = Date.now()) => {
+  const ms = new Date(iso).getTime() - now;
+  if (ms <= 0) return '';
+  const minutes = Math.ceil(ms / 60000);
+  if (minutes < 60) return `${minutes} минут`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} цаг`;
+  return `${Math.floor(hours / 24)} хоног`;
+};
+
+// Бүртгэлийн төлөв: {text, variant} — "Бүртгэл дуусахад 15 хоног үлдлээ" гэх мэт
+export const registrationCountdown = (start, end, now = Date.now()) => {
+  if (now < new Date(start).getTime()) {
+    return { text: `Бүртгэл эхлээгүй · эхлэхэд ${timeUntil(start, now)}`, variant: 'info', state: 'not_started' };
+  }
+  if (now <= new Date(end).getTime()) {
+    const left = timeUntil(end, now);
+    const soon = new Date(end).getTime() - now < 3 * 24 * 3600 * 1000;  // 3 хоногоос бага — анхааруулна
+    return { text: `Бүртгэл дуусахад ${left} үлдлээ`, variant: soon ? 'danger' : 'success', state: 'open' };
+  }
+  return { text: 'Бүртгэл дууссан', variant: 'secondary', state: 'ended' };
+};
+
+// Олимпиадын хугацаа: "эхлэх – дуусах"; нэг өдөр бол дуусах цагийг л
+export const fmtRange = (start, end) => {
+  if (!start) return '';
+  if (!end) return fmtDate(start);
+  const sameDay = new Date(start).toDateString() === new Date(end).toDateString();
+  return `${fmtDate(start)} – ${sameDay
+    ? new Date(end).toLocaleTimeString('mn-MN', { timeStyle: 'short' }) : fmtDate(end)}`;
+};
+
+// Ангилал ангиасаа хамаарна: анги хязгааргүй (1–12), ангилал нь анги ≤ дээд хязгаар (өгсөж орж болно),
+// эсвэл ангийн хязгааргүй (багш, чөлөөт) ангилал.
+export const categoryFitsGrade = (cat, grade) =>
+  !cat || cat.grade_from === null || !/^\d+$/.test(String(grade ?? '')) || Number(grade) <= cat.grade_to;
+
+// Ангид хамгийн тохирох ангилал: яг багтах, эс бөгөөс өгсөж орох хамгийн ойрын
+export const bestCategoryForGrade = (cats, grade) => {
+  if (!cats?.length || !/^\d+$/.test(String(grade ?? ''))) return null;
+  const g = Number(grade);
+  const graded = cats.filter((c) => c.grade_from !== null);
+  return graded.find((c) => g >= c.grade_from && g <= c.grade_to)
+    || [...graded].sort((a, b) => a.grade_to - b.grade_to).find((c) => g <= c.grade_to) || null;
+};
+
+// API-ийн алдааны хариуг хүнд уншигдах текст болгоно: {error}, {detail}, эсвэл {field: ['...']} → зөвхөн мессежүүд
+export const apiErrorText = (data, fallback = 'Алдаа гарлаа') => {
+  if (!data) return fallback;
+  if (typeof data === 'string') return data;
+  if (data.error) return data.error;
+  if (data.detail) return data.detail;
+  const flat = (v) => (Array.isArray(v) ? v.flatMap(flat) : v && typeof v === 'object' ? Object.values(v).flatMap(flat) : [v]);
+  const msgs = flat(data).filter((m) => typeof m === 'string' && m.trim());
+  return msgs.length ? msgs.join(' ') : fallback;
+};
+
+// Бүртгэлийн төлөв → [Badge өнгө, шошго]
+export const REG_STATUS = {
+  PENDING: ['warning', 'Төлбөр хүлээгдэж буй'],
+  PAID: ['success', 'Баталгаажсан'],
+  CANCELED: ['secondary', 'Цуцлагдсан'],
+};
+
 export const getOlympiads = async () => (await apiClient.get(`${BASE}/`)).data;
 // skipCache: my_registration/төлбөрийн төлөв үйлдлийн дараа шууд шинэчлэгдэх ёстой
 export const getOlympiad = async (slug) => (await apiClient.get(`${BASE}/${slug}/`, { skipCache: true })).data;
@@ -20,9 +85,45 @@ export const getMyRegistrations = async () => (await apiClient.get(`${BASE}/my-r
 export const registerForOlympiad = async (slug, payload) =>
   (await apiClient.post(`${BASE}/${slug}/register/`, payload)).data;
 
+// ── Сурагчид (StudentProfile) ───────────────────────────────────────────────
+// Имэйл эсвэл MMO ID-аар сурагч хайх — нэр далдлагдсан:
+// [{id (MMO-оос бол null), source: 'profile'|'mmo', mmo_id, masked_name, grade, school, phone_tail, already_registered}]
+export const lookupStudents = async (slug, query) =>
+  (await apiClient.post(`${BASE}/${slug}/students/lookup/`, { query }, { skipCache: true })).data;
+export const getMyStudents = async () => (await apiClient.get(`${BASE}/my-students/`, { skipCache: true })).data;
+export const getStudent = async (id) => (await apiClient.get(`${BASE}/students/${id}/`, { skipCache: true })).data;
+export const updateStudent = async (id, payload) => (await apiClient.patch(`${BASE}/students/${id}/`, payload)).data;
+// Шинэ link илгээнэ (өмнөх link-үүд хүчингүй болно)
+export const resendRegistrationLink = async (registrationId) =>
+  (await apiClient.post(`${BASE}/registrations/${registrationId}/resend-link/`)).data;
+
+// ── Имэйлийн link (token) ба «Миний олимпиадууд» ────────────────────────────
+// Token-ийг URL-д биш body-д илгээнэ (сервер лог-д үлдэхгүй)
+export const getRegistrationAccess = async (token) => (await apiClient.post(`${BASE}/access/`, { token })).data;
+export const claimRegistrationAccess = async (token) =>
+  (await apiClient.post(`${BASE}/access/claim/`, { token })).data;
+export const getMeRegistrations = async () =>
+  (await apiClient.get(`${BASE}/me/registrations/`, { skipCache: true })).data;
+export const getMeRegistration = async (id) =>
+  (await apiClient.get(`${BASE}/me/registrations/${id}/`, { skipCache: true })).data;
+// Бүртгэлийн хугацаанд зөвхөн анги, ангилалыг засна: {grade, olympiad_category}
+export const updateMeRegistration = async (id, payload) =>
+  (await apiClient.patch(`${BASE}/me/registrations/${id}/`, payload)).data;
+
 // QPay нэхэмжлэх үүсгэнэ -> { qpay_data, local_invoice_id } (PaymentModal-д дамжуулна)
 export const payRegistration = async (registrationId) =>
   (await apiClient.post(`${BASE}/registrations/${registrationId}/pay/`)).data;
+
+// Сонгосон бүртгэлүүдийн төлбөрийг нэг нэхэмжлэхээр → { qpay_data, local_invoice_id, amount, count }
+export const payRegistrationsBulk = async (registrationIds) =>
+  (await apiClient.post(`${BASE}/registrations/pay-bulk/`, { registration_ids: registrationIds })).data;
+
+// Админ: бүртгэл засах (ангилалуудын хамт буцаана) / жагсаалтаас хасах (CANCELED)
+export const getAdminRegistration = async (id) =>
+  (await apiClient.get(`${BASE}/registrations/${id}/admin/`, { skipCache: true })).data;
+export const updateAdminRegistration = async (id, payload) =>
+  (await apiClient.patch(`${BASE}/registrations/${id}/admin/`, payload)).data;
+export const removeAdminRegistration = async (id) => apiClient.delete(`${BASE}/registrations/${id}/admin/`);
 
 // Админ: төлбөр хүлээгдэж буй бүртгэлийг төлбөрөөс чөлөөлж баталгаажуулна
 export const approveRegistration = async (registrationId) =>
@@ -62,6 +163,9 @@ export const deleteOlympiad = async (slug) => (await apiClient.delete(`${BASE}/$
 // Маягтыг бөглөх өгөгдөл. mmo_id өгөөгүй бол өөрийн профайл (энгийн хэрэглэгч зөвхөн өөрийнхийг авна)
 export const getPrefill = async (mmoId) =>
   (await apiClient.get(`${BASE}/prefill/`, { params: mmoId ? { mmo_id: mmoId } : {} })).data;
+
+// Сайтын ангийн сонголтууд [{value, label}] — hooks/useSiteGrades-ээр ашиглана
+export const getSiteGrades = async () => (await apiClient.get(`${BASE}/grades/`)).data;
 
 // MMO-ийн аймаг/дүүргийн нэрсийн жагсаалт (хоосон бол MMO-той холбогдож чадаагүй)
 export const getProvinces = async () => (await apiClient.get(`${BASE}/provinces/`)).data;

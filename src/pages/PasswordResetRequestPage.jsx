@@ -26,14 +26,14 @@ const PasswordResetRequestPage = () => {
 
     // Хэрэглэгчийн нэр оруулсан эсэхийг шалгах
     if (!username) {
-      setError('Хэрэглэгчийн нэрээ оруулна уу.');
+      setError('Хэрэглэгчийн нэр эсвэл имэйлээ оруулна уу.');
       setLoading(false);
       return;
     }
 
     try {
       await apiClient.post('/users/api/password/reset/request/', {
-        // Backend одоо зөвхөн 'username' талбарыг хүлээн авна
+        // Хэрэглэгчийн нэр эсвэл имэйл ('@' байвал backend имэйлээр хайна)
         username: username,
       });
 
@@ -81,18 +81,18 @@ const PasswordResetRequestPage = () => {
           ) : (
             <Form onSubmit={handleSubmit}>
               <p className="text-muted small mb-3">
-                Бүртгэлтэй **хэрэглэгчийн нэрээ** оруулна уу. Бид таны бүртгэлтэй и-мэйл хаяг руу
-                нууц үг сэргээх линк илгээнэ.
+                Хэрэглэгчийн нэр эсвэл бүртгэлтэй имэйл хаягаа оруулна уу. Нэг имэйлд хэд хэдэн account
+                байвал бүгдийнх нь нэр, тус тусын нууц үг сэргээх линкийг илгээнэ.
               </p>
 
               <Form.Group className="mb-3" controlId="formUsername">
-                <Form.Label className="small fw-semibold">Хэрэглэгчийн нэр</Form.Label>
+                <Form.Label className="small fw-semibold">Хэрэглэгчийн нэр эсвэл имэйл</Form.Label>
                 <Form.Control
                   type="text"
                   name="username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Хэрэглэгчийн нэр"
+                  placeholder="Хэрэглэгчийн нэр эсвэл имэйл"
                   required
                 />
               </Form.Group>
