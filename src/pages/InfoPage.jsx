@@ -21,6 +21,12 @@ const MENU_ITEMS = [
   { path: '/info/teachers',         label: 'Багш нар',    Icon: Users      },
 ];
 
+// Сурталчилгааны хоёр Facebook хуудас
+const FACEBOOK_PAGES = [
+  { href: 'https://www.facebook.com/integral.mn', label: 'Интеграл — ЭЕШ, бодлогын сан' },
+  { href: 'https://www.facebook.com/nomads360d',  label: 'Nomads 360° — олимпиад, байгалийн ухаан' },
+];
+
 function InfoPage() {
   const location = useLocation();
 
@@ -54,6 +60,21 @@ function InfoPage() {
                   </ListGroup.Item>
                 ))}
               </ListGroup>
+
+              <h6 className="text-uppercase text-muted small fw-bold mt-4 mb-2">
+                <i className="bi bi-facebook me-1"></i>Биднийг дагаарай
+              </h6>
+              {FACEBOOK_PAGES.map(({ href, label }) => (
+                <a
+                  key={href}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="d-block small text-decoration-none py-1"
+                >
+                  {label}
+                </a>
+              ))}
             </div>
           </Col>
 
@@ -77,6 +98,19 @@ function InfoPage() {
             </div>
 
             <Outlet />
+
+            {/* Mobile-д sidebar харагдахгүй тул FB холбоосыг доор нь */}
+            <div className="d-md-none border-top px-3 py-3 small">
+              <i className="bi bi-facebook text-primary me-1"></i>
+              {FACEBOOK_PAGES.map(({ href, label }, i) => (
+                <React.Fragment key={href}>
+                  {i > 0 && ' · '}
+                  <a href={href} target="_blank" rel="noopener noreferrer" className="text-decoration-none">
+                    {label.split(' — ')[0]}
+                  </a>
+                </React.Fragment>
+              ))}
+            </div>
           </Col>
         </Row>
       </div>

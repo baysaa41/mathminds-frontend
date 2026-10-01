@@ -5,6 +5,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 // 2. authService-г импортлох
 import authService from '../services/authService';
 import apiCache from '../api/apiCache';
+import { reportAuthAttribution } from '../utils/attribution';
 
 const AuthContext = createContext(null);
 
@@ -61,6 +62,11 @@ export const AuthProvider = ({ children }) => {
 
     verifyUser();
   }, []);
+
+  // UTM-тэй холбоосоор ирсэн зочин нэвтэрсэн/бүртгүүлсэн бол backend-д мэдэгдэнэ
+  useEffect(() => {
+    if (!loading && token && user) reportAuthAttribution();
+  }, [loading, token, user]);
 
   // 4. apiClient-н толгойг тохируулдаг useEffect-г БҮРЭН УСТГАСАН.
   // Энэ үйлдлийг axiosConfig.js доторх interceptor хийж байгаа.

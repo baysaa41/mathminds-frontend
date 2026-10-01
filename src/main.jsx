@@ -17,6 +17,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 // (!!!) 1. "БЭЛЭГНИЙ ХАЙРЦАГ"-ИЙГ ИМПОРТЛОХ
 // (Та энэ файлыг frontend/src/context/PrefillContext.jsx гэж үүсгэсэн гэж үзлээ)
 import { PrefillProvider } from './context/PrefillContext.jsx';
+import { captureAttribution } from './utils/attribution';
+
+// Facebook-ийн пост гэх мэт UTM-тэй холбоосоор орж ирснийг бүртгэнэ
+captureAttribution();
 
 // React Query client үүсгэх
 const queryClient = new QueryClient();
