@@ -2,13 +2,14 @@
 // Олимпиад: мэдээлэл, бүртгэл, төлбөр, жагсаалт, админ upload/хэвлэх
 
 import apiClient from '../api/axiosConfig';
+import { formatDateTime, formatTime } from '../utils/dateFormatter';
 
 const BASE = '/api/olympiads';
 
-export const fmtDate = (iso) =>
-  iso ? new Date(iso).toLocaleString('mn-MN', { dateStyle: 'medium', timeStyle: 'short' }) : '';
+// Browser-уудад 'mn-MN' locale байхгүй тул англиар гардаг — гараар форматлана: 2026-09-28 22:00
+export const fmtDate = (iso) => formatDateTime(iso);
 
-// Одооноос хүртэлх хугацаа: "15 хоног", "5 цаг", "20 минут"
+// Одооноос хүртэлх хугацаа: "15 хоног 4 цаг", "5 цаг", "20 минут"
 export const timeUntil = (iso, now = Date.now()) => {
   const ms = new Date(iso).getTime() - now;
   if (ms <= 0) return '';
@@ -16,7 +17,31 @@ export const timeUntil = (iso, now = Date.now()) => {
   if (minutes < 60) return `${minutes} минут`;
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours} цаг`;
-  return `${Math.floor(hours / 24)} хоног`;
+  const days = Math.floor(hours / 24);
+  const restHours = hours % 24;
+  return restHours ? `${days} хоног ${restHours} цаг` : `${days} хоног`;
+};
+
+// Хугацааны үргэлжлэл: "2 цаг 30 минут" — эхлэх/дуусах хоёулаа байвал
+export const fmtDuration = (start, end) => {
+  if (!start || !end) return '';
+  const minutes = Math.round((new Date(end).getTime() - new Date(start).getTime()) / 60000);
+  if (minutes <= 0) return '';
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  const parts = [];
+  if (hours) parts.push(`${hours} цаг`);
+  if (rest) parts.push(`${rest} минут`);
+  return parts.join(' ');
+};
+
+// Ангилалын шошго: ангийн хязгаар нь нэрээс өөр бол хаалтанд хавсаргана («Ахлах (9–12-р анги)»)
+export const categoryLabel = (cat) => {
+  if (!cat) return '';
+  if (cat.grade_from === null || cat.grade_to === null) return cat.name;
+  const auto = cat.grade_from === cat.grade_to
+    ? `${cat.grade_from}-р анги` : `${cat.grade_from}–${cat.grade_to}-р анги`;
+  return cat.name === auto ? cat.name : `${cat.name} (${auto})`;
 };
 
 // Бүртгэлийн төлөв: {text, variant} — "Бүртгэл дуусахад 15 хоног үлдлээ" гэх мэт
@@ -38,7 +63,7 @@ export const fmtRange = (start, end) => {
   if (!end) return fmtDate(start);
   const sameDay = new Date(start).toDateString() === new Date(end).toDateString();
   return `${fmtDate(start)} – ${sameDay
-    ? new Date(end).toLocaleTimeString('mn-MN', { timeStyle: 'short' }) : fmtDate(end)}`;
+    ? formatTime(end) : fmtDate(end)}`;
 };
 
 // Ангилал ангиасаа хамаарна: анги хязгааргүй (1–12), ангилал нь анги ≤ дээд хязгаар (өгсөж орж болно),
@@ -174,23 +199,21 @@ export const approveRegistration = async (registrationId) =>
   (await apiClient.post(`${BASE}/registrations/${registrationId}/approve/`)).data;
 
 // ── Админ ────────────────────────────────────────────────────────────────────
-// Хуудасны шүүлтүүр: {category, problem, last_name, first_name} — хоосон утгыг илгээхгүй
+// Хуудасны шүүлтүүр: {category, last_name, first_name} — хоосон утгыг илгээхгүй
 export const sheetFilterParams = (filters = {}) =>
   Object.fromEntries(Object.entries(filters).filter(([, v]) => String(v ?? '').trim() !== ''));
 
-export const generateSheets = async (slug, filters) =>
+// Бодолтын хуудас үүсгэх ажил (серверт xelatex-гүйгээр PDF угсарна): эхлүүлэх → төлөв шалгах → PDF татах
+export const startSheetsJob = async (slug, filters) =>
   (await apiClient.post(`${BASE}/${slug}/admin/generate-sheets/`, sheetFilterParams(filters))).data;
 
-export const getPrintSheets = async (slug, markPrinted = false, filters = {}) =>
-  (await apiClient.get(`${BASE}/${slug}/admin/sheets/`, {
-    params: { ...sheetFilterParams(filters), ...(markPrinted ? { mark_printed: 1 } : {}) }, skipCache: true,
-  })).data;
+export const getSheetsJob = async (slug, job) =>
+  (await apiClient.get(`${BASE}/${slug}/admin/generate-sheets/${job}/`, { skipCache: true })).data;
 
-// Бүх бодолтын хуудсыг нэг PDF-ээр татаж хадгална (серверт үүснэ — QR байрлал хэвлэх харагдацтай ижил)
-export const downloadSheetsPdf = async (slug, filters = {}, markPrinted = true) => {
+// Үүсгэсэн PDF-г татаж хадгална
+export const downloadSheetsPdf = async (slug, job) => {
   const res = await apiClient.get(`${BASE}/${slug}/admin/sheets.pdf`, {
-    params: { ...sheetFilterParams(filters), ...(markPrinted ? { mark_printed: 1 } : {}) },
-    responseType: 'blob', skipCache: true, timeout: 10 * 60 * 1000,
+    params: { job }, responseType: 'blob', skipCache: true, timeout: 5 * 60 * 1000,
   });
   const url = URL.createObjectURL(res.data);
   const a = document.createElement('a');

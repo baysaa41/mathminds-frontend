@@ -144,7 +144,6 @@ const OlympiadRosterPage = lazy(() => import('./pages/OlympiadRosterPage.jsx'));
 const OlympiadsAdminListPage = lazy(() => import('./pages/OlympiadsAdminListPage.jsx'));
 const OlympiadFormPage = lazy(() => import('./pages/OlympiadFormPage.jsx'));
 const OlympiadAdminPage = lazy(() => import('./pages/OlympiadAdminPage.jsx'));
-const OlympiadPrintPage = lazy(() => import('./pages/OlympiadPrintPage.jsx'));
 const MyStudentsPage = lazy(() => import('./pages/MyStudentsPage.jsx'));
 const StudentDetailPage = lazy(() => import('./pages/StudentDetailPage.jsx'));
 const ClaimPage = lazy(() => import('./pages/ClaimPage.jsx'));
@@ -459,16 +458,6 @@ function App() {
             <ProtectedRoute>
               <MembershipPlansPage />
             </ProtectedRoute>
-          }
-        />
-
-        {/* Олимпиад: QR хуудас хэвлэх (Layout-гүй) */}
-        <Route
-          path="/admin/olympiads/:slug/print"
-          element={
-            <AdminRoute>
-              <OlympiadPrintPage />
-            </AdminRoute>
           }
         />
 
