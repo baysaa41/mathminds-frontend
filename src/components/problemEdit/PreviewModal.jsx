@@ -2,7 +2,7 @@
 
 import Modal from 'react-bootstrap/Modal';
 import Button from 'react-bootstrap/Button';
-import { MathJax } from 'better-react-mathjax';
+import LivePreview from '../LivePreview.jsx';
 import { X, Eye, FileText } from 'lucide-react';
 
 export function PreviewModal({ show, onHide, title, statement }) {
@@ -25,22 +25,21 @@ export function PreviewModal({ show, onHide, title, statement }) {
           </div>
         )}
 
-        {/* Statement Preview */}
-        <MathJax hideUntilTypeset={'first'}>
-          <div
-            className="mathjax-content"
-            style={{
-              whiteSpace: 'normal',
-              wordBreak: 'break-word',
-              lineHeight: '1.6',
-            }}
-            dangerouslySetInnerHTML={{
-              __html:
-                statement ||
-                "<span class='text-muted fst-italic'>Өгүүлбэр хоосон байна...</span>",
-            }}
-          />
-        </MathJax>
+        {/* Statement Preview — LivePreview нь [pst]/[psti] блокийг зураг болгож, LaTeX-ийг MathJax-аар рендерлэнэ */}
+        <div
+          className="mathjax-content"
+          style={{
+            whiteSpace: 'normal',
+            wordBreak: 'break-word',
+            lineHeight: '1.6',
+          }}
+        >
+          {statement ? (
+            <LivePreview content={statement} />
+          ) : (
+            <span className="text-muted fst-italic">Өгүүлбэр хоосон байна...</span>
+          )}
+        </div>
       </Modal.Body>
       <Modal.Footer>
         <Button variant="secondary" onClick={onHide}>

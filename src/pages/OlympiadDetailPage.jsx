@@ -10,9 +10,10 @@ import StudentPicker from '../components/StudentPicker';
 import PublicMaterialsCard from '../components/olympiad/PublicMaterialsCard';
 import RegistrationGuide from '../components/olympiad/RegistrationGuide';
 import useSiteGrades from '../hooks/useSiteGrades';
+import useNow from '../hooks/useNow';
 import { setPostLoginRedirect } from '../utils/postLoginRedirect';
 import authService from '../services/authService';
-import { apiErrorText, cancelRegistration, candidateKey, categoryFitsGrade, bestCategoryForGrade, getOlympiad, getOlympiadMyRegistrations, approveRegistration, registerForOlympiad, paymentRequestFor, transferUnderReview, getPrefill, getProvinces, lookupStudents, fmtDate, fmtRange, timeUntil, registrationCountdown } from '../services/olympiadService';
+import { apiErrorText, cancelRegistration, candidateKey, categoryLabel, categoryFitsGrade, bestCategoryForGrade, getOlympiad, getOlympiadMyRegistrations, approveRegistration, registerForOlympiad, paymentRequestFor, transferUnderReview, getPrefill, getProvinces, lookupStudents, fmtDate, fmtDuration, fmtRange, timeUntil, registrationCountdown } from '../services/olympiadService';
 import { toLatin, LATIN_NAME_RE } from '../utils/transliterate';
 
 const EMPTY_FORM = {
@@ -65,6 +66,7 @@ function OlympiadDetailPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const siteGrades = useSiteGrades();
+  const now = useNow();  // countdown бүртгэлийн хугацаанаас урт зогссон ч зөв байх
   const [olympiad, setOlympiad] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -388,6 +390,11 @@ function OlympiadDetailPage() {
   if (loading) return <Container className="py-5 text-center"><Spinner animation="border" /></Container>;
   if (!olympiad) return <Container className="py-4"><Alert variant="danger">{error}</Alert></Container>;
 
+  // now-оос хамаарах утгууд — useNow() шинэчлэгдэх бүрд дахин тооцоологдоно
+  const regCountdown = registrationCountdown(olympiad.registration_start, olympiad.registration_end, now);
+  const regTimeLeft = timeUntil(olympiad.registration_end, now);
+  const examDuration = fmtDuration(olympiad.exam_start, olympiad.exam_end);
+
   return (
     <Container fluid className="py-4 px-md-4" style={{ maxWidth: 1400 }}>
       <Link to="/olympiads" className="small">← Бүх олимпиад</Link>
@@ -400,19 +407,34 @@ function OlympiadDetailPage() {
           </div>
         )}
       </div>
-      {/* Ерөнхий мэдээлэл: олимпиадын хугацаа, газар, бүртгэлийн хугацаа, хуваарь */}
+      {/* Ерөнхий мэдээлэл: олимпиадын хугацаа, газар, хэн оролцох, бүртгэлийн хугацаа, хуваарь */}
       <div className="small mt-1 mb-3">
         <div>
           <span className="text-muted">Олимпиад:</span> {fmtRange(olympiad.exam_start, olympiad.exam_end)}
+          {examDuration && ` (${examDuration})`}
           {olympiad.venue ? ` · ${olympiad.venue}` : ''}
+        </div>
+        {categories.length > 0 && (
+          <div>
+            <span className="text-muted">Ангилал:</span> {categories.map(categoryLabel).join(', ')}
+          </div>
+        )}
+        <div>
+          <span className="text-muted">Бодлого:</span> {olympiad.problem_count}
+          {olympiad.max_score_per_problem ? ` · нэг бодлогын дээд оноо ${olympiad.max_score_per_problem}` : ''}
         </div>
         <div>
           <span className="text-muted">Бүртгэл:</span> {fmtRange(olympiad.registration_start, olympiad.registration_end)}
-          {(() => {
-            const c = registrationCountdown(olympiad.registration_start, olympiad.registration_end);
-            return <Badge bg={c.variant} className="ms-2">{c.text}</Badge>;
-          })()}
+          <Badge bg={regCountdown.variant} className="ms-2">{regCountdown.text}</Badge>
         </div>
+        {olympiad.results_published_at && (
+          <div>
+            <span className="text-muted">Дүн:</span> {fmtDate(olympiad.results_published_at)}{' '}
+            {olympiad.results_published ? 'гарсан' : 'гарна'}
+            {olympiad.defense_window_hours
+              ? ` · гарснаас хойш ${olympiad.defense_window_hours} цаг бодолт хамгаалах хүсэлт гаргана` : ''}
+          </div>
+        )}
         {olympiad.schedule.map((it) => (
           <div key={it.id}>
             <span className="text-muted">{it.title}:</span> {fmtRange(it.starts_at, it.ends_at)}
@@ -420,6 +442,11 @@ function OlympiadDetailPage() {
           </div>
         ))}
       </div>
+
+      {/* Админ бичсэн тайлбар — өмнө нь зөвхөн олимпиадын жагсаалтад харагддаг байсан */}
+      {olympiad.description && (
+        <div className="small mb-3" style={{ whiteSpace: 'pre-wrap' }}>{olympiad.description}</div>
+      )}
 
       <PublicMaterialsCard slug={olympiad.slug} />
 
@@ -616,7 +643,7 @@ function OlympiadDetailPage() {
                       <option value="">— Сонгоно уу —</option>
                       {categoryOptions.map((c) => (
                         <option key={c.id} value={c.id}>
-                          {c.name}{c.grade_from !== null && c.name !== (c.grade_from === c.grade_to ? `${c.grade_from}-р анги` : `${c.grade_from}–${c.grade_to}-р анги`) ? ` (${c.grade_from}–${c.grade_to}-р анги)` : ''}
+                          {categoryLabel(c)}
                         </option>
                       ))}
                     </Form.Select>
@@ -658,7 +685,7 @@ function OlympiadDetailPage() {
                       <option value="">— Сонгоно уу —</option>
                       {categoryOptions.map((c) => (
                         <option key={c.id} value={c.id}>
-                          {c.name}{c.grade_from !== null && c.name !== (c.grade_from === c.grade_to ? `${c.grade_from}-р анги` : `${c.grade_from}–${c.grade_to}-р анги`) ? ` (${c.grade_from}–${c.grade_to}-р анги)` : ''}
+                          {categoryLabel(c)}
                         </option>
                       ))}
                     </Form.Select>
@@ -743,7 +770,7 @@ function OlympiadDetailPage() {
             </Form>
           ) : (
             <Alert variant="secondary" className="mb-0">
-              {registrationCountdown(olympiad.registration_start, olympiad.registration_end).state === 'not_started'
+              {regCountdown.state === 'not_started'
                 ? `Бүртгэл эхлээгүй байна. Бүртгэлийн хугацаа: ${fmtRange(olympiad.registration_start, olympiad.registration_end)}.`
                 : 'Бүртгэл дууссан.'}
             </Alert>
@@ -826,7 +853,7 @@ function OlympiadDetailPage() {
                 </div>
                 <div className="small">
                   Төлөгдсөн бүртгэл л баталгаажна. Бүртгэл <strong>{fmtDate(olympiad.registration_end)}</strong>-нд
-                  дуусахаас өмнө төлнө үү{olympiad.registration_open ? ` (${timeUntil(olympiad.registration_end)} үлдлээ)` : ''}.
+                  дуусахаас өмнө төлнө үү{olympiad.registration_open && regTimeLeft ? ` (${regTimeLeft} үлдлээ)` : ''}.
                   {payableRegs.length > 1 && ' Бүгдийг нэг QPay нэхэмжлэх эсвэл нэг дансны гүйлгээгээр төлж болно.'}
                 </div>
               </div>

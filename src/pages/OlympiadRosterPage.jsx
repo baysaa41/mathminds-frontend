@@ -4,15 +4,19 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Container, Table, Form, Spinner, Alert, Badge, Row, Col, Button } from 'react-bootstrap';
-import { getRoster, approveRegistration, removeAdminRegistration, REG_STATUS } from '../services/olympiadService';
+import {
+  getRoster, getOlympiad, approveRegistration, removeAdminRegistration, REG_STATUS, fmtRange, fmtDate, registrationCountdown,
+} from '../services/olympiadService';
 import RegistrationEditModal from '../components/RegistrationEditModal';
 import BankTransferReviewModal from '../components/BankTransferReviewModal';
+import RosterStats from '../components/olympiad/RosterStats';
 import { useAuth } from '../context/AuthContext';
 
 function OlympiadRosterPage() {
   const { slug } = useParams();
   const { user } = useAuth();
   const [rows, setRows] = useState([]);
+  const [olympiad, setOlympiad] = useState(null);  // бүртгэлийн хугацааг харуулахад
   const [q, setQ] = useState('');
   const [province, setProvince] = useState('');
   const [school, setSchool] = useState('');
@@ -29,6 +33,10 @@ function OlympiadRosterPage() {
       .then(setRows)
       .catch(() => setError('Жагсаалт татахад алдаа гарлаа'))
       .finally(() => setLoading(false));
+  }, [slug]);
+
+  useEffect(() => {
+    getOlympiad(slug).then(setOlympiad).catch(() => {});  // хугацаа харагдахгүй л болно
   }, [slug]);
 
   const approve = async (r) => {
@@ -69,7 +77,7 @@ function OlympiadRosterPage() {
       && (!school || r.school === school)
       && (!category || r.olympiad_category_name === category)
       && (!status || (status === 'WAIVED' ? r.fee_waived
-        : status === 'BANK' ? r.bank_transfer?.status === 'SUBMITTED' : r.status === status))
+        : status === 'BANK' ? r.bank_transfer?.status === 'SUBMITTED' && r.status === 'PENDING' : r.status === status))
       && (!s || `${r.full_name} ${r.province} ${r.school}`.toLowerCase().includes(s)));
   }, [rows, q, province, school, category, status, onlyMine]);
   const hasMine = rows.some((r) => r.is_mine);
@@ -80,6 +88,15 @@ function OlympiadRosterPage() {
     <Container fluid className="py-4 px-md-4" style={{ maxWidth: 1400 }}>
       <Link to={`/olympiads/${slug}`} className="small">← Олимпиад</Link>
       <h3 className="mt-2">Бүртгэлийн жагсаалт <small className="text-muted">({filtered.length}{filtered.length !== rows.length ? ` / ${rows.length}` : ''})</small></h3>
+      {olympiad?.registration_start && (() => {
+        const c = registrationCountdown(olympiad.registration_start, olympiad.registration_end);
+        return (
+          <div className="small text-muted mb-3 d-flex flex-wrap align-items-center gap-2">
+            <span>Бүртгэл: {fmtRange(olympiad.registration_start, olympiad.registration_end)}</span>
+            <Badge bg={c.variant}>{c.text}</Badge>
+          </div>
+        );
+      })()}
       {error && <Alert variant="danger">{error}</Alert>}
       <Row className="g-2 mb-3">
         {user?.is_staff && (
@@ -123,13 +140,21 @@ function OlympiadRosterPage() {
           label="Зөвхөн миний бүртгэсэн хүмүүс (өөрөө болон бусдыг)"
         />
       )}
+      <RosterStats
+        rows={filtered}
+        isStaff={!!user?.is_staff}
+        onPickCategory={setCategory}
+        onPickProvince={(p) => { setProvince(p); setSchool(''); }}
+        onPickSchool={(n) => { setProvince(''); setSchool(n); }}
+      />
       <Table striped hover size="sm" responsive>
-        <thead><tr><th>№</th><th>Овог нэр</th>{user?.is_staff && <th>MMO ID</th>}<th>Аймаг/Дүүрэг</th><th>Сургууль</th><th>Ангилал</th><th>Анги</th>{user?.is_staff && <th>Бүртгэсэн</th>}{user?.is_staff && <th>Төлөв</th>}{user?.is_staff && <th />}</tr></thead>
+        <thead><tr><th>№</th><th>Овог нэр</th>{user?.is_staff && <th>MMO ID</th>}<th>Аймаг/Дүүрэг</th><th>Сургууль</th><th>Ангилал</th><th>Анги</th>{user?.is_staff && <th>Бүртгэсэн</th>}{user?.is_staff && <th>Бүртгүүлсэн огноо</th>}{user?.is_staff && <th>Төлөв</th>}{user?.is_staff && <th />}</tr></thead>
         <tbody>
           {filtered.map((r, i) => (
             <tr key={`${r.participant_no}-${i}`}>
               <td>{r.participant_no ?? '-'}</td><td>{r.full_name}{r.full_name_latin && <div className="small text-muted">{r.full_name_latin}</div>}</td>{user?.is_staff && <td>{r.mmo_id ?? '-'}</td>}<td>{r.province}</td><td>{r.school}</td><td>{r.olympiad_category_name ?? '-'}</td><td>{r.olympiad_category_name && r.grade_label === r.olympiad_category_name ? '-' : r.grade_label}</td>
               {user?.is_staff && <td>{r.registered_by_name ?? '-'}</td>}
+              {user?.is_staff && <td className="small text-nowrap">{fmtDate(r.created_at)}</td>}
               {user?.is_staff && (
                 <td>
                   <Badge bg={REG_STATUS[r.status]?.[0] || 'secondary'}>{REG_STATUS[r.status]?.[1] || r.status}</Badge>
@@ -147,6 +172,9 @@ function OlympiadRosterPage() {
                     )}
                     {r.bank_transfer?.status === 'SUBMITTED' && r.status === 'PENDING' && (
                       <Button size="sm" variant="warning" onClick={() => setReviewTransferId(r.bank_transfer.id)}>Дансаар: шалгах</Button>
+                    )}
+                    {r.bank_transfer?.status === 'AWAITING' && r.status === 'PENDING' && (
+                      <Button size="sm" variant="outline-warning" onClick={() => setReviewTransferId(r.bank_transfer.id)}>Дансаар: баталгаажуулах</Button>
                     )}
                     <Button size="sm" variant="outline-primary" onClick={() => setEditingId(r.id)}>Засах</Button>
                     <Button size="sm" variant="outline-danger" onClick={() => remove(r)}>Хасах</Button>

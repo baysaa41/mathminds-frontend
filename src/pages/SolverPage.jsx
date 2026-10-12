@@ -36,7 +36,7 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 
 // ─── Моделүүд ────────────────────────────────────────────────────────────────
 const MODELS = [
-  { value: 'deepseek-chat',     label: 'DeepSeek Chat',     color: '#4d6bfe' },
+  { value: 'deepseek-v4-flash', label: 'DeepSeek V4 Flash', color: '#4d6bfe' },
   { value: 'deepseek-reasoner', label: 'DeepSeek Reasoner', color: '#4d6bfe' },
   { value: 'gemini-flash-latest', label: 'Gemini Flash', color: '#4285f4' },
   { value: 'gemini-pro-latest',   label: 'Gemini Pro',   color: '#4285f4' },

@@ -680,8 +680,8 @@ const DJANGO_COMMANDS = [
         ],
         note: 'DOCX файлуудыг эхлээд PDF болгоно: libreoffice --headless --convert-to pdf *.docx',
         examples: [
-          'python manage.py check_eesh_completeness --dir /home/deploy/Documents/1000problems --tag-all --add-missing',
-          'python manage.py check_eesh_completeness --dir /home/deploy/Documents/1000problems --show-missing',
+          'python manage.py check_eesh_completeness --dir /home/deploy/documents/1000problems --tag-all --add-missing',
+          'python manage.py check_eesh_completeness --dir /home/deploy/documents/1000problems --show-missing',
         ],
       },
       {
