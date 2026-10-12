@@ -191,6 +191,12 @@ function OlympiadAdminPage() {
             <Alert variant={result.unmatched ? 'warning' : 'success'} className="mt-3 mb-0">
               Нийт {result.total_pages} хуудас: {result.matched} холбогдсон, {result.unmatched} холбогдоогүй
               {result.duplicates > 0 && `, ${result.duplicates} давхар хуудсыг алгассан (өмнө upload хийгдсэн)`}.
+              {result.warnings?.length > 0 && (
+                <div className="mt-2 small">
+                  <strong>Хуудасны дугаарын анхааруулга:</strong>
+                  <ul className="mb-0">{result.warnings.map((w) => <li key={w}>{w}</li>)}</ul>
+                </div>
+              )}
             </Alert>
           )}
         </Card.Body>
