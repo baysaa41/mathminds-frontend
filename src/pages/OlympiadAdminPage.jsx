@@ -5,7 +5,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Container, Card, Button, Alert, ProgressBar, Row, Col, Spinner, Badge, Tabs, Tab, Form } from 'react-bootstrap';
 import { startSheetsJob, getSheetsJob, uploadSheetImages, getUploadedImages, getUploadBatch, downloadSheetsPdf,
-  getOlympiad, sheetFilterParams } from '../services/olympiadService';
+  getOlympiad, sheetFilterParams, countRegistrations } from '../services/olympiadService';
 import { AdminDefensePanel, AdminMaterialsPanel, AdminResultsPanel, AdminScoresPanel } from '../components/olympiad/AdminResultPanels';
 import { AdminSheetGallery } from '../components/olympiad/SheetPosts';
 import UnmatchedSheets from '../components/olympiad/UnmatchedSheets';
@@ -45,6 +45,16 @@ function OlympiadAdminPage() {
   useEffect(() => { getOlympiad(slug).then(setOlympiad).catch(() => {}); }, [slug]);
   const setFilter = (k) => (e) => { setFilters((f) => ({ ...f, [k]: e.target.value })); setSheetsJob(null); };
   const filtered = Object.keys(sheetFilterParams(filters)).length > 0;
+
+  // Шүүлтүүрт тохирох оролцогчдын урьдчилсан жагсаалт (дээд тал нь 30)
+  const [preview, setPreview] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    const t = setTimeout(() => {
+      countRegistrations(slug, filters).then((r) => { if (alive) setPreview(r); }).catch(() => { if (alive) setPreview(null); });
+    }, 300);
+    return () => { alive = false; clearTimeout(t); };
+  }, [slug, filters]);
 
   const onGenerate = async () => {
     setGenerating(true); setError(null); setMsg(null); setSheetsJob(null);
@@ -144,6 +154,24 @@ function OlympiadAdminPage() {
           {filtered && (
             <div className="small text-muted mb-2">
               Шүүлтүүр идэвхтэй — зөвхөн тохирох оролцогчдын хуудас үүснэ.
+            </div>
+          )}
+          {preview && (
+            <div className="small mb-3">
+              <div className="text-muted mb-1">
+                Шүүлтүүрт <b>{preview.total}</b> оролцогч олдлоо{preview.total > preview.results.length ? ` (эхний ${preview.results.length}-г харуулав)` : ''}
+              </div>
+              {preview.results.length > 0 && (
+                <div style={{ maxHeight: 160, overflowY: 'auto' }} className="border rounded p-2">
+                  {preview.results.map((r) => (
+                    <div key={r.id}>
+                      <span className="text-muted me-2">№{r.participant_no ?? '—'}</span>
+                      {r.last_name} {r.first_name}
+                      {r.category && <span className="text-muted"> · {r.category}</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
           <Button variant="primary" className="me-2" onClick={onGenerate} disabled={generating}>

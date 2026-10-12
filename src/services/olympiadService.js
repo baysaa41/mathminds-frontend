@@ -252,6 +252,10 @@ export const getUploadedImages = async (slug, unmatchedOnly = false) =>
 export const findRegistrations = async (slug, filters) =>
   (await apiClient.get(`${BASE}/${slug}/admin/registrations/`, { params: sheetFilterParams(filters), skipCache: true })).data;
 
+// Шүүлтүүрт тохирсон нийт тоо + эхний 30 нь: {total, results}
+export const countRegistrations = async (slug, filters) =>
+  (await apiClient.get(`${BASE}/${slug}/admin/registrations/`, { params: { ...sheetFilterParams(filters), with_total: 1 }, skipCache: true })).data;
+
 export const assignImage = async (imageId, registration, problem) =>
   (await apiClient.patch(`${BASE}/admin/images/${imageId}/`, { registration, problem })).data;
 

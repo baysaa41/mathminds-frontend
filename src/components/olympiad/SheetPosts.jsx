@@ -28,7 +28,9 @@ export function SheetViewer({ depsKey, children }) {
   return <div ref={ref}>{children}</div>;
 }
 
-export function SheetPost({ title, subtitle, images, variant }) {
+// pages: зураг бүрийн OMR-ээр уншсан хуудасны дугаар (үгүй бол дарааллын дугаар)
+export function SheetPost({ title, subtitle, images, pages, variant }) {
+  const pageNo = (i) => pages?.[i] ?? i + 1;
   const caption = [title, subtitle].filter(Boolean).join(' · ');
   return (
     <Card className={`mb-3 ${variant === 'warning' ? 'border-warning' : ''}`}>
@@ -42,12 +44,12 @@ export function SheetPost({ title, subtitle, images, variant }) {
       <Card.Body className="p-2 p-md-3">
         {images.map((url, i) => (
           <figure key={url} className="mb-3">
-            <div className="small text-muted mb-1">Хуудас {i + 1}</div>
+            <div className="small text-muted mb-1">Хуудас {pageNo(i)}</div>
             {isPdf(url) ? (
               <a href={url} target="_blank" rel="noreferrer">PDF нээх</a>
             ) : (
               // Дарахад viewer нээгдэнэ (SheetViewer-т ороосон үед)
-              <img src={url} alt={`${caption} · Хуудас ${i + 1}/${images.length}`} loading="lazy"
+              <img src={url} alt={`${caption} · Хуудас ${pageNo(i)}`} loading="lazy"
                    className="img-fluid border rounded w-100"
                    style={{ maxWidth: 820, display: 'block', margin: '0 auto', cursor: 'zoom-in' }} />
             )}
@@ -68,13 +70,17 @@ export function AdminSheetGallery({ images }) {
       if (!map.has(im.problem_no)) map.set(im.problem_no, new Map());
       const regs = map.get(im.problem_no);
       if (!regs.has(im.registration_id)) {
-        regs.set(im.registration_id, { no: im.participant_no, name: im.full_name, images: [] });
+        regs.set(im.registration_id, { no: im.participant_no, name: im.full_name, items: [] });
       }
-      regs.get(im.registration_id).images.push(im.url);
+      regs.get(im.registration_id).items.push({ url: im.url, page: im.page_no });
     });
     const sortedProblems = [...map.keys()].sort((a, b) => a - b);
     const grouped = Object.fromEntries(sortedProblems.map((p) => [p,
-      [...map.get(p).values()].sort((a, b) => (a.no ?? 1e9) - (b.no ?? 1e9))]));
+      [...map.get(p).values()].sort((a, b) => (a.no ?? 1e9) - (b.no ?? 1e9)).map((g) => {
+        // хуудсыг уншсан дугаараар нь багаас их рүү (дугаар нь уншигдаагүй нь төгсгөлд)
+        const items = [...g.items].sort((x, y) => (x.page ?? 1e9) - (y.page ?? 1e9));
+        return { ...g, images: items.map((it) => it.url), pages: items.map((it) => it.page) };
+      })]));
     return { problems: sortedProblems, byProblem: grouped, unmatched: loose };
   }, [images]);
   const [picked, setPicked] = useState(null);
@@ -102,7 +108,7 @@ export function AdminSheetGallery({ images }) {
           <SheetViewer depsKey={`${problem}:${(byProblem[problem] || []).flatMap((g) => g.images).join('|')}`}>
             {byProblem[problem]?.map((g) => (
               <SheetPost key={`${problem}-${g.no}-${g.name}`} title={`№${g.no ?? '-'} ${g.name}`}
-                         subtitle={`Бодлого ${problem}`} images={g.images} />
+                         subtitle={`Бодлого ${problem}`} images={g.images} pages={g.pages} />
             ))}
           </SheetViewer>
         </>

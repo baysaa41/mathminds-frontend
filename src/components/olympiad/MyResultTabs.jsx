@@ -124,7 +124,12 @@ export function MyMaterialsTab({ registrationId, active }) {
       ) : (
         <SheetViewer depsKey={data.sheets.flatMap((sh) => sh.images).join('|')}>
           {data.sheets.map((sh) => (
-            <SheetPost key={sh.problem_no} title={`Бодлого ${sh.problem_no}`} images={sh.images} />
+            <div key={sh.problem_no}>
+              <SheetPost title={`Бодлого ${sh.problem_no}`} images={sh.images} pages={sh.pages} />
+              {(sh.notes || []).map((n) => (
+                <Alert key={n} variant="warning" className="py-1 px-2 small mb-2">⚠ Бодлого {sh.problem_no}: {n}</Alert>
+              ))}
+            </div>
           ))}
         </SheetViewer>
       )}
