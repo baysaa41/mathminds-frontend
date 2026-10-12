@@ -8,6 +8,7 @@ import { startSheetsJob, getSheetsJob, uploadSheetImages, getUploadedImages, get
   getOlympiad, sheetFilterParams } from '../services/olympiadService';
 import { AdminDefensePanel, AdminMaterialsPanel, AdminResultsPanel, AdminScoresPanel } from '../components/olympiad/AdminResultPanels';
 import { AdminSheetGallery } from '../components/olympiad/SheetPosts';
+import UnmatchedSheets from '../components/olympiad/UnmatchedSheets';
 
 const naturalSort = (a, b) => a.name.localeCompare(b.name, undefined, { numeric: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -194,6 +195,8 @@ function OlympiadAdminPage() {
           )}
         </Card.Body>
       </Card>
+
+      <UnmatchedSheets slug={slug} olympiad={olympiad} images={images} onAssigned={loadImages} />
 
       <Card>
         <Card.Header>Бодолтын хуудсууд — бодлого бүрээр ({images.length} хуудас)</Card.Header>

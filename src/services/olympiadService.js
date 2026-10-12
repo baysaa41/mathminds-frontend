@@ -247,6 +247,14 @@ export const getUploadedImages = async (slug, unmatchedOnly = false) =>
     params: unmatchedOnly ? { unmatched: 1 } : {},
   })).data;
 
+// Код танигдаагүй хуудсыг гараар холбох: гараар бичсэн овог/нэр/ангиар бүртгэл хайж (filters: category, last_name,
+// first_name), зургийг бүртгэл + бодлогод онооно
+export const findRegistrations = async (slug, filters) =>
+  (await apiClient.get(`${BASE}/${slug}/admin/registrations/`, { params: sheetFilterParams(filters), skipCache: true })).data;
+
+export const assignImage = async (imageId, registration, problem) =>
+  (await apiClient.patch(`${BASE}/admin/images/${imageId}/`, { registration, problem })).data;
+
 export const createOlympiad = async (payload) => (await apiClient.post(`${BASE}/`, payload)).data;
 export const updateOlympiad = async (slug, payload) =>
   (await apiClient.patch(`${BASE}/${slug}/`, payload)).data;
