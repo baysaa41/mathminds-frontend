@@ -51,7 +51,7 @@ function OlympiadAdminPage() {
       const started = await startSheetsJob(slug, filters);
       if (started.participants === 0) {
         setMsg(started.skipped
-          ? `${started.skipped} оролцогчид дугаар олгогдоогүй/999-өөс их тул хуудас үүсгэх боломжгүй.`
+          ? `${started.skipped} оролцогчид дугаар олгогдоогүй/3255-аас их тул хуудас үүсгэх боломжгүй.`
           : 'Шүүлтүүрт тохирох баталгаажсан оролцогч алга.');
         return;
       }
@@ -64,7 +64,7 @@ function OlympiadAdminPage() {
       if (st.status === 'FAILED') { setError(`Хуудас үүсгэхэд алдаа гарлаа: ${st.error || ''}`); return; }
       setSheetsJob({ job: started.job, participants: st.participants, skipped: st.skipped });
       setMsg(`Хуудас бэлэн боллоо: хоосон загвар + ${st.participants} оролцогчийн хуудас.${st.skipped
-        ? ` (${st.skipped} оролцогчид дугаар олгогдоогүй/999-өөс их тул орсонгүй.)` : ''} «PDF татах» товчийг дарна уу.`);
+        ? ` (${st.skipped} оролцогчид дугаар олгогдоогүй/3255-аас их тул орсонгүй.)` : ''} «PDF татах» товчийг дарна уу.`);
     } catch (err) {
       setError(err.response?.data?.error || 'Хуудас үүсгэхэд алдаа гарлаа');
     } finally { if (mounted.current) setGenerating(false); }
