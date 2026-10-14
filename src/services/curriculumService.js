@@ -147,3 +147,46 @@ export const getProgramReviewQuiz = async (programId) => {
   const response = await apiClient.post(`/api/curriculum/programs/${programId}/review-quiz/`);
   return response.data;
 };
+
+/**
+ * Ангид өлгөх A0 постерууд (нийтэд нээлттэй жагсаалт; can_download — идэвхтэй гишүүн эсэх).
+ * GET /api/curriculum/classroom-posters/?grade=6
+ */
+export const getClassroomPosters = async (grade) => {
+  const response = await apiClient.get('/api/curriculum/classroom-posters/', {
+    params: grade ? { grade } : undefined,
+  });
+  return response.data;
+};
+
+/**
+ * A0 постерын PDF-ийг татна (зөвхөн гишүүнд). Гишүүн биш бол { code: 'members_only' } алдаа шидэнэ.
+ * GET /api/curriculum/classroom-posters/<id>/download/
+ */
+export const downloadClassroomPoster = async (posterId) => {
+  try {
+    const response = await apiClient.get(`/api/curriculum/classroom-posters/${posterId}/download/`, {
+      responseType: 'blob',
+    });
+    const match = /filename="?([^";]+)"?/.exec(response.headers['content-disposition'] || '');
+    const url = URL.createObjectURL(response.data);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = match ? match[1] : `mathminds_poster_${posterId}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  } catch (err) {
+    // blob хариуны доторх JSON алдааг задлана
+    const data = err.response?.data;
+    if (data instanceof Blob) {
+      try {
+        throw Object.assign(new Error('download_failed'), JSON.parse(await data.text()));
+      } catch (parsed) {
+        if (parsed.code || parsed.error) throw parsed;
+      }
+    }
+    throw err;
+  }
+};

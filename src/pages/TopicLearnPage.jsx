@@ -14,6 +14,7 @@ import { getWeeklyTopicLearn, getTopicCheckQuiz } from '../services/curriculumSe
 import ObjectiveLessonPanel from '../components/ObjectiveLessonPanel';
 import TopicPracticeChat from '../components/TopicPracticeChat';
 import { resolveResourceHref } from '../utils/resourceLink';
+import ClassroomPosterCard from '../components/ClassroomPosterCard';
 
 const RESOURCE_TYPE_LABELS = {
   article: 'Өгүүлэл',
@@ -106,7 +107,7 @@ const TopicLearnPage = () => {
     );
   }
 
-  const { weekly_topic: topic, objectives, resources, mastery, has_check_quiz, prev_topic, next_topic } = data;
+  const { weekly_topic: topic, objectives, resources, classroom_posters: classroomPosters, mastery, has_check_quiz, prev_topic, next_topic } = data;
   const masteryPct = Math.round((mastery?.mastery_score || 0) * 100);
   const starCount = Math.round(masteryPct / 20);
   const articleResources = resources?.filter((r) => r.resource_type === 'article') || [];
@@ -268,6 +269,22 @@ const TopicLearnPage = () => {
                 </LinkTag>
               );
             })}
+          </Card.Body>
+        </Card>
+      )}
+
+      {classroomPosters?.length > 0 && (
+        <Card className="border-0 shadow-sm mb-3">
+          <Card.Header className="bg-white border-bottom d-flex align-items-center">
+            <h6 className="mb-0 fw-bold me-auto"><FileText size={16} className="me-2" />Ангид өлгөх постер</h6>
+            <Link to="/posters" className="small text-decoration-none">Бүх A0 постер</Link>
+          </Card.Header>
+          <Card.Body>
+            <div className="d-flex flex-wrap gap-3">
+              {classroomPosters.map((p) => (
+                <div key={p.id} style={{ width: 200 }}><ClassroomPosterCard poster={p} /></div>
+              ))}
+            </div>
           </Card.Body>
         </Card>
       )}
