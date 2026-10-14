@@ -139,6 +139,7 @@ const ProductListPage = lazy(() => import('./pages/ProductListPage.jsx'));
 const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage.jsx'));
 const CartPage = lazy(() => import('./pages/CartPage.jsx'));
 const OlympiadsPage = lazy(() => import('./pages/OlympiadsPage.jsx'));
+const ClassroomPostersPage = lazy(() => import('./pages/ClassroomPostersPage.jsx'));
 const OlympiadDetailPage = lazy(() => import('./pages/OlympiadDetailPage.jsx'));
 const OlympiadRosterPage = lazy(() => import('./pages/OlympiadRosterPage.jsx'));
 const OlympiadsAdminListPage = lazy(() => import('./pages/OlympiadsAdminListPage.jsx'));
@@ -199,6 +200,7 @@ function App() {
           <Route path="/olympiads" element={<OlympiadsPage />} />
           <Route path="/olympiads/:slug" element={<OlympiadDetailPage />} />
           <Route path="/olympiads/:slug/roster" element={<OlympiadRosterPage />} />
+          <Route path="/posters" element={<ClassroomPostersPage />} />
         </Route>
 
         {/* Хамгаалагдсан хуудсууд - Layout дотор */}
