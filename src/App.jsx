@@ -142,9 +142,12 @@ const OlympiadsPage = lazy(() => import('./pages/OlympiadsPage.jsx'));
 const ClassroomPostersPage = lazy(() => import('./pages/ClassroomPostersPage.jsx'));
 const OlympiadDetailPage = lazy(() => import('./pages/OlympiadDetailPage.jsx'));
 const OlympiadRosterPage = lazy(() => import('./pages/OlympiadRosterPage.jsx'));
+const OlympiadSheetGuidePage = lazy(() => import('./pages/OlympiadSheetGuidePage.jsx'));
 const OlympiadsAdminListPage = lazy(() => import('./pages/OlympiadsAdminListPage.jsx'));
 const OlympiadFormPage = lazy(() => import('./pages/OlympiadFormPage.jsx'));
 const OlympiadAdminPage = lazy(() => import('./pages/OlympiadAdminPage.jsx'));
+const OlympiadGradingPage = lazy(() => import('./pages/OlympiadGradingPage.jsx'));
+const OlympiadProblemCoordinationPage = lazy(() => import('./pages/OlympiadProblemCoordinationPage.jsx'));
 const MyStudentsPage = lazy(() => import('./pages/MyStudentsPage.jsx'));
 const StudentDetailPage = lazy(() => import('./pages/StudentDetailPage.jsx'));
 const ClaimPage = lazy(() => import('./pages/ClaimPage.jsx'));
@@ -198,6 +201,7 @@ function App() {
         {/* Олимпиад: нэвтрэлтгүй үзнэ; бүртгүүлэх гэх мэт үйлдэлд нэвтрэлт шаардана */}
         <Route element={<PublicOrAppLayout />}>
           <Route path="/olympiads" element={<OlympiadsPage />} />
+          <Route path="/olympiads/sheet-guide" element={<OlympiadSheetGuidePage />} />
           <Route path="/olympiads/:slug" element={<OlympiadDetailPage />} />
           <Route path="/olympiads/:slug/roster" element={<OlympiadRosterPage />} />
           <Route path="/posters" element={<ClassroomPostersPage />} />
@@ -229,6 +233,8 @@ function App() {
           <Route path="admin/olympiads" element={<AdminRoute><OlympiadsAdminListPage /></AdminRoute>} />
           <Route path="admin/olympiads/new" element={<AdminRoute><OlympiadFormPage /></AdminRoute>} />
           <Route path="admin/olympiads/:slug/edit" element={<AdminRoute><OlympiadFormPage /></AdminRoute>} />
+          <Route path="olympiads/:slug/grade" element={<OlympiadGradingPage />} />
+          <Route path="olympiads/:slug/grade/problems/:n" element={<OlympiadProblemCoordinationPage />} />
           <Route path="admin/olympiads/:slug" element={<AdminRoute><OlympiadAdminPage /></AdminRoute>} />
 
           {/* AI Ярилцлага Шийдэгч */}

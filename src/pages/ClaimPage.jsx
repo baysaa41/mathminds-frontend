@@ -67,6 +67,8 @@ function ClaimPage() {
                 <div className="mt-2">
                   <Badge bg={REG_STATUS[info.status][0]}>{REG_STATUS[info.status][1]}</Badge>
                   {info.participant_no && <span className="ms-2">Оролцогчийн дугаар: <strong>{info.participant_no}</strong></span>}
+                  {info.class_room && <span className="ms-2">Шалгалт өгөх анги: <strong>{info.class_room}</strong></span>}
+                  {info.seat_no && <span className="ms-2">Суудал: <strong>{info.seat_no}</strong></span>}
                 </div>
               </div>
 

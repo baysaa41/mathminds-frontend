@@ -224,6 +224,9 @@ export function AdminScoresPanel({ slug, active }) {
                   <td>{r.full_name}<div className="small text-muted d-lg-none">{r.category}</div></td>
                   <td className="d-none d-lg-table-cell small">{r.category}</td>
                   {problems.map((n) => {
+                    if (n > r.problem_count) {  // энэ ангилалд ийм бодлого байхгүй
+                      return <td key={n} className="text-center text-muted bg-light" style={{ minWidth: 64 }}>–</td>;
+                    }
                     const k = cellKey(r.registration_id, n);
                     const value = k in edits ? edits[k] : (r.scores[n - 1] ?? '');
                     const bad = k in edits && !validScore(edits[k], grid.max_score);
@@ -258,17 +261,17 @@ export function AdminResultsPanel({ slug, active }) {
 
 // ── Материал ────────────────────────────────────────────────────────────────
 
-const KINDS = [['PROBLEMS', 'Бодлого'], ['SOLUTIONS', 'Бодолт'], ['RESULTS', 'Дүн'], ['OTHER', 'Бусад']];
+const KINDS = [['PROBLEMS', 'Бодлого'], ['SOLUTIONS', 'Бодолт'], ['RESULTS', 'Дүн'], ['MARKING', 'Засалтын схем'], ['OTHER', 'Бусад']];
 const AUDIENCES = [['PARTICIPANTS', 'Зөвхөн оролцогчид'], ['ALL', 'Бүх хүн']];
 // datetime-local input ↔ ISO (орон нутгийн цагаар)
 const toLocalInput = (iso) => {
   const d = iso ? new Date(iso) : new Date();
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 };
-const emptyMaterial = () => ({ title: '', kind: 'PROBLEMS', audience: 'PARTICIPANTS', url: '', file: null,
+const emptyMaterial = () => ({ title: '', kind: 'PROBLEMS', audience: 'PARTICIPANTS', url: '', file: null, problem_no: '', category: '',
   visible_from: toLocalInput() });
 
-export function AdminMaterialsPanel({ slug, active }) {
+export function AdminMaterialsPanel({ slug, active, categories = [] }) {
   const [items, setItems] = useState(null);
   const [form, setForm] = useState(emptyMaterial);
   const [busy, setBusy] = useState(false);
@@ -281,7 +284,10 @@ export function AdminMaterialsPanel({ slug, active }) {
     e.preventDefault();
     setBusy(true); setError(null);
     try {
-      await createAdminMaterial(slug, { ...form, visible_from: new Date(form.visible_from).toISOString() });
+      const payload = { ...form, visible_from: new Date(form.visible_from).toISOString() };
+      if (form.kind !== 'MARKING' || !String(form.problem_no).trim()) delete payload.problem_no;
+      if (!form.category) delete payload.category;
+      await createAdminMaterial(slug, payload);
       setForm(emptyMaterial());
       e.target.reset();
       await load();
@@ -333,6 +339,27 @@ export function AdminMaterialsPanel({ slug, active }) {
                                 onChange={(e) => setForm({ ...form, visible_from: e.target.value })} />
                 </InputGroup>
               </Col>
+              {categories.length > 1 && (
+                <Col xs={12} md={4}>
+                  <Form.Select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}
+                               aria-label="Ангилал">
+                    <option value="">Бүх ангилал</option>
+                    {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </Form.Select>
+                </Col>
+              )}
+              {form.kind === 'MARKING' && (
+                <Col xs={12}>
+                  <InputGroup>
+                    <InputGroup.Text className="small">Бодлого №</InputGroup.Text>
+                    <Form.Control type="number" min={1} style={{ maxWidth: 110 }} placeholder="бүгд" value={form.problem_no}
+                                  onChange={(e) => setForm({ ...form, problem_no: e.target.value })} />
+                    <InputGroup.Text className="small text-wrap">
+                      Засалтын схемийг координатор шууд харна; сурагчид дүнтэй хамт нийтлэгдэнэ (харагдах хугацаа, «хэнд» үл хамаарна).
+                    </InputGroup.Text>
+                  </InputGroup>
+                </Col>
+              )}
               <Col md={5}>
                 <Form.Control type="file" onChange={(e) => setForm({ ...form, file: e.target.files[0] || null })} />
               </Col>
@@ -358,7 +385,8 @@ export function AdminMaterialsPanel({ slug, active }) {
               {items.length === 0 && <tr><td className="text-muted small p-3">Материал алга.</td></tr>}
               {items.map((m) => (
                 <tr key={m.id}>
-                  <td><Badge bg="secondary">{m.kind_label}</Badge></td>
+                  <td><Badge bg="secondary">{m.kind_label}</Badge>{m.problem_no ? <Badge bg="light" text="dark" className="border ms-1">№{m.problem_no}</Badge> : null}
+                    {m.category ? <Badge bg="light" text="dark" className="border ms-1">{categories.find((c) => c.id === m.category)?.name || 'ангилал'}</Badge> : null}</td>
                   <td><a href={m.file_url || m.url} target="_blank" rel="noreferrer">{m.title}</a></td>
                   <td>
                     <Form.Select size="sm" value={m.audience} onChange={(e) => patch(m, { audience: e.target.value })}>

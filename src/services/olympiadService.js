@@ -313,6 +313,16 @@ export const createDefenseRequest = async (id, payload) =>
 export const withdrawDefenseRequest = async (requestId) =>
   (await apiClient.delete(`${BASE}/me/defense-requests/${requestId}/`)).data;
 
+// Ноорог хуудсыг бодлого руу шилжүүлэх хүсэлт (оролцогч) + админы шийдвэр
+export const createSheetMoveRequest = async (registrationId, { image, problem_no, note }) =>
+  (await apiClient.post(`${BASE}/me/registrations/${registrationId}/sheet-move-requests/`, { image, problem_no, note })).data;
+export const withdrawSheetMoveRequest = async (requestId) =>
+  (await apiClient.delete(`${BASE}/me/sheet-move-requests/${requestId}/`)).data;
+export const getAdminSheetMoveRequests = async (slug, status = 'PENDING') =>
+  (await apiClient.get(`${BASE}/${slug}/admin/sheet-move-requests/`, { params: { status }, skipCache: true })).data;
+export const decideSheetMoveRequest = async (requestId, decision, admin_note = '') =>
+  (await apiClient.post(`${BASE}/admin/sheet-move-requests/${requestId}/decide/`, { decision, admin_note })).data;
+
 // Нийтэд нээлттэй материал (олимпиадын хуудсанд)
 export const getPublicMaterials = async (slug) => (await apiClient.get(`${BASE}/${slug}/materials/`)).data;
 
@@ -350,3 +360,42 @@ export const getAdminDefenseRequests = async (slug, status = 'open') =>
 // {status: 'IN_REVIEW'|'ACCEPTED'|'REJECTED', response, new_score}
 export const decideDefenseRequest = async (requestId, payload) =>
   (await apiClient.post(`${BASE}/admin/defense-requests/${requestId}/decide/`, payload)).data;
+
+// Координатор: бодолтыг онлайнаар үзэж оноо тавих (staff эсвэл олимпиадын координатор)
+export const getGradingOverview = async (slug) =>
+  (await apiClient.get(`${BASE}/${slug}/grading/`, { skipCache: true })).data;
+// Ангилал бүр өөр бодлоготой тул бодлого бүр ангилалтай (category — ангилалын id, 0 — ангилалгүй)
+export const getGradingProblem = async (slug, n, category) =>
+  (await apiClient.get(`${BASE}/${slug}/grading/problems/${n}/`, { params: { category }, skipCache: true })).data;
+// score '' бол устгана; comment өгөөгүй бол хуучин тайлбар хэвээр
+export const saveGradingScore = async (slug, payload) =>
+  (await apiClient.put(`${BASE}/${slug}/grading/score/`, payload)).data;
+export const getGradingDefenses = async (slug, status = 'open') =>
+  (await apiClient.get(`${BASE}/${slug}/grading/defense-requests/`, { params: { status }, skipCache: true })).data;
+export const decideGradingDefense = async (slug, id, payload) =>
+  (await apiClient.post(`${BASE}/${slug}/grading/defense-requests/${id}/decide/`, payload)).data;
+
+// Засалтын схем (marking scheme) — координаторт; сурагчид дүнтэй хамт нийтлэгдэнэ
+export const getGradingMaterials = async (slug) =>
+  (await apiClient.get(`${BASE}/${slug}/grading/materials/`, { skipCache: true })).data;
+// Бодлого бүрийн координацийн хуудас (ахлагч / гол координатор)
+export const getGradingCoordination = async (slug, n, category) =>
+  (await apiClient.get(`${BASE}/${slug}/grading/problems/${n}/coordination/`, { params: { category }, skipCache: true })).data;
+// confirm=false бол баталгаажуулалтыг буцаана; force=true бол оноо дутуу байсан ч баталгаажуулна
+export const confirmGradingProblem = async (slug, n, { category, confirm = true, force = false } = {}) =>
+  (await apiClient.post(`${BASE}/${slug}/grading/problems/${n}/confirm/`, { category, confirm, force })).data;
+// Гол координатор: бүх бодлогыг (category өгвөл тэр ангилалын) нэг товчоор
+export const confirmAllGrading = async (slug, { category, confirm = true, force = false } = {}) =>
+  (await apiClient.post(`${BASE}/${slug}/grading/confirm-all/`, { category, confirm, force })).data;
+// Баг: {categories: [{id, name, problem_count}], graders: [{id, user_id, name, is_head,
+//   problems: {ангилал: [№]}, lead_problems: {ангилал: [№]}, scored, total_scored, last_at}]}
+export const getGradingTeam = async (slug) =>
+  (await apiClient.get(`${BASE}/${slug}/grading/team/`, { skipCache: true })).data;
+export const searchGradingUsers = async (slug, q) =>
+  (await apiClient.get(`${BASE}/${slug}/grading/users/`, { params: { q }, skipCache: true })).data;
+export const addGrader = async (slug, payload) =>
+  (await apiClient.post(`${BASE}/${slug}/grading/team/`, payload)).data;
+export const updateGrader = async (slug, graderId, payload) =>
+  (await apiClient.patch(`${BASE}/${slug}/grading/team/${graderId}/`, payload)).data;
+export const removeGrader = async (slug, graderId) =>
+  (await apiClient.delete(`${BASE}/${slug}/grading/team/${graderId}/`)).data;

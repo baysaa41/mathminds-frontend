@@ -7,8 +7,9 @@ import { fmtScore } from '../../services/olympiadService';
 
 function ResultsTable({ categories, problemCount, highlightId }) {
   if (!categories?.length) return <div className="text-muted small">Баталгаажсан оролцогч алга.</div>;
-  const problems = Array.from({ length: problemCount }, (_, i) => i + 1);
-  return categories.map((g) => (
+  return categories.map((g) => {
+    const problems = Array.from({ length: g.problem_count ?? problemCount }, (_, i) => i + 1);  // ангилал бүр өөр бодлоготой
+    return (
     <Card key={g.category || '-'} className="mb-3">
       <Card.Header className="d-flex justify-content-between">
         <strong>{g.category || 'Ангилалгүй'}</strong>
@@ -41,7 +42,8 @@ function ResultsTable({ categories, problemCount, highlightId }) {
         </Table>
       </div>
     </Card>
-  ));
+    );
+  });
 }
 
 export default ResultsTable;

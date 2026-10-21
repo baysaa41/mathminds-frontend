@@ -275,6 +275,9 @@ export default function AppHeader() {
             <Nav.Link as={Link} to="/feed" onClick={close}>
               <i className="bi bi-rss me-2"></i>Feed
             </Nav.Link>
+            <Nav.Link as={Link} to="/olympiads" onClick={close}>
+              <i className="bi bi-trophy me-2"></i>Олимпиад
+            </Nav.Link>
             {user && (user.is_staff || user.site_role === 'TEACHER') && (
               <Nav.Link as={Link} to="/content/browse" onClick={close}>
                 <i className="bi bi-collection me-2"></i>Контентийн сан

@@ -21,6 +21,7 @@ function OlympiadRosterPage() {
   const [province, setProvince] = useState('');
   const [school, setSchool] = useState('');
   const [category, setCategory] = useState('');
+  const [classRoom, setClassRoom] = useState('');  // хуваарилагдсан кабинет ('-' = оноогоогүй)
   const [status, setStatus] = useState('');  // админ: PAID / PENDING / WAIVED (төлбөрөөс чөлөөлсөн)
   const [onlyMine, setOnlyMine] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -68,6 +69,12 @@ function OlympiadRosterPage() {
     [rows, province],
   );
 
+  const classRooms = useMemo(
+    () => uniq(rows.map((r) => r.class_room)).sort((x, y) => x.localeCompare(y, 'mn', { numeric: true })),
+    [rows],
+  );
+  const hasUnassigned = rows.some((r) => !r.class_room);
+
   const categories = useMemo(() => uniq(rows.map((r) => r.olympiad_category_name)), [rows]);
 
   const filtered = useMemo(() => {
@@ -76,10 +83,11 @@ function OlympiadRosterPage() {
       && (!province || r.province === province)
       && (!school || r.school === school)
       && (!category || r.olympiad_category_name === category)
+      && (!classRoom || (classRoom === '-' ? !r.class_room : r.class_room === classRoom))
       && (!status || (status === 'WAIVED' ? r.fee_waived
         : status === 'BANK' ? r.bank_transfer?.status === 'SUBMITTED' && r.status === 'PENDING' : r.status === status))
       && (!s || `${r.full_name} ${r.province} ${r.school}`.toLowerCase().includes(s)));
-  }, [rows, q, province, school, category, status, onlyMine]);
+  }, [rows, q, province, school, category, classRoom, status, onlyMine]);
   const hasMine = rows.some((r) => r.is_mine);
 
   if (loading) return <Container className="py-5 text-center"><Spinner animation="border" /></Container>;
@@ -118,6 +126,15 @@ function OlympiadRosterPage() {
             </Form.Select>
           </Col>
         )}
+        {classRooms.length > 0 && (
+          <Col md>
+            <Form.Select aria-label="Кабинет" value={classRoom} onChange={(e) => setClassRoom(e.target.value)}>
+              <option value="">Бүх кабинет</option>
+              {classRooms.map((c) => <option key={c} value={c}>Кабинет {c}</option>)}
+              {hasUnassigned && <option value="-">Кабинет оноогоогүй</option>}
+            </Form.Select>
+          </Col>
+        )}
         <Col md>
           <Form.Select aria-label="Аймаг/Дүүрэг" value={province} onChange={(e) => { setProvince(e.target.value); setSchool(''); }}>
             <option value="">Бүх аймаг/дүүрэг</option>
@@ -148,11 +165,11 @@ function OlympiadRosterPage() {
         onPickSchool={(n) => { setProvince(''); setSchool(n); }}
       />
       <Table striped hover size="sm" responsive>
-        <thead><tr><th>№</th><th>Овог нэр</th>{user?.is_staff && <th>MMO ID</th>}<th>Аймаг/Дүүрэг</th><th>Сургууль</th><th>Ангилал</th><th>Анги</th>{user?.is_staff && <th>Бүртгэсэн</th>}{user?.is_staff && <th>Бүртгүүлсэн огноо</th>}{user?.is_staff && <th>Төлөв</th>}{user?.is_staff && <th />}</tr></thead>
+        <thead><tr><th>№</th><th>Овог нэр</th>{user?.is_staff && <th>MMO ID</th>}<th>Аймаг/Дүүрэг</th><th>Сургууль</th><th>Ангилал</th><th>Анги</th><th>Шалгалтын анги</th><th>Суудал</th>{user?.is_staff && <th>Бүртгэсэн</th>}{user?.is_staff && <th>Бүртгүүлсэн огноо</th>}{user?.is_staff && <th>Төлөв</th>}{user?.is_staff && <th />}</tr></thead>
         <tbody>
           {filtered.map((r, i) => (
             <tr key={`${r.participant_no}-${i}`}>
-              <td>{r.participant_no ?? '-'}</td><td>{r.full_name}{r.full_name_latin && <div className="small text-muted">{r.full_name_latin}</div>}</td>{user?.is_staff && <td>{r.mmo_id ?? '-'}</td>}<td>{r.province}</td><td>{r.school}</td><td>{r.olympiad_category_name ?? '-'}</td><td>{r.olympiad_category_name && r.grade_label === r.olympiad_category_name ? '-' : r.grade_label}</td>
+              <td>{r.participant_no ?? '-'}</td><td>{r.full_name}{r.full_name_latin && <div className="small text-muted">{r.full_name_latin}</div>}</td>{user?.is_staff && <td>{r.mmo_id ?? '-'}</td>}<td>{r.province}</td><td>{r.school}</td><td>{r.olympiad_category_name ?? '-'}</td><td>{r.olympiad_category_name && r.grade_label === r.olympiad_category_name ? '-' : r.grade_label}</td><td>{r.class_room || '-'}</td><td>{r.seat_no || '-'}</td>
               {user?.is_staff && <td>{r.registered_by_name ?? '-'}</td>}
               {user?.is_staff && <td className="small text-nowrap">{fmtDate(r.created_at)}</td>}
               {user?.is_staff && (

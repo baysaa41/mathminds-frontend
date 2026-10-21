@@ -5,14 +5,15 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Container, Card, Button, Alert, ProgressBar, Row, Col, Spinner, Badge, Tabs, Tab, Form } from 'react-bootstrap';
 import { startSheetsJob, getSheetsJob, uploadSheetImages, getUploadedImages, getUploadBatch, downloadSheetsPdf,
-  getOlympiad, sheetFilterParams, countRegistrations } from '../services/olympiadService';
+  getOlympiad, getRoster, sheetFilterParams, countRegistrations } from '../services/olympiadService';
 import { AdminDefensePanel, AdminMaterialsPanel, AdminResultsPanel, AdminScoresPanel } from '../components/olympiad/AdminResultPanels';
 import { AdminSheetGallery } from '../components/olympiad/SheetPosts';
+import AdminSheetMoveRequests from '../components/olympiad/AdminSheetMoveRequests';
 import UnmatchedSheets from '../components/olympiad/UnmatchedSheets';
 
 const naturalSort = (a, b) => a.name.localeCompare(b.name, undefined, { numeric: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const EMPTY_FILTERS = { category: '', last_name: '', first_name: '' };
+const EMPTY_FILTERS = { category: '', class_room: '', last_name: '', first_name: '', order: '' };
 
 function OlympiadAdminPage() {
   const { slug } = useParams();
@@ -24,6 +25,7 @@ function OlympiadAdminPage() {
   const [result, setResult] = useState(null);
   const [processing, setProcessing] = useState(null);  // background боловсруулалтын явц
   const [images, setImages] = useState([]);
+  const [galleryRoom, setGalleryRoom] = useState('');  // '' = бүгд, '-' = кабинет оноогоогүй
   const [msg, setMsg] = useState(null);
   const [error, setError] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -44,7 +46,22 @@ function OlympiadAdminPage() {
   useEffect(() => () => { mounted.current = false; }, []);
   useEffect(() => { getOlympiad(slug).then(setOlympiad).catch(() => {}); }, [slug]);
   const setFilter = (k) => (e) => { setFilters((f) => ({ ...f, [k]: e.target.value })); setSheetsJob(null); };
-  const filtered = Object.keys(sheetFilterParams(filters)).length > 0;
+  const filtered = Object.keys(sheetFilterParams({ ...filters, order: '' })).length > 0;
+  // Хуваарилагдсан кабинетууд (хуудсыг кабинетээр шүүхэд)
+  const [rooms, setRooms] = useState([]);
+  const [hasUnassigned, setHasUnassigned] = useState(false);
+  useEffect(() => {
+    getRoster(slug).then((rows) => {
+      setRooms([...new Set(rows.map((r) => r.class_room).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, 'mn', { numeric: true })));
+      setHasUnassigned(rows.some((r) => !r.class_room));
+    }).catch(() => {});
+  }, [slug]);
+
+  // Кабинет сонгоогүй үед зөвхөн аль ч хүнтэй холбогдоогүй зургийг харуулна (ноорог харуулахгүй; олон зураг нэг дор ачаалахаас сэргийлнэ)
+  const galleryImages = galleryRoom
+    ? images.filter((i) => (galleryRoom === '-' ? i.sheet && !i.class_room : i.class_room === galleryRoom))
+    : images.filter((i) => i.sheet == null && !i.draft_registration);
 
   // Шүүлтүүрт тохирох оролцогчдын урьдчилсан жагсаалт (дээд тал нь 30)
   const [preview, setPreview] = useState(null);
@@ -130,7 +147,9 @@ function OlympiadAdminPage() {
         <Card.Body>
           <p className="small text-muted">
             PDF-ийн эхний хуудас нь хоосон (нөхөөгүй) загвар. Дараа нь төлбөр төлсөн оролцогч бүрт нэг хуудас: овог нэр
-            хэвлэгдсэн, хяналтын хэсэг нь тухайн оролцогчийн кодоор будагдсан, бодлого/хуудасны дугаар хоосон.
+            хэвлэгдсэн, хяналтын хэсэг нь тухайн оролцогчийн кодоор будагдсан, бодлого/хуудасны дугаар хоосон. Кабинет
+            хуваарилагдсан бол хуудасны дээд талд «Кабинет N · Суудал M» хэвлэгдэнэ. Кабинетээр шүүж, суудлын дугаараар
+            эрэмбэлж болно.
           </p>
           <Row className="g-2 mb-3">
             <Col xs={6} md={3}>
@@ -139,10 +158,25 @@ function OlympiadAdminPage() {
                 {(olympiad?.categories || []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </Form.Select>
             </Col>
-            <Col xs={6} md={4}>
-              <Form.Control size="sm" placeholder="Овог" value={filters.last_name} onChange={setFilter('last_name')} />
+            {rooms.length > 0 && (
+              <Col xs={6} md={2}>
+                <Form.Select size="sm" value={filters.class_room} onChange={setFilter('class_room')} aria-label="Кабинет">
+                  <option value="">Кабинет сонгоно уу</option>
+                  {rooms.map((c) => <option key={c} value={c}>Кабинет {c}</option>)}
+                  {hasUnassigned && <option value="-">Кабинет оноогоогүй</option>}
+                </Form.Select>
+              </Col>
+            )}
+            <Col xs={6} md={2}>
+              <Form.Select size="sm" value={filters.order} onChange={setFilter('order')} aria-label="Эрэмбэ">
+                <option value="">Эрэмбэ: дугаараар</option>
+                <option value="seat">Эрэмбэ: кабинет, суудлаар</option>
+              </Form.Select>
             </Col>
             <Col xs={6} md={3}>
+              <Form.Control size="sm" placeholder="Овог" value={filters.last_name} onChange={setFilter('last_name')} />
+            </Col>
+            <Col xs={6} md={2}>
               <Form.Control size="sm" placeholder="Нэр" value={filters.first_name} onChange={setFilter('first_name')} />
             </Col>
             <Col xs={12} md={1} className="d-grid">
@@ -167,6 +201,7 @@ function OlympiadAdminPage() {
                     <div key={r.id}>
                       <span className="text-muted me-2">№{r.participant_no ?? '—'}</span>
                       {r.last_name} {r.first_name}
+                      <Link to={`/my-olympiads/${r.id}`} target="_blank" className="ms-2 small">Оролцогчоор харах ↗</Link>
                       {r.category && <span className="text-muted"> · {r.category}</span>}
                     </div>
                   ))}
@@ -230,12 +265,26 @@ function OlympiadAdminPage() {
         </Card.Body>
       </Card>
 
+      <AdminSheetMoveRequests slug={slug} onChanged={loadImages} />
       <UnmatchedSheets slug={slug} olympiad={olympiad} images={images} onAssigned={loadImages} />
 
       <Card>
-        <Card.Header>Бодолтын хуудсууд — бодлого бүрээр ({images.length} хуудас)</Card.Header>
+        <Card.Header className="d-flex flex-wrap align-items-center gap-2">
+          <span>Бодолтын хуудсууд — бодлого бүрээр ({galleryImages.length} хуудас)</span>
+          <Form.Select size="sm" className="w-auto ms-auto" value={galleryRoom}
+            onChange={(e) => setGalleryRoom(e.target.value)} aria-label="Кабинетаар шүүх">
+            <option value="">Бүх кабинет</option>
+            {rooms.map((r) => <option key={r} value={r}>{r}</option>)}
+            {hasUnassigned && <option value="-">Кабинет оноогоогүй</option>}
+          </Form.Select>
+        </Card.Header>
         <Card.Body>
-          <AdminSheetGallery images={images} />
+          {!galleryRoom && images.some((i) => i.sheet != null) && (
+            <div className="text-muted small mb-2">
+              Холбогдсон хуудсыг харахын тулд дээрээс кабинет сонгоно уу.
+            </div>
+          )}
+          <AdminSheetGallery images={galleryImages} />
         </Card.Body>
       </Card>
         </Tab>
@@ -246,7 +295,7 @@ function OlympiadAdminPage() {
           <AdminResultsPanel slug={slug} active={tab === 'results'} />
         </Tab>
         <Tab eventKey="materials" title="Материал">
-          <AdminMaterialsPanel slug={slug} active={tab === 'materials'} />
+          <AdminMaterialsPanel slug={slug} active={tab === 'materials'} categories={olympiad?.categories || []} />
         </Tab>
         <Tab eventKey="defense" title="Бодолт хамгаалах">
           <AdminDefensePanel slug={slug} active={tab === 'defense'} />

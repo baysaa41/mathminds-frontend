@@ -3,7 +3,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Container, Card, Form, Row, Col, Button, Alert, Spinner } from 'react-bootstrap';
+import { Container, Card, Form, Row, Col, Button, Alert, Spinner, InputGroup } from 'react-bootstrap';
 import { apiErrorText, getOlympiad, createOlympiad, updateOlympiad } from '../services/olympiadService';
 
 const CYR = {
@@ -63,6 +63,7 @@ function OlympiadFormPage() {
         });
         setCategories((o.categories || []).map((c) => ({
           id: c.id, name: c.name, grade_from: c.grade_from, grade_to: c.grade_to,
+          problem_count: c.problem_count ?? '',  // хоосон бол олимпиадын бодлогын тоо
         })));
         setSchedule(o.schedule.map((s) => ({
           starts_at: toLocalInput(s.starts_at), ends_at: toLocalInput(s.ends_at),
@@ -121,6 +122,7 @@ function OlympiadFormPage() {
         ...(c.id ? { id: c.id } : {}), name: c.name.trim(),
         grade_from: c.grade_from === null ? null : Number(c.grade_from),
         grade_to: c.grade_to === null ? null : Number(c.grade_to),
+        problem_count: c.problem_count === '' || c.problem_count == null ? null : Number(c.problem_count),
       })),
       schedule: schedule.filter((s) => s.title && s.starts_at).map((s) => ({
         ...s, starts_at: toIso(s.starts_at), ends_at: toIso(s.ends_at),
@@ -282,8 +284,16 @@ function OlympiadFormPage() {
                 <Col xs={2} md={2} className="text-end">
                   <Button size="sm" variant="outline-danger" type="button" onClick={() => setCategories((r) => r.filter((_, idx) => idx !== i))}>Устгах</Button>
                 </Col>
+                <Col xs={12} md={4}>
+                  <InputGroup size="sm">
+                    <InputGroup.Text>Бодлогын тоо</InputGroup.Text>
+                    <Form.Control type="number" min={1} max={Number(form.problem_count) || 30} value={c.problem_count ?? ''}
+                                  placeholder={`олимпиадынх (${form.problem_count})`} onChange={setCat(i, 'problem_count')} />
+                  </InputGroup>
+                </Col>
               </Row>
             ))}
+            <div className="text-muted small mb-1">Ангилал бүр өөр бодлоготой байж болно. Олимпиадын бодлогын тоо нь ангилал бүрийнхээс багагүй (хамгийн их) байна.</div>
             {fieldErr('categories') && <div className="text-danger small">Ангилалын анги буруу байна (доод анги дээд ангиас их байж болохгүй).</div>}
           </Card.Body>
         </Card>

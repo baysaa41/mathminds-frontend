@@ -866,7 +866,10 @@ function OlympiadDetailPage() {
         </Card>
       )}
 
-      <Button as={Link} to={`/olympiads/${slug}/roster`} variant="outline-secondary">Бүртгэлийн жагсаалт харах</Button>
+      <div className="d-flex flex-wrap gap-2">
+        <Button as={Link} to={`/olympiads/${slug}/roster`} variant="outline-secondary">Бүртгэлийн жагсаалт харах</Button>
+        <Button as={Link} to="/olympiads/sheet-guide" variant="outline-primary">Бодолтын хуудас бөглөх заавар</Button>
+      </div>
 
       <RegistrationPayment request={payReq} onClose={() => { setPayReq(null); setPaySel(new Set()); }} onChanged={load} />
     </Container>

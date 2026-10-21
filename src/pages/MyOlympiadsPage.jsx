@@ -40,6 +40,7 @@ function MyOlympiadsPage() {
                   <div className="small">
                     📅 {fmtRange(r.exam_start, r.exam_end)}
                     {new Date(r.exam_end || r.exam_start) < new Date() && <span className="text-muted"> · Дууссан</span>}
+                    {r.class_room && <span> · 🏫 {r.class_room}{r.seat_no ? `, суудал ${r.seat_no}` : ''}</span>}
                   </div>
                   <div className="small text-muted">
                     {[r.olympiad_category_name, r.grade && r.grade_label].filter(Boolean).join(' · ')}

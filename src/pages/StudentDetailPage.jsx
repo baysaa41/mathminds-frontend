@@ -132,12 +132,13 @@ function StudentDetailPage() {
       <Card>
         <Card.Header>Олимпиадын бүртгэлүүд <small className="text-muted">({student.registrations.length})</small></Card.Header>
         <Table responsive size="sm" className="mb-0 align-middle">
-          <thead><tr><th>Олимпиад</th><th>№</th><th>Ангилал / Анги</th><th>Төлөв</th><th /></tr></thead>
+          <thead><tr><th>Олимпиад</th><th>№</th><th>Шалгалтын анги / Суудал</th><th>Ангилал / Анги</th><th>Төлөв</th><th /></tr></thead>
           <tbody>
             {student.registrations.map((r) => (
               <tr key={r.id}>
                 <td><Link to={`/olympiads/${r.olympiad_slug}`}>{r.olympiad_title}</Link></td>
                 <td>{r.participant_no ?? '-'}</td>
+                <td>{r.class_room ? `${r.class_room}${r.seat_no ? ` / ${r.seat_no}` : ''}` : '-'}</td>
                 <td>{r.olympiad_category_name && r.olympiad_category_name !== r.grade_label
                   ? `${r.olympiad_category_name} · ${r.grade_label}` : (r.olympiad_category_name || r.grade_label || '-')}</td>
                 <td>

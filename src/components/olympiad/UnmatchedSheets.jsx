@@ -19,7 +19,8 @@ export default function UnmatchedSheets({ slug, olympiad, images, onAssigned }) 
   const [error, setError] = useState(null);
   const [msg, setMsg] = useState(null);
 
-  const unmatched = images.filter((im) => im.sheet == null);
+  // Аль ч хүнтэй холбогдоогүй хуудас л — оролцогч нь тодорхой (ноорог) хуудсыг энд харуулахгүй, оролцогч өөрөө харна
+  const unmatched = images.filter((im) => im.sheet == null && !im.draft_registration);
   if (!unmatched.length) return null;
 
   const toggle = (id) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
@@ -59,7 +60,7 @@ export default function UnmatchedSheets({ slug, olympiad, images, onAssigned }) 
           <div className="d-flex flex-wrap gap-2 mb-3">
             {unmatched.map((im) => (
               <label key={im.id} className="border rounded p-1 text-center" style={{ width: 130, cursor: 'pointer' }}>
-                <img src={im.url} alt={`Холбогдоогүй хуудас ${im.order + 1}`} style={{ width: '100%', height: 150, objectFit: 'cover', objectPosition: 'top' }} />
+                <img src={im.url} alt={`Холбогдоогүй хуудас ${im.order + 1}`} loading="lazy" style={{ width: '100%', height: 150, objectFit: 'cover', objectPosition: 'top' }} />
                 <Form.Check type="checkbox" className="mt-1" label={`№${im.order + 1}`} checked={picked.includes(im.id)}
                             onChange={() => toggle(im.id)} />
               </label>

@@ -66,7 +66,12 @@ function MyOlympiadRegistrationPage() {
 
   return (
     <Container fluid className="py-4 px-md-4" style={{ maxWidth: 1400 }}>
-      <Link to="/my-olympiads" className="small">← Миний олимпиадууд</Link>
+      {reg.viewing_as_admin ? (
+        <Alert variant="warning" className="py-2 small">
+          <b>Админ харагдац</b> — {reg.student_name}-ийн яг харж буй хуудас (зөвхөн унших; төлөх, засах, хамгаалах үйлдэл идэвхгүй).
+          {' '}<Link to={`/admin/olympiads/${o.slug}`}>← Админ</Link>
+        </Alert>
+      ) : <Link to="/my-olympiads" className="small">← Миний олимпиадууд</Link>}
       <h3 className="mt-2 mb-0">{o.title}</h3>
       <div className="text-muted mb-3">{reg.student_name}{reg.last_name_latin ? ` · ${reg.last_name_latin} ${reg.first_name_latin}` : ''}</div>
 
@@ -78,7 +83,7 @@ function MyOlympiadRegistrationPage() {
             <Badge bg={REG_STATUS[reg.status][0]}>{REG_STATUS[reg.status][1]}</Badge>
             {reg.fee_waived && <Badge bg="info" className="ms-1">Төлбөрөөс чөлөөлсөн</Badge>}
           </div>
-          {reg.status === 'PENDING' && fee > 0 && (
+          {reg.status === 'PENDING' && fee > 0 && !reg.viewing_as_admin && (
             transferUnderReview(reg)
               ? <Badge bg="info">Дансаар шилжүүлсэн — админ шалгаж байна ({reg.bank_transfer.reference})</Badge>
               : (
@@ -129,6 +134,8 @@ function MyOlympiadRegistrationPage() {
             </>)}
             <tr><td className="text-muted">Сургууль</td><td>{reg.school}</td></tr>
             <tr><td className="text-muted">Олимпиадын хугацаа</td><td>{fmtRange(o.exam_start, o.exam_end)}{o.venue ? ` · ${o.venue}` : ''}</td></tr>
+            {reg.class_room && <tr><td className="text-muted">Шалгалт өгөх анги</td><td><strong>{reg.class_room}</strong></td></tr>}
+            {reg.seat_no && <tr><td className="text-muted">Суудлын дугаар</td><td><strong>{reg.seat_no}</strong></td></tr>}
           </tbody>
         </Table>
       </Card>
@@ -159,10 +166,10 @@ function MyOlympiadRegistrationPage() {
           <MyResultsTab registrationId={reg.id} active={tab === 'results'} />
         </Tab>
         <Tab eventKey="materials" title="Материал">
-          <MyMaterialsTab registrationId={reg.id} active={tab === 'materials'} />
+          <MyMaterialsTab registrationId={reg.id} active={tab === 'materials'} readOnly={!!reg.viewing_as_admin} />
         </Tab>
         <Tab eventKey="defense" title="Бодолт хамгаалах">
-          <MyDefenseTab registrationId={reg.id} active={tab === 'defense'} problemCount={o.problem_count}
+          <MyDefenseTab registrationId={reg.id} active={tab === 'defense'} problemCount={cats.find((c) => c.id === reg.olympiad_category)?.problem_count || o.problem_count}
                         initialProblem={defendProblem} />
         </Tab>
       </Tabs>

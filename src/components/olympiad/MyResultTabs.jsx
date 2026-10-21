@@ -2,12 +2,13 @@
 // «Миний бүртгэл» хуудасны tab-ууд: оноо, дүнгийн хуудас, материал, бодолт хамгаалах
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Alert, Badge, Button, Card, Col, Form, Row, Spinner, Table } from 'react-bootstrap';
 import ResultsTable from './ResultsTable';
 import { SheetPost, SheetViewer } from './SheetPosts';
 import {
-  apiErrorText, createDefenseRequest, DEFENSE_STATUS, fmtDate, fmtScore, getMeDefenseRequests, getMeMaterials,
-  getMeResults, getMeScores, timeUntil, withdrawDefenseRequest,
+  apiErrorText, createDefenseRequest, createSheetMoveRequest, DEFENSE_STATUS, fmtDate, fmtScore, getMeDefenseRequests,
+  getMeMaterials, getMeResults, getMeScores, timeUntil, withdrawDefenseRequest, withdrawSheetMoveRequest,
 } from '../../services/olympiadService';
 
 const Loading = () => <div className="py-4 text-center"><Spinner animation="border" size="sm" /></div>;
@@ -92,7 +93,82 @@ export function MyResultsTab({ registrationId, active }) {
   return <ResultsTable categories={data.categories} problemCount={data.problem_count} highlightId={data.registration_id} />;
 }
 
-export function MyMaterialsTab({ registrationId, active }) {
+// Ноорог: таны хуудас гэдэг нь тодорхой ч аль бодлогынх нь тодорхойгүй — бодлогоо сонгож шилжүүлэх хүсэлт өгнө, админ батална
+function DraftSheets({ data, registrationId, readOnly }) {
+  const [choice, setChoice] = useState({});   // imageId → сонгосон бодлого
+  const [busy, setBusy] = useState(null);
+  const [error, setError] = useState(null);
+  const [local, setLocal] = useState({});     // imageId → шинэчлэгдсэн хүсэлт (илгээсний дараа)
+  const drafts = data.drafts || [];
+  if (!drafts.length) return null;
+  const problems = Array.from({ length: data.problem_count || 5 }, (_, i) => i + 1);
+  const reqOf = (d) => (d.id in local ? local[d.id] : d.request);
+  const submit = async (d) => {
+    setBusy(d.id); setError(null);
+    try {
+      const r = await createSheetMoveRequest(registrationId, { image: d.id, problem_no: Number(choice[d.id]), note: '' });
+      setLocal((l) => ({ ...l, [d.id]: { id: r.id, status: r.status, to_problem: r.to_problem, admin_note: '' } }));
+    } catch (e) { setError(e?.response?.data?.error || 'Хүсэлт илгээхэд алдаа гарлаа.'); } finally { setBusy(null); }
+  };
+  const cancel = async (d, req) => {
+    setBusy(d.id); setError(null);
+    try { await withdrawSheetMoveRequest(req.id); setLocal((l) => ({ ...l, [d.id]: null })); }
+    catch (e) { setError(e?.response?.data?.error || 'Цуцлахад алдаа гарлаа.'); } finally { setBusy(null); }
+  };
+  return (
+    <Card className="mb-3 border-warning">
+      <Card.Header>📝 Бодлого нь тодорхойгүй хуудас ({drafts.length})</Card.Header>
+      <Card.Body>
+        <div className="small text-muted mb-2">
+          Эдгээр хуудас таных гэдэг нь тодорхой, харин аль бодлогын хуудас нь автоматаар танигдсангүй. Аль бодлогынх болохыг сонгож
+          шилжүүлэх хүсэлт өгнө үү — админ баталсны дараа тухайн бодлогын хуудас болно.
+        </div>
+        {error && <Alert variant="danger" className="py-1 small">{error}</Alert>}
+        <Row className="g-3">
+          {drafts.map((d) => {
+            const req = reqOf(d);
+            return (
+              <Col key={d.id} xs={12} md={6} lg={4}>
+                <div className="border rounded p-2 h-100">
+                  <a href={d.url} target="_blank" rel="noreferrer">
+                    <img src={d.url} alt="Ноорог хуудас" loading="lazy" className="img-fluid border rounded mb-2"
+                         style={{ width: '100%', maxHeight: 260, objectFit: 'cover', objectPosition: 'top' }} />
+                  </a>
+                  {req?.status === 'PENDING' ? (
+                    <div className="d-flex align-items-center gap-2 flex-wrap">
+                      <Badge bg="info">Хүсэлт: Бодлого {req.to_problem} — хүлээгдэж буй</Badge>
+                      {!readOnly && <Button size="sm" variant="link" className="py-0" disabled={busy === d.id} onClick={() => cancel(d, req)}>Цуцлах</Button>}
+                    </div>
+                  ) : (
+                    <>
+                      {req?.status === 'REJECTED' && (
+                        <Alert variant="secondary" className="py-1 px-2 small mb-2">
+                          Өмнөх хүсэлт (Бодлого {req.to_problem}) татгалзагдсан{req.admin_note ? `: ${req.admin_note}` : ''}.
+                        </Alert>
+                      )}
+                      {!readOnly && (
+                        <div className="d-flex gap-2">
+                          <Form.Select size="sm" value={choice[d.id] || ''} aria-label="Бодлого"
+                                       onChange={(e) => setChoice((c) => ({ ...c, [d.id]: e.target.value }))}>
+                            <option value="">— Бодлого —</option>
+                            {problems.map((p) => <option key={p} value={p}>Бодлого {p}</option>)}
+                          </Form.Select>
+                          <Button size="sm" disabled={!choice[d.id] || busy === d.id} onClick={() => submit(d)}>Хүсэлт</Button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </Col>
+            );
+          })}
+        </Row>
+      </Card.Body>
+    </Card>
+  );
+}
+
+export function MyMaterialsTab({ registrationId, active, readOnly = false }) {
   const fetcher = useCallback(() => getMeMaterials(registrationId), [registrationId]);
   const { data, error } = useTabData(active, fetcher);
   if (error) return <Alert variant="danger">{error}</Alert>;
@@ -118,7 +194,9 @@ export function MyMaterialsTab({ registrationId, active }) {
           </Table>
         )}
       </Card>
+      <DraftSheets data={data} registrationId={registrationId} readOnly={readOnly} />
       <h6 className="mt-2">Миний бодолтын хуудас (скан)</h6>
+      <div className="small mb-2"><Link to="/olympiads/sheet-guide">Бодолтын хуудас бөглөх заавар</Link> — хуудасны дугаарыг хэрхэн зөв будах вэ</div>
       {data.sheets.length === 0 ? (
         <div className="text-muted small">Скан хийгдсэн хуудас алга.</div>
       ) : (
