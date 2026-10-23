@@ -180,31 +180,6 @@ body {
   color: #6c757d;
 }
 
-/* --- Excalidraw: Bootstrap interference fixes --- */
-
-/* ROOT CAUSE: Bootstrap sets .dropdown-menu { display: none; } for its own
-   dropdown component. Excalidraw reuses the same class name for its hamburger
-   menu content and More Tools dropdown. When those panels open, Bootstrap hides
-   them immediately. Force display:block so Excalidraw's panels are visible. */
-.excalidraw .dropdown-menu {
-  display: block;
-}
-
-/* Bootstrap sets svg { overflow: hidden; vertical-align: middle; } globally,
-   which clips Excalidraw's SVG icons. */
-.excalidraw svg {
-  overflow: initial;
-  vertical-align: initial;
-}
-
-/* Bootstrap normalizes <button> differently than browsers; reset within Excalidraw
-   so toolbar buttons inherit Excalidraw's own styles. */
-.excalidraw button {
-  font-family: inherit;
-  font-size: inherit;
-  line-height: inherit;
-}
-
 /* --- Objectives accordion (compact) --- */
 .objectives-accordion .accordion-button {
   padding: 0;

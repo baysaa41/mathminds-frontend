@@ -45,8 +45,6 @@ const ProblemDetailPage = lazy(() => import('./pages/ProblemDetailPage.jsx'));
 const ProblemEditPage = lazy(() => import('./pages/ProblemEditPage.jsx'));
 const ProblemsBrowsePage = lazy(() => import('./pages/ProblemsBrowsePage.jsx'));
 const SolutionEditPage = lazy(() => import('./pages/SolutionEditPage.jsx'));
-const SolutionDrawPage = lazy(() => import('./pages/SolutionDrawPage.jsx'));
-const DrawPage = lazy(() => import('./pages/DrawPage.jsx'));
 
 // Formulas
 const FormulasBrowsePage = lazy(() => import('./pages/FormulasBrowsePage.jsx'));
@@ -349,26 +347,6 @@ function App() {
           element={
             <ProtectedRoute>
               <AISolverPage />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Бодолт зурах - Fullscreen Excalidraw */}
-        <Route
-          path="/problem/:uuid/draw"
-          element={
-            <ProtectedRoute>
-              <SolutionDrawPage />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Ерөнхий зурах хуудас — аль ч хуудаснаас дуудагдах боломжтой */}
-        <Route
-          path="/draw"
-          element={
-            <ProtectedRoute>
-              <DrawPage />
             </ProtectedRoute>
           }
         />
