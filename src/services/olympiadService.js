@@ -225,6 +225,26 @@ export const downloadSheetsPdf = async (slug, job) => {
   URL.revokeObjectURL(url);
 };
 
+// Кодын дэвтэр (xlsx): оролцогч бүрийн код, хяналтын хэсгийн 6 нүд
+export const downloadCodebook = async (slug) => {
+  const res = await apiClient.get(`${BASE}/${slug}/admin/codebook.xlsx`, { responseType: 'blob', skipCache: true });
+  const url = URL.createObjectURL(res.data);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${slug}-kodyn-devter.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+};
+
+// Хяналтын хэсгээс оролцогч: {cells: [[мөр, багана], ...]} эсвэл {code: 976} ->
+// {code, participant_no, cells, missing, extra, registrations}
+export const lookupControlCode = async (slug, { cells, code }) =>
+  (await apiClient.get(`${BASE}/${slug}/admin/code-lookup/`, {
+    params: code != null ? { code } : { cells: cells.map(([r, c]) => `${r}-${c}`).join(',') }, skipCache: true,
+  })).data;
+
 export const uploadSheetImages = async (slug, files, onProgress) => {
   const form = new FormData();
   files.forEach((f) => form.append('files', f));
