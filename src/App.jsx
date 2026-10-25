@@ -87,6 +87,8 @@ const RegisterPage = lazy(() => import('./pages/RegisterPage.jsx'));
 const PasswordResetRequestPage = lazy(() => import('./pages/PasswordResetRequestPage.jsx'));
 const PasswordResetConfirmPage = lazy(() => import('./pages/PasswordResetConfirmPage.jsx'));
 const CallbackPage = lazy(() => import('./pages/CallbackPage'));
+const BoardSsoPage = lazy(() => import('./pages/BoardSsoPage.jsx'));
+const BoardLogoutPage = lazy(() => import('./pages/BoardLogoutPage.jsx'));
 const HomePage = lazy(() => import('./pages/HomePage'));
 
 // Info Pages
@@ -167,6 +169,9 @@ function App() {
         {/* Нууц үг баталгаажуулах/шинэчлэх зам. uidb64 болон token-г URL-аас авна */}
         <Route path="/reset-password/:uidb64/:token" element={<PasswordResetConfirmPage />} />
         <Route path="/callback" element={<CallbackPage />} />
+        {/* Board апп (board.mathminds.club) руу MathMinds нэвтрэлт дамжуулах */}
+        <Route path="/board-sso" element={<BoardSsoPage />} />
+        <Route path="/board-logout" element={<BoardLogoutPage />} />
         {/* Олимпиадын имэйлийн link: /r#<token> */}
         <Route path="/r" element={<ClaimPage />} />
 
