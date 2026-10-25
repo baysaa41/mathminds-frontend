@@ -112,7 +112,7 @@ const MODULES = [
     summary: 'Сул сэдвээр сангаас хүрэлцэхүйц бодлого олдохгүй үед шинэ сонгох бодлого үүсгэнэ.',
     details: [
       'Модуль: integral/daily_problem_generation.py — generate_problems() (сул категори/сэдвийн 3 жишээ бодлогоор prompt), generate_similar_problem()',
-      'Model: deepseek → (унавал) gemini → claude haiku (call_ai_with_fallback)',
+      'Model: deepseek-v4-flash → (унавал) deepseek-v4-pro → claude haiku (call_ai_with_fallback)',
       'Үүсгэсэн бодлогыг review_problems()-ээр шалгаад хүчинтэйг нь is_public=True болгож санд нэмнэ — ижил сул талтай бусад сурагчид дахин ашиглана; буруу нь нуугдмал үлдэж админд мэдэгдэнэ',
       'Хязгаар: нэг дуудлагад 5 хүртэл; өдрийн cron-д нийт DAILY_GENERATION_BUDGET = 100 (GenerationBudget)',
       'API: POST /api/integral/similar-problem/ {problem_id?, subject?} — AI чатад санал болгох бодлого дууссан үед одоогийнхтой төстэйг үүсгэнэ',

@@ -75,7 +75,7 @@ const AIGuidePage = () => {
       <Alert variant="info" className="mb-4 d-flex align-items-start gap-2">
         <Lightbulb size={20} className="mt-1 flex-shrink-0" />
         <div>
-          <strong>AI багш нар</strong> нь DeepSeek, Gemini 2.5, GPT-4o загваруудад суурилсан
+          <strong>AI багш нар</strong> нь DeepSeek, GPT-4o загваруудад суурилсан
           бөгөөд бодлого бодох, бодолт шалгах, өгүүлэл бичих, тест бэлдэх зэрэг олон зүйлд
           тусална. AI-ийн хариултыг заавал өөрөө шалгаж, баталгаажуулаарай.
         </div>
@@ -187,10 +187,9 @@ const AIGuidePage = () => {
           <h6 className="mt-3 mb-2">Боломжит загварууд:</h6>
           <div className="d-flex flex-wrap gap-2 mb-3">
             {[
-              ['DeepSeek Chat', 'primary'],
+              ['DeepSeek V4 Flash', 'primary'],
+              ['DeepSeek V4 Pro', 'info'],
               ['DeepSeek Reasoner', 'dark'],
-              ['Gemini 2.5 Flash', 'success'],
-              ['Gemini 2.5 Pro', 'info'],
               ['GPT-4o', 'warning'],
             ].map(([name, color]) => (
               <Badge key={name} bg={color}>
@@ -243,9 +242,8 @@ const AIGuidePage = () => {
           <h6 className="mt-3 mb-2">Боломжит загварууд:</h6>
           <div className="d-flex flex-wrap gap-2 mb-3">
             {[
-              ['Gemini', 'primary'],
+              ['DeepSeek', 'primary'],
               ['GPT-4o', 'success'],
-              ['DeepSeek', 'info'],
             ].map(([name, color]) => (
               <Badge key={name} bg={color}>
                 {name}
@@ -506,7 +504,7 @@ const AIGuidePage = () => {
             ],
             [
               'Аль AI загвар илүү сайн вэ?',
-              'DeepSeek, Gemini, GPT-4o тус бүр давуу талтай. Олимпиадын бодлогод олон загварыг туршиж үзээрэй.',
+              'DeepSeek, GPT-4o тус бүр давуу талтай. Олимпиадын бодлогод олон загварыг туршиж үзээрэй.',
             ],
             [
               'AI бодолтыг засварлаж болох уу?',

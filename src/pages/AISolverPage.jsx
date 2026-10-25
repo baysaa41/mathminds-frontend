@@ -42,7 +42,6 @@ function renderMarkdown(text) {
 }
 
 const AI_OPTIONS = [
-  { value: 'gemini',   label: 'Gemini',   icon: '✦', color: '#4285f4', grad: 'linear-gradient(135deg,#4285f4,#9b59b6)' },
   { value: 'chatgpt',  label: 'GPT-4o',   icon: '⬡', color: '#10a37f', grad: 'linear-gradient(135deg,#10a37f,#1a7f64)' },
   { value: 'deepseek', label: 'DeepSeek', icon: '◆', color: '#4d6bfe', grad: 'linear-gradient(135deg,#4d6bfe,#3a4fd7)' },
 ];
@@ -285,7 +284,7 @@ export default function AISolverPage() {
 
   const [messages,   setMessages]   = useState([]);
   const [input,      setInput]      = useState('');
-  const [selectedAI, setSelectedAI] = useState('gemini');
+  const [selectedAI, setSelectedAI] = useState('deepseek');
   const [loading,    setLoading]    = useState(false);
   const [error,      setError]      = useState('');
   const [showSave,   setShowSave]   = useState(false);

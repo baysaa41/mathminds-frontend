@@ -68,7 +68,7 @@ const DJANGO_COMMANDS = [
       },
       {
         name: 'import_textbook',
-        help: 'Сурах бичгийн зургуудаас бодлого, томьёо задлах (Gemini AI)',
+        help: 'Сурах бичгийн зургуудаас бодлого, томьёо задлах (DeepSeek AI)',
         usage: 'python manage.py import_textbook <зургийн_хавтас>',
         flags: [
           '--batch-size <N> — Нэг API дуудалтад хэдэн зураг (default: 4)',
@@ -110,13 +110,13 @@ const DJANGO_COMMANDS = [
       },
       {
         name: 'import_egmo',
-        help: 'EGMO олимпиадын PDF-уудыг импортлох (Gemini AI)',
+        help: 'EGMO олимпиадын PDF-уудыг импортлох (DeepSeek AI)',
         usage: 'python manage.py import_egmo <хавтас>',
         flags: [
           '--year <он> — Зөвхөн тодорхой он',
           '--dry-run — Хадгалахгүй',
           '--force — Давхардсан ч дахин оруулах',
-          '--model <нэр> — Gemini model (default: gemini-flash-latest)',
+          '--model <нэр> — DeepSeek model (default: deepseek-v4-flash)',
           '--author <username> — Зохиогч',
           '--delay <сек> — API хоорондын хүлээлт (default: 2)',
         ],
@@ -126,7 +126,7 @@ const DJANGO_COMMANDS = [
         help: 'LaTeX .tex файлаас бодлого, томьёо импортлох',
         usage: 'python manage.py import_tex_problems <file.tex>',
         flags: [
-          '--model <нэр> — Gemini model (default: gemini-flash-latest)',
+          '--model <нэр> — DeepSeek model (default: deepseek-v4-flash)',
           '--chunk-size <N> — Нэг chunk-ийн мөрийн тоо (default: 200)',
           '--dry-run — Хадгалахгүй',
           '--skip-problems — Бодлого задлахгүй',
@@ -250,7 +250,7 @@ const DJANGO_COMMANDS = [
           '--all — Бүх тохирох бодлого',
           '--no-solution-only — Зөвхөн бодолтгүй бодлогуудыг',
           '--dry-run — Хадгалахгүй',
-          '--model <нэр> — Gemini model (default: gemini-flash-latest)',
+          '--model <нэр> — DeepSeek model (default: deepseek-v4-flash)',
           '--delay <сек> — Хүсэлт хоорондын хугацаа (default: 1.0)',
         ],
       },
@@ -267,7 +267,7 @@ const DJANGO_COMMANDS = [
           '--dry-run — Хадгалахгүй',
           '--fix-solutions — Бодолтыг ч засах',
           '--force — LaTeX байсан ч дахин боловсруулах',
-          '--model <нэр> — AI model (default: gemini-flash-latest)',
+          '--model <нэр> — AI model (default: deepseek-v4-flash)',
           '--delay <сек> — Хүсэлт хоорондын хугацаа (default: 1.0)',
         ],
       },
@@ -360,7 +360,7 @@ const DJANGO_COMMANDS = [
     commands: [
       {
         name: 'generate_curriculum',
-        help: 'PDF/зургаас Gemini AI-р curriculum болон бодлого үүсгэх',
+        help: 'PDF/зургаас DeepSeek AI-р curriculum болон бодлого үүсгэх',
         usage: 'python manage.py generate_curriculum <файл_эсвэл_хавтас>',
         flags: [
           '--program-code <код> — Program код (заавал)',
@@ -372,7 +372,7 @@ const DJANGO_COMMANDS = [
           '--weeks <N> — Нийт долоо хоног (default: 34)',
           '--hours-per-week <N> — 7 хоногийн цаг (default: 2)',
           '--total-hours <N> — Нийт хичээлийн цаг (0 = автомат)',
-          '--model <нэр> — Gemini model',
+          '--model <нэр> — DeepSeek model (default: deepseek-v4-flash)',
           '--dry-run — Хадгалахгүй',
           '--skip-problems — Бодлого задлахгүй',
           '--problems-only — Зөвхөн бодлого',
@@ -587,7 +587,7 @@ const DJANGO_COMMANDS = [
       },
       {
         name: 'generate_ai_teacher_avatars',
-        help: 'AI багш нарт Gemini-аар зурмал аватар үүсгэх (анхдагчаар локал файл; --apply үед S3 + picture_url)',
+        help: 'AI багш нарт OpenAI gpt-image-аар зурмал аватар үүсгэх (анхдагчаар локал файл; --apply үед S3 + picture_url)',
         usage: 'python manage.py generate_ai_teacher_avatars --missing',
         flags: [
           '--teacher <id> — AITeacher id (олон удаа өгч болно)',
@@ -873,7 +873,7 @@ const DJANGO_COMMANDS = [
         usage: 'python manage.py audit_eesh_quality --book <нэр> --models deepseek',
         flags: [
           '--book <book1|book2|book3|geometry|probstat|all> — Ном (default: book1)',
-          '--models <deepseek,gemini,claude> — Үнэлэх моделиуд (default: гурвуулаа)',
+          '--models <deepseek,deepseek_pro,claude> — Үнэлэх моделиуд (default: гурвуулаа)',
           '--limit <N> — Жишээ БҮЛГИЙН тоог хязгаарлах',
           '--delay <сек> — AI дуудлага хоорондын хугацаа (default: 1.5)',
           '--dry-run — Prompt харуулна, AI дуудахгүй',
@@ -898,7 +898,7 @@ const DJANGO_COMMANDS = [
           '--report <file.json> — Тайлан (default: хамгийн сүүлийнх)',
           '--max-score <0-5> — Энэ оноо ба түүнээс доош (default: 2)',
           '--criterion <correctness|solution|clarity|mongolian> — Зөвхөн нэг шалгуураар',
-          '--model <deepseek|gemini|claude> — Зөвхөн нэг моделиор',
+          '--model <deepseek|deepseek_pro|gemini|claude> — Зөвхөн нэг моделиор (gemini: хуучин тайланд)',
           '--book <нэр> — Зөвхөн нэг номоор',
           '--output <file.json> — Шүүсэн дүнг хадгалах',
         ],
