@@ -119,8 +119,22 @@ body {
   min-height: 200px;
 }
 
+/* --- Тест бөглөх хуудасны бодлого шүүх сайдбар (QuizTakePage) --- */
+.quiz-nav-sidebar {
+  width: 200px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 80px;
+  align-self: flex-start;
+}
+
 /* --- Responsive утас дээр --- */
 @media (max-width: 767.98px) {
+  .quiz-nav-sidebar {
+    width: 100%;
+    position: static;
+  }
+
   .hover-card {
     transform: none !important;
   }

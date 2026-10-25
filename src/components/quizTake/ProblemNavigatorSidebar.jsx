@@ -6,13 +6,8 @@ export function ProblemNavigatorSidebar({
   onJumpTo, onFinish, onSaveAndExit,
 }) {
   return (
-    <div style={{
-      width: 200,
-      flexShrink: 0,
-      position: 'sticky',
-      top: 80,
-      alignSelf: 'flex-start',
-    }}>
+    // Өргөн/sticky-г index.css-ийн .quiz-nav-sidebar тодорхойлно (утсан дээр бодлогын доор бүтэн өргөнөөр)
+    <div className="quiz-nav-sidebar">
       <div className="card border-0 shadow-sm">
         <div className="card-header py-2 px-3 bg-white border-bottom d-flex justify-content-between align-items-center">
           <span className="fw-semibold" style={{ fontSize: '0.8rem' }}>Бодлогууд</span>
