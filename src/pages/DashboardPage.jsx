@@ -234,7 +234,7 @@ function DashboardPage() {
               </div>
               <Card.Title>Баримтаас Бодлого Импортлох</Card.Title>
               <Card.Text className="text-muted flex-grow-1">
-                PDF, зураг, Word файлаас бодлогуудыг Gemini AI ашиглан таньж импортлох.
+                PDF, зураг, Word файлаас бодлогуудыг DeepSeek AI ашиглан таньж импортлох.
               </Card.Text>
               <Link to="/admin/doc-import" className="btn" style={{ backgroundColor: '#6f42c1', color: '#fff' }}>
                 <FileUp size={18} className="me-2" />
@@ -497,7 +497,7 @@ function DashboardPage() {
               </div>
               <Card.Title>AI Загварууд</Card.Title>
               <Card.Text className="text-muted flex-grow-1">
-                DeepSeek, Gemini, Claude, ChatGPT — систем ямар AI загвар хаана ашигладгийн тайлбар.
+                DeepSeek, Claude, ChatGPT — систем ямар AI загвар хаана ашигладгийн тайлбар.
               </Card.Text>
               <Link to="/admin/ai-models" className="btn" style={{ backgroundColor: '#8b5cf6', color: '#fff' }}>
                 <Cpu size={18} className="me-2" />

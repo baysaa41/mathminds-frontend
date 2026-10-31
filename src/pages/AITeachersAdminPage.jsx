@@ -38,7 +38,7 @@ const ROLE_CHOICES = [
 ];
 
 const ENGINE_CHOICES = [
-  { value: 'gemini', label: 'Google Gemini' },
+  { value: 'deepseek', label: 'DeepSeek' },
   { value: 'openai', label: 'OpenAI ChatGPT' },
   { value: 'anthropic', label: 'Anthropic Claude' },
 ];

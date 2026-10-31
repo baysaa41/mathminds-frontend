@@ -164,14 +164,14 @@ export function AdminScoresPanel({ slug, active }) {
         </Col>
         <Col lg={6}>
           <Card className="h-100">
-            <Card.Header>CSV-ээс оруулах</Card.Header>
+            <Card.Header>CSV / Excel-ээс оруулах</Card.Header>
             <Card.Body>
               <p className="small text-muted mb-2">
-                Толгой мөр: <code>participant_no,p1,p2,…,p{grid.problem_count}</code>. Хоосон нүд — өөрчлөхгүй.
-                Алдаатай мөр байвал юу ч хадгалахгүй.
+                Толгой мөр: <code>participant_no,p1,p2,…,p{grid.problem_count}</code>. Excel-д sheet бүр (ангилал)
+                ийм толгойтой байж болно; бусад баганыг алгасна. Хоосон нүд — өөрчлөхгүй. Алдаатай мөр байвал юу ч хадгалахгүй.
               </p>
               <div className="d-flex gap-2 flex-wrap">
-                <Form.Control size="sm" type="file" accept=".csv,text/csv" style={{ maxWidth: 260 }}
+                <Form.Control size="sm" type="file" accept=".csv,text/csv,.xlsx" style={{ maxWidth: 260 }}
                               onChange={(e) => setCsv({ file: e.target.files[0] || null, result: null })} />
                 <Button size="sm" variant="outline-primary" disabled={!csv.file || busy} onClick={() => runCsv(true)}>Шалгах</Button>
                 <Button size="sm" disabled={!csv.result?.ok || busy} onClick={() => runCsv(false)}>Хадгалах</Button>
@@ -182,7 +182,7 @@ export function AdminScoresPanel({ slug, active }) {
                 </div>
               ) : (
                 <Alert variant="danger" className="small mt-2 mb-0 py-2">
-                  {csv.result.errors.slice(0, 20).map((e) => <div key={`${e.line}-${e.error}`}>Мөр {e.line}: {e.error}</div>)}
+                  {csv.result.errors.slice(0, 20).map((e) => <div key={`${e.sheet}-${e.line}-${e.error}`}>{e.sheet ? `${e.sheet}, ` : ''}Мөр {e.line}: {e.error}</div>)}
                   {csv.result.errors.length > 20 && <div>… нийт {csv.result.errors.length} алдаа</div>}
                 </Alert>
               ))}

@@ -10,6 +10,7 @@ import { AdminDefensePanel, AdminMaterialsPanel, AdminResultsPanel, AdminScoresP
 import { AdminSheetGallery } from '../components/olympiad/SheetPosts';
 import AdminSheetMoveRequests from '../components/olympiad/AdminSheetMoveRequests';
 import UnmatchedSheets from '../components/olympiad/UnmatchedSheets';
+import ControlCodeLookup from '../components/olympiad/ControlCodeLookup';
 
 const naturalSort = (a, b) => a.name.localeCompare(b.name, undefined, { numeric: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -266,6 +267,7 @@ function OlympiadAdminPage() {
       </Card>
 
       <AdminSheetMoveRequests slug={slug} onChanged={loadImages} />
+      <ControlCodeLookup slug={slug} />
       <UnmatchedSheets slug={slug} olympiad={olympiad} images={images} onAssigned={loadImages} />
 
       <Card>

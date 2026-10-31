@@ -29,32 +29,15 @@ const AI_PROVIDERS = [
           'Клубын өдөр тутмын дасгал: хариулт шалгах, тайлбар, баяжуулалт, hint',
           'Curriculum/долоо хоногийн агуулга, зорилт үүсгэх (auto_objectives, generate_curriculum)',
           'AI Solver: DeepSeek оролцогч (solver_deepseek_solve/respond/review)',
-          'Постын AI туслах (зурагггүй текст пост) — ai_help',
+          'Постын AI туслах (текст болон зурагтай пост, vision) — ai_help',
+          'describe_image_for_teacher() — зургийн агуулгыг тайлбарлах (vision)',
+          'Баримтаас Бодлого Импортлох (/admin/doc-import) — PDF хуудсыг зураг болгож, зураг/DOCX/Excel',
+          'import_textbook, generate_curriculum, import_egmo, import_tex_problems — сурах бичиг/PDF/LaTeX импорт',
           'StudyPlan-ийн урам зоригийн товч тайлбар — study_plan_summary (integral/study_plan.py)',
           'Ухаалаг хайлт — байгалийн хэлний асуулгыг keyword+анги+хичээл болгож задлах (smart_search, integral/views.py)',
           'Даалгавар AI-аар шалгах — уламжлалт бодлогод санал score/feedback (ai_grade_submission, clubs/views.py)',
         ],
         note: 'Файл: integral/utils_ai.py — AI_MODEL = "deepseek-v4-flash". Хуучин баримтжуулалтад "deepseek-reasoner" гэж бичигдсэн байсан ч кодод deepseek-v4-flash байна.',
-      },
-    ],
-  },
-  {
-    provider: 'Google Gemini',
-    color: '#4285f4',
-    icon: '✨',
-    summary: 'Зурагтай (multimodal) контентод голчлон ашиглагдана — зураг унших, PDF/баримт таних.',
-    models: [
-      {
-        name: 'gemini-flash-latest',
-        role: 'Multimodal хариу — зурагтай постын AI тайлбар, баримт/зураг таних',
-        usedFor: [
-          'minds/views.py — ai_help action: зурагтай пост дээрх AI тайлбар (_call_gemini_multimodal)',
-          'describe_image_for_teacher() — зургийн агуулгыг АИ-аар тайлбарлах',
-          'import_egmo — олимпиадын PDF импорт',
-          'import_tex_problems — LaTeX файл задлах',
-          'Баримтаас Бодлого Импортлох хуудас (/admin/doc-import)',
-        ],
-        note: 'call_ai_teacher()-ийн model параметрт заавал дамжуулж сонгодог (default биш). Хуучин gemini-2.0-flash/gemini-2.5-flash Google-аас хасагдсан тул gemini-flash-latest (alias) руу шилжсэн.',
       },
     ],
   },
@@ -66,7 +49,7 @@ const AI_PROVIDERS = [
     models: [
       {
         name: 'claude-haiku-4-5-20251001',
-        role: 'call_anthropic_json() — Gemini structured output-ийн оронд',
+        role: 'call_anthropic_json() — fallback-ийн сүүлийн шат, structured JSON',
         usedFor: [
           'auto_tag_from_curriculum — Curriculum topic автомат таглах',
           'generate_curriculum_quiz_task — Curriculum-аас бодлогын багц үүсгэх',
@@ -102,7 +85,7 @@ const AI_PROVIDERS = [
         role: 'AI Solver-ийн ChatGPT оролцогч',
         usedFor: [
           'solver_view.py — _chatgpt_solve, _chatgpt_respond, _chatgpt_review',
-          'AI Solver Gemini/DeepSeek/ChatGPT гурвуулаа нэг бодлого дээр хамтарч бодох/шалгах горим',
+          'AI Solver DeepSeek/ChatGPT хоёулаа нэг бодлого дээр хамтарч бодох/шалгах горим',
         ],
         note: 'OPENAI_API_KEY тохируулаагүй бол энэ функц алдаа шиднэ. Файл: integral/solver_view.py.',
       },
@@ -112,12 +95,12 @@ const AI_PROVIDERS = [
 
 const FEATURE_MAP = [
   { feature: 'Бодлогын AI бодолт/тайлбар/тэмдэглэл', app: 'integral', provider: 'DeepSeek', file: 'views_ai.py' },
-  { feature: 'AI Solver (Gemini + DeepSeek + ChatGPT хамтын бодолт)', app: 'integral', provider: 'Gemini / DeepSeek / ChatGPT', file: 'solver_view.py' },
+  { feature: 'AI Solver (DeepSeek + ChatGPT хамтын бодолт)', app: 'integral', provider: 'DeepSeek / ChatGPT', file: 'solver_view.py' },
   { feature: 'Curriculum taglal, quiz автомат үүсгэх', app: 'integral (Celery)', provider: 'Anthropic Claude', file: 'tasks.py' },
   { feature: 'Клубын өдөр тутмын дасгал (hint, шалгах, тайлбар)', app: 'clubs', provider: 'DeepSeek', file: 'views_practice.py' },
   { feature: 'Долоо хоногийн хөтөлбөр/зорилт AI-аар үүсгэх', app: 'clubs / curriculum', provider: 'DeepSeek', file: 'views.py' },
-  { feature: 'Постын AI туслах (ai_help)', app: 'minds', provider: 'DeepSeek (текст) / Gemini (зурагтай)', file: 'views.py' },
-  { feature: 'Баримт/PDF-ээс бодлого импорт', app: 'management commands', provider: 'Gemini flash', file: 'import_egmo.py, import_tex_problems.py' },
+  { feature: 'Постын AI туслах (ai_help)', app: 'minds', provider: 'DeepSeek (текст + vision)', file: 'views.py' },
+  { feature: 'Баримт/PDF-ээс бодлого импорт', app: 'integral / management commands', provider: 'DeepSeek (vision)', file: 'doc_import_views.py, import_egmo.py, import_tex_problems.py' },
   { feature: 'Curriculum WeeklyTopic автомат таглах', app: 'integral / curriculum (Celery)', provider: 'Anthropic Claude', file: 'tasks.py, tag_weekly_topics.py' },
   { feature: 'Хувийн StudyPlan AI тайлбар', app: 'integral', provider: 'DeepSeek', file: 'study_plan.py' },
   { feature: 'Ухаалаг хайлт (smart-search)', app: 'integral', provider: 'DeepSeek', file: 'views.py' },
@@ -216,7 +199,7 @@ function AIModelsPage() {
           <Card className="shadow-sm mb-3 border-0" style={{ background: '#f5f3ff' }}>
             <Card.Body className="py-2 px-3">
               <p className="text-muted mb-1 small">
-                Систем 4 AI провайдер ашигладаг: <strong>DeepSeek</strong> (үндсэн загвар), <strong>Gemini</strong> (зурагтай контент),
+                Систем 3 AI провайдер ашигладаг: <strong>DeepSeek</strong> (үндсэн загвар, зураг/PDF таних),
                 {' '}<strong>Anthropic Claude</strong> (curriculum/тайлан), <strong>ChatGPT</strong> (AI Solver горим).
               </p>
               <p className="text-muted mb-0 small">

@@ -1,7 +1,7 @@
 // src/components/AppHeader.jsx
 // Логин хуудаснаас бусад бүх хуудсанд ашиглагдах нийтлэг header.
 
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getNotificationSummary } from '../services/notificationService';
@@ -33,9 +33,9 @@ import {
   ClipboardList,
   Heart,
 } from 'lucide-react';
-// @excalidraw/excalidraw (~1.1MB) — зөвхөн хэрэглэгч "Зурах" товч дархад ачаална
-// (нэвтэрсэн хэрэглэгч бүрийн анхны ачаалалтад орохоос сэргийлнэ).
-const DrawingPanel = lazy(() => import('./DrawingPanel'));
+
+// Бие даасан «Самбар» апп (board.mathminds.club) — цэсэн дэх холбоос ижил табд шилжинэ.
+const BOARD_URL = import.meta.env.VITE_BOARD_URL || 'https://board.mathminds.club';
 
 export default function AppHeader() {
   const { user, logout } = useAuth();
@@ -43,7 +43,6 @@ export default function AppHeader() {
   const location = useLocation();
 
   const [showSidebar, setShowSidebar] = useState(false);
-  const [showDrawPanel, setShowDrawPanel] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [privateMessagesCount, setPrivateMessagesCount] = useState(0);
   const [reviewDueToday, setReviewDueToday] = useState(0);
@@ -105,8 +104,6 @@ export default function AppHeader() {
   useEffect(() => { setShowSidebar(false); }, [location.pathname]);
 
   const handleLogout = () => { logout(); navigate('/login'); };
-
-  const handleOpenDraw = () => setShowDrawPanel(true);
 
   const close = () => setShowSidebar(false);
 
@@ -238,7 +235,7 @@ export default function AppHeader() {
                       <Dropdown.Item as={Link} to="/my-purchases">
                         <ShoppingCart size={16} className="me-2" />Миний худалдан авалт
                       </Dropdown.Item>
-                      <Dropdown.Item onClick={handleOpenDraw}>
+                      <Dropdown.Item href={BOARD_URL}>
                         <PenLine size={16} className="me-2" />Самбар
                       </Dropdown.Item>
                       {user.is_staff && (
@@ -344,7 +341,7 @@ export default function AppHeader() {
                 <Nav.Link as={Link} to="/my-purchases" onClick={close}>
                   <i className="bi bi-bag-check me-2"></i>Миний худалдан авалт
                 </Nav.Link>
-                <Nav.Link onClick={() => { close(); handleOpenDraw(); }}>
+                <Nav.Link href={BOARD_URL} onClick={close}>
                   <PenLine size={18} className="me-2" />Самбар
                 </Nav.Link>
                 {user.is_staff && (
@@ -392,16 +389,6 @@ export default function AppHeader() {
           </Nav>
         </Offcanvas.Body>
       </Offcanvas>
-
-      {showDrawPanel && (
-        <Suspense fallback={null}>
-          <DrawingPanel
-            show={showDrawPanel}
-            onHide={() => setShowDrawPanel(false)}
-            pageUrl={location.pathname}
-          />
-        </Suspense>
-      )}
     </>
   );
 }

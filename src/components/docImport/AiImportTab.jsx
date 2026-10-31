@@ -399,7 +399,7 @@ export default function AiImportTab() {
             <div className="fs-1 mb-3">🤖</div>
             <h5>Файл сонгоод "Бодлогуудыг таних" товчийг дарна уу</h5>
             <p className="small">
-              Gemini AI таны файлаас бодлогуудыг автоматаар таньж,
+              DeepSeek AI таны файлаас бодлогуудыг автоматаар таньж,
               <br />LaTeX форматаар гарган харуулна.
             </p>
             <div className="d-flex justify-content-center flex-wrap gap-3 mt-3">
@@ -416,7 +416,7 @@ export default function AiImportTab() {
         {extracting && (
           <div className="text-center py-5">
             <Spinner animation="border" variant="primary" style={{ width: 48, height: 48 }} />
-            <p className="mt-3 fw-semibold">Gemini AI боловсруулж байна...</p>
+            <p className="mt-3 fw-semibold">DeepSeek AI боловсруулж байна...</p>
             <p className="text-muted small">Бодлогуудыг таних · LaTeX хөрвүүлэх · Зурагнуудыг задлах</p>
           </div>
         )}

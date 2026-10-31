@@ -497,7 +497,7 @@ const QuizTakePage = () => {
 
   return (
     <Container fluid className="py-4" style={{ maxWidth: '1100px' }}>
-      <div className="d-flex gap-3 align-items-start">
+      <div className="d-flex flex-column flex-md-row gap-3 align-items-md-start">
       <div style={{ flex: 1, minWidth: 0 }}>
       <QuizProgressHeader
         currentIndex={currentIndex}
